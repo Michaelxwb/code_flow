@@ -1,0 +1,13 @@
+{
+  "name": "@jahanxu/code-flow",
+  "version": "0.1.2",
+  "license": "UNLICENSED",
+  "bin": {
+    "code-flow": "src/cli.js"
+  },
+  "files": [
+    "src/cli.js",
+    "src/core/**",
+    "src/adapters/**"
+  ]
+}
