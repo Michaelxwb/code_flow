@@ -11,7 +11,7 @@
 
 ### 1. 读取任务数据
 
-- 用 Glob 搜索 `.code-flow/tasks/*.md`（排除 `archived/` 目录）
+- 用 Glob 搜索 `.code-flow/tasks/**/*.md`（排除 `archived/` 目录）
 - 逐个 Read，提取每个 `## TASK-xxx` 的：ID、标题、Status、Priority、Depends、Checklist 完成度
 
 ### 2. 输出总览表格

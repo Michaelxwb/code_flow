@@ -8,13 +8,15 @@
 - `/cf-task:note <file> TASK-001 resolve NOTE-1` — 标记批注为已解决
 - `/cf-task:note <file> TASK-001 resolve all` — 标记所有批注为已解决
 
-其中 `<file>` 可省略路径前缀和 `.md` 后缀。
+其中 `<file>` 可省略日期目录前缀和 `.md` 后缀。
+
+查找逻辑：用 Glob 搜索 `.code-flow/tasks/**/<file>.md`（排除 `archived/`），匹配第一个结果。
 
 ## 添加批注
 
 ### 执行步骤
 
-1. 用 Read 读取 `.code-flow/tasks/<file>.md`
+1. 用 Glob 定位任务文件，Read 读取
 2. 定位 `## TASK-001` 段落下的 `### Notes` 区域
 3. 扫描已有 `[NOTE-n]`，计算下一个编号
 4. 用 Edit 在 `### Notes` 下追加：`- [NOTE-<n>] <批注内容>`

@@ -6,11 +6,13 @@
 
 - `/cf-task:block <file> TASK-001 "阻塞原因"`
 
-其中 `<file>` 可省略路径前缀和 `.md` 后缀。
+其中 `<file>` 可省略日期目录前缀和 `.md` 后缀。
+
+查找逻辑：用 Glob 搜索 `.code-flow/tasks/**/<file>.md`（排除 `archived/`），匹配第一个结果。
 
 ## 执行步骤
 
-1. 用 Read 读取 `.code-flow/tasks/<file>.md`
+1. 用 Glob 定位任务文件，Read 读取
 2. 定位 `## TASK-001` 段落，检查当前 Status：
    - `done` → 拒绝：`TASK-001 已完成，无法标记阻塞`
    - `blocked` → 提示：`TASK-001 已处于 blocked 状态`，仍追加新的阻塞原因

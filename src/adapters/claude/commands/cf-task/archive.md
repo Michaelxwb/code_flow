@@ -6,13 +6,15 @@
 
 - `/cf-task:archive <file>` — 归档指定的 task 文件
 
-其中 `<file>` 可省略路径前缀和 `.md` 后缀。
+其中 `<file>` 可省略日期目录前缀和 `.md` 后缀。
+
+查找逻辑：用 Glob 搜索 `.code-flow/tasks/**/<file>.md`（排除 `archived/`），匹配第一个结果。
 
 ## 执行步骤
 
 ### 1. 完成度检查
 
-1. 用 Read 读取 `.code-flow/tasks/<file>.md`
+1. 用 Read 读取匹配到的 task 文件
 2. 提取所有 `## TASK-xxx` 段落的 Status
 3. 检查是否所有子任务均为 `done`
 
@@ -32,17 +34,18 @@
 
 所有子任务已完成：
 
-1. 用 Bash 创建归档目录并移动文件：
+1. 提取文件所在的日期目录名（如 `2026-03-15`）
+2. 用 Bash 创建归档目录并移动文件：
    ```bash
-   mkdir -p .code-flow/tasks/archived
-   mv .code-flow/tasks/<file>.md .code-flow/tasks/archived/
+   mkdir -p .code-flow/tasks/archived/<日期目录>
+   mv .code-flow/tasks/<日期目录>/<file>.md .code-flow/tasks/archived/<日期目录>/
    ```
-2. 输出归档摘要
+3. 如果原日期目录为空，删除空目录
 
 ### 3. 归档摘要
 
 ```
-已归档: <file>.md → .code-flow/tasks/archived/<file>.md
+已归档: <file>.md → .code-flow/tasks/archived/<日期目录>/<file>.md
 
 摘要:
   - 来源: docs/xxx设计说明书.md
