@@ -69,18 +69,15 @@ function runInit() {
   copyFileIfMissing(path.join(adaptersDir, 'claude', 'CLAUDE.md'), path.join(cwd, 'CLAUDE.md'));
   copyDirRecursive(path.join(adaptersDir, 'claude'), path.join(cwd, '.claude'));
 
-  const result = spawnSync(
-    'python3',
-    ['.code-flow/scripts/cf_init.py'],
-    { stdio: 'inherit', cwd }
-  );
-
-  if (result.error) {
-    process.stderr.write(`Error: ${result.error.message}\n`);
-    process.exit(1);
+  // Clean up legacy .claude/skills/ if it exists
+  const legacySkills = path.join(cwd, '.claude', 'skills');
+  if (fs.existsSync(legacySkills)) {
+    fs.rmSync(legacySkills, { recursive: true });
   }
 
-  process.exit(result.status ?? 0);
+  process.stdout.write('code-flow initialized.\n');
+  process.stdout.write('Run /project:cf-init in Claude Code to complete setup.\n');
+  process.exit(0);
 }
 
 const args = process.argv.slice(2);

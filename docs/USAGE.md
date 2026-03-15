@@ -24,13 +24,13 @@ code-flow init
 
 ## 日常命令
 
-以下命令用于日常维护与自动化流程：
+以下命令在 Claude Code 中通过 `/project:` 前缀调用：
 
-- `/cf-scan`：审计规范 token 与冗余/过时问题
-- `/cf-stats`：统计 L0/L1 token 使用与预算
-- `/cf-inject frontend`：手动注入前端 specs（Hook 失效时）
-- `/cf-validate --files=...`：按文件触发验证规则并输出结果
-- `/cf-learn --scope=... --content=...`：向 Learnings 追加记录
+- `/project:cf-scan`：审计规范 token 与冗余/过时问题
+- `/project:cf-stats`：统计 L0/L1 token 使用与预算
+- `/project:cf-inject frontend`：手动注入前端 specs（Hook 失效时）
+- `/project:cf-validate`：按变更文件触发验证规则并输出结果
+- `/project:cf-learn`：交互式向 Learnings 追加经验记录
 
 ## Hook 验证示例
 

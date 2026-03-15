@@ -18,6 +18,16 @@
 
 ## Spec Loading
 This project uses the code-flow layered spec system.
-Specs live in .code-flow/specs/ and are injected on demand.
+
+**Auto-inject rule**: Before answering any coding question, you MUST:
+1. Determine domain(s) from the user's question:
+   - **frontend**: mentions components, pages, hooks, styles, UI, CSS, React/Vue/Angular, or references .tsx/.jsx/.css/.scss files
+   - **backend**: mentions services, API, database, models, logging, or references .py/.go files, SQL, ORM
+2. Read `.code-flow/config.yml` → find matching domain's `specs` list
+3. Read each spec file from `.code-flow/specs/` and apply as constraints
+4. If question spans multiple domains, load all matching specs
+5. If no domain matches, skip spec loading
+
+Do NOT ask the user which specs to load — decide automatically based on context.
 
 ## Learnings
