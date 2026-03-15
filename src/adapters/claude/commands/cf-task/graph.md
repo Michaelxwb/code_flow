@@ -9,14 +9,14 @@
 
 其中 `<file>` 可省略日期目录前缀和 `.md` 后缀。
 
-查找逻辑：用 Glob 搜索 `.code-flow/tasks/**/<file>.md`（排除 `archived/`），匹配第一个结果。
+查找逻辑：用 Glob 搜索 `.code-flow/tasks/**/<file>.md`，从结果中排除包含 `archived/` 的路径，匹配第一个结果。
 
 ## 执行步骤
 
 ### 1. 读取任务数据
 
 - 指定文件：Glob 定位后 Read
-- 全部文件：Glob `.code-flow/tasks/**/*.md`（排除 `archived/` 目录），逐个 Read
+- 全部文件：Glob `.code-flow/tasks/**/*.md`，从结果中排除包含 `archived/` 的路径，逐个 Read
 
 从每个 `## TASK-xxx` 段落提取：ID、标题、Status、Depends。
 

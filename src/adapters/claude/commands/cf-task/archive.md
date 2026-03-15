@@ -1,6 +1,6 @@
 # cf-task:archive
 
-归档已完成的整个 task 文件。
+归档已完成的整个 task 文件。归档前执行三维校验，归档后提示更新 specs。
 
 ## 输入
 
@@ -8,7 +8,7 @@
 
 其中 `<file>` 可省略日期目录前缀和 `.md` 后缀。
 
-查找逻辑：用 Glob 搜索 `.code-flow/tasks/**/<file>.md`（排除 `archived/`），匹配第一个结果。
+查找逻辑：用 Glob 搜索 `.code-flow/tasks/**/<file>.md`，从结果中排除包含 `archived/` 的路径，匹配第一个结果。
 
 ## 执行步骤
 
@@ -30,9 +30,37 @@
 当前完成度: 2/4 (50%)
 ```
 
-### 2. 执行归档
+### 2. 归档前校验（Verify）
 
-所有子任务已完成：
+所有子任务 done 后，执行三维校验：
+
+**完整性**：
+- 所有 Checklist 项已勾选
+- 无未解决的 Notes（无 `[NOTE-n]` 未标记 `[RESOLVED]`）
+
+**正确性**：
+- 如果 `.code-flow/validation.yml` 存在，Read 读取验证规则，用 Bash 执行其中匹配的 `command`（如 `npx tsc --noEmit`、`python3 -m pytest` 等）
+- 检查本次变更涉及的文件是否通过 lint/type check
+
+**一致性**：
+- 读取 task 文件的 `## Proposal`，对照实际代码变更，检查意图是否已实现
+
+校验结果输出：
+
+```
+归档前校验:
+  [PASS] 完整性: 所有 Checklist 已完成，无未解决 Notes
+  [PASS] 正确性: cf-validate 通过
+  [WARN] 一致性: Proposal 提到"支持 OAuth 登录"，但未发现相关实现
+
+WARN 不阻塞归档，但建议确认后再继续。继续归档？
+```
+
+PASS → 继续。WARN → 提示用户确认。FAIL → 阻塞归档，列出失败原因。
+
+### 3. 执行归档
+
+校验通过后：
 
 1. 提取文件所在的日期目录名（如 `2026-03-15`）
 2. 用 Bash 创建归档目录并移动文件：
@@ -42,7 +70,30 @@
    ```
 3. 如果原日期目录为空，删除空目录
 
-### 3. 归档摘要
+### 4. Spec 更新提示
+
+归档完成后，检查本次变更是否引入了新的规范约束需要同步到 specs：
+
+1. 读取 task 文件中所有子任务的 Description 和 Checklist
+2. 对照 `.code-flow/specs/` 下的现有规范
+3. 如果发现新增的模式或约束未被 specs 覆盖，提示用户：
+
+```
+Spec 同步建议:
+  本次变更引入了以下尚未记录的规范:
+  - 所有 API handler 增加了 rate limiting 中间件
+  - 新增 AppError 统一错误处理模式
+
+  建议更新:
+  - .code-flow/specs/backend/platform-rules.md — 补充 rate limiting 规则
+  - .code-flow/specs/backend/code-quality-performance.md — 补充错误处理模式
+
+  运行 /cf-learn 可自动扫描并补充。
+```
+
+如果无新规范需同步，跳过此步骤。
+
+### 5. 归档摘要
 
 ```
 已归档: <file>.md → .code-flow/tasks/archived/<日期目录>/<file>.md
@@ -53,4 +104,5 @@
   - 创建日期: 2026-03-15
   - 归档日期: 2026-03-20
   - 历时: 5 天
+  - 校验: 3/3 PASS
 ```

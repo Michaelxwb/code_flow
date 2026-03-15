@@ -8,7 +8,7 @@
 
 其中 `<file>` 可省略日期目录前缀和 `.md` 后缀。
 
-查找逻辑：用 Glob 搜索 `.code-flow/tasks/**/<file>.md`（排除 `archived/`），匹配第一个结果。
+查找逻辑：用 Glob 搜索 `.code-flow/tasks/**/<file>.md`，从结果中排除包含 `archived/` 的路径，匹配第一个结果。
 
 ## 执行步骤
 
@@ -19,7 +19,7 @@
    - `draft` / `in-progress` → 继续
 3. 用 Edit 更新 Status 为 `blocked`
 4. 在 `### Notes` 追加：`- [BLOCKED] <阻塞原因>`
-5. 在 `### Log` 追加：`- [<当前日期>] blocked (<阻塞原因>)`
+5. 在 `### Log` 追加：`- [<当前日期>] blocked (<阻塞原因>, was <原状态>)`
 6. 更新文件头 `Updated` 日期
 7. 输出确认：`TASK-001 已标记为 blocked: <原因>`
 
