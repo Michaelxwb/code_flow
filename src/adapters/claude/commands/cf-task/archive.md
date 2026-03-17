@@ -36,7 +36,7 @@
 
 **完整性**：
 - 所有 Checklist 项已勾选
-- 无未解决的 Notes（无 `[NOTE-n]` 未标记 `[RESOLVED]`）
+- 全文无残留的 `#NOTES` 标记
 
 **正确性**：
 - 如果 `.code-flow/validation.yml` 存在，Read 读取验证规则，用 Bash 执行其中匹配的 `command`（如 `npx tsc --noEmit`、`python3 -m pytest` 等）

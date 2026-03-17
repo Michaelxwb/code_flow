@@ -1,6 +1,6 @@
 {
   "name": "@jahanxu/code-flow",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "license": "UNLICENSED",
   "bin": {
     "code-flow": "src/cli.js"

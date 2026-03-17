@@ -26,9 +26,9 @@
 - `done` → 提示"任务已完成"，结束
 - `blocked` → 提示"任务被阻塞"，列出 Notes 中的阻塞原因，结束
 
-**Notes 检查**：扫描 `### Notes` 区域
-- 如果存在 `[NOTE-n]` 格式的批注且未标记 `[RESOLVED]`，则拒绝启动
-- 输出：`前置检查失败：以下 Notes 未解决\n- [NOTE-1] xxx\n- [NOTE-2] xxx\n请先解决后重试，或用 /cf-task:note 标记为 [RESOLVED]`
+**#NOTES 检查**：扫描该子任务段落全文（Description、Checklist 等）
+- 如果存在 `#NOTES` 标记，说明用户 review 时留下了未讨论的问题，拒绝启动
+- 输出：`前置检查失败：以下 #NOTES 未解决\n- 密码加密存储  #NOTES 用 bcrypt 还是 argon2？\n- ...\n请先运行 /project:cf-task:note <file> TASK-xxx 讨论并解决`
 
 **依赖检查**：读取 `Depends` 字段
 - 对每个依赖的 TASK-ID，在同文件中查找其 Status
