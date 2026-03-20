@@ -10,6 +10,3 @@
 
 ## Anti-Patterns
 - 禁止在 render 中发起异步请求。
-
-## Learnings
-- [2026-03-14] 学习条目

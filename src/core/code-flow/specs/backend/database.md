@@ -9,5 +9,3 @@
 
 ## Anti-Patterns
 - 禁止在事务内发起外部网络调用。
-
-## Learnings

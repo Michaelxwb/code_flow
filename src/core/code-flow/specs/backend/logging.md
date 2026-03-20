@@ -9,5 +9,3 @@
 
 ## Anti-Patterns
 - 禁止在高频循环中打印大量日志。
-
-## Learnings

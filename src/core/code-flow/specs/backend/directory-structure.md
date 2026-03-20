@@ -9,5 +9,3 @@
 
 ## Anti-Patterns
 - 禁止在根目录堆放脚本与临时代码。
-
-## Learnings

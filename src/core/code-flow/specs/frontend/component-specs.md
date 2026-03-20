@@ -9,6 +9,3 @@
 
 ## Anti-Patterns
 - 禁止在组件内直接修改 props。
-
-## Learnings
-- [2026-03-14] 示例学习

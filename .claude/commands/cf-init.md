@@ -1,6 +1,6 @@
 # cf-init
 
-项目规范体系一键初始化。检测技术栈，生成完整的 .code-flow/ 目录、spec 模板、配置文件和 Hook 配置。
+项目规范体系一键初始化。检测技术栈，生成完整的 .code-flow/ 目录、spec 模板、配置文件和 Hook 配置，并自动扫描项目填充真实规范。
 
 ## 输入
 
@@ -8,6 +8,7 @@
 - `/project:cf-init frontend` — 强制前端项目
 - `/project:cf-init backend` — 强制后端项目
 - `/project:cf-init fullstack` — 强制全栈项目
+- `/project:cf-init --skip-learn` — 跳过自动扫描，仅生成模板
 
 ## 执行步骤
 
@@ -36,6 +37,7 @@ budget:
   total: 2500
   l0_max: 800
   l1_max: 1700
+  map_max: 400
 
 inject:
   auto: true
@@ -86,13 +88,18 @@ path_mapping:
       - "**/*.css"
       - "**/*.scss"
     specs:
-      - "frontend/directory-structure.md"
-      - "frontend/quality-standards.md"
-      - "frontend/component-specs.md"
-    spec_priority:
-      "frontend/directory-structure.md": 1
-      "frontend/quality-standards.md": 2
-      "frontend/component-specs.md": 3
+      - path: "frontend/_map.md"
+        tags: ["*"]
+        tier: 0
+      - path: "frontend/directory-structure.md"
+        tags: ["directory", "structure", "folder", "route", "page", "layout"]
+        tier: 1
+      - path: "frontend/quality-standards.md"
+        tags: ["quality", "type", "lint", "error", "test", "state", "strict"]
+        tier: 1
+      - path: "frontend/component-specs.md"
+        tags: ["component", "prop", "hook", "render", "ui", "style"]
+        tier: 1
   backend:
     patterns:
       - "services/**"
@@ -101,20 +108,40 @@ path_mapping:
       - "**/*.py"
       - "**/*.go"
     specs:
-      - "backend/directory-structure.md"
-      - "backend/logging.md"
-      - "backend/database.md"
-      - "backend/platform-rules.md"
-      - "backend/code-quality-performance.md"
-    spec_priority:
-      "backend/directory-structure.md": 1
-      "backend/database.md": 2
-      "backend/logging.md": 3
-      "backend/code-quality-performance.md": 4
-      "backend/platform-rules.md": 5
+      - path: "backend/_map.md"
+        tags: ["*"]
+        tier: 0
+      - path: "backend/directory-structure.md"
+        tags: ["directory", "structure", "folder", "module", "layout"]
+        tier: 1
+      - path: "backend/logging.md"
+        tags: ["log", "logging", "debug", "trace", "monitor", "observe"]
+        tier: 1
+      - path: "backend/database.md"
+        tags: ["database", "db", "sql", "orm", "model", "migration", "query", "table", "schema"]
+        tier: 1
+      - path: "backend/platform-rules.md"
+        tags: ["api", "deploy", "config", "version", "compatibility", "release", "flag"]
+        tier: 1
+      - path: "backend/code-quality-performance.md"
+        tags: ["quality", "performance", "error", "exception", "test", "timeout", "retry", "cache"]
+        tier: 1
 ```
 
 根据检测结果，只保留相关的 path_mapping 条目（仅前端项目删除 backend，仅后端项目删除 frontend）。
+
+> **自定义域扩展**：用户可在 `path_mapping` 中添加任意域（如 `infra`、`mobile`、`shared`），遵循相同的 patterns/specs/tags 结构。在 `.code-flow/specs/` 下创建对应目录和 `_map.md`，Hook 会自动识别。示例：
+> ```yaml
+> infra:
+>   patterns: ["infra/**", "terraform/**", "*.tf", "Dockerfile", "docker-compose.yml"]
+>   specs:
+>     - path: "infra/_map.md"
+>       tags: ["*"]
+>       tier: 0
+>     - path: "infra/deployment-rules.md"
+>       tags: ["deploy", "docker", "terraform", "ci", "pipeline"]
+>       tier: 1
+> ```
 
 ### 3. 生成 .code-flow/validation.yml
 
@@ -151,7 +178,9 @@ validators:
 
 ### 4. 生成 spec 文件
 
-在 `.code-flow/specs/` 下，按检测到的技术栈生成 spec 模板。每个 spec 遵循统一格式：
+在 `.code-flow/specs/` 下，按检测到的技术栈生成 spec 模板。
+
+**约束规范**遵循统一格式：
 
 ```markdown
 # [规范名称]
@@ -164,16 +193,43 @@ validators:
 
 ## Anti-Patterns
 - 禁止模式
+```
 
-## Learnings
+**导航地图**（`_map.md`）遵循 Retrieval Map 格式：
+
+```markdown
+# [Domain] Retrieval Map
+
+> AI 导航地图：帮助快速定位代码结构和关键模块。
+
+## Purpose
+[项目角色描述]
+
+## Architecture
+[技术栈和架构模式]
+
+## Key Files
+| File | Purpose |
+|------|---------|
+
+## Module Map
+[目录树形图]
+
+## Data Flow
+[数据流向]
+
+## Navigation Guide
+[做 X 去哪里的快速指引]
 ```
 
 前端项目生成：
+- `.code-flow/specs/frontend/_map.md`
 - `.code-flow/specs/frontend/directory-structure.md`
 - `.code-flow/specs/frontend/quality-standards.md`
 - `.code-flow/specs/frontend/component-specs.md`
 
 后端项目生成：
+- `.code-flow/specs/backend/_map.md`
 - `.code-flow/specs/backend/directory-structure.md`
 - `.code-flow/specs/backend/logging.md`
 - `.code-flow/specs/backend/database.md`
@@ -206,10 +262,22 @@ validators:
 - Network calls inside tight loops
 
 ## Spec Loading
-This project uses the code-flow layered spec system.
-Specs live in .code-flow/specs/ and are injected on demand.
+This project uses the code-flow two-tier spec system.
 
-## Learnings
+**Two-tier architecture**:
+- **Tier 0 `_map.md`（导航地图）**：项目结构、关键文件、数据流。你手动读取，帮助理解代码在哪里。
+- **Tier 1 约束规范**：编码规则、模式、反模式。由 Hook 根据文件路径标签自动注入，你无需手动加载。
+
+**Your responsibility**:
+1. Determine domain from the question:
+   - **frontend**: components, pages, hooks, styles, UI, .tsx/.jsx/.css
+   - **backend**: services, API, database, models, logging, .py/.go
+2. Read `.code-flow/specs/<domain>/_map.md` for navigation context
+3. Constraint specs are auto-injected by PreToolUse Hook when you edit code — do NOT manually read them
+4. If question spans multiple domains, read all matching `_map.md` files
+5. If no domain matches, skip spec loading
+
+Do NOT ask the user which specs to load — decide automatically based on context.
 ```
 
 如果 CLAUDE.md 已存在，用 Read 读取后仅补充缺失的 `##` 段落（不覆盖已有内容）。展示 diff 供用户确认。
@@ -259,11 +327,145 @@ python3 -m pip install pyyaml
 
 成功 → 继续。失败 → 输出 warning（"请手动安装: pip install pyyaml"），不阻塞。
 
-### 8. 输出摘要
+### 8. 自动扫描项目规范（Auto-learn）
 
-输出以下信息：
-- 检测到的技术栈
-- 已生成/跳过的文件列表
-- 各 spec 文件的 token 估算（字符数 / 4）
-- Hook 配置状态确认
-- 提醒用户填充 spec 文件的具体规范内容
+如果传入 `--skip-learn` 参数，跳过此步骤。否则自动执行以下扫描流程。
+
+> 此步骤等同于内联执行 `cf-learn --map`，目的是让 init 完成后 specs 就包含项目真实规范，而不是空壳模板。
+
+#### 8.1 扫描项目配置文件
+
+用 Glob 查找并 Read 读取以下配置文件（存在则提取约束）：
+
+**前端配置**：
+- `.eslintrc*` / `eslint.config.*` — lint 规则（no-any、import 排序、命名规范等）
+- `tsconfig.json` — strict 模式、path alias、target
+- `.prettierrc*` / `prettier.config.*` — 格式化规则
+- `tailwind.config.*` — 自定义 theme
+- `next.config.*` / `nuxt.config.*` / `vite.config.*` — 框架约束
+- `jest.config.*` / `vitest.config.*` — 测试配置
+
+**后端配置**：
+- `pyproject.toml` — ruff/mypy/pytest 配置、Python 版本
+- `.golangci.yml` — Go lint 规则
+- `Makefile` — 构建和测试命令
+- `Dockerfile` / `docker-compose.yml` — 运行时约束
+
+**通用配置**：
+- `.github/workflows/*.yml` / `.gitlab-ci.yml` — CI 检查步骤
+- `.editorconfig` — 编辑器配置
+- `package.json` scripts — 常用命令
+
+#### 8.2 扫描代码结构和模式
+
+用 Glob + Grep 扫描项目代码：
+
+**结构扫描**（用于填充 `_map.md`）：
+- `src/**/*` 顶层目录结构 → Module Map
+- 入口文件识别（main.ts/py、index.ts、app.ts 等）→ Key Files
+- 从 dependencies 推断技术栈 → Architecture
+- README 或 package.json description → Purpose
+- 路由/handler → service → model 调用链 → Data Flow
+
+**模式扫描**（用于填充约束 specs）：
+- 错误处理：自定义 Error 类、try/catch 模式
+- 日志：使用的库和格式
+- 测试：框架、断言风格、mock 方式
+- 导入：absolute vs relative、barrel exports
+- 命名：文件命名、变量命名风格
+
+#### 8.3 填充 spec 文件
+
+将扫描结果**直接写入**对应的 spec 文件（因为是 init 阶段，文件刚创建，内容是模板占位符）：
+
+**填充 `_map.md`**：
+- 用步骤 1 检测到的框架信息 + 步骤 8.2 的结构扫描结果，替换模板中的占位符
+- Purpose → 从 README/package.json 提取
+- Architecture → 从 dependencies 推断
+- Key Files → 列出扫描到的入口文件
+- Module Map → 基于实际目录结构生成
+- Data Flow → 从代码模式推断
+- Navigation Guide → 基于模块划分生成
+
+**填充约束 specs**：
+- 将扫描到的具体规则追加到对应 spec 文件的 `## Rules` 段落
+- 将扫描到的代码模式追加到 `## Patterns` 段落
+- 过滤掉纯格式化规则（有 Prettier 等 formatter 自动处理的）
+- 过滤掉与模板已有规则重复的条目
+
+#### 8.4 展示扫描结果
+
+不直接写入，先展示供用户确认：
+
+```
+项目规范扫描完成:
+
+导航地图 (Retrieval Map):
+  frontend/_map.md:
+    Purpose: 基于 React 18 + TypeScript 的管理后台
+    Architecture: Vite + React Router + Zustand + Tailwind
+    Key Files: 6 个入口文件
+    Modules: 5 个模块目录
+
+  backend/_map.md:
+    Purpose: 基于 FastAPI 的 RESTful API 服务
+    Architecture: FastAPI + SQLAlchemy + PostgreSQL
+    Key Files: 4 个入口文件
+    Modules: 6 个模块目录
+
+编码约束 (从配置和代码中提取):
+  全局:
+    1. [x] [tsconfig.json] strict 模式，禁止 implicit any
+    2. [x] [CI] PR 必须通过 lint + type check + test
+
+  frontend/quality-standards.md:
+    3. [x] [.eslintrc] exhaustive-deps 规则已启用
+    4. [x] [代码模式] 组件使用 PascalCase 命名
+
+  backend/code-quality-performance.md:
+    5. [x] [pyproject.toml] 使用 ruff + mypy --strict
+    6. [x] [代码模式] API handler 统一使用 async def
+
+确认写入？（all 全部写入 / 输入编号选择 / skip 跳过）:
+```
+
+用户确认后写入。如果用户输入 `skip`，保留模板不填充。
+
+### 9. 输出摘要
+
+```
+cf-init 完成 ✓
+
+技术栈: React 18 + TypeScript / FastAPI + Python 3.11
+
+文件结构:
+  Created:
+    + .code-flow/config.yml
+    + .code-flow/validation.yml
+    + .code-flow/specs/frontend/_map.md (已填充)
+    + .code-flow/specs/frontend/directory-structure.md (+3 条规则)
+    + .code-flow/specs/frontend/quality-standards.md (+2 条规则)
+    + .code-flow/specs/frontend/component-specs.md
+    + .code-flow/specs/backend/_map.md (已填充)
+    + .code-flow/specs/backend/directory-structure.md (+2 条规则)
+    + .code-flow/specs/backend/logging.md
+    + .code-flow/specs/backend/database.md
+    + .code-flow/specs/backend/platform-rules.md
+    + .code-flow/specs/backend/code-quality-performance.md (+3 条规则)
+    + CLAUDE.md
+    + .claude/settings.local.json (Hook)
+
+  Skipped:
+    · (已存在的文件)
+
+Token 估算:
+  CLAUDE.md: ~200 tokens
+  Specs 合计: ~800 tokens
+  导航地图: ~300 tokens
+
+下一步:
+  - 审阅并补充 spec 文件中的规范内容
+  - 运行 /cf-learn 补充更多规范
+  - 运行 /cf-learn --map 更新导航地图
+  - 开始开发: /cf-task:plan <设计文档>
+```

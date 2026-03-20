@@ -39,7 +39,9 @@ validators:
 
 对每条验证规则：
 - 将 `trigger` glob 与变更文件列表做匹配
-- 匹配到 → 用 Bash 执行 `command`（将 `{files}` 替换为匹配到的文件路径，**每个路径用单引号包裹防止注入**）
+- 匹配到 → 用 Bash 执行 `command`
+  - 如果 command 包含 `{files}` → 替换为匹配到的文件路径列表，**每个路径用单引号包裹**（如 `'src/foo.ts' 'src/bar.ts'`）
+  - 如果 command 不含 `{files}` → 直接执行原命令（如 `npx tsc --noEmit` 本身就检查全局）
 - 未匹配 → 跳过该规则
 
 每条命令使用对应的 `timeout` 值（毫秒）。

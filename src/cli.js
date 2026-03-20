@@ -393,11 +393,14 @@ function runInit(force) {
     for (const f of removed) process.stdout.write(`  ✕ ${f}\n`);
   }
 
+  process.stdout.write('\nNext steps:\n');
   if (mode === 'fresh') {
-    process.stdout.write('\nNext steps:\n');
     process.stdout.write('  1. Edit CLAUDE.md — fill in team/project info\n');
-    process.stdout.write('  2. Edit .code-flow/specs/ — fill in your coding standards\n');
-    process.stdout.write('  3. Run /cf-learn in Claude Code to auto-discover constraints\n');
+    process.stdout.write('  2. Run /project:cf-init in Claude Code to auto-scan and populate specs\n');
+    process.stdout.write('     Or manually edit .code-flow/specs/ to fill in your coding standards\n');
+  } else {
+    process.stdout.write('  Run /project:cf-learn in Claude Code to update specs with project conventions\n');
+    process.stdout.write('  Run /project:cf-learn --map to update retrieval maps\n');
   }
   process.exit(0);
 }

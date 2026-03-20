@@ -9,5 +9,3 @@
 
 ## Anti-Patterns
 - 禁止在生产环境使用调试级别配置。
-
-## Learnings

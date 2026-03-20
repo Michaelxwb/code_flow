@@ -4,21 +4,13 @@ budget:
     total: 2500
     l0_max: 800
     l1_max: 1700
+    map_max: 400
 
 inject:
     auto: true
     code_extensions:
         - ".py"
-        - ".ts"
-        - ".tsx"
         - ".js"
-        - ".jsx"
-        - ".go"
-        - ".java"
-        - ".rs"
-        - ".rb"
-        - ".vue"
-        - ".svelte"
     skip_extensions:
         - ".md"
         - ".txt"
@@ -27,71 +19,33 @@ inject:
         - ".yaml"
         - ".toml"
         - ".lock"
-        - ".csv"
-        - ".xml"
-        - ".svg"
-        - ".png"
-        - ".jpg"
-        - ".jpeg"
-        - ".gif"
-        - ".ico"
-        - ".pdf"
-        - ".zip"
-        - ".gz"
-        - ".tar"
     skip_paths:
         - "docs/**"
-        - "*.config.*"
         - ".code-flow/**"
         - ".claude/**"
         - "node_modules/**"
-        - "dist/**"
-        - "build/**"
-        - "out/**"
-        - "coverage/**"
-        - ".next/**"
-        - ".cache/**"
-        - ".venv/**"
-        - "venv/**"
-        - "__pycache__/**"
         - ".git/**"
 
 path_mapping:
-    frontend:
+    cli:
         patterns:
-            - "src/components/**"
-            - "src/pages/**"
-            - "src/hooks/**"
-            - "src/styles/**"
-            - "**/*.tsx"
-            - "**/*.jsx"
-            - "**/*.css"
-            - "**/*.scss"
+            - "src/cli.js"
+            - "src/*.js"
         specs:
-            - "frontend/directory-structure.md"
-            - "frontend/quality-standards.md"
-            - "frontend/component-specs.md"
-        spec_priority:
-            "frontend/directory-structure.md": 1
-            "frontend/quality-standards.md": 2
-            "frontend/component-specs.md": 3
-    backend:
+            - path: "cli/_map.md"
+              tags: ["*"]
+              tier: 0
+            - path: "cli/code-standards.md"
+              tags: ["cli", "init", "merge", "version", "file", "copy"]
+              tier: 1
+    scripts:
         patterns:
-            - "services/**"
-            - "api/**"
-            - "models/**"
-            - "*.py"
+            - "src/core/**/*.py"
             - "**/*.py"
-            - "**/*.go"
         specs:
-            - "backend/directory-structure.md"
-            - "backend/logging.md"
-            - "backend/database.md"
-            - "backend/platform-rules.md"
-            - "backend/code-quality-performance.md"
-        spec_priority:
-            "backend/directory-structure.md": 1
-            "backend/database.md": 2
-            "backend/logging.md": 3
-            "backend/code-quality-performance.md": 4
-            "backend/platform-rules.md": 5
+            - path: "scripts/_map.md"
+              tags: ["*"]
+              tier: 0
+            - path: "scripts/code-standards.md"
+              tags: ["core", "hook", "inject", "config", "spec", "tag", "scan", "stat"]
+              tier: 1

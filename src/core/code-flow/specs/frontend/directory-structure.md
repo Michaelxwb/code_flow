@@ -10,5 +10,3 @@
 
 ## Anti-Patterns
 - 禁止在 src 下新增未登记的一级目录。
-
-## Learnings

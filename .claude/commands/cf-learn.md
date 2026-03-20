@@ -1,12 +1,14 @@
 # cf-learn
 
-自动扫描项目配置文件和代码模式，提取隐含的编码约束和团队规范，呈现给用户确认后写入 CLAUDE.md 或 spec 文件。
+自动扫描项目配置文件和代码模式，提取隐含的编码约束和团队规范，呈现给用户确认后写入 CLAUDE.md 或 spec 文件。支持生成 Retrieval Map（导航地图）。
 
 ## 输入
 
 - `/project:cf-learn` — 全量扫描
 - `/project:cf-learn frontend` — 仅扫描前端相关
 - `/project:cf-learn backend` — 仅扫描后端相关
+- `/project:cf-learn --map` — 扫描并生成/更新 Retrieval Map（导航地图）
+- `/project:cf-learn frontend --map` — 仅生成前端导航地图
 
 ## 执行步骤
 
@@ -35,7 +37,7 @@
 - `.gitignore` — 推断项目结构（哪些目录被排除）
 - `package.json` 的 scripts 字段 — 提取常用命令
 
-### 2. 扫描代码模式
+### 2. 扫描代码结构和模式
 
 用 Grep 在项目代码中搜索以下模式，提取隐含规范：
 
@@ -45,9 +47,42 @@
 - 导入规范：absolute vs relative imports、barrel exports
 - 命名模式：文件命名（kebab-case / PascalCase）、变量命名风格
 
-### 3. 综合分析并生成候选学习点
+**代码结构扫描**（用于 Retrieval Map）：
+- 用 Glob 扫描 `src/**/*` 顶层目录结构
+- 识别入口文件（main.ts/py、index.ts、app.ts 等）
+- 识别框架和技术栈（从 package.json dependencies、pyproject.toml 等提取）
+- 识别模块划分方式（按功能域 / 按技术层 / 混合）
+- 追踪关键数据流（路由 → handler → service → model）
 
-将扫描结果综合分析，提取 **具体的、可执行的** 编码约束。每个学习点格式：
+### 3. 呈现扫描发现，用户选择聚焦域
+
+将扫描结果按模块/功能域分组展示，让用户选择关注的领域：
+
+```
+项目扫描完成，发现以下模块/功能域：
+
+前端:
+  1. [x] components/ — 23 个组件文件，React + TypeScript
+  2. [x] pages/ — 8 个页面，使用 React Router
+  3. [ ] styles/ — Tailwind CSS 配置
+  4. [x] hooks/ — 12 个自定义 hook
+
+后端:
+  5. [x] api/ — 15 个路由文件，FastAPI
+  6. [x] services/ — 10 个业务逻辑模块
+  7. [ ] models/ — 8 个 ORM 模型
+  8. [x] middleware/ — 认证 + 日志中间件
+
+选择要分析的模块（输入编号，all 全选，或 skip 跳过直接生成）：
+```
+
+用户选择后，仅对选中的模块深入扫描代码模式。未选中的模块跳过详细分析。
+
+> 注：这一步让用户控制分析范围，避免在不关心的模块上浪费 token，也让生成的规范更有针对性。
+
+### 4. 综合分析并生成候选约束
+
+将扫描结果综合分析，提取 **具体的、可执行的** 编码约束。每条约束格式：
 
 ```
 [来源] 约束描述
@@ -68,9 +103,9 @@
 - 只提取对 AI 生成代码有实际影响的约束
 - 忽略纯格式化规则（如果有 Prettier/formatter 自动处理）
 
-### 4. 呈现给用户确认
+### 5. 呈现给用户确认
 
-将候选学习点分组展示：
+将候选约束分组展示：
 
 ```
 扫描发现以下未记录的编码约束：
@@ -93,23 +128,57 @@
 
 等待用户确认。
 
-### 5. 写入确认的条目
+### 6. 写入确认的条目
 
-根据用户选择：
+根据用户选择，将每条约束**分类后插入对应章节**：
 
-- **全局约束** → 用 Edit 追加到 `CLAUDE.md` 的 `## Learnings` 段落，格式：`- [YYYY-MM-DD] 内容`
-- **前端约束** → 询问用户写入哪个 spec 文件，用 Edit 追加到对应 spec 的 `## Learnings` 段落
-- **后端约束** → 同上
+- **规则类**（必须遵守的硬性约束）→ 追加到目标文件的 `## Rules` 段落
+- **模式类**（推荐的实现方式）→ 追加到目标文件的 `## Patterns` 段落
+- **反模式类**（明确禁止的做法）→ 追加到目标文件的 `## Anti-Patterns` 段落
+
+写入目标：
+- **全局约束** → 用 Edit 追加到 `CLAUDE.md` 的 `## Core Principles` 或 `## Forbidden Patterns`
+- **域约束** → 询问用户写入哪个 spec 文件，用 Edit 追加到对应章节
 
 每条写入后输出确认。
 
-### 6. 输出摘要
+### 7. Retrieval Map 生成（--map 或自动建议）
+
+如果传入 `--map` 参数，或者检测到 `_map.md` 文件内容仍为初始模板（含 `[一句话描述` 占位符），自动进入 Map 生成流程：
+
+1. 基于步骤 2 的代码结构扫描结果，填充 `_map.md` 的各个段落：
+   - **Purpose**：从 README 或 package.json description 提取项目描述
+   - **Architecture**：从依赖和配置文件推断技术栈
+   - **Key Files**：列出入口文件和核心模块文件（用 Read 验证存在性）
+   - **Module Map**：基于实际目录结构生成树形图
+   - **Data Flow**：从代码模式推断数据流向
+   - **Navigation Guide**：基于现有模式生成"做 X 去哪里"的快速指引
+
+2. 展示生成的 Map 内容，等待用户确认或调整
+
+3. 用户确认后，用 Write 写入 `.code-flow/specs/<domain>/_map.md`
 
 ```
-已写入 N 条学习点：
+Retrieval Map 已生成:
+
+frontend/_map.md:
+  Purpose: 基于 React 18 + TypeScript 的管理后台
+  Architecture: Vite + React Router + Zustand + Tailwind
+  Key Files: 6 个入口文件
+  Modules: 7 个模块
+  Navigation: 4 条导航规则
+
+确认写入？可先修改再确认:
+```
+
+### 8. 输出摘要
+
+```
+已写入 N 条约束：
 - CLAUDE.md: +3 条
 - specs/frontend/quality-standards.md: +2 条
 - specs/backend/code-quality-performance.md: +2 条
+- specs/frontend/_map.md: 已更新导航地图
 Token 变化: CLAUDE.md 138 → 195 tokens
 ```
 
@@ -118,3 +187,4 @@ Token 变化: CLAUDE.md 138 → 195 tokens
 - 无配置文件可扫描 → 提示项目可能未初始化，建议手动添加
 - 未发现新约束 → 输出"未发现未记录的约束，当前规范已覆盖项目配置"
 - `.code-flow/` 不存在 → 提示运行 `/project:cf-init`
+- `_map.md` 已有自定义内容 → 展示 diff，让用户选择合并方式
