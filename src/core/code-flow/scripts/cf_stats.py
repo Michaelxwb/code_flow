@@ -52,7 +52,8 @@ def main() -> None:
         if domain_filter and domain_filter != domain:
             continue
         items = []
-        for rel in domain_cfg.get("specs") or []:
+        for spec_entry in domain_cfg.get("specs") or []:
+            rel = spec_entry["path"] if isinstance(spec_entry, dict) else spec_entry
             spec_domain_map[rel] = domain
             full_path = os.path.join(specs_root, rel)
             if not os.path.exists(full_path):
