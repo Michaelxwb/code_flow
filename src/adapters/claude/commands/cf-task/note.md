@@ -92,6 +92,13 @@ TASK-002:
 2. 如果结论需要新增步骤 → 用 Edit 追加 Checklist 条目或补充 Description
 3. 在 `### Log` 追加：`- [<当前日期>] resolved #NOTES: <结论摘要>`
 
+**Edit 边界约束（必须遵守）**：
+- `old_string` 必须严格限定在当前 TASK 段落内，**绝对禁止**匹配到 `---` 分隔线或下一个 `## TASK-xxx` 标题
+- Log 追加时，`old_string` 只匹配 Log 段落的最后一行内容，不要向下延伸到段落外
+- 如果 Log 是当前 TASK 的最后一个段落，其内容到 `---` 分隔线之前结束；`old_string` 不得包含 `---` 及其后的任何内容
+- 示例（正确）：`old_string = "- [2026-03-23] created (draft)"` → 只匹配 Log 末行
+- 示例（错误）：`old_string = "- [2026-03-23] created (draft)\n\n---\n\n## TASK-003"` → 越界，会删除下一个 TASK 标题
+
 ### 5. 完成检查
 
 所有 `#NOTES` 讨论完毕后：
