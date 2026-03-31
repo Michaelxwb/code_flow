@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+"""CLI integration tests for Codex skill deployment mode."""
+import os
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+
+if not shutil.which("node"):
+    pytest.skip("node is required for CLI tests", allow_module_level=True)
+
+
+ROOT = Path(__file__).resolve().parents[1]
+CLI = ROOT / "src" / "cli.js"
+
+
+def run_cli(tmp_path: Path) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
+    return subprocess.run(
+        ["node", str(CLI), "init", "--platform=codex"],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_codex_init_deploys_skills_and_upgrade_overwrites_tool_files(tmp_path: Path) -> None:
+    first = run_cli(tmp_path)
+    assert first.returncode == 0, first.stderr
+
+    cf_init_skill = tmp_path / ".agents" / "skills" / "cf-init" / "SKILL.md"
+    assert cf_init_skill.exists()
+    assert not (tmp_path / ".codex" / "prompts").exists()
+
+    cf_init_skill.write_text("SENTINEL\n", encoding="utf-8")
+    version_file = tmp_path / ".code-flow" / ".version"
+    version_file.write_text("0.0.0\n", encoding="utf-8")
+
+    second = run_cli(tmp_path)
+    assert second.returncode == 0, second.stderr
+    assert cf_init_skill.read_text(encoding="utf-8") != "SENTINEL\n"

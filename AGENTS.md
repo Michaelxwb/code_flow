@@ -1,9 +1,8 @@
 # Project Guidelines
 
 ## Team Identity
-- Team: [team name]
-- Project: [project name]
-- Language: [primary language]
+- Project: code-flow
+- Language: JavaScript (CLI) + Python (core scripts)
 
 ## Core Principles
 - All changes must include tests
@@ -13,8 +12,8 @@
 
 ## Forbidden Patterns
 - Hard-coded secrets or credentials
-- Unparameterized SQL
-- Network calls inside tight loops
+- Hook 脚本 stdout 输出非 JSON（破坏 Claude Code / Codex 协议）
+- CLI 引入 npm 外部依赖
 
 ## Spec Loading
 This project uses the code-flow two-tier spec system.
@@ -25,8 +24,8 @@ This project uses the code-flow two-tier spec system.
 
 **Your responsibility**:
 1. Determine domain from the question:
-   - **frontend**: components, pages, hooks, styles, UI, .tsx/.jsx/.css
-   - **backend**: services, API, database, models, logging, .py/.go
+   - **cli**: mentions CLI, init, upgrade, merge, version, or references `src/cli.js`
+   - **scripts**: mentions hook, inject, config, spec, tag, scan, stats, or references `.py` files
 2. Read `.code-flow/specs/<domain>/_map.md` for navigation context when needed
 3. Constraint specs are auto-injected by Hook when your prompt references relevant files — do NOT manually load them
 4. If question spans multiple domains, read all matching `_map.md` files

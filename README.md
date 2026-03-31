@@ -58,14 +58,25 @@ code-flow init
 code-flow --help
 ```
 
+## 支持的 AI 工具
+
+| 工具 | 状态 |
+|------|------|
+| [Claude Code](https://claude.ai/code) | ✅ 完整支持 |
+| [Codex CLI](https://github.com/openai/codex) | ✅ 完整支持 |
+
 ## 生成的目录与文件
 
 运行 `code-flow init` 后，将在项目根目录生成（或更新）以下结构：
 
 ```
-.code-flow/
-.claude/
-CLAUDE.md
+.code-flow/       # 规范核心（共用）
+.claude/          # Claude Code 适配
+CLAUDE.md         # Claude Code 全局指令
+.codex/           # Codex CLI 适配
+AGENTS.md         # Codex CLI 全局指令
+.agents/skills/   # Codex Skills（项目级）
+  <skill>/SKILL.md
 ```
 
 ## 依赖说明

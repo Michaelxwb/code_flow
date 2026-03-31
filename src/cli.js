@@ -9,7 +9,7 @@ const { spawnSync } = require('child_process');
 const pkg = require('../package.json');
 
 const usage = [
-  'Usage: code-flow init [--force]',
+  'Usage: code-flow init [--force] [--platform=<claude|codex>]',
   '       code-flow -v | --version',
   '       code-flow -h | --help'
 ].join('\n');
@@ -38,10 +38,14 @@ function ensurePython3() {
 
 function fileCategory(relPath) {
   if (relPath.startsWith('.claude/commands/')) return 'tool';
+  if (relPath.startsWith('.agents/skills/')) return 'tool';
   if (relPath.startsWith('.code-flow/scripts/')) return 'tool';
   if (relPath === 'CLAUDE.md') return 'merge';
+  if (relPath === 'AGENTS.md') return 'merge';
   if (relPath === '.claude/settings.local.json') return 'merge';
+  if (relPath === '.codex/hooks.json') return 'tool';
   if (relPath === '.code-flow/config.yml') return 'merge';
+  if (relPath === '.codex/config.toml') return 'tool';
   return 'user';
 }
 
@@ -222,9 +226,24 @@ function copyFileIfMissing(srcFile, destFile) {
   fs.copyFileSync(srcFile, destFile);
 }
 
+// --- Platform argument parsing ---
+
+function parsePlatform(args) {
+  for (const arg of args) {
+    if (arg.startsWith('--platform=')) {
+      return arg.slice('--platform='.length);
+    }
+  }
+  const idx = args.indexOf('--platform');
+  if (idx !== -1) {
+    return args[idx + 1] || '';
+  }
+  return null;
+}
+
 // --- Main init ---
 
-function runInit(force) {
+function runInit(force, platform) {
   ensurePython3();
 
   const cwd = process.cwd();
@@ -280,53 +299,106 @@ function runInit(force) {
   // Process .code-flow/ (core)
   processDir(path.join(coreDir, 'code-flow'), path.join(cwd, '.code-flow'), '.code-flow');
 
-  // Process CLAUDE.md
-  const claudeMdSrc = path.join(adaptersDir, 'claude', 'CLAUDE.md');
-  const claudeMdDest = path.join(cwd, 'CLAUDE.md');
-  if (!fs.existsSync(claudeMdDest)) {
-    created.push('CLAUDE.md');
-    fs.copyFileSync(claudeMdSrc, claudeMdDest);
-  } else if (mode === 'force') {
-    updated.push('CLAUDE.md');
-    fs.copyFileSync(claudeMdSrc, claudeMdDest);
-  } else if (mode === 'upgrade') {
-    const added = mergeClaudeMd(claudeMdSrc, claudeMdDest);
-    if (added.length > 0) {
-      merged.push(`CLAUDE.md — added: ${added.join(', ')}`);
+  // Process Claude adapter
+  if (platform === 'claude') {
+    const claudeMdSrc = path.join(adaptersDir, 'claude', 'CLAUDE.md');
+    const claudeMdDest = path.join(cwd, 'CLAUDE.md');
+    if (!fs.existsSync(claudeMdDest)) {
+      created.push('CLAUDE.md');
+      fs.copyFileSync(claudeMdSrc, claudeMdDest);
+    } else if (mode === 'force') {
+      updated.push('CLAUDE.md');
+      fs.copyFileSync(claudeMdSrc, claudeMdDest);
+    } else if (mode === 'upgrade') {
+      const added = mergeClaudeMd(claudeMdSrc, claudeMdDest);
+      if (added.length > 0) {
+        merged.push(`CLAUDE.md — added: ${added.join(', ')}`);
+      } else {
+        skipped.push('CLAUDE.md');
+      }
     } else {
       skipped.push('CLAUDE.md');
     }
-  } else {
-    skipped.push('CLAUDE.md');
-  }
 
-  // Process .claude/commands/
-  fs.mkdirSync(path.join(cwd, '.claude', 'commands'), { recursive: true });
-  processDir(
-    path.join(adaptersDir, 'claude', 'commands'),
-    path.join(cwd, '.claude', 'commands'),
-    '.claude/commands'
-  );
+    fs.mkdirSync(path.join(cwd, '.claude', 'commands'), { recursive: true });
+    processDir(
+      path.join(adaptersDir, 'claude', 'commands'),
+      path.join(cwd, '.claude', 'commands'),
+      '.claude/commands'
+    );
 
-  // Process settings.local.json
-  const settingsSrc = path.join(adaptersDir, 'claude', 'settings.local.json');
-  const settingsDest = path.join(cwd, '.claude', 'settings.local.json');
-  if (!fs.existsSync(settingsDest)) {
-    created.push('.claude/settings.local.json');
-    fs.mkdirSync(path.dirname(settingsDest), { recursive: true });
-    fs.copyFileSync(settingsSrc, settingsDest);
-  } else if (mode === 'force') {
-    updated.push('.claude/settings.local.json');
-    fs.copyFileSync(settingsSrc, settingsDest);
-  } else if (mode === 'upgrade') {
-    const added = mergeSettingsJson(settingsSrc, settingsDest);
-    if (added.length > 0) {
-      merged.push(`.claude/settings.local.json — added: ${added.join(', ')}`);
+    const settingsSrc = path.join(adaptersDir, 'claude', 'settings.local.json');
+    const settingsDest = path.join(cwd, '.claude', 'settings.local.json');
+    if (!fs.existsSync(settingsDest)) {
+      created.push('.claude/settings.local.json');
+      fs.mkdirSync(path.dirname(settingsDest), { recursive: true });
+      fs.copyFileSync(settingsSrc, settingsDest);
+    } else if (mode === 'force') {
+      updated.push('.claude/settings.local.json');
+      fs.copyFileSync(settingsSrc, settingsDest);
+    } else if (mode === 'upgrade') {
+      const added = mergeSettingsJson(settingsSrc, settingsDest);
+      if (added.length > 0) {
+        merged.push(`.claude/settings.local.json — added: ${added.join(', ')}`);
+      } else {
+        skipped.push('.claude/settings.local.json');
+      }
     } else {
       skipped.push('.claude/settings.local.json');
     }
-  } else {
-    skipped.push('.claude/settings.local.json');
+  }
+
+  // Process Codex adapter
+  if (platform === 'codex') {
+    const agentsMdSrc = path.join(adaptersDir, 'codex', 'AGENTS.md');
+    const agentsMdDest = path.join(cwd, 'AGENTS.md');
+    if (!fs.existsSync(agentsMdDest)) {
+      created.push('AGENTS.md');
+      fs.copyFileSync(agentsMdSrc, agentsMdDest);
+    } else if (mode === 'force') {
+      updated.push('AGENTS.md');
+      fs.copyFileSync(agentsMdSrc, agentsMdDest);
+    } else if (mode === 'upgrade') {
+      const added = mergeClaudeMd(agentsMdSrc, agentsMdDest);
+      if (added.length > 0) {
+        merged.push(`AGENTS.md — added: ${added.join(', ')}`);
+      } else {
+        skipped.push('AGENTS.md');
+      }
+    } else {
+      skipped.push('AGENTS.md');
+    }
+
+    const codexHooksSrc = path.join(adaptersDir, 'codex', 'hooks.json');
+    const codexHooksDest = path.join(cwd, '.codex', 'hooks.json');
+    if (!fs.existsSync(codexHooksDest)) {
+      created.push('.codex/hooks.json');
+      fs.mkdirSync(path.dirname(codexHooksDest), { recursive: true });
+      fs.copyFileSync(codexHooksSrc, codexHooksDest);
+    } else if (mode === 'force' || mode === 'upgrade') {
+      updated.push('.codex/hooks.json');
+      fs.copyFileSync(codexHooksSrc, codexHooksDest);
+    } else {
+      skipped.push('.codex/hooks.json');
+    }
+
+    const codexConfigSrc = path.join(adaptersDir, 'codex', 'config.toml');
+    const codexConfigDest = path.join(cwd, '.codex', 'config.toml');
+    if (!fs.existsSync(codexConfigDest)) {
+      created.push('.codex/config.toml');
+      fs.mkdirSync(path.dirname(codexConfigDest), { recursive: true });
+      fs.copyFileSync(codexConfigSrc, codexConfigDest);
+    } else if (mode === 'force' || mode === 'upgrade') {
+      updated.push('.codex/config.toml');
+      fs.copyFileSync(codexConfigSrc, codexConfigDest);
+    } else {
+      skipped.push('.codex/config.toml');
+    }
+
+    const codexSkillsSrc = path.join(adaptersDir, 'codex', 'skills');
+
+    // Project-level .agents/skills/ (version-controlled, committed to repo)
+    processDir(codexSkillsSrc, path.join(cwd, '.agents', 'skills'), '.agents/skills');
   }
 
   // Merge config.yml on upgrade
@@ -394,13 +466,24 @@ function runInit(force) {
   }
 
   process.stdout.write('\nNext steps:\n');
-  if (mode === 'fresh') {
-    process.stdout.write('  1. Edit CLAUDE.md — fill in team/project info\n');
-    process.stdout.write('  2. Run /project:cf-init in Claude Code to auto-scan and populate specs\n');
-    process.stdout.write('     Or manually edit .code-flow/specs/ to fill in your coding standards\n');
+  if (platform === 'codex') {
+    if (mode === 'fresh') {
+      process.stdout.write('  1. Edit AGENTS.md — fill in team/project info\n');
+      process.stdout.write('  2. Run $cf-init in Codex CLI to auto-scan and populate specs\n');
+      process.stdout.write('     Or manually edit .code-flow/specs/ to fill in your coding standards\n');
+    } else {
+      process.stdout.write('  Run $cf-learn in Codex CLI to update specs with project conventions\n');
+      process.stdout.write('  Run $cf-learn --map to update retrieval maps\n');
+    }
   } else {
-    process.stdout.write('  Run /project:cf-learn in Claude Code to update specs with project conventions\n');
-    process.stdout.write('  Run /project:cf-learn --map to update retrieval maps\n');
+    if (mode === 'fresh') {
+      process.stdout.write('  1. Edit CLAUDE.md — fill in team/project info\n');
+      process.stdout.write('  2. Run /cf-init in Claude Code to auto-scan and populate specs\n');
+      process.stdout.write('     Or manually edit .code-flow/specs/ to fill in your coding standards\n');
+    } else {
+      process.stdout.write('  Run /cf-learn in Claude Code to update specs with project conventions\n');
+      process.stdout.write('  Run /cf-learn --map to update retrieval maps\n');
+    }
   }
   process.exit(0);
 }
@@ -422,7 +505,12 @@ if (args.includes('-h') || args.includes('--help')) {
 
 if (args[0] === 'init') {
   const force = args.includes('--force');
-  runInit(force);
+  const rawPlatform = parsePlatform(args);
+  const platform = rawPlatform === null ? 'claude' : rawPlatform;
+  if (platform !== 'claude' && platform !== 'codex') {
+    fail(`Error: --platform must be "claude" or "codex", got "${platform}".`);
+  }
+  runInit(force, platform);
 }
 
 if (args.length === 0) {

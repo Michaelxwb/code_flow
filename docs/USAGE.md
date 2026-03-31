@@ -16,11 +16,23 @@
 
 ## 快速开始
 
+### 支持的 AI 工具
+
+code-flow 同时支持 Claude Code 和 Codex CLI，两者共用同一套 `.code-flow/` 规范体系：
+
+| AI 工具 | 指令文件 | Hook 触发时机 | 命令调用方式 |
+|---------|---------|--------------|------------|
+| [Claude Code](https://claude.ai/code) | `CLAUDE.md` | 编辑文件前（`PreToolUse`） | `/cf-init`、`/cf-learn` 等 |
+| [Codex CLI](https://github.com/openai/codex) | `AGENTS.md` | 提交 prompt 时（`UserPromptSubmit`） | `$cf-init`、`$cf-learn` 等 |
+
+> 两者可同时使用同一项目，规范文件 `.code-flow/specs/` 完全共享。
+
 ### 前置条件
 
 - Node.js (用于 CLI)
 - Python 3.9+
 - pyyaml (`pip install pyyaml`)
+- Codex CLI（如使用 Codex）：`npm i -g @openai/codex`，并在 `.codex/config.toml` 中启用 `features.codex_hooks = true`（`code-flow init` 自动生成）
 
 ### 安装
 
@@ -47,12 +59,13 @@ your-project/
 │   ├── config.yml              # 核心配置（路径映射、预算、注入规则）
 │   ├── validation.yml          # 验证规则（lint、type check、test）
 │   ├── scripts/                # Python 运行时脚本
-│   │   ├── cf_core.py          # 核心工具库
-│   │   ├── cf_inject_hook.py   # PreToolUse Hook：自动注入规范
-│   │   ├── cf_session_hook.py  # SessionStart Hook：重置会话状态
-│   │   ├── cf_scan.py          # Token 审计脚本
-│   │   └── cf_stats.py         # 统计脚本
-│   └── specs/                  # 规范文件目录
+│   │   ├── cf_core.py                    # 核心工具库
+│   │   ├── cf_inject_hook.py             # PreToolUse Hook（Claude）
+│   │   ├── cf_codex_user_prompt_hook.py  # UserPromptSubmit Hook（Codex）
+│   │   ├── cf_session_hook.py            # SessionStart Hook：重置会话状态
+│   │   ├── cf_scan.py                    # Token 审计脚本
+│   │   └── cf_stats.py                   # 统计脚本
+│   └── specs/                  # 规范文件目录（两个 AI 工具共用）
 │       ├── frontend/           # 前端域（按项目类型生成）
 │       │   ├── _map.md         # Tier 0 导航地图
 │       │   ├── directory-structure.md
@@ -67,7 +80,14 @@ your-project/
 │           └── code-quality-performance.md
 ├── .claude/
 │   └── settings.local.json    # Claude Code Hook 配置
-└── CLAUDE.md                  # L0 全局指令（AI 每次对话都会读取）
+├── .codex/
+│   ├── hooks.json             # Codex CLI Hook 配置
+│   └── config.toml            # Codex 功能开关
+├── CLAUDE.md                  # L0 全局指令（Claude Code 每次对话读取）
+└── AGENTS.md                  # L0 全局指令（Codex CLI 每次对话读取）
+
+.agents/skills/                # Codex Skills（项目级，自动安装）
+  cf-init/SKILL.md、cf-learn/SKILL.md、cf-scan/SKILL.md 等
 ```
 
 ### 升级
@@ -84,8 +104,8 @@ code-flow init
 ```
 
 升级时 code-flow 会自动检测当前版本和新版本的差异：
-- **工具文件**（scripts/）：直接更新
-- **合并文件**（CLAUDE.md、settings.json、config.yml）：智能合并，保留用户自定义内容
+- **工具文件**（scripts/、hooks.json、config.toml）：直接更新
+- **合并文件**（CLAUDE.md、AGENTS.md、settings.json、config.yml）：智能合并，保留用户自定义内容
 - **用户文件**（specs/）：不覆盖
 
 如需强制重新生成所有文件：
@@ -142,17 +162,21 @@ code-flow 采用两层规范架构，自动为 AI 编码提供上下文约束：
 
 ### 自动注入机制
 
-当 AI 编辑代码文件时，PreToolUse Hook 自动触发：
+**Claude Code**：AI 调用 Edit/Write 时，`PreToolUse Hook` 自动拦截并注入规范：
 
 ```
-AI 调用 Edit/Write → Hook 拦截
-  → 从文件路径提取上下文标签（目录名、文件名关键词）
-  → 标签与 config.yml 中的 specs tags 匹配
-  → 匹配到的 spec 内容注入到 AI 上下文
-  → AI 在规范约束下生成代码
+AI 调用 Edit/Write → Hook 拦截（文件路径）
+  → 提取标签 → 匹配 specs → 注入到 AI 上下文
 ```
 
-用户无需手动操作，整个过程透明。
+**Codex CLI**：用户提交 prompt 时，`UserPromptSubmit Hook` 自动提取 prompt 中的文件引用并注入规范：
+
+```
+用户提交 prompt → Hook 拦截（prompt 文本）
+  → 提取文件引用 → 映射到域 → 注入到本次 prompt 上下文
+```
+
+两者效果相同，用户无需手动操作，整个过程透明。
 
 ### Token 预算
 
@@ -188,9 +212,11 @@ code-flow --help        # 查看帮助
 | current | 版本一致 | 跳过（输出提示） |
 | force | `--force` 参数 | 强制覆盖工具文件 |
 
-### `/cf-init`
+### `/cf-init` / `$cf-init`
 
-在 Claude Code 会话中执行的交互式初始化，功能更丰富：
+在 AI 工具会话中执行的交互式初始化，功能更丰富：
+
+**Claude Code 中调用**：
 
 ```
 /cf-init                 # 自动检测技术栈
@@ -200,17 +226,28 @@ code-flow --help        # 查看帮助
 /cf-init --skip-learn    # 跳过自动扫描，仅生成模板
 ```
 
+**Codex CLI 中调用**（`.agents/skills/cf-init/SKILL.md` 安装后可用）：
+
+```
+$cf-init                  # 自动检测技术栈
+$cf-init frontend         # 强制前端项目
+$cf-init backend          # 强制后端项目
+$cf-init fullstack        # 强制全栈项目
+$cf-init --skip-learn     # 跳过自动扫描，仅生成模板
+```
+
 与终端 `code-flow init` 的区别：
 - 自动检测技术栈（React/Vue/FastAPI/Go 等）
 - 扫描项目配置和代码模式，填充真实规范内容
-- 生成导航地图
+- 生成导航地图（`_map.md`）
+- 生成 `AGENTS.md`（Codex）或合并 `CLAUDE.md`（Claude）
 - 交互式确认
 
 ---
 
 ## 规范管理命令
 
-以下命令在 Claude Code 中通过 `/cf-` 前缀调用。
+以下命令在 Claude Code 中通过 `/cf-` 前缀调用，在 Codex CLI 中通过 `$cf-` 前缀调用（需先完成初始化安装 Skill 文件）。
 
 ### `/cf-scan` — 审计规范
 
@@ -617,7 +654,7 @@ validators:
 
 ### `CLAUDE.md`
 
-项目级 AI 指令文件，每次 Claude Code 对话都会自动加载。核心段落：
+Claude Code 项目级 AI 指令文件，每次对话自动加载。核心段落：
 
 | 段落 | 用途 |
 |------|------|
@@ -625,6 +662,10 @@ validators:
 | `## Core Principles` | 全局编码原则 |
 | `## Forbidden Patterns` | 全局禁止模式 |
 | `## Spec Loading` | 两层规范加载指令（自动生成，勿手动修改） |
+
+### `AGENTS.md`
+
+Codex CLI 项目级 AI 指令文件，每次对话自动加载。结构与 `CLAUDE.md` 相同，`Spec Loading` 节说明由 `UserPromptSubmit Hook` 注入约束规范。
 
 ### `.claude/settings.local.json`
 
@@ -634,6 +675,24 @@ Claude Code 的 Hook 配置。code-flow 自动生成以下 Hook：
 |-----------|---------|------|------|
 | PreToolUse | AI 调用 Edit/Write/MultiEdit | `cf_inject_hook.py` | 按标签注入匹配的 specs |
 | SessionStart | 新会话开始 | `cf_session_hook.py` | 重置注入状态，避免重复注入 |
+
+### `.codex/hooks.json`
+
+Codex CLI 的 Hook 配置。code-flow 自动生成以下 Hook：
+
+| Hook 事件 | 触发时机 | 脚本 | 作用 |
+|-----------|---------|------|------|
+| UserPromptSubmit | 每次提交 prompt 前 | `cf_codex_user_prompt_hook.py` | 从 prompt 中提取文件引用，注入匹配的 specs |
+| SessionStart | 新会话开始 | `cf_session_hook.py` | 重置注入状态，避免重复注入 |
+
+### `.codex/config.toml`
+
+Codex CLI 功能开关：
+
+```toml
+[features]
+codex_hooks = true
+```
 
 ---
 
@@ -687,9 +746,9 @@ spec 文件和 `CLAUDE.md` 提交到 git 仓库，团队共享同一套规范。
 
 ## Hook 机制
 
-### 工作原理
+### Claude Code 工作原理
 
-code-flow 通过 Claude Code 的 Hook 机制实现规范自动注入：
+code-flow 通过 Claude Code 的 `PreToolUse` Hook 在代码编辑前注入规范：
 
 ```
 AI 调用 Edit("src/api/users.py", ...)
@@ -699,9 +758,27 @@ AI 调用 Edit("src/api/users.py", ...)
   → 标签与 config.yml 中的 specs tags 做交集匹配
   → 读取匹配到的 spec 文件内容
   → 按 tier 分层、按 token 预算裁剪
-  → 通过 stdout JSON 返回 hookSpecificOutput
+  → 通过 stdout JSON 返回 hookSpecificOutput.additionalContext
   → 规范内容注入到 AI 上下文，指导代码生成
 ```
+
+### Codex CLI 工作原理
+
+code-flow 通过 Codex 的 `UserPromptSubmit` Hook 在 prompt 提交前注入规范：
+
+```
+用户输入 "修改 @src/api/users.py 的权限验证逻辑"
+  → Codex CLI 触发 UserPromptSubmit Hook
+  → cf_codex_user_prompt_hook.py 从 stdin 接收 JSON（prompt + session_id）
+  → 从 prompt 文本中提取文件引用（@前缀、反引号、裸路径）
+  → 文件路径映射到域 → 提取上下文标签
+  → 标签与 config.yml 中的 specs tags 做交集匹配
+  → 若无文件引用则 fallback：注入所有域的 Tier 0 导航地图
+  → 通过 stdout JSON 返回 hookSpecificOutput.additionalContext
+  → 规范内容注入到本次 prompt 上下文
+```
+
+**两者差异**：Claude 在"编辑文件时"注入；Codex 在"提交 prompt 时"注入。效果相同，触发时机不同。
 
 ### 标签提取逻辑
 
@@ -716,10 +793,16 @@ AI 调用 Edit("src/api/users.py", ...)
 
 ### 调试 Hook
 
-设置环境变量启用调试输出：
+**Claude Code Hook**：
 
 ```bash
 CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"/path/to/src/api/users.py","old_string":"x","new_string":"y"}}' | python3 .code-flow/scripts/cf_inject_hook.py
+```
+
+**Codex Hook**：
+
+```bash
+CF_DEBUG=1 printf '%s' '{"session_id":"test-session","prompt":"修改 @src/api/users.py 的权限逻辑"}' | python3 .code-flow/scripts/cf_codex_user_prompt_hook.py
 ```
 
 调试输出会包含 `debug` 字段，显示匹配到的域、标签和 specs。
@@ -734,7 +817,7 @@ CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool
 
 ## 故障排查
 
-### Hook 未触发
+### Hook 未触发（Claude Code）
 
 **现象**：编辑代码文件时没有看到规范注入。
 
@@ -747,6 +830,31 @@ CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool
    ```bash
    printf '%s' '{"tool_name":"Edit","tool_input":{"file_path":"/absolute/path/to/file.py"}}' | python3 .code-flow/scripts/cf_inject_hook.py
    ```
+
+### Hook 未触发（Codex CLI）
+
+**现象**：提交 prompt 时没有看到规范注入。
+
+**排查步骤**：
+
+1. 检查 `.codex/hooks.json` 是否存在且结构正确（3 层：`hooks → event → [{hooks:[{type,command}]}]`）
+2. 检查 `.codex/config.toml` 中 `features.codex_hooks = true` 是否已启用
+3. 检查 prompt 中是否包含可识别的文件引用（`@path`、反引号或含 `/` 的路径）
+4. 手动运行 Hook 测试：
+   ```bash
+   printf '%s' '{"session_id":"test","prompt":"修改 @src/api/users.py"}' | python3 .code-flow/scripts/cf_codex_user_prompt_hook.py
+   ```
+5. 若 prompt 中无文件引用，Hook 会 fallback 注入所有域的 Tier 0 导航地图，这是正常行为
+
+### Codex 命令不可用
+
+**现象**：在 Codex CLI 中输入 `$cf-init` 无响应。
+
+**排查步骤**：
+
+1. 检查 `.agents/skills/cf-init/SKILL.md` 是否存在
+2. 若不存在，重新运行 `code-flow init --platform=codex` 重新部署 Skills
+3. 确认 Codex CLI 版本支持 Skills：`codex --version`
 
 ### 规范未匹配
 

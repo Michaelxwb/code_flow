@@ -1,14 +1,15 @@
-# cf-init
-
-项目规范体系一键初始化。检测技术栈，生成完整的 .code-flow/ 目录、spec 模板、配置文件和 Hook 配置，并自动扫描项目填充真实规范。
+---
+name: cf-init
+description: Initialize the code-flow spec system in a project. Use when setting up .code-flow/ directory, generating spec files, configuring Codex hooks (.codex/hooks.json), creating AGENTS.md, or bootstrapping coding standards for a new or existing project.
+---
 
 ## 输入
 
-- `/project:cf-init` — 自动检测技术栈
-- `/project:cf-init frontend` — 强制前端项目
-- `/project:cf-init backend` — 强制后端项目
-- `/project:cf-init fullstack` — 强制全栈项目
-- `/project:cf-init --skip-learn` — 跳过自动扫描，仅生成模板
+- `cf-init` — 自动检测技术栈
+- `cf-init frontend` — 强制前端项目
+- `cf-init backend` — 强制后端项目
+- `cf-init fullstack` — 强制全栈项目
+- `cf-init --skip-learn` — 跳过自动扫描，仅生成模板
 
 ## 执行步骤
 
@@ -70,7 +71,7 @@ inject:
     - "docs/**"
     - "*.config.*"
     - ".code-flow/**"
-    - ".claude/**"
+    - ".codex/**"
     - "node_modules/**"
     - "dist/**"
     - "build/**"
@@ -129,19 +130,6 @@ path_mapping:
 ```
 
 根据检测结果，只保留相关的 path_mapping 条目（仅前端项目删除 backend，仅后端项目删除 frontend）。
-
-> **自定义域扩展**：用户可在 `path_mapping` 中添加任意域（如 `infra`、`mobile`、`shared`），遵循相同的 patterns/specs/tags 结构。在 `.code-flow/specs/` 下创建对应目录和 `_map.md`，Hook 会自动识别。示例：
-> ```yaml
-> infra:
->   patterns: ["infra/**", "terraform/**", "*.tf", "Dockerfile", "docker-compose.yml"]
->   specs:
->     - path: "infra/_map.md"
->       tags: ["*"]
->       tier: 0
->     - path: "infra/deployment-rules.md"
->       tags: ["deploy", "docker", "terraform", "ci", "pipeline"]
->       tier: 1
-> ```
 
 ### 3. 生成 .code-flow/validation.yml
 
@@ -246,9 +234,9 @@ validators:
 
 **已存在的 spec 文件不覆盖**。
 
-### 5. 生成 CLAUDE.md
+### 5. 生成 AGENTS.md
 
-如果 CLAUDE.md 不存在，用 Write 生成 L0 模板：
+如果 AGENTS.md 不存在，用 Write 生成 L0 模板：
 
 ```markdown
 # Project Guidelines
@@ -273,48 +261,47 @@ validators:
 This project uses the code-flow two-tier spec system.
 
 **Two-tier architecture**:
-- **Tier 0 `_map.md`（导航地图）**：项目结构、关键文件、数据流。你手动读取，帮助理解代码在哪里。
-- **Tier 1 约束规范**：编码规则、模式、反模式。由 Hook 根据文件路径标签自动注入，你无需手动加载。
+- **Tier 0 `_map.md` (Navigation Map)**: Project structure, key files, data flow. Read manually when you need to understand where code lives.
+- **Tier 1 Constraint Specs**: Coding rules, patterns, anti-patterns. Auto-injected by the UserPromptSubmit Hook based on files referenced in your prompt.
 
 **Your responsibility**:
 1. Determine domain from the question:
    - **frontend**: components, pages, hooks, styles, UI, .tsx/.jsx/.css
    - **backend**: services, API, database, models, logging, .py/.go
 2. Read `.code-flow/specs/<domain>/_map.md` for navigation context
-3. Constraint specs are auto-injected by PreToolUse Hook when you edit code — do NOT manually read them
+3. Constraint specs are auto-injected by Hook when your prompt references relevant files — do NOT manually load them
 4. If question spans multiple domains, read all matching `_map.md` files
 5. If no domain matches, skip spec loading
 
 Do NOT ask the user which specs to load — decide automatically based on context.
 ```
 
-如果 CLAUDE.md 已存在，用 Read 读取后仅补充缺失的 `##` 段落（不覆盖已有内容）。展示 diff 供用户确认。
+如果 AGENTS.md 已存在，用 Read 读取后仅补充缺失的 `##` 段落（不覆盖已有内容）。展示 diff 供用户确认。
 
-### 6. 生成 .claude/settings.local.json Hook 配置
+### 6. 生成 .codex/hooks.json Hook 配置
 
-用 Read 检查是否存在。如果不存在，用 Write 生成：
+用 Read 检查是否存在。如果不存在，用 Write 生成（注意：每个事件下是对象数组，对象内含 `hooks` 数组）：
 
 ```json
 {
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 .code-flow/scripts/cf_inject_hook.py",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .code-flow/scripts/cf_session_hook.py"
+            "command": "python3 \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.code-flow/scripts/cf_session_hook.py\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.code-flow/scripts/cf_codex_user_prompt_hook.py\"",
+            "timeout": 5
           }
         ]
       }
@@ -323,7 +310,7 @@ Do NOT ask the user which specs to load — decide automatically based on contex
 }
 ```
 
-如果已存在，用 Read 读取 JSON，仅合并 `hooks` 字段中缺失的事件条目，保留其他配置（如 permissions）不变。用 Write 回写。
+如果已存在，直接用 Write 覆盖（hooks.json 结构版本控制，不做增量合并）。
 
 ### 7. 安装 pyyaml
 
@@ -346,7 +333,7 @@ python3 -m pip install pyyaml
 用 Glob 查找并 Read 读取以下配置文件（存在则提取约束）：
 
 **前端配置**：
-- `.eslintrc*` / `eslint.config.*` — lint 规则（no-any、import 排序、命名规范等）
+- `.eslintrc*` / `eslint.config.*` — lint 规则
 - `tsconfig.json` — strict 模式、path alias、target
 - `.prettierrc*` / `prettier.config.*` — 格式化规则
 - `tailwind.config.*` — 自定义 theme
@@ -366,78 +353,21 @@ python3 -m pip install pyyaml
 
 #### 8.2 扫描代码结构和模式
 
-用 Glob + Grep 扫描项目代码：
+用 Glob + Grep 扫描项目代码（用于填充 `_map.md` 和约束 specs）。
 
-**结构扫描**（用于填充 `_map.md`）：
-- `src/**/*` 顶层目录结构 → Module Map
-- 入口文件识别（main.ts/py、index.ts、app.ts 等）→ Key Files
-- 从 dependencies 推断技术栈 → Architecture
-- README 或 package.json description → Purpose
-- 路由/handler → service → model 调用链 → Data Flow
-
-**模式扫描**（用于填充约束 specs）：
-- 错误处理：自定义 Error 类、try/catch 模式
-- 日志：使用的库和格式
-- 测试：框架、断言风格、mock 方式
-- 导入：absolute vs relative、barrel exports
-- 命名：文件命名、变量命名风格
-
-#### 8.3 填充 spec 文件
-
-将扫描结果**直接写入**对应的 spec 文件（因为是 init 阶段，文件刚创建，内容是模板占位符）：
-
-**填充 `_map.md`**：
-- 用步骤 1 检测到的框架信息 + 步骤 8.2 的结构扫描结果，替换模板中的占位符
-- Purpose → 从 README/package.json 提取
-- Architecture → 从 dependencies 推断
-- Key Files → 列出扫描到的入口文件
-- Module Map → 基于实际目录结构生成
-- Data Flow → 从代码模式推断
-- Navigation Guide → 基于模块划分生成
-
-**填充约束 specs**：
-- 将扫描到的具体规则追加到对应 spec 文件的 `## Rules` 段落
-- 将扫描到的代码模式追加到 `## Patterns` 段落
-- 过滤掉纯格式化规则（有 Prettier 等 formatter 自动处理的）
-- 过滤掉与模板已有规则重复的条目
-
-#### 8.4 展示扫描结果
-
-不直接写入，先展示供用户确认：
+#### 8.3 展示扫描结果，等待用户确认
 
 ```
 项目规范扫描完成:
 
 导航地图 (Retrieval Map):
-  frontend/_map.md:
-    Purpose: 基于 React 18 + TypeScript 的管理后台
-    Architecture: Vite + React Router + Zustand + Tailwind
-    Key Files: 6 个入口文件
-    Modules: 5 个模块目录
-
-  backend/_map.md:
-    Purpose: 基于 FastAPI 的 RESTful API 服务
-    Architecture: FastAPI + SQLAlchemy + PostgreSQL
-    Key Files: 4 个入口文件
-    Modules: 6 个模块目录
+  ...
 
 编码约束 (从配置和代码中提取):
-  全局:
-    1. [x] [tsconfig.json] strict 模式，禁止 implicit any
-    2. [x] [CI] PR 必须通过 lint + type check + test
-
-  frontend/quality-standards.md:
-    3. [x] [.eslintrc] exhaustive-deps 规则已启用
-    4. [x] [代码模式] 组件使用 PascalCase 命名
-
-  backend/code-quality-performance.md:
-    5. [x] [pyproject.toml] 使用 ruff + mypy --strict
-    6. [x] [代码模式] API handler 统一使用 async def
+  ...
 
 确认写入？（all 全部写入 / 输入编号选择 / skip 跳过）:
 ```
-
-用户确认后写入。如果用户输入 `skip`，保留模板不填充。
 
 ### 9. 输出摘要
 
@@ -447,33 +377,14 @@ cf-init 完成 ✓
 技术栈: React 18 + TypeScript / FastAPI + Python 3.11
 
 文件结构:
-  Created:
-    + .code-flow/config.yml
-    + .code-flow/validation.yml
-    + .code-flow/specs/frontend/_map.md (已填充)
-    + .code-flow/specs/frontend/directory-structure.md (+3 条规则)
-    + .code-flow/specs/frontend/quality-standards.md (+2 条规则)
-    + .code-flow/specs/frontend/component-specs.md
-    + .code-flow/specs/backend/_map.md (已填充)
-    + .code-flow/specs/backend/directory-structure.md (+2 条规则)
-    + .code-flow/specs/backend/logging.md
-    + .code-flow/specs/backend/database.md
-    + .code-flow/specs/backend/platform-rules.md
-    + .code-flow/specs/backend/code-quality-performance.md (+3 条规则)
-    + CLAUDE.md
-    + .claude/settings.local.json (Hook)
+  Created: ...
+  Skipped: ...
 
-  Skipped:
-    · (已存在的文件)
-
-Token 估算:
-  CLAUDE.md: ~200 tokens
-  Specs 合计: ~800 tokens
-  导航地图: ~300 tokens
+Token 估算: ...
 
 下一步:
   - 审阅并补充 spec 文件中的规范内容
-  - 运行 /cf-learn 补充更多规范
-  - 运行 /cf-learn --map 更新导航地图
-  - 开始开发: /cf-task:plan <设计文档>
+  - 运行 cf-learn 补充更多规范
+  - 运行 cf-learn --map 更新导航地图
+  - 开始开发: cf-task-plan <设计文档>
 ```

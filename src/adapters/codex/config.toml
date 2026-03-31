@@ -1,0 +1,3 @@
+# code-flow Codex adapter
+[features]
+codex_hooks = true
