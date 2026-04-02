@@ -165,6 +165,6 @@ Read 设计文档后，**先扫描文档结构**，建立章节索引表：
 
 下一步:
   - 审阅任务: 直接阅读 .code-flow/tasks/2026-03-15/auth-module.md
-  - 添加批注: cf-task-note auth-module TASK-001
+  - 添加批注: 在.code-flow/tasks/2026-03-15/auth-module.md中进行 #NOTES "批注内容"
   - 开始编码: cf-task-start auth-module
 ```
