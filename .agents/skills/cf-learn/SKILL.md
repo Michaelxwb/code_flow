@@ -37,10 +37,16 @@ description: Scan project configs and code patterns to extract coding standards 
 **通用配置**：
 - `.github/workflows/*.yml` / `.gitlab-ci.yml` — 提取 CI 检查步骤（哪些 lint/test 是必须通过的）
 - `.editorconfig` — 提取编辑器统一配置
-- `.gitignore` — 推断项目结构（哪些目录被排除）
+- `.gitignore` — 解析为扫描排除规则（而非仅参考）
 - `package.json` 的 scripts 字段 — 提取常用命令
 
-### 2. 扫描代码结构和模式
+在进入代码扫描前，先构建 **统一排除集**：
+- 默认排除：`.git/**`、`.code-flow/**`、`.claude/**`、`.codex/**`、`.agents/**`、`.codex_flow/**`、`node_modules/**`、`dist/**`、`build/**`、`coverage/**`、`.next/**`、`.venv/**`、`venv/**`、`__pycache__/**`
+- 额外排除所有隐藏目录（名称以 `.` 开头），但保留白名单 `.github/workflows/**` 用于 CI 规则提取
+- 从 `.gitignore` 追加排除模式（忽略空行和注释行）
+- 所有 Glob/Grep/Read 仅针对“未被排除”的路径执行
+
+### 2. 扫描代码结构和模式（遵循排除集）
 
 用 Grep 在项目代码中搜索以下模式，提取隐含规范：
 
@@ -51,7 +57,7 @@ description: Scan project configs and code patterns to extract coding standards 
 - 命名模式：文件命名（kebab-case / PascalCase）、变量命名风格
 
 **代码结构扫描**（用于 Retrieval Map）：
-- 用 Glob 扫描 `src/**/*` 顶层目录结构
+- 用 Glob 扫描 `src/**/*` 顶层目录结构（先应用统一排除集）
 - 识别入口文件（main.ts/py、index.ts、app.ts 等）
 - 识别框架和技术栈（从 package.json dependencies、pyproject.toml 等提取）
 - 识别模块划分方式（按功能域 / 按技术层 / 混合）

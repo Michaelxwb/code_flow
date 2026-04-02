@@ -4,6 +4,7 @@
 - 所有函数必须有 type hints（参数和返回值）
 - Hook 脚本（stdin→stdout）必须捕获异常并输出到 stderr，禁止静默吞掉
 - Hook stdout 必须是合法 JSON，且包含 `hookSpecificOutput.additionalContext` 字段
+- Hook 在 no-op 场景（空输入、未命中、配置缺失）必须直接返回，不输出额外 stdout 噪音
 - 配置文件解析使用 mtime 缓存，避免重复 IO
 - 外部依赖仅限 pyyaml，其他功能用标准库实现
 - 注入状态必须包含 session_id，支持多会话隔离
@@ -14,6 +15,7 @@
 - 标签匹配扩展 → 更新 _SAFE_DEPLURALS 和 _DIR_SEMANTIC_TAGS 字典
 - 新增 Claude Hook → 在 settings.local.json 模板中注册，脚本放在 scripts/ 目录
 - 新增 Codex Hook → 在 hooks.json 模板中注册（3 层结构：event → [{hooks:[{type,command}]}]），脚本放在 scripts/ 目录
+- Codex prompt 路径提取同时支持裸路径、`@path`、反引号路径，并在注入前做去重与噪音过滤
 - 测试 → tests/ 目录，使用 pytest，覆盖 happy path / fallback / 空输入
 
 ## Anti-Patterns

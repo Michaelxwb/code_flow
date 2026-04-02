@@ -6,12 +6,14 @@
 - 文件分类必须通过 fileCategory() 集中管理，禁止在其他位置硬编码分类逻辑
 - 合并策略（merge 类文件）必须保证用户自定义内容不被覆盖
 - 平台参数解析必须通过 parsePlatform() 集中处理，禁止在 runInit 内部重复解析
+- 初始化阶段的可选操作（如 legacy 清理、pyyaml 安装）失败时必须降级为 warning，不能阻塞 init 主流程
 
 ## Patterns
 - 新增模板文件：放在 src/core/ 或 src/adapters/ 下，fileCategory() 自动分类
 - 新增平台适配器：在 runInit() 中添加独立的 `if (platform === '...')` 分支，不与其他平台逻辑交叉
 - 版本对比使用 compareVersions()，支持语义版本号
 - 输出摘要按 Updated/Merged/Created/Skipped/Removed 分组
+- 清理 deprecated 目录时使用独立函数封装删除逻辑，配置 `recursive + force + retry` 以兼容 Windows 文件锁场景
 
 ## Anti-Patterns
 - 禁止在 CLI 中引入 npm 外部依赖

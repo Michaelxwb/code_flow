@@ -44,3 +44,15 @@ def test_codex_init_deploys_skills_and_upgrade_overwrites_tool_files(tmp_path: P
     second = run_cli(tmp_path)
     assert second.returncode == 0, second.stderr
     assert cf_init_skill.read_text(encoding="utf-8") != "SENTINEL\n"
+
+
+def test_codex_init_removes_non_empty_legacy_claude_skills_dir(tmp_path: Path) -> None:
+    legacy_skill_file = tmp_path / ".claude" / "skills" / "legacy" / "SKILL.md"
+    legacy_skill_file.parent.mkdir(parents=True)
+    legacy_skill_file.write_text("legacy\n", encoding="utf-8")
+
+    result = run_cli(tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert not (tmp_path / ".claude" / "skills").exists()
+    assert "Removed (deprecated):" in result.stdout
+    assert ".claude/skills/" in result.stdout

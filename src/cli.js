@@ -226,6 +226,31 @@ function copyFileIfMissing(srcFile, destFile) {
   fs.copyFileSync(srcFile, destFile);
 }
 
+function removeLegacyClaudeSkills(cwd, removed) {
+  const legacySkills = path.join(cwd, '.claude', 'skills');
+  if (!fs.existsSync(legacySkills)) return;
+
+  try {
+    fs.rmSync(legacySkills, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100
+    });
+    if (!fs.existsSync(legacySkills)) {
+      removed.push('.claude/skills/');
+      return;
+    }
+  } catch (error) {
+    const code = error && error.code ? ` (${error.code})` : '';
+    const message = error && error.message ? error.message : String(error);
+    process.stderr.write(`Warning: failed to remove deprecated .claude/skills/${code}: ${message}\n`);
+    return;
+  }
+
+  process.stderr.write('Warning: failed to remove deprecated .claude/skills/. Remove it manually.\n');
+}
+
 // --- Platform argument parsing ---
 
 function parsePlatform(args) {
@@ -415,11 +440,7 @@ function runInit(force, platform) {
   }
 
   // Clean up legacy .claude/skills/
-  const legacySkills = path.join(cwd, '.claude', 'skills');
-  if (fs.existsSync(legacySkills)) {
-    fs.rmSync(legacySkills, { recursive: true });
-    removed.push('.claude/skills/');
-  }
+  removeLegacyClaudeSkills(cwd, removed);
 
   // Install pyyaml
   const pip = spawnSync('python3', ['-m', 'pip', 'install', 'pyyaml'], {
