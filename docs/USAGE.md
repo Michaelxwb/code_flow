@@ -48,10 +48,15 @@ pnpm add -g @jahanxu/code-flow
 
 ```bash
 cd your-project
-code-flow init
+code-flow init                    # 默认等价于 --platform=claude
+# 或显式指定：
+# code-flow init --platform=claude
+# code-flow init --platform=codex
 ```
 
-初始化后生成的目录结构：
+初始化后生成的目录结构（按平台）：
+
+**所有平台都会生成（core，共用）**：
 
 ```
 your-project/
@@ -78,15 +83,25 @@ your-project/
 │           ├── database.md
 │           ├── platform-rules.md
 │           └── code-quality-performance.md
-├── .claude/
-│   └── settings.local.json    # Claude Code Hook 配置
-├── .codex/
-│   ├── hooks.json             # Codex CLI Hook 配置
-│   └── config.toml            # Codex 功能开关
-├── CLAUDE.md                  # L0 全局指令（Claude Code 每次对话读取）
-└── AGENTS.md                  # L0 全局指令（Codex CLI 每次对话读取）
+```
 
-.agents/skills/                # Codex Skills（项目级，自动安装）
+**仅 Claude 平台生成/更新（`code-flow init` 默认）**：
+
+```
+.claude/
+└── settings.local.json    # Claude Code Hook 配置
+CLAUDE.md                  # L0 全局指令（Claude Code 每次对话读取）
+.claude/commands/          # Claude 命令文件
+```
+
+**仅 Codex 平台生成/更新（`code-flow init --platform=codex`）**：
+
+```
+.codex/
+├── hooks.json             # Codex CLI Hook 配置
+└── config.toml            # Codex 功能开关
+AGENTS.md                  # L0 全局指令（Codex CLI 每次对话读取）
+.agents/skills/            # Codex Skills（项目级，自动安装）
   cf-init/SKILL.md、cf-learn/SKILL.md、cf-scan/SKILL.md 等
 ```
 
@@ -195,12 +210,14 @@ AI 调用 Edit/Write → Hook 拦截（文件路径）
 
 ### `code-flow init`
 
-在终端中执行，一键初始化项目规范体系。
+在终端中执行，一键初始化项目规范体系。默认平台为 `claude`。
 
 ```bash
-code-flow init          # 标准初始化
-code-flow init --force  # 强制重新生成（覆盖工具文件）
-code-flow --help        # 查看帮助
+code-flow init                             # 标准初始化（默认 = --platform=claude）
+code-flow init --platform=claude          # 显式初始化 Claude 适配文件
+code-flow init --platform=codex           # 显式初始化 Codex 适配文件
+code-flow init --force                    # 强制重新生成（覆盖工具文件）
+code-flow --help                          # 查看帮助
 ```
 
 **初始化模式**：
@@ -297,8 +314,23 @@ L1 Frontend:
 L1 Backend:
   - database.md: ~200 tokens
 
-Total: ~1580 / 2500 tokens (63%)
+TOTAL: ~1580 / 2500
+UTILIZATION: 63%
 ```
+
+当 `config.yml` 中配置了 spec 但文件不存在时，会额外输出缺失清单和告警：
+
+```
+L0 (CLAUDE.md): 315 / 800
+MISSING SPECS:
+ - frontend frontend/_map.md
+ - backend backend/database.md
+TOTAL: 315 / 2500
+UTILIZATION: 13%
+WARNINGS: 配置的 spec 文件缺失: 2 个; 以下域未加载到任何 L1 spec: backend
+```
+
+JSON 输出（默认模式）会包含 `missing_specs` 字段，可用于自动化检查。
 
 ### `/cf-inject` — 手动注入规范
 
@@ -817,6 +849,11 @@ CF_DEBUG=1 printf '%s' '{"session_id":"test-session","prompt":"修改 @src/api/u
 
 ## 故障排查
 
+> 先确认初始化平台：
+> - Claude 路径（`code-flow init` 或 `--platform=claude`）检查 `.claude/settings.local.json`
+> - Codex 路径（`--platform=codex`）检查 `.codex/hooks.json` 与 `.codex/config.toml`
+> - Codex-only 项目没有 `.claude/settings.local.json` 属于正常现象
+
 ### Hook 未触发（Claude Code）
 
 **现象**：编辑代码文件时没有看到规范注入。
@@ -872,11 +909,12 @@ CF_DEBUG=1 printf '%s' '{"session_id":"test-session","prompt":"修改 @src/api/u
 # 检查 Python 版本
 python3 --version    # 需要 >= 3.9
 
-# 检查 pyyaml
+# 检查 pyyaml / pytest
 python3 -c "import yaml; print(yaml.__version__)"
+python3 -m pytest --version
 
-# 手动安装
-pip install pyyaml
+# 手动安装运行依赖
+python3 -m pip install pyyaml pytest
 ```
 
 ### Token 超预算

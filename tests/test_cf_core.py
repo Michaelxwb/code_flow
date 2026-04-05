@@ -180,6 +180,21 @@ def test_tiered_tier0_exceeds_map_max():
     assert "rules.md" in paths
 
 
+def test_scripts_map_within_budget_guardrail():
+    map_path = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        ".code-flow",
+        "specs",
+        "scripts",
+        "_map.md",
+    )
+    with open(map_path, "r", encoding="utf-8") as f:
+        tokens = estimate_tokens(f.read())
+
+    assert tokens <= 400
+
+
 def test_tiered_budget_controls_tier1():
     specs = [
         {"path": "a.md", "tokens": 100, "tier": 1},

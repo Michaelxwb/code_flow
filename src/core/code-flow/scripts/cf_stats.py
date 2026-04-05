@@ -48,15 +48,26 @@ def main() -> None:
     total_tokens = l0_tokens
     specs_root = os.path.join(project_root, ".code-flow", "specs")
     spec_domain_map = {}
+    missing_specs = []
+    domains_with_no_loaded_specs = []
+
     for domain, domain_cfg in (config.get("path_mapping") or {}).items():
         if domain_filter and domain_filter != domain:
             continue
+
         items = []
-        for spec_entry in domain_cfg.get("specs") or []:
+        specs_config = domain_cfg.get("specs") or []
+        configured_count = 0
+
+        for spec_entry in specs_config:
             rel = spec_entry["path"] if isinstance(spec_entry, dict) else spec_entry
+            if not rel:
+                continue
+            configured_count += 1
             spec_domain_map[rel] = domain
             full_path = os.path.join(specs_root, rel)
             if not os.path.exists(full_path):
+                missing_specs.append({"domain": domain, "path": rel})
                 continue
             content = read_text(full_path)
             if not content:
@@ -64,8 +75,11 @@ def main() -> None:
             tokens = estimate_tokens(content)
             items.append({"path": rel, "tokens": tokens})
             total_tokens += tokens
+
         if items:
             l1[domain] = items
+        elif configured_count > 0:
+            domains_with_no_loaded_specs.append(domain)
 
     utilization = "0%"
     if total_budget:
@@ -79,6 +93,11 @@ def main() -> None:
         warnings.append("L1 超出预算")
     if total_tokens > total_budget:
         warnings.append("总预算超出")
+    if missing_specs:
+        warnings.append(f"配置的 spec 文件缺失: {len(missing_specs)} 个")
+    if domains_with_no_loaded_specs:
+        domains_text = ", ".join(sorted(set(domains_with_no_loaded_specs)))
+        warnings.append(f"以下域未加载到任何 L1 spec: {domains_text}")
 
     output = {
         "l0": {"file": "CLAUDE.md", "tokens": l0_tokens, "budget": l0_budget},
@@ -88,6 +107,7 @@ def main() -> None:
         "utilization": utilization,
         "warnings": warnings,
         "spec_domain_map": spec_domain_map,
+        "missing_specs": missing_specs,
     }
     if json_output:
         print(json.dumps(output, ensure_ascii=False))
@@ -99,6 +119,10 @@ def main() -> None:
         print(f"L1 {domain}:", total_domain)
         for item in items:
             print(" -", item["path"], item["tokens"])
+    if missing_specs:
+        print("MISSING SPECS:")
+        for item in missing_specs:
+            print(" -", item["domain"], item["path"])
     print("TOTAL:", f"{total_tokens} / {total_budget}")
     print("UTILIZATION:", utilization)
     if warnings:

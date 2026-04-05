@@ -83,6 +83,14 @@ AGENTS.md         # Codex CLI 全局指令
 
 - 需要 `python3` 版本 3.9 及以上
 - 需要安装 `pyyaml`（`cf_init` 会尝试自动安装，失败会提示手动处理）
+- 运行测试需要 `pytest`
+
+### 运行测试
+
+```bash
+python3 -m pip install pyyaml pytest
+python3 -m pytest -q tests
+```
 
 ## 常见问题
 
