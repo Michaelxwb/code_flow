@@ -48,7 +48,12 @@ description: Archive a completed task file after three-dimensional validation (c
    mkdir -p .code-flow/tasks/archived/<日期目录>
    mv .code-flow/tasks/<日期目录>/<file>.md .code-flow/tasks/archived/<日期目录>/
    ```
-3. 如果原日期目录为空，删除空目录
+3. 检查同目录下是否存在同名的 `.design.md` 文件（如 `<file>.design.md`），若存在则一并移动：
+   ```bash
+   # 仅当文件存在时执行
+   mv .code-flow/tasks/<日期目录>/<file>.design.md .code-flow/tasks/archived/<日期目录>/
+   ```
+4. 如果原日期目录为空，删除空目录
 
 ### 4. Spec 更新提示
 
@@ -64,6 +69,7 @@ description: Archive a completed task file after three-dimensional validation (c
 
 ```
 已归档: <file>.md → .code-flow/tasks/archived/<日期目录>/<file>.md
+（如有关联设计简报）: <file>.design.md → .code-flow/tasks/archived/<日期目录>/<file>.design.md
 
 摘要:
   - 来源: docs/xxx设计说明书.md

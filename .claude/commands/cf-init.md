@@ -178,7 +178,15 @@ validators:
 
 ### 4. 生成 spec 文件
 
-在 `.code-flow/specs/` 下，按检测到的技术栈生成 spec 模板。
+**严格按步骤 1 确定的 stack 生成，禁止超出范围：**
+
+| stack | 生成目录 | 禁止生成 |
+|-------|---------|---------|
+| `frontend` | `specs/frontend/` | `specs/backend/`（不得创建） |
+| `backend` | `specs/backend/` | `specs/frontend/`（不得创建） |
+| `fullstack` / `generic` | 两者都生成 | — |
+
+在 `.code-flow/specs/` 下，按确定的 stack 生成 spec 模板。
 
 **约束规范**遵循统一格式：
 

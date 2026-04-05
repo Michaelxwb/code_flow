@@ -448,22 +448,44 @@ scripts 域（建议写入 specs/scripts/code-standards.md）：
 
 ## 任务管理命令
 
-code-flow 提供从设计文档到编码实现的完整任务管理流程。
+code-flow 提供从需求对齐到编码实现的完整任务管理流程。
+
+### `/cf-task:align` — 需求对齐与设计简报
+
+从一句话需求出发，通过结构化对话产出设计简报（`.design.md`），包含数据库设计、接口设计、技术决策、验收标准等，为 `/cf-task:plan` 提供足够丰富的输入。
+
+```
+/cf-task:align "给项目加上用户认证"                              # 从需求描述新建
+/cf-task:align                                                 # 交互式
+/cf-task:align .code-flow/tasks/2026-04-06/user-auth.design.md # 恢复草稿继续讨论
+```
+
+**执行流程**：
+1. 扫描代码库上下文（技术栈、现有模式）
+2. 围绕 5 个维度逐步交互：目标与边界 → 数据模型 → 接口设计 → 技术决策 → 验收标准
+3. 基于代码库上下文提出具体默认建议（而非泛泛提问）
+4. 展示设计简报草稿供确认
+5. 写入 `.code-flow/tasks/<YYYY-MM-DD>/<name>.design.md`
+
+产出的 `.design.md` 可直接作为 `/cf-task:plan` 的输入。支持中断恢复——对话进行中即写入草稿，下次通过文件路径继续。
 
 ### `/cf-task:plan` — 从设计文档拆解任务
 
 ```
-/cf-task:plan docs/auth-design.md          # 指定设计文档
-/cf-task:plan                               # 交互式选择文档
-/cf-task:plan docs/auth-design.md --explore # 仅输出分析报告，不生成文件
+/cf-task:plan docs/auth-design.md                                    # 设计文档（含缺口分析）
+/cf-task:plan docs/auth-design.md --quick                             # 跳过缺口分析
+/cf-task:plan docs/auth-design.md --explore                           # 仅输出分析报告
+/cf-task:plan .code-flow/tasks/2026-04-06/user-auth.design.md         # 从 align 产出的设计简报拆解
 ```
 
 **执行流程**：
-1. 读取设计文档，建立章节索引（记录行号范围）
-2. 按原子粒度拆解子任务（每个对应 1-3 个文件修改）
-3. 精确记录每个子任务的详设来源章节（`Source` 字段含行号范围）
+1. 读取输入文件，判断类型（设计简报 vs 设计文档）
+2. 设计文档模式：建立章节索引 → 缺口分析对话（`--quick` 跳过）→ 拆解
+3. 设计简报模式：直接从 Goal/DB/API/Acceptance Criteria 拆解
 4. 展示拆解结果供用户确认/调整
 5. 写入任务文件：`.code-flow/tasks/<YYYY-MM-DD>/<name>.md`
+
+**缺口分析**（设计文档模式，`--quick` 跳过）：AI 从文档中识别目标/非目标、范围边界、未确认的技术决策、风险点和验收标准，输出结构化分析并与用户交互讨论。对齐结论写入 Proposal 的 `### Alignment` 子节。
 
 生成的任务文件格式：
 
@@ -592,7 +614,7 @@ Status 更新为 blocked，阻塞原因记录在 Log 中。
 | 正确性 | validation.yml 中匹配的验证规则通过 |
 | 一致性 | Proposal 中的意图与实际代码变更一致 |
 
-校验通过后移动到 `.code-flow/tasks/archived/` 目录，并提示是否有新规范需同步到 specs。
+校验通过后移动到 `.code-flow/tasks/archived/` 目录。如果同目录下存在同名的 `.design.md` 文件，会一并归档。归档后提示是否有新规范需同步到 specs。
 
 ---
 
@@ -737,22 +759,28 @@ codex_hooks = true
    code-flow init
    /cf-learn --map                          ← 填充导航地图
 
-2. 需求拆解
-   /cf-task:plan docs/feature-design.md     ← 从设计文档生成任务
+2. ���求对齐（两种入口，按需选择）
+   a) 有设计文档:
+      /cf-task:plan docs/feature-design.md  ← 缺口分析 + 拆解任务
+   b) 只有一句话需求:
+      /cf-task:align "给项目加用户认证"       ← 交互式需求细化，产出 .design.md
+      /cf-task:plan .code-flow/tasks/.../xxx.design.md  ← 从设计简���拆解任务
+
+3. 任务审阅
    （review 任务文件，标注 #NOTES）
    /cf-task:note feature-module             ← 讨论并解决 Notes
 
-3. 编码实现
+4. 编码实现
    /cf-task:start feature-module            ← 按依赖顺序逐个编码
    （Hook 自动注入规范，AI 在约束下生成代码）
 
-4. 验证
+5. 验证
    /cf-validate                             ← 运行 lint + type check + test
 
-5. 归档
+6. 归档
    /cf-task:archive feature-module          ← 三维校验 + 归档
 
-6. 规范沉淀
+7. 规范沉淀
    /cf-learn --review                       ← 从 git 历史挖掘教训，补充规范
 ```
 

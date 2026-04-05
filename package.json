@@ -1,6 +1,6 @@
 {
   "name": "@jahanxu/code-flow",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "license": "UNLICENSED",
   "bin": {
     "code-flow": "src/cli.js"
@@ -9,5 +9,8 @@
     "src/cli.js",
     "src/core/**",
     "src/adapters/**"
-  ]
+  ],
+  "dependencies": {
+    "@ccusage/codex": "^18.0.10"
+  }
 }

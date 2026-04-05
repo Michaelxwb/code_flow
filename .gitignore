@@ -1,2 +1,4 @@
 .code-flow/.inject-state
 .idea/
+
+node_modules/
