@@ -12,7 +12,9 @@ import sys
 from cf_core import (
     _log,
     assemble_context,
+    build_effective_mapping,
     extract_context_tags,
+    fallback_domains_for_context,
     load_config,
     load_inject_state,
     match_domains,
@@ -67,6 +69,7 @@ def main() -> None:
             return
 
         mapping = config.get("path_mapping") or {}
+        effective_mapping = build_effective_mapping(project_root, mapping)
         budget_cfg = config.get("budget") or {}
         l1_budget = 1700
         map_max = 400
@@ -85,11 +88,11 @@ def main() -> None:
         matched_domains: set = set()
         for cp in candidate_paths:
             context_tags.update(extract_context_tags(cp))
-            matched_domains.update(match_domains(cp, mapping))
+            matched_domains.update(match_domains(cp, effective_mapping))
 
-        # Fallback: no paths detected → inject Tier0 maps for all domains
+        # Fallback: unresolved domains → prefer domain-name hint in tags, then all domains
         if not matched_domains:
-            matched_domains = set(mapping.keys())
+            matched_domains = fallback_domains_for_context(effective_mapping, context_tags)
 
         sid = _session_id(data)
         state = load_inject_state(project_root)
@@ -100,7 +103,7 @@ def main() -> None:
 
         all_matched = []
         for domain in matched_domains:
-            domain_cfg = mapping.get(domain) or {}
+            domain_cfg = effective_mapping.get(domain) or {}
             specs_config = domain_cfg.get("specs") or []
             matched, has_tier1 = match_specs_by_tags(specs_config, context_tags)
             if not has_tier1:

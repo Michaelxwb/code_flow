@@ -95,6 +95,36 @@ def _make_project(tmpdir: str, domains_with_specs: bool = True) -> str:
     return tmpdir
 
 
+def _make_project_with_stale_mapping(tmpdir: str) -> str:
+    """Set up a project where config path_mapping is stale but specs exist on disk."""
+    cf_dir = os.path.join(tmpdir, ".code-flow")
+    specs_dir = os.path.join(cf_dir, "specs", "cli")
+    os.makedirs(specs_dir, exist_ok=True)
+
+    with open(os.path.join(specs_dir, "_map.md"), "w") as f:
+        f.write("# CLI Map\n")
+    with open(os.path.join(specs_dir, "code-standards.md"), "w") as f:
+        f.write("# CLI Standards\n")
+
+    config = {
+        "version": 1,
+        "budget": {"l1_max": 1700, "map_max": 400},
+        "inject": {"auto": True, "code_extensions": [".py", ".js"]},
+        "path_mapping": {
+            "backend": {
+                "patterns": ["**/*.py"],
+                "specs": [
+                    {"path": "backend/_map.md", "tags": ["*"], "tier": 0},
+                ],
+            }
+        },
+    }
+    import yaml
+    with open(os.path.join(cf_dir, "config.yml"), "w") as f:
+        yaml.dump(config, f)
+    return tmpdir
+
+
 def _run_main(prompt: str, project_root: str, pid: str = "99999") -> dict:
     stdin_data = json.dumps({"prompt": prompt, "session_id": pid})
     with mock.patch("sys.stdin", io.StringIO(stdin_data)), \
@@ -159,6 +189,15 @@ def test_main_inject_disabled_no_output():
             yaml.dump(cfg, f)
         result = _run_main("edit src/core/cf_core.py", tmpdir)
         assert result == {}
+
+
+def test_main_stale_mapping_falls_back_to_discovered_domain_specs():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _make_project_with_stale_mapping(tmpdir)
+        result = _run_main("edit src/cli.js to improve argument parsing", tmpdir)
+        assert "hookSpecificOutput" in result
+        ctx = result["hookSpecificOutput"]["additionalContext"]
+        assert "cli/_map.md" in ctx
 
 
 if __name__ == "__main__":

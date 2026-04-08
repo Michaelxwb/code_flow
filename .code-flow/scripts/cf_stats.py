@@ -2,6 +2,7 @@
 import json
 import os
 import sys
+from typing import Optional
 
 from cf_core import estimate_tokens, load_config
 
@@ -12,6 +13,98 @@ def read_text(path: str) -> str:
             return file.read().strip()
     except Exception:
         return ""
+
+
+def normalize_rel_path(path: str) -> str:
+    return path.replace(os.sep, "/")
+
+
+def extract_spec_path(spec_entry) -> str:
+    if isinstance(spec_entry, dict):
+        return normalize_rel_path(spec_entry.get("path", ""))
+    if isinstance(spec_entry, str):
+        return normalize_rel_path(spec_entry)
+    return ""
+
+
+def discover_specs(specs_root: str) -> dict:
+    discovered = {}
+    if not os.path.isdir(specs_root):
+        return discovered
+
+    for root, _, files in os.walk(specs_root):
+        for filename in files:
+            if not filename.endswith(".md"):
+                continue
+            full_path = os.path.join(root, filename)
+            rel = normalize_rel_path(os.path.relpath(full_path, specs_root))
+            parts = rel.split("/", 1)
+            if len(parts) < 2:
+                continue
+            domain = parts[0]
+            discovered.setdefault(domain, []).append(rel)
+
+    for domain in discovered:
+        discovered[domain] = sorted(set(discovered[domain]))
+    return discovered
+
+
+def configured_specs(config: dict, domain: str) -> list:
+    mapping = (config.get("path_mapping") or {}).get(domain) or {}
+    specs_config = mapping.get("specs") or []
+    result = []
+    for spec_entry in specs_config:
+        rel = extract_spec_path(spec_entry)
+        if rel:
+            result.append(rel)
+    return result
+
+
+def resolve_domains(config: dict, discovered: dict, domain_filter: Optional[str]) -> list:
+    if domain_filter:
+        if domain_filter in discovered:
+            return [domain_filter]
+        if domain_filter in (config.get("path_mapping") or {}):
+            return [domain_filter]
+        return []
+
+    if discovered:
+        return sorted(discovered.keys())
+    return sorted((config.get("path_mapping") or {}).keys())
+
+
+def collect_domain_items(
+    specs_root: str,
+    domain: str,
+    configured: list,
+    discovered: list,
+) -> tuple:
+    items = []
+    missing = []
+    seen = set()
+
+    for rel in configured:
+        if rel in seen:
+            continue
+        seen.add(rel)
+        full_path = os.path.join(specs_root, rel)
+        if not os.path.exists(full_path):
+            missing.append({"domain": domain, "path": rel})
+            continue
+        content = read_text(full_path)
+        if content:
+            items.append({"path": rel, "tokens": estimate_tokens(content)})
+
+    for rel in discovered:
+        if rel in seen:
+            continue
+        seen.add(rel)
+        full_path = os.path.join(specs_root, rel)
+        content = read_text(full_path)
+        if content:
+            items.append({"path": rel, "tokens": estimate_tokens(content)})
+
+    return items, missing
 
 
 def main() -> None:
@@ -50,35 +143,28 @@ def main() -> None:
     spec_domain_map = {}
     missing_specs = []
     domains_with_no_loaded_specs = []
+    discovered = discover_specs(specs_root)
+    domains = resolve_domains(config, discovered, domain_filter)
+    config_fallback_mode = not discovered
 
-    for domain, domain_cfg in (config.get("path_mapping") or {}).items():
-        if domain_filter and domain_filter != domain:
-            continue
+    for domain in domains:
+        configured = configured_specs(config, domain)
+        discovered_paths = discovered.get(domain, [])
+        items, missing = collect_domain_items(specs_root, domain, configured, discovered_paths)
 
-        items = []
-        specs_config = domain_cfg.get("specs") or []
-        configured_count = 0
-
-        for spec_entry in specs_config:
-            rel = spec_entry["path"] if isinstance(spec_entry, dict) else spec_entry
+        for rel in configured:
             if not rel:
                 continue
-            configured_count += 1
             spec_domain_map[rel] = domain
-            full_path = os.path.join(specs_root, rel)
-            if not os.path.exists(full_path):
-                missing_specs.append({"domain": domain, "path": rel})
-                continue
-            content = read_text(full_path)
-            if not content:
-                continue
-            tokens = estimate_tokens(content)
-            items.append({"path": rel, "tokens": tokens})
-            total_tokens += tokens
+        for rel in discovered_paths:
+            spec_domain_map[rel] = domain
+
+        missing_specs.extend(missing)
 
         if items:
             l1[domain] = items
-        elif configured_count > 0:
+            total_tokens += sum(item["tokens"] for item in items)
+        elif configured and (config_fallback_mode or discovered_paths):
             domains_with_no_loaded_specs.append(domain)
 
     utilization = "0%"

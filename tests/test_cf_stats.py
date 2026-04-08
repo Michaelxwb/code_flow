@@ -91,6 +91,49 @@ path_mapping:
         assert not any("以下域未加载到任何 L1 spec" in warning for warning in data["warnings"])
 
 
+def test_json_prefers_discovered_spec_domains_over_stale_path_mapping() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _write(
+            os.path.join(tmpdir, ".code-flow", "config.yml"),
+            """
+version: 1
+budget:
+  total: 2500
+  l0_max: 800
+  l1_max: 1700
+path_mapping:
+  frontend:
+    patterns:
+      - "**/*.tsx"
+    specs:
+      - path: "frontend/_map.md"
+  backend:
+    patterns:
+      - "**/*.py"
+    specs:
+      - path: "backend/_map.md"
+""".strip() + "\n",
+        )
+        _write(
+            os.path.join(tmpdir, ".code-flow", "specs", "cli", "_map.md"),
+            "# CLI Map\n",
+        )
+        _write(
+            os.path.join(tmpdir, ".code-flow", "specs", "scripts", "_map.md"),
+            "# Scripts Map\n",
+        )
+
+        output = _run_stats(tmpdir, [])
+        data = json.loads(output)
+
+        assert "cli" in data["l1"]
+        assert "scripts" in data["l1"]
+        assert "frontend" not in data["l1"]
+        assert "backend" not in data["l1"]
+        assert data["missing_specs"] == []
+        assert not any("frontend" in warning or "backend" in warning for warning in data["warnings"])
+
+
 if __name__ == "__main__":
     import traceback
 

@@ -43,6 +43,94 @@ def normalize_path(path: str) -> str:
     return path.replace(os.sep, "/")
 
 
+def _spec_path_from_entry(entry) -> str:
+    cfg = normalize_spec_entry(entry)
+    return normalize_path(cfg.get("path", ""))
+
+
+def discover_spec_domains(project_root: str) -> dict:
+    specs_root = os.path.join(project_root, ".code-flow", "specs")
+    discovered = {}
+    if not os.path.isdir(specs_root):
+        return discovered
+
+    for root, _, files in os.walk(specs_root):
+        for filename in files:
+            if not filename.endswith(".md"):
+                continue
+            full_path = os.path.join(root, filename)
+            rel = normalize_path(os.path.relpath(full_path, specs_root))
+            parts = rel.split("/", 1)
+            if len(parts) < 2:
+                continue
+            domain = parts[0]
+            discovered.setdefault(domain, []).append(rel)
+
+    for domain in discovered:
+        discovered[domain] = sorted(set(discovered[domain]))
+    return discovered
+
+
+def _default_spec_entry(rel: str) -> dict:
+    tier = 0 if rel.endswith("/_map.md") else 1
+    return {"path": rel, "tags": ["*"], "tier": tier}
+
+
+def build_effective_mapping(project_root: str, mapping: dict) -> dict:
+    discovered = discover_spec_domains(project_root)
+    effective = {}
+
+    for domain, rel_paths in discovered.items():
+        source_cfg = mapping.get(domain) or {}
+        normalized_specs = []
+        seen = set()
+
+        for entry in source_cfg.get("specs") or []:
+            rel = _spec_path_from_entry(entry)
+            if not rel or rel in seen:
+                continue
+            normalized_specs.append(normalize_spec_entry(entry))
+            seen.add(rel)
+
+        for rel in rel_paths:
+            if rel in seen:
+                continue
+            normalized_specs.append(_default_spec_entry(rel))
+            seen.add(rel)
+
+        effective[domain] = {
+            "patterns": source_cfg.get("patterns") or [],
+            "specs": normalized_specs,
+        }
+
+    for domain, source_cfg in (mapping or {}).items():
+        if domain in effective:
+            continue
+        normalized_specs = []
+        seen = set()
+        for entry in source_cfg.get("specs") or []:
+            rel = _spec_path_from_entry(entry)
+            if not rel or rel in seen:
+                continue
+            normalized_specs.append(normalize_spec_entry(entry))
+            seen.add(rel)
+        effective[domain] = {
+            "patterns": source_cfg.get("patterns") or [],
+            "specs": normalized_specs,
+        }
+
+    return effective
+
+
+def fallback_domains_for_context(mapping: dict, context_tags: set) -> set:
+    if not mapping:
+        return set()
+    by_name = {domain for domain in mapping.keys() if domain.lower() in context_tags}
+    if by_name:
+        return by_name
+    return set(mapping.keys())
+
+
 def is_code_file(rel_path: str, inject_config: dict) -> bool:
     rel_path = normalize_path(rel_path)
     for pattern in inject_config.get("skip_paths") or []:

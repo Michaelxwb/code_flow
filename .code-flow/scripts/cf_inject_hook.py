@@ -6,7 +6,9 @@ import sys
 from cf_core import (
     _log,
     assemble_context,
+    build_effective_mapping,
     extract_context_tags,
+    fallback_domains_for_context,
     is_code_file,
     load_config,
     load_inject_state,
@@ -54,9 +56,8 @@ def main() -> None:
             return
 
         mapping = config.get("path_mapping") or {}
-        domains = match_domains(rel_path, mapping)
-        if not domains:
-            return
+        effective_mapping = build_effective_mapping(project_root, mapping)
+        domains = match_domains(rel_path, effective_mapping)
 
         # Load state with session isolation (fix #10)
         sid = _session_id()
@@ -69,6 +70,10 @@ def main() -> None:
 
         # Extract context tags from file path
         context_tags = extract_context_tags(rel_path)
+        if not domains:
+            domains = sorted(fallback_domains_for_context(effective_mapping, context_tags))
+            if not domains:
+                return
 
         # Budget config
         budget_cfg = config.get("budget") or {}
@@ -86,7 +91,7 @@ def main() -> None:
         # Match specs by tags per domain, with fallback (fix #1)
         all_matched = []
         for domain in domains:
-            domain_cfg = mapping.get(domain) or {}
+            domain_cfg = effective_mapping.get(domain) or {}
             specs_config = domain_cfg.get("specs") or []
             matched, has_tier1_match = match_specs_by_tags(specs_config, context_tags)
 

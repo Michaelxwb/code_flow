@@ -384,7 +384,7 @@ validators:
 
 ### `/cf-learn` — 规范学习与沉淀
 
-从项目配置、代码模式和 git 历史中自动提取编码约束，沉淀到 spec 文件。
+从项目配置、代码模式和当前工作区变更中自动提取编码约束，沉淀到 spec 文件。
 
 #### 全量扫描模式
 
@@ -407,34 +407,34 @@ validators:
 
 基于代码结构扫描结果自动填充 `_map.md` 的各段落（Purpose、Architecture、Key Files、Module Map、Data Flow、Navigation Guide）。
 
-#### Review 模式（从 git 历史挖掘教训）
+#### Review 模式（基于当前变更提炼规范）
 
-**这是最强大的规范沉淀工具。** 自动从 git 历史中发现"AI 写了但被人工修正"的模式，提炼为规范规则：
+**这是最强大的规范沉淀工具。** 自动从当前工作区代码变更中提炼可沉淀的规则，避免等待历史积累：
 
 ```
-/cf-learn --review       # 扫描最近 30 次提交
-/cf-learn --review 50    # 扫描最近 50 次提交
+/cf-learn --review              # 扫描 staged + unstaged + untracked 代码变更
+/cf-learn --review --staged     # 仅扫描 staged 变更
 ```
 
 **工作原理**：
 
-1. **采集 git 历史**：从 `git log` 中区分 AI 提交（含 `Co-Authored-By: Claude` 等标记）和人工提交
-2. **识别修正对**：找出人工提交中修改了 AI 提交产出的文件，提取 diff
-3. **分析模式**：从 diff 中提取"删除了什么（错误做法）→ 替换成了什么（正确做法）"
-4. **聚类置信度**：同一模式出现 ≥2 次标记为高置信度，1 次为低置信度
-5. **去重过滤**：与现有 spec 对比，跳过已覆盖的规则
+1. **采集当前变更**：读取 `git diff --name-only`、`git diff --cached --name-only` 和 untracked 文件
+2. **读取变更证据**：按文件读取 unstaged/staged diff；新文件读取完整内容
+3. **提炼规则候选**：从当前改动归纳 Rule/Pattern/Anti-Pattern
+4. **聚类置信度**：同一模式在多个文件重复出现标记高置信度
+5. **去重过滤**：与现有 spec 对比，跳过已覆盖规则
 6. **用户确认**：按域分组展示，用户选择写入哪些
 
 输出示例：
 
 ```
-从最近 30 次提交中发现 N 个修正模式：
+从当前工作区变更中发现 N 个候选规则：
 
 scripts 域（建议写入 specs/scripts/code-standards.md）：
   1. [x] [高] Anti-Pattern: 禁止在循环中重复调用 load_config()
-         来源: abc1234 → def5678 (config_handler.py)
+         来源: src/core/code-flow/scripts/cf_x.py (staged diff)
   2. [x] [高] Rule: Hook 输出必须是合法 JSON
-         来源: 111aaaa → 222bbbb, 333cccc → 444dddd
+         来源: src/core/code-flow/scripts/cf_a.py, cf_b.py
 
 已覆盖（跳过）：
   - "禁止使用 print() 调试" → 已在 specs/scripts/code-standards.md 中
@@ -442,7 +442,7 @@ scripts 域（建议写入 specs/scripts/code-standards.md）：
 确认要写入的条目（编号 / all / high / none）：
 ```
 
-**最佳实践**：定期运行 `--review`（如每周一次），让规范体系从实际开发经验中自然生长。
+**最佳实践**：每次完成一轮实现并通过验证后运行一次 `--review`，趁上下文还在时沉淀规则。
 
 ---
 
@@ -781,7 +781,7 @@ codex_hooks = true
    /cf-task:archive feature-module          ← 三维校验 + 归档
 
 7. 规范沉淀
-   /cf-learn --review                       ← 从 git 历史挖掘教训，补充规范
+   /cf-learn --review                       ← 从当前变更提炼规范，补充 spec
 ```
 
 ### 规范持续改进循环
@@ -789,7 +789,7 @@ codex_hooks = true
 ```
 开发中 AI 生成代码 → 人工发现问题并修正 → 提交修正
                                               ↓
-定期运行 /cf-learn --review ← 从 git diff 中自动挖掘修正模式
+每轮开发后运行 /cf-learn --review ← 从当前变更中提炼可复用规则
                                               ↓
                               系统展示候选规则 → 用户确认写入 spec
                                               ↓
