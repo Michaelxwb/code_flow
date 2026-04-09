@@ -3,10 +3,12 @@
 ## 目录
 
 - [快速开始](#快速开始)
+- [速查表](#速查表)
 - [核心概念](#核心概念)
 - [CLI 命令](#cli-命令)
 - [规范管理命令](#规范管理命令)
 - [任务管理命令](#任务管理命令)
+- [并行开发命令（cf-lane）](#并行开发命令cf-lane)
 - [配置参考](#配置参考)
 - [工作流示例](#工作流示例)
 - [Hook 机制](#hook-机制)
@@ -128,6 +130,68 @@ code-flow init
 ```bash
 code-flow init --force
 ```
+
+---
+
+## 速查表
+
+### 一屏命令
+
+```bash
+# 初始化与升级
+code-flow init
+code-flow init --platform=codex
+code-flow init --force
+
+# 规范体系
+/cf-learn --map
+/cf-scan
+/cf-stats
+/cf-validate
+
+# 任务流
+/cf-task:align "需求描述"
+/cf-task:plan docs/xxx.md
+/cf-task:start xxx
+/cf-task:status
+/cf-task:archive xxx
+
+# 并行 lane
+cf-lane new <task-file>
+cf-lane list --all
+cf-lane status --all
+cf-lane sync <lane-id>
+cf-lane check-merge --json
+cf-lane doctor --fix
+cf-lane close <lane-id>
+cf-lane cancel <lane-id> --task-policy=rollback
+```
+
+### 常用参数速记
+
+| 命令 | 常用参数 | 作用 |
+|------|---------|------|
+| `code-flow init` | `--platform=claude\|codex` | 指定平台适配 |
+| `code-flow init` | `--force` | 强制覆盖工具文件 |
+| `cf-lane new` | `--dep-type=none\|soft\|hard` | 设置依赖类型 |
+| `cf-lane new` | `--dep-lane=<id>` | 指定上游 lane |
+| `cf-lane new` | `--task-sync=auto\|head-only` | task 同步策略 |
+| `cf-lane sync` | `--from=main\|dep` | 强制同步源 |
+| `cf-lane sync` | `--strategy=merge\|rebase` | 同步策略 |
+| `cf-lane close` | `--accept-soft-risk` | 允许 soft 未闭环强制关闭 |
+| `cf-lane cancel` | `--task-policy=keep\|rollback` | 取消时 task 处理策略 |
+| `cf-lane doctor` | `--fix` | 自动修复安全问题 |
+| `cf-lane doctor` | `--ci` | CI 模式巡检 |
+| `cf-lane *` | `--json` | 机器可解析输出 |
+
+### 快速诊断
+
+| 现象 | 首选命令 |
+|------|---------|
+| lane 状态异常 | `cf-lane status --all` |
+| 依赖/ownership 门禁失败 | `cf-lane check-merge --json` |
+| 元数据或锁疑似漂移 | `cf-lane doctor --fix` |
+| task 候选为空 | `cf-lane new`（无参数）并检查 `Lifecycle: approved` |
 
 ---
 
@@ -495,6 +559,7 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 - **Source**: docs/auth-design.md
 - **Created**: 2026-03-23
 - **Updated**: 2026-03-23
+- **Lifecycle**: approved
 
 ## Proposal
 实现用户注册、登录和 JWT 认证功能，支持 token 自动刷新。
@@ -521,6 +586,8 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 ```
 
 `--explore` 模式仅输出分析报告（功能域识别、依赖关系、风险点），不生成文件，适合先了解全貌再决定是否拆解。
+
+> 建议：如果后续会用 `cf-lane new` 建并行 lane，请保留 task 文件头的 `- **Lifecycle**: approved`，否则无参模式不会将其列为候选任务。
 
 ### `/cf-task:start` — 激活并编码
 
@@ -615,6 +682,111 @@ Status 更新为 blocked，阻塞原因记录在 Log 中。
 | 一致性 | Proposal 中的意图与实际代码变更一致 |
 
 校验通过后移动到 `.code-flow/tasks/archived/` 目录。如果同目录下存在同名的 `.design.md` 文件，会一并归档。归档后提示是否有新规范需同步到 specs。
+
+---
+
+## 并行开发命令（cf-lane）
+
+当一个仓库需要同时推进多个需求时，可使用 `cf-lane` + `git worktree` 建立并行开发 lane。
+
+### 命令入口
+
+| 场景 | 调用方式 |
+|------|---------|
+| Claude Code | `/cf-lane:new`、`/cf-lane:list`、`/cf-lane:status` 等 |
+| Codex CLI | `$cf-lane-new`、`$cf-lane-list`、`$cf-lane-status` 等 |
+| 终端脚本（调试） | `python3 .code-flow/scripts/cf_lane.py <subcommand> ...` |
+
+> 当前可用子命令：`new`、`list`、`status`、`sync`、`close`、`cancel`、`check-merge`、`doctor`。
+
+### 关键概念
+
+- 一个 lane 绑定一个 task 文件：`1 task = 1 lane = 1 branch = 1 worktree`
+- lane 元数据保存在共享 git common dir：`$(git rev-parse --git-common-dir)/code-flow/lanes.json`
+- task 所有权独占：同一 task 同时只能被一个 active lane 持有
+
+### `cf-lane new`
+
+```bash
+cf-lane new <task-file> [--dep-lane=<lane-id>] [--dep-type=none|soft|hard] [--branch=<name>] [--worktree=<path>] [--task-sync=auto|head-only]
+```
+
+行为摘要：
+- 无参数时：只列出 `approved` 且未绑定 lane 的 task 候选
+- 创建前校验：task 未被占用、依赖合法、无环、branch/path 不冲突
+- 默认基线：`none/soft -> main`，`hard -> dep-lane.branch`
+- `task-sync=auto` 支持未提交 task 快照同步（在 lane 分支自动提交）
+- 创建成功后自动尝试安装 pre-push hook，并触发 task 启动
+
+### `cf-lane list` / `cf-lane status`
+
+```bash
+cf-lane list [--all] [--json]
+cf-lane status [<lane-id>] [--all] [--json]
+```
+
+- `list`：查看 lane 列表
+- `status`：查看进度与依赖健康（含 `hard_blocked` / `soft_risk`）
+
+### `cf-lane sync`
+
+```bash
+cf-lane sync <lane-id> [--from=main|dep] [--strategy=merge|rebase]
+```
+
+- 默认同步源：
+  - `none -> main`
+  - `soft -> dep（存在时）否则 main`
+  - `hard -> dep`
+- 冲突时会自动 abort，并输出冲突文件列表
+
+### `cf-lane close` / `cf-lane cancel`
+
+```bash
+cf-lane close <lane-id> [--keep-worktree] [--accept-soft-risk]
+cf-lane cancel <lane-id> [--keep-worktree] [--task-policy=keep|rollback]
+```
+
+- `close` 强校验：
+  - task 必须全部 done
+  - `cf-validate` 通过
+  - hard 上游必须已 closed
+  - soft 上游未 closed 时需显式 `--accept-soft-risk`
+- `cancel`：
+  - `keep`：仅标记 lane 为 cancelled
+  - `rollback`：task 回退到 `Lifecycle: approved`，子任务状态回退为 `draft`
+
+### `cf-lane check-merge` / `cf-lane doctor`
+
+```bash
+cf-lane check-merge [--lane=<lane-id>] [--json]
+cf-lane doctor [--fix] [--ci] [--json]
+```
+
+- `check-merge`：校验 hard 依赖顺序和 task ownership 违规（建议用于 pre-push / CI）
+- `doctor`：巡检 lane 元数据与实体状态；`--fix` 仅执行安全修复
+- `doctor --ci`：跳过本地 worktree 存在性检查，适配 CI 环境
+
+### 并行开发最小流程
+
+```bash
+# 1) 创建两个并行 lane（示例：B hard 依赖 A）
+cf-lane new task-a
+cf-lane new task-b --dep-type=hard --dep-lane=<lane-a-id>
+
+# 2) 日常同步与观察
+cf-lane sync <lane-b-id>
+cf-lane status --all
+
+# 3) 合并前门禁
+cf-lane check-merge --json
+cf-lane doctor --ci --json
+
+# 4) 关闭或取消
+cf-lane close <lane-a-id>
+cf-lane close <lane-b-id>
+# 或：cf-lane cancel <lane-id> --task-policy=rollback
+```
 
 ---
 
@@ -759,28 +931,32 @@ codex_hooks = true
    code-flow init
    /cf-learn --map                          ← 填充导航地图
 
-2. ���求对齐（两种入口，按需选择）
+2. 需求对齐（两种入口，按需选择）
    a) 有设计文档:
       /cf-task:plan docs/feature-design.md  ← 缺口分析 + 拆解任务
    b) 只有一句话需求:
       /cf-task:align "给项目加用户认证"       ← 交互式需求细化，产出 .design.md
-      /cf-task:plan .code-flow/tasks/.../xxx.design.md  ← 从设计简���拆解任务
+      /cf-task:plan .code-flow/tasks/.../xxx.design.md  ← 从设计简报拆解任务
 
-3. 任务审阅
+3. （可选）并行开发拆 lane
+   /cf-lane:new feature-a
+   /cf-lane:new feature-b --dep-type=hard --dep-lane=<feature-a-lane-id>
+
+4. 任务审阅
    （review 任务文件，标注 #NOTES）
    /cf-task:note feature-module             ← 讨论并解决 Notes
 
-4. 编码实现
+5. 编码实现
    /cf-task:start feature-module            ← 按依赖顺序逐个编码
    （Hook 自动注入规范，AI 在约束下生成代码）
 
-5. 验证
+6. 验证
    /cf-validate                             ← 运行 lint + type check + test
 
-6. 归档
+7. 归档
    /cf-task:archive feature-module          ← 三维校验 + 归档
 
-7. 规范沉淀
+8. 规范沉淀
    /cf-learn --review                       ← 从当前变更提炼规范，补充 spec
 ```
 
@@ -869,7 +1045,15 @@ CF_DEBUG=1 printf '%s' '{"session_id":"test-session","prompt":"修改 @src/api/u
 
 ### 会话状态
 
-`cf_session_hook.py` 在每次新会话开始时重置注入状态（`.code-flow/.inject-state`），确保：
+`cf_session_hook.py` 在每次新会话开始时重置注入状态，默认写入：
+
+`$(git rev-parse --git-common-dir)/code-flow/inject-states/<worktree-id>/<session-id>.json`
+
+并在 SessionStart 前执行 GC（清理超过 TTL 且进程已不存在的历史会话文件）。
+
+兼容性：仍保留旧路径 `.code-flow/.inject-state` 的 fallback 读取，确保老项目平滑迁移。
+
+这样可以确保：
 - 每个会话独立（通过 session_id 隔离）
 - 已注入的 spec 不会重复注入
 
@@ -930,6 +1114,39 @@ CF_DEBUG=1 printf '%s' '{"session_id":"test-session","prompt":"修改 @src/api/u
 1. 用 `CF_DEBUG=1` 运行 Hook，查看 `context_tags` 和 `matched_specs`
 2. 检查 `config.yml` 中对应 spec 的 `tags` 是否包含文件路径能提取出的标签
 3. 当标签无法匹配时，Hook 会 fallback 到加载该域的所有 tier 1 specs
+
+### `cf-lane new` 无候选任务
+
+**现象**：执行 `cf-lane new`（无参数）显示 `No approved and unbound task found.`
+
+**排查步骤**：
+
+1. 检查 task 文件头是否包含 `- **Lifecycle**: approved`
+2. 检查该 task 是否已被 active lane 绑定（`cf-lane status --all`）
+3. 若有多个同名 task 文件，使用完整相对路径创建 lane
+
+### `cf-lane close` 报 `cf-validate not found in PATH`
+
+**现象**：执行 `cf-lane close <lane-id>` 失败，提示 `cf-validate not found in PATH`。
+
+**处理方式**：
+
+1. 在 AI 会话内先运行 `/cf-validate`（或对应 Codex skill）
+2. 或在终端提供可执行入口（例如配置 `CF_TASK_START_CMD` / 自定义脚本）
+3. 仅在确认风险后使用 `cf-lane cancel` 回收 lane，而非强行跳过校验
+
+### `cf-lane check-merge` 失败
+
+**常见原因**：
+
+- hard 依赖上游 lane 未 `closed`
+- 当前 lane 修改了其他 active lane 所拥有的 task 文件（ownership 违规）
+
+**建议处理**：
+
+1. `cf-lane status --all` 查看依赖与 owner 信息
+2. 先关闭上游 hard lane，再重试
+3. 将 task 文件修改移回其 owner lane
 
 ### Python 环境问题
 

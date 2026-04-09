@@ -35,15 +35,30 @@ def test_codex_init_deploys_skills_and_upgrade_overwrites_tool_files(tmp_path: P
 
     cf_init_skill = tmp_path / ".agents" / "skills" / "cf-init" / "SKILL.md"
     assert cf_init_skill.exists()
+    lane_skills = [
+        "cf-lane-new",
+        "cf-lane-list",
+        "cf-lane-status",
+        "cf-lane-sync",
+        "cf-lane-close",
+        "cf-lane-cancel",
+        "cf-lane-check-merge",
+        "cf-lane-doctor",
+    ]
+    for skill in lane_skills:
+        assert (tmp_path / ".agents" / "skills" / skill / "SKILL.md").exists()
     assert not (tmp_path / ".codex" / "prompts").exists()
 
     cf_init_skill.write_text("SENTINEL\n", encoding="utf-8")
+    lane_new_skill = tmp_path / ".agents" / "skills" / "cf-lane-new" / "SKILL.md"
+    lane_new_skill.write_text("SENTINEL_LANE\n", encoding="utf-8")
     version_file = tmp_path / ".code-flow" / ".version"
     version_file.write_text("0.0.0\n", encoding="utf-8")
 
     second = run_cli(tmp_path)
     assert second.returncode == 0, second.stderr
     assert cf_init_skill.read_text(encoding="utf-8") != "SENTINEL\n"
+    assert lane_new_skill.read_text(encoding="utf-8") != "SENTINEL_LANE\n"
 
 
 def test_codex_init_removes_non_empty_legacy_claude_skills_dir(tmp_path: Path) -> None:

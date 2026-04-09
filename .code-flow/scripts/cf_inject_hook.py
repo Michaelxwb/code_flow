@@ -61,7 +61,7 @@ def main() -> None:
 
         # Load state with session isolation (fix #10)
         sid = _session_id()
-        state = load_inject_state(project_root)
+        state = load_inject_state(project_root, sid)
         state_sid = state.get("session_id", "")
         if state_sid != sid:
             injected_specs = set()
@@ -115,10 +115,9 @@ def main() -> None:
         # Update state with newly injected spec paths
         new_injected = injected_specs | {s["path"] for s in selected}
         save_inject_state(project_root, {
-            "session_id": sid,
             "injected_specs": sorted(new_injected),
             "last_file": abs_path,
-        })
+        }, sid)
 
         payload = {
             "hookSpecificOutput": {

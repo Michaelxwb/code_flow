@@ -9,6 +9,8 @@
 - 外部依赖仅限 pyyaml，其他功能用标准库实现
 - 注入状态必须包含 session_id，支持多会话隔离
 - Codex Hook 的 session_id 必须从 stdin JSON 读取，禁止用 os.getpid() 替代
+- 规范匹配必须优先基于磁盘实际存在的 `.code-flow/specs` 构建有效映射，`path_mapping` 仅作补充，防止 stale 配置导致注入失效
+- SessionStart 必须重写 `.inject-state`（重置 `session_id` 和 `injected_specs`），禁止删除状态文件
 
 ## Patterns
 - 新增工具函数 → 放在 cf_core.py，被其他脚本导入
@@ -17,6 +19,8 @@
 - 新增 Codex Hook → 在 hooks.json 模板中注册（3 层结构：event → [{hooks:[{type,command}]}]），脚本放在 scripts/ 目录
 - Codex prompt 路径提取同时支持裸路径、`@path`、反引号路径，并在注入前做去重与噪音过滤
 - 测试 → tests/ 目录，使用 pytest，覆盖 happy path / fallback / 空输入
+- 域解析回退顺序固定：路径 pattern 命中 → 上下文 tag 命中域名 → 全域回退
+- 变更注入/统计域解析逻辑时，必须同时补充 Codex Hook、Claude Hook、Stats 三类回归测试
 
 ## Anti-Patterns
 - 禁止在 Hook stdout 输出非 JSON 内容（会破坏 Claude Code / Codex 协议）

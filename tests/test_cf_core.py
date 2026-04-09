@@ -2,6 +2,7 @@
 """Tests for cf_core.py — covers tag extraction, spec matching, tiered selection."""
 import json
 import os
+import subprocess
 import sys
 import tempfile
 
@@ -245,6 +246,39 @@ def test_inject_state_missing_file():
     with tempfile.TemporaryDirectory() as tmpdir:
         loaded = load_inject_state(tmpdir)
         assert loaded == {}
+
+
+def _init_git_repo(path: str) -> None:
+    subprocess.run(["git", "init"], cwd=path, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=path, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "config", "user.name", "Test User"], cwd=path, check=True, capture_output=True, text=True)
+    with open(os.path.join(path, "README.md"), "w", encoding="utf-8") as f:
+        f.write("demo\n")
+    subprocess.run(["git", "add", "README.md"], cwd=path, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=path, check=True, capture_output=True, text=True)
+
+
+def test_inject_state_new_common_dir_path_in_git_repo() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _init_git_repo(tmpdir)
+        payload = {"injected_specs": ["a.md"], "last_file": "x.py"}
+        save_inject_state(tmpdir, payload, session_id="sid-1")
+        loaded = load_inject_state(tmpdir, session_id="sid-1")
+        assert loaded["session_id"] == "sid-1"
+        assert loaded["injected_specs"] == ["a.md"]
+        legacy = os.path.join(tmpdir, ".code-flow", ".inject-state")
+        assert not os.path.exists(legacy)
+
+
+def test_inject_state_load_fallback_legacy_file() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(os.path.join(tmpdir, ".code-flow"), exist_ok=True)
+        legacy = os.path.join(tmpdir, ".code-flow", ".inject-state")
+        with open(legacy, "w", encoding="utf-8") as f:
+            json.dump({"session_id": "legacy", "injected_specs": ["legacy.md"]}, f)
+        loaded = load_inject_state(tmpdir, session_id="sid-legacy")
+        assert loaded["session_id"] == "legacy"
+        assert loaded["injected_specs"] == ["legacy.md"]
 
 
 # --- estimate_tokens ---

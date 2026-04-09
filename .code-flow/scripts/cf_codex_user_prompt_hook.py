@@ -95,7 +95,7 @@ def main() -> None:
             matched_domains = fallback_domains_for_context(effective_mapping, context_tags)
 
         sid = _session_id(data)
-        state = load_inject_state(project_root)
+        state = load_inject_state(project_root, sid)
         if state.get("session_id") != sid:
             injected_specs: set = set()
         else:
@@ -127,10 +127,9 @@ def main() -> None:
 
         new_injected = injected_specs | {s["path"] for s in selected}
         save_inject_state(project_root, {
-            "session_id": sid,
             "injected_specs": sorted(new_injected),
             "last_file": "",
-        })
+        }, sid)
 
         payload = {
             "hookSpecificOutput": {

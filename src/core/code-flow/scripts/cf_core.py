@@ -5,6 +5,8 @@ import os
 import re
 import sys
 
+from cf_lane_core import inject_state_file_path, legacy_inject_state_path
+
 # --- Config cache (fix #3: avoid re-parsing YAML on every hook call) ---
 
 _config_cache: dict = {}
@@ -435,23 +437,62 @@ def assemble_context(specs: list, heading: str) -> str:
     return "\n\n".join(parts)
 
 
-def load_inject_state(project_root: str) -> dict:
-    state_path = os.path.join(project_root, ".code-flow", ".inject-state")
+def _inject_sid(session_id: str = "") -> str:
+    if session_id:
+        return str(session_id)
+    env_sid = os.environ.get("CF_SESSION_ID", "").strip()
+    if env_sid:
+        return env_sid
+    return str(os.getpid())
+
+
+def _read_json_file(path: str) -> dict:
+    with open(path, "r", encoding="utf-8") as file:
+        data = json.load(file)
+    if isinstance(data, dict):
+        return data
+    return {}
+
+
+def _write_json_file(path: str, payload: dict) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as file:
+        json.dump(payload, file)
+
+
+def load_inject_state(project_root: str, session_id: str = "") -> dict:
+    sid = _inject_sid(session_id)
     try:
-        with open(state_path, "r", encoding="utf-8") as file:
-            data = json.load(file)
-        if isinstance(data, dict):
-            return data
+        state_path = inject_state_file_path(project_root, sid)
+        if os.path.exists(state_path):
+            return _read_json_file(state_path)
+    except Exception:
+        pass
+    try:
+        legacy_path = legacy_inject_state_path(project_root)
+        if os.path.exists(legacy_path):
+            return _read_json_file(legacy_path)
     except Exception:
         return {}
     return {}
 
 
-def save_inject_state(project_root: str, payload: dict) -> None:
-    state_path = os.path.join(project_root, ".code-flow", ".inject-state")
+def save_inject_state(project_root: str, payload: dict, session_id: str = "") -> None:
+    output = dict(payload or {})
+    sid_seed = session_id or str(output.get("session_id") or "")
+    sid = _inject_sid(sid_seed)
+    output["session_id"] = sid
+    if "pid" not in output:
+        output["pid"] = int(os.getpid())
     try:
-        with open(state_path, "w", encoding="utf-8") as file:
-            json.dump(payload, file)
+        state_path = inject_state_file_path(project_root, sid)
+        _write_json_file(state_path, output)
+        return
+    except Exception:
+        pass
+    try:
+        legacy_path = legacy_inject_state_path(project_root)
+        _write_json_file(legacy_path, output)
     except Exception:
         return
 
