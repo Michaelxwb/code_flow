@@ -104,6 +104,8 @@ CLI 场景：
 - 涉及数据库和接口的维度**必须具体到表结构和请求/响应 schema**
 - 不涉及数据库和接口时，**不要强制展开这些维度**
 - 用户说"你定"或"随意"时，根据代码库上下文选择最合理的默认方案，明确告知用户采用了什么
+- 输出语言默认与用户需求语言保持一致；若用户未明确指定语言，默认使用中文生成完整设计简报（标题、正文、表头均为中文）
+- 仅当用户明确要求英文或项目已有强约定要求英文文档时，才输出英文；避免中英混杂
 
 **中断恢复**：当任意两个维度已有实质内容时，立即写入草稿文件（Step 5 的写入逻辑，文件路径提前确定）。后续每轮对话更新草稿。这样即使会话中断，进度不会丢失。
 
@@ -114,54 +116,54 @@ CLI 场景：
 #### 完整模板（功能开发含 API + DB 场景）
 
 ```markdown
-# Design: <模块名称>
+# 设计简报：<模块名称>
 
-## Goal
+## 目标
 - <目标 1>
 - <目标 2>
 
-## Non-goals
+## 非目标
 - <排除项 1>（原因）
 
-## Database Design
+## 数据模型设计
 
 ### <表名> 表
-| Column | Type | Constraints | Notes |
+| 字段 | 类型 | 约束 | 说明 |
 |--------|------|-------------|-------|
 | ... | ... | ... | ... |
 
-### Indexes
+### 索引
 - <索引定义>
 
-## API Design
+## 接口设计
 
 ### <METHOD> <path>
-- Request: `{ field: type }`
-- Response <status>: `{ field: type }`
-- Error <status>: <错误描述>
+- 请求: `{ field: type }`
+- 响应 <status>: `{ field: type }`
+- 错误 <status>: <错误描述>
 
-## Technical Decisions
+## 技术决策
 - <决策 1>: <选择>（原因）
 
-## Constraints
+## 约束条件
 - <约束 1>
 
-## Acceptance Criteria
+## 验收标准
 - [ ] <可验证的验收条件 1>
 ```
 
 #### 精简模板（纯后台/重构/优化等不涉及 API+DB 的场景）
 
 ```markdown
-# Design: <模块名称>
+# 设计简报：<模块名称>
 
-## Goal
+## 目标
 - <目标 1>
 
-## Non-goals
+## 非目标
 - <排除项 1>（原因）
 
-## Technical Approach
+## 技术方案
 <根据需求类型填写>
 
 ### 变更范围
@@ -174,10 +176,10 @@ CLI 场景：
 ### 关键决策
 - <决策 1>: <选择>（原因）
 
-## Constraints
+## 约束条件
 - <约束 1>
 
-## Acceptance Criteria
+## 验收标准
 - [ ] <可验证的验收条件 1>
 ```
 
@@ -185,7 +187,7 @@ CLI 场景：
 
 **CLI 命令**：
 ```markdown
-## CLI Design
+## CLI 设计
 
 ### 命令结构
 - `command <arg>` — 说明
@@ -203,7 +205,7 @@ CLI 场景：
 
 **定时任务**：
 ```markdown
-## Technical Approach
+## 技术方案
 
 ### 调度策略
 - 执行频率: 每 5 分钟
@@ -221,7 +223,7 @@ CLI 场景：
 
 **重构**：
 ```markdown
-## Technical Approach
+## 技术方案
 
 ### 变更范围
 - src/services/auth.js → 拆分为 auth-token.js + auth-password.js
@@ -243,7 +245,7 @@ CLI 场景：
 
 用户确认后：
 
-1. 从 Goal 推导文件名（kebab-case），如 `user-auth`
+1. 从目标推导文件名（kebab-case），如 `user-auth`
 2. 按当前日期创建目录：`.code-flow/tasks/<YYYY-MM-DD>/`
 3. 用 Write 写入 `.code-flow/tasks/<YYYY-MM-DD>/<name>.design.md`
 
