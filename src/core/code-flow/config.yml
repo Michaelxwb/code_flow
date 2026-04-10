@@ -45,6 +45,7 @@ inject:
         - "*.config.*"
         - ".code-flow/**"
         - ".claude/**"
+        - ".costrict/**"
         - "node_modules/**"
         - "dist/**"
         - "build/**"

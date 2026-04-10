@@ -9,7 +9,7 @@ const { spawnSync } = require('child_process');
 const pkg = require('../package.json');
 
 const usage = [
-  'Usage: code-flow init [--force] [--platform=<claude|codex>]',
+  'Usage: code-flow init [--force] [--platform=<claude|codex|costrict>]',
   '       code-flow -v | --version',
   '       code-flow -h | --help'
 ].join('\n');
@@ -38,11 +38,13 @@ function ensurePython3() {
 
 function fileCategory(relPath) {
   if (relPath.startsWith('.claude/commands/')) return 'tool';
+  if (relPath.startsWith('.costrict/commands/')) return 'tool';
   if (relPath.startsWith('.agents/skills/')) return 'tool';
   if (relPath.startsWith('.code-flow/scripts/')) return 'tool';
   if (relPath === 'CLAUDE.md') return 'merge';
   if (relPath === 'AGENTS.md') return 'merge';
   if (relPath === '.claude/settings.local.json') return 'merge';
+  if (relPath === '.costrict/settings.local.json') return 'merge';
   if (relPath === '.codex/hooks.json') return 'tool';
   if (relPath === '.code-flow/config.yml') return 'merge';
   if (relPath === '.codex/config.toml') return 'tool';
@@ -373,6 +375,55 @@ function runInit(force, platform) {
     }
   }
 
+  // Process Costrict adapter
+  if (platform === 'costrict') {
+    const costrictMdSrc = path.join(adaptersDir, 'costrict', 'AGENTS.md');
+    const costrictMdDest = path.join(cwd, 'AGENTS.md');
+    if (!fs.existsSync(costrictMdDest)) {
+      created.push('AGENTS.md');
+      fs.copyFileSync(costrictMdSrc, costrictMdDest);
+    } else if (mode === 'force') {
+      updated.push('AGENTS.md');
+      fs.copyFileSync(costrictMdSrc, costrictMdDest);
+    } else if (mode === 'upgrade') {
+      const added = mergeClaudeMd(costrictMdSrc, costrictMdDest);
+      if (added.length > 0) {
+        merged.push(`AGENTS.md — added: ${added.join(', ')}`);
+      } else {
+        skipped.push('AGENTS.md');
+      }
+    } else {
+      skipped.push('AGENTS.md');
+    }
+
+    fs.mkdirSync(path.join(cwd, '.costrict', 'commands'), { recursive: true });
+    processDir(
+      path.join(adaptersDir, 'costrict', 'commands'),
+      path.join(cwd, '.costrict', 'commands'),
+      '.costrict/commands'
+    );
+
+    const settingsSrc = path.join(adaptersDir, 'costrict', 'settings.local.json');
+    const settingsDest = path.join(cwd, '.costrict', 'settings.local.json');
+    if (!fs.existsSync(settingsDest)) {
+      created.push('.costrict/settings.local.json');
+      fs.mkdirSync(path.dirname(settingsDest), { recursive: true });
+      fs.copyFileSync(settingsSrc, settingsDest);
+    } else if (mode === 'force') {
+      updated.push('.costrict/settings.local.json');
+      fs.copyFileSync(settingsSrc, settingsDest);
+    } else if (mode === 'upgrade') {
+      const added = mergeSettingsJson(settingsSrc, settingsDest);
+      if (added.length > 0) {
+        merged.push(`.costrict/settings.local.json — added: ${added.join(', ')}`);
+      } else {
+        skipped.push('.costrict/settings.local.json');
+      }
+    } else {
+      skipped.push('.costrict/settings.local.json');
+    }
+  }
+
   // Process Codex adapter
   if (platform === 'codex') {
     const agentsMdSrc = path.join(adaptersDir, 'codex', 'AGENTS.md');
@@ -496,6 +547,15 @@ function runInit(force, platform) {
       process.stdout.write('  Run $cf-learn in Codex CLI to update specs with project conventions\n');
       process.stdout.write('  Run $cf-learn --map to update retrieval maps\n');
     }
+  } else if (platform === 'costrict') {
+    if (mode === 'fresh') {
+      process.stdout.write('  1. Edit AGENTS.md — fill in team/project info\n');
+      process.stdout.write('  2. Run /cf-init in Costrict to auto-scan and populate specs\n');
+      process.stdout.write('     Or manually edit .code-flow/specs/ to fill in your coding standards\n');
+    } else {
+      process.stdout.write('  Run /cf-learn in Costrict to update specs with project conventions\n');
+      process.stdout.write('  Run /cf-learn --map to update retrieval maps\n');
+    }
   } else {
     if (mode === 'fresh') {
       process.stdout.write('  1. Edit CLAUDE.md — fill in team/project info\n');
@@ -528,8 +588,8 @@ if (args[0] === 'init') {
   const force = args.includes('--force');
   const rawPlatform = parsePlatform(args);
   const platform = rawPlatform === null ? 'claude' : rawPlatform;
-  if (platform !== 'claude' && platform !== 'codex') {
-    fail(`Error: --platform must be "claude" or "codex", got "${platform}".`);
+  if (platform !== 'claude' && platform !== 'codex' && platform !== 'costrict') {
+    fail(`Error: --platform must be "claude", "codex", or "costrict", got "${platform}".`);
   }
   runInit(force, platform);
 }

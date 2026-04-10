@@ -64,6 +64,7 @@ code-flow --help
 |------|------|
 | [Claude Code](https://claude.ai/code) | ✅ 完整支持 |
 | [Codex CLI](https://github.com/openai/codex) | ✅ 完整支持 |
+| [Costrict](https://costrict.com) | ✅ 完整支持 |
 
 ## 生成的目录与文件
 
@@ -77,6 +78,8 @@ CLAUDE.md         # Claude Code 全局指令
 AGENTS.md         # Codex CLI 全局指令
 .agents/skills/   # Codex Skills（项目级）
   <skill>/SKILL.md
+.costrict/        # Costrict 适配
+AGENTS.md         # Costrict 全局指令（与 Codex 共用）
 ```
 
 ## 依赖说明
