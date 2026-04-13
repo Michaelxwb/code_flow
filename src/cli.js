@@ -228,6 +228,31 @@ function copyFileIfMissing(srcFile, destFile) {
   fs.copyFileSync(srcFile, destFile);
 }
 
+// Files renamed in 0.x → 1.x that may linger in upgraded projects.
+// Each entry: { path: relative-to-cwd, replacedBy: hint string for the warning }.
+const ORPHAN_FILES = [
+  {
+    path: '.code-flow/scripts/cf_codex_user_prompt_hook.py',
+    replacedBy: '.code-flow/scripts/cf_user_prompt_hook.py',
+  },
+];
+
+function removeOrphanFiles(cwd, removed) {
+  for (const orphan of ORPHAN_FILES) {
+    const abs = path.join(cwd, orphan.path);
+    if (!fs.existsSync(abs)) continue;
+    try {
+      fs.unlinkSync(abs);
+      removed.push(orphan.path);
+    } catch (error) {
+      const code = error && error.code ? ` (${error.code})` : '';
+      process.stderr.write(
+        `Warning: failed to remove orphan ${orphan.path}${code}; replaced by ${orphan.replacedBy}. Remove it manually.\n`
+      );
+    }
+  }
+}
+
 function removeLegacyClaudeSkills(cwd, removed) {
   const legacySkills = path.join(cwd, '.claude', 'skills');
   if (!fs.existsSync(legacySkills)) return;
@@ -492,6 +517,11 @@ function runInit(force, platform) {
 
   // Clean up legacy .claude/skills/
   removeLegacyClaudeSkills(cwd, removed);
+
+  // Clean up renamed orphan scripts (only meaningful on upgrade)
+  if (mode === 'upgrade' || mode === 'force') {
+    removeOrphanFiles(cwd, removed);
+  }
 
   // Install pyyaml
   const pip = spawnSync('python3', ['-m', 'pip', 'install', 'pyyaml'], {

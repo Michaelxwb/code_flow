@@ -21,6 +21,17 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .code-flow/scripts/cf_user_prompt_hook.py",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }

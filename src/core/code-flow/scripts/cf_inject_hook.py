@@ -7,6 +7,7 @@ from cf_core import (
     _log,
     assemble_context,
     build_effective_mapping,
+    debug_log,
     extract_context_tags,
     fallback_domains_for_context,
     is_code_file,
@@ -16,14 +17,13 @@ from cf_core import (
     match_specs_by_tags,
     normalize_spec_entry,
     read_matched_specs,
+    resolve_session_id,
     save_inject_state,
     select_specs_tiered,
 )
 
 
-def _session_id() -> str:
-    """Derive a session identifier to avoid multi-session state collision (fix #10)."""
-    return str(os.getpid())
+
 
 
 def main() -> None:
@@ -60,7 +60,7 @@ def main() -> None:
         domains = match_domains(rel_path, effective_mapping)
 
         # Load state with session isolation (fix #10)
-        sid = _session_id()
+        sid = resolve_session_id(data)
         state = load_inject_state(project_root)
         state_sid = state.get("session_id", "")
         if state_sid != sid:
@@ -98,6 +98,10 @@ def main() -> None:
             # Fallback: if no tier 1 spec matched by tags, load ALL tier 1 specs
             if not has_tier1_match:
                 matched = [normalize_spec_entry(e) for e in specs_config if normalize_spec_entry(e).get("path")]
+                debug_log(
+                    f"inject_hook fallback domain={domain} path={rel_path} loaded={len(matched)} reason=no_tag_match",
+                    project_root,
+                )
 
             # Filter already-injected
             new_matched = [m for m in matched if m["path"] not in injected_specs]
@@ -114,6 +118,7 @@ def main() -> None:
 
         # Update state with newly injected spec paths
         new_injected = injected_specs | {s["path"] for s in selected}
+        debug_log(f"inject_hook injected={[s['path'] for s in selected]} path={rel_path}", project_root)
         save_inject_state(project_root, {
             "session_id": sid,
             "injected_specs": sorted(new_injected),

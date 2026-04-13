@@ -67,8 +67,8 @@ your-project/
 │   ├── validation.yml          # 验证规则（lint、type check、test）
 │   ├── scripts/                # Python 运行时脚本
 │   │   ├── cf_core.py                    # 核心工具库
-│   │   ├── cf_inject_hook.py             # PreToolUse Hook（Claude）
-│   │   ├── cf_codex_user_prompt_hook.py  # UserPromptSubmit Hook（Codex）
+│   │   ├── cf_inject_hook.py             # PreToolUse Hook（Claude/Costrict）
+│   │   ├── cf_user_prompt_hook.py        # UserPromptSubmit Hook（Claude/Codex/Costrict 通用）
 │   │   ├── cf_session_hook.py            # SessionStart Hook：重置会话状态
 │   │   ├── cf_scan.py                    # Token 审计脚本
 │   │   └── cf_stats.py                   # 统计脚本
@@ -759,7 +759,7 @@ Codex CLI 的 Hook 配置。code-flow 自动生成以下 Hook：
 
 | Hook 事件 | 触发时机 | 脚本 | 作用 |
 |-----------|---------|------|------|
-| UserPromptSubmit | 每次提交 prompt 前 | `cf_codex_user_prompt_hook.py` | 从 prompt 中提取文件引用，注入匹配的 specs |
+| UserPromptSubmit | 每次提交 prompt 前 | `cf_user_prompt_hook.py` | 从 prompt 提取文件引用与中英文关键词，注入匹配的 specs |
 | SessionStart | 新会话开始 | `cf_session_hook.py` | 重置注入状态，避免重复注入 |
 
 ### `.costrict/settings.local.json`
@@ -861,18 +861,18 @@ AI 调用 Edit("src/api/users.py", ...)
 code-flow 通过 Codex 的 `UserPromptSubmit` Hook 在 prompt 提交前注入规范：
 
 ```
-用户输入 "修改 @src/api/users.py 的权限验证逻辑"
+用户输入 "修改 @src/api/users.py 的权限验证逻辑，注意性能"
   → Codex CLI 触发 UserPromptSubmit Hook
-  → cf_codex_user_prompt_hook.py 从 stdin 接收 JSON（prompt + session_id）
-  → 从 prompt 文本中提取文件引用（@前缀、反引号、裸路径）
-  → 文件路径映射到域 → 提取上下文标签
-  → 标签与 config.yml 中的 specs tags 做交集匹配
-  → 若无文件引用则 fallback：注入所有域的 Tier 0 导航地图
+  → cf_user_prompt_hook.py 从 stdin 接收 JSON（prompt + session_id）
+  → 从 prompt 文本中提取文件引用（@前缀、反引号、裸路径）→ context_tags
+  → 从 prompt 文本中提取中英文关键词（"性能"/performance、"接口"/api 等）→ prompt_tags
+  → 文件路径映射到域；context_tags ∪ prompt_tags 与 config.yml 中的 specs tags 做交集匹配
+  → 若无文件引用且 prompt_tags 也无命中：fallback 注入所有域的 Tier 0 导航地图
   → 通过 stdout JSON 返回 hookSpecificOutput.additionalContext
   → 规范内容注入到本次 prompt 上下文
 ```
 
-**两者差异**：Claude 在"编辑文件时"注入；Codex 在"提交 prompt 时"注入。Costrict 与 Claude 相同，在"编辑文件时"注入。效果相同，触发时机不同。
+**三端差异**：Claude/Costrict 同时在"提交 prompt 时（UserPromptSubmit）"和"编辑文件时（PreToolUse）"双重注入；Codex 只在"提交 prompt 时"注入（无 PreToolUse Edit hook）。三端 UserPromptSubmit 共用 `cf_user_prompt_hook.py`，session_id 由 `resolve_session_id()` 统一解析，PreToolUse 与 UserPromptSubmit 共享 `.inject-state` 不会重复注入。
 
 ### Costrict 工作原理
 
@@ -911,7 +911,7 @@ CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool
 **Codex Hook**：
 
 ```bash
-CF_DEBUG=1 printf '%s' '{"session_id":"test-session","prompt":"修改 @src/api/users.py 的权限逻辑"}' | python3 .code-flow/scripts/cf_codex_user_prompt_hook.py
+CF_DEBUG=1 printf '%s' '{"session_id":"test-session","prompt":"修改 @src/api/users.py 的权限逻辑，注意性能"}' | python3 .code-flow/scripts/cf_user_prompt_hook.py
 ```
 
 **Costrict Hook**（与 Claude Hook 相同）：
@@ -958,14 +958,15 @@ CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool
 
 **排查步骤**：
 
-1. 检查 `.codex/hooks.json` 是否存在且结构正确（3 层：`hooks → event → [{hooks:[{type,command}]}]`）
+1. 检查 `.codex/hooks.json` 是否存在且结构正确（3 层：`hooks → event → [{hooks:[{type,command}]}]`），且 command 指向 `cf_user_prompt_hook.py`（老版本旧名 `cf_codex_user_prompt_hook.py` 已在 upgrade 时自动清理）
 2. 检查 `.codex/config.toml` 中 `features.codex_hooks = true` 是否已启用
-3. 检查 prompt 中是否包含可识别的文件引用（`@path`、反引号或含 `/` 的路径）
+3. 检查 prompt 中是否包含可识别的文件引用（`@path`、反引号或含 `/` 的路径），或包含中英文关键词（如"性能"/performance、"接口"/api 等，详见 `cf_core.py:_TAG_ALIASES`）
 4. 手动运行 Hook 测试：
    ```bash
-   printf '%s' '{"session_id":"test","prompt":"修改 @src/api/users.py"}' | python3 .code-flow/scripts/cf_codex_user_prompt_hook.py
+   printf '%s' '{"session_id":"test","prompt":"修改 @src/api/users.py 注意性能"}' | python3 .code-flow/scripts/cf_user_prompt_hook.py
    ```
-5. 若 prompt 中无文件引用，Hook 会 fallback 注入所有域的 Tier 0 导航地图，这是正常行为
+5. 若 prompt 中既无文件引用也无关键词命中，Hook 会 fallback 注入所有域的 Tier 0 导航地图，这是正常行为
+6. `CF_DEBUG=1` 时会把 prompt_tags 命中、最终注入 spec、fallback 触发等关键节点写入 `.code-flow/.debug.log`，建议把它加入 `.gitignore`
 
 ### Codex 命令不可用
 

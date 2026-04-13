@@ -56,3 +56,22 @@ def test_codex_init_removes_non_empty_legacy_claude_skills_dir(tmp_path: Path) -
     assert not (tmp_path / ".claude" / "skills").exists()
     assert "Removed (deprecated):" in result.stdout
     assert ".claude/skills/" in result.stdout
+
+
+def test_codex_upgrade_removes_orphan_codex_user_prompt_hook(tmp_path: Path) -> None:
+    """0.x → current upgrade must clean up the renamed cf_codex_user_prompt_hook.py orphan."""
+    # First init to set up baseline
+    first = run_cli(tmp_path)
+    assert first.returncode == 0, first.stderr
+
+    # Simulate an old install: write the orphan file + downgrade .version
+    orphan = tmp_path / ".code-flow" / "scripts" / "cf_codex_user_prompt_hook.py"
+    orphan.write_text("# legacy script, should be removed on upgrade\n", encoding="utf-8")
+    (tmp_path / ".code-flow" / ".version").write_text("0.0.1\n", encoding="utf-8")
+
+    # Re-run init → upgrade path
+    second = run_cli(tmp_path)
+    assert second.returncode == 0, second.stderr
+    assert not orphan.exists(), "orphan cf_codex_user_prompt_hook.py must be removed on upgrade"
+    assert "Removed (deprecated):" in second.stdout
+    assert "cf_codex_user_prompt_hook.py" in second.stdout

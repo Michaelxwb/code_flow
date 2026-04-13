@@ -143,38 +143,18 @@ path_mapping:
 >       tier: 1
 > ```
 
-### 3. 生成 .code-flow/validation.yml
+### 3. 裁剪 .code-flow/validation.yml
 
-如果文件不存在，用 Write 生成：
+`code-flow init` 已把默认模板（来源 `src/core/code-flow/validation.yml`）拷贝到 `.code-flow/validation.yml`，**不要重写整份文件**。
 
-```yaml
-validators:
-  - name: "TypeScript 类型检查"
-    trigger: "**/*.{ts,tsx}"
-    command: "npx tsc --noEmit"
-    timeout: 30000
-    on_fail: "检查类型定义，参见 specs/frontend/quality-standards.md"
+用 Read 打开它，根据步骤 1 确定的技术栈，用 Edit 删除不相关的 validator：
 
-  - name: "ESLint"
-    trigger: "**/*.{ts,tsx,js,jsx}"
-    command: "npx eslint {files}"
-    timeout: 15000
-    on_fail: "运行 npx eslint --fix 自动修复"
+- 纯前端项目：删除 `Python 类型检查`、`Pytest`
+- 纯后端项目（Python/Go）：删除 `TypeScript 类型检查`、`Vue 类型检查`、`ESLint`、`Stylelint`、`前端单元测试`
+- fullstack：全部保留
+- 其他语言栈（Go/Rust/Java）：按实际工具链增删，格式保持与模板一致
 
-  - name: "Python 类型检查"
-    trigger: "**/*.py"
-    command: "python3 -m mypy {files}"
-    timeout: 30000
-    on_fail: "检查类型注解，参见 specs/backend/code-quality-performance.md"
-
-  - name: "Pytest"
-    trigger: "**/*.py"
-    command: "python3 -m pytest --tb=short -q"
-    timeout: 60000
-    on_fail: "测试失败，检查断言和 mock 是否需要更新"
-```
-
-根据技术栈只保留相关 validators。
+若 `.code-flow/validation.yml` 因异常缺失，提示用户重跑 `code-flow init`，不要手工拼装 yaml。
 
 ### 4. 生成 spec 文件
 

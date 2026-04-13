@@ -1,47 +1,33 @@
 # Python Scripts Retrieval Map
 
-> code-flow Python 脚本层导航（Hook 注入 / 审计 / 统计）。
-
-## Purpose
-
-定位脚本职责与入口，快速判断应修改哪个文件。
+> code-flow Python 脚本层导航。定位脚本职责与入口，快速判断应改哪个文件。
 
 ## Entrypoints
 
-- Claude PreToolUse：`.code-flow/scripts/cf_inject_hook.py`
-- Codex UserPromptSubmit：`.code-flow/scripts/cf_codex_user_prompt_hook.py`
-- SessionStart（共用）：`.code-flow/scripts/cf_session_hook.py`
-- 审计工具：`.code-flow/scripts/cf_scan.py`
-- 统计工具：`.code-flow/scripts/cf_stats.py`
+- PreToolUse（Claude/Costrict）：`cf_inject_hook.py`
+- UserPromptSubmit（三端通用）：`cf_user_prompt_hook.py`
+- SessionStart：`cf_session_hook.py`
+- 审计：`cf_scan.py`；统计：`cf_stats.py`
 
-## Core Module
+## Core Module: `cf_core.py`
 
-- `.code-flow/scripts/cf_core.py`
-  - `load_config()`：读取 `.code-flow/config.yml`（含缓存）
-  - `extract_context_tags()`：路径提取标签
-  - `match_domains()`：路径匹配 domain
-  - `match_specs_by_tags()`：按标签匹配 spec
-  - `read_matched_specs()`：读取命中的 spec
-  - `select_specs_tiered()`：按 Tier0/Tier1 + budget 选取
-  - `assemble_context()`：拼装注入上下文
-  - `load_inject_state()` / `save_inject_state()`：会话注入状态
+- `load_config()` / `load_inject_state()` / `save_inject_state()`
+- `extract_context_tags(path)`：路径 → tag
+- `extract_prompt_tags(text)`：中英文关键词 → canonical tag（见 `_TAG_ALIASES`）
+- `match_domains(path)` / `match_specs_by_tags(specs, ctx_tags, prompt_tags=None)`
+- `read_matched_specs()` / `select_specs_tiered()` / `assemble_context()`
+- `resolve_session_id(hook_data)`：hook 给的 session_id 优先，无则回退 PID（PreToolUse / UserPromptSubmit 共享同一 inject-state）
+- `debug_log(msg)`：仅 `CF_DEBUG=1` 写 `.code-flow/.debug.log`
 
 ## Data Flow
 
-### Claude
-
-`file_path -> match_domains/tags -> match_specs -> select_specs_tiered -> assemble_context -> stdout JSON`
-
-### Codex
-
-`prompt -> extract_paths_from_prompt -> match_domains/tags -> match_specs -> select_specs_tiered -> assemble_context -> stdout JSON`
+- PreToolUse：`file_path → ctx_tags → match_specs_by_tags → select → JSON`
+- UserPromptSubmit：`prompt → paths+ctx_tags + prompt_tags → match → select → JSON`
 
 ## Quick Navigation
 
-- 改标签提取：`cf_core.py` `extract_context_tags()`
-- 改匹配策略：`cf_core.py` `match_specs_by_tags()`
-- 改预算：`cf_core.py` `select_specs_tiered()`
-- 改 Claude 注入：`cf_inject_hook.py` `main()`
-- 改 Codex 注入：`cf_codex_user_prompt_hook.py` `extract_paths_from_prompt()` / `main()`
-- 改审计输出：`cf_scan.py`
-- 改统计输出：`cf_stats.py`
+- 改 tag 提取 / 别名：`cf_core.py::extract_context_tags|extract_prompt_tags|_TAG_ALIASES`
+- 改匹配 / 预算：`cf_core.py::match_specs_by_tags|select_specs_tiered`
+- 改 PreToolUse 注入：`cf_inject_hook.py::main`
+- 改 UserPromptSubmit 注入：`cf_user_prompt_hook.py::main|extract_paths_from_prompt`
+- 调试：`CF_DEBUG=1` → `.code-flow/.debug.log`（建议加入 `.gitignore`）

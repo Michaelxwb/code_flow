@@ -59,53 +59,26 @@ inject:
         - ".git/**"
 
 path_mapping:
-    frontend:
+    cli:
         patterns:
-            - "src/components/**"
-            - "src/pages/**"
-            - "src/hooks/**"
-            - "src/styles/**"
-            - "**/*.tsx"
-            - "**/*.jsx"
-            - "**/*.css"
-            - "**/*.scss"
+            - "src/cli.js"
+            - "src/adapters/**/*.json"
+            - "src/adapters/**/*.toml"
         specs:
-            - path: "frontend/_map.md"
+            - path: "cli/_map.md"
               tags: ["*"]
               tier: 0
-            - path: "frontend/directory-structure.md"
-              tags: ["directory", "structure", "folder", "route", "page", "layout"]
+            - path: "cli/code-standards.md"
+              tags: ["cli", "init", "upgrade", "merge", "platform", "version", "adapter"]
               tier: 1
-            - path: "frontend/quality-standards.md"
-              tags: ["quality", "type", "lint", "error", "test", "state", "strict"]
-              tier: 1
-            - path: "frontend/component-specs.md"
-              tags: ["component", "prop", "hook", "render", "ui", "style"]
-              tier: 1
-    backend:
+    scripts:
         patterns:
-            - "services/**"
-            - "api/**"
-            - "models/**"
-            - "*.py"
-            - "**/*.py"
-            - "**/*.go"
+            - "src/core/code-flow/scripts/**/*.py"
+            - "tests/**/*.py"
         specs:
-            - path: "backend/_map.md"
+            - path: "scripts/_map.md"
               tags: ["*"]
               tier: 0
-            - path: "backend/directory-structure.md"
-              tags: ["directory", "structure", "folder", "module", "layout"]
-              tier: 1
-            - path: "backend/logging.md"
-              tags: ["log", "logging", "debug", "trace", "monitor", "observe"]
-              tier: 1
-            - path: "backend/database.md"
-              tags: ["database", "db", "sql", "orm", "model", "migration", "query", "table", "schema"]
-              tier: 1
-            - path: "backend/platform-rules.md"
-              tags: ["api", "deploy", "config", "version", "compatibility", "release", "flag"]
-              tier: 1
-            - path: "backend/code-quality-performance.md"
-              tags: ["quality", "performance", "error", "exception", "test", "timeout", "retry", "cache"]
+            - path: "scripts/code-standards.md"
+              tags: ["hook", "inject", "config", "spec", "tag", "scan", "stats", "session", "log", "performance", "quality", "test"]
               tier: 1

@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", 
 
 from cf_core import (
     extract_context_tags,
+    extract_prompt_tags,
     match_specs_by_tags,
     normalize_spec_entry,
     select_specs_tiered,
@@ -18,6 +19,8 @@ from cf_core import (
     load_config,
     load_inject_state,
     save_inject_state,
+    resolve_session_id,
+    debug_log,
 )
 
 
@@ -84,6 +87,56 @@ def test_extract_tags_filename_semantic():
     tags = extract_context_tags("src/logger.py")
     assert "log" in tags  # logger → log, logging
     assert "logging" in tags
+
+
+# --- extract_prompt_tags ---
+
+
+def test_extract_prompt_tags_chinese_only():
+    hits = extract_prompt_tags("写一个用户登录服务，注意性能和异常处理")
+    assert "performance" in hits
+    assert "exception" in hits
+
+
+def test_extract_prompt_tags_english_only():
+    hits = extract_prompt_tags("add retry and cache to query layer")
+    assert "retry" in hits
+    assert "cache" in hits
+    assert "query" in hits
+
+
+def test_extract_prompt_tags_mixed():
+    hits = extract_prompt_tags("给 API 加 timeout 和日志")
+    assert "api" in hits
+    assert "timeout" in hits
+    assert "log" in hits
+
+
+def test_extract_prompt_tags_case_insensitive_ascii():
+    hits = extract_prompt_tags("PERFORMANCE matters")
+    assert "performance" in hits
+
+
+def test_extract_prompt_tags_empty_or_blank():
+    assert extract_prompt_tags("") == set()
+    assert extract_prompt_tags("   \n\t") == set()
+    assert extract_prompt_tags(None) == set()
+
+
+def test_extract_prompt_tags_no_hits():
+    assert extract_prompt_tags("hello world, nothing relevant here") == set()
+
+
+def test_extract_prompt_tags_word_boundary_short_ascii():
+    """'ui' inside 'guide' must NOT match; 'use db layer' must match 'database'."""
+    assert "ui" not in extract_prompt_tags("please write a complete guide")
+    assert "database" in extract_prompt_tags("use db layer for persistence")
+
+
+def test_extract_prompt_tags_word_boundary_api():
+    """'api' inside 'rapid' must NOT match; 'the api route' must match."""
+    assert "api" not in extract_prompt_tags("rapid prototyping")
+    assert "api" in extract_prompt_tags("expose the api route")
 
 
 # --- normalize_spec_entry ---
@@ -270,3 +323,86 @@ if __name__ == "__main__":
             traceback.print_exc()
     print(f"\n{passed} passed, {failed} failed")
     sys.exit(1 if failed else 0)
+
+# --- match_specs_by_tags with prompt_tags (TASK-002) ---
+def test_match_with_prompt_tags_only():
+    """path_tags empty + prompt_tags={"performance"} should match performance spec."""
+    # performance tag is in _TAG_ALIASES but not in SAMPLE_SPECS tags
+    # Let's add a performance-related spec to test properly
+    perf_specs = SAMPLE_SPECS + [{"path": "backend/performance.md", "tags": ["performance", "perf"], "tier": 1}]
+    matched, has_t1 = match_specs_by_tags(perf_specs, set(), prompt_tags={"performance"})
+    paths = [m["path"] for m in matched]
+    assert "backend/_map.md" in paths
+    assert "backend/performance.md" in paths
+    assert has_t1 is True
+
+def test_match_with_path_and_prompt_tags():
+    """path_tags={"api"} + prompt_tags={"log"} should match multiple specs."""
+    matched, has_t1 = match_specs_by_tags(SAMPLE_SPECS, {"api"}, prompt_tags={"log"})
+    paths = [m["path"] for m in matched]
+    assert "backend/_map.md" in paths
+    assert "backend/platform-rules.md" in paths  # api tag from path
+    assert "backend/logging.md" in paths          # log tag from prompt
+    assert has_t1 is True
+
+def test_match_backward_compatibility():
+    """Default prompt_tags=None should behave exactly like before."""
+    tags = extract_context_tags("api/auth.py")
+    # Call without prompt_tags
+    matched_old, has_t1_old = match_specs_by_tags(SAMPLE_SPECS, tags)
+    # Call with explicit None
+    matched_new, has_t1_new = match_specs_by_tags(SAMPLE_SPECS, tags, prompt_tags=None)
+    # Results should be identical
+    assert [m["path"] for m in matched_old] == [m["path"] for m in matched_new]
+    assert has_t1_old == has_t1_new
+
+# --- resolve_session_id ---
+def test_resolve_session_id_from_hook_data():
+    """When hook_data contains session_id, should return it."""
+    hook_data = {"session_id": "abc123", "other": "data"}
+    assert resolve_session_id(hook_data) == "abc123"
+
+def test_resolve_session_id_fallback_to_pid():
+    """When hook_data missing session_id, should fall back to PID."""
+    hook_data = {"prompt": "test"}
+    result = resolve_session_id(hook_data)
+    assert result == str(os.getpid())
+
+def test_resolve_session_id_empty_dict():
+    """Empty dict should fall back to PID."""
+    result = resolve_session_id({})
+    assert result == str(os.getpid())
+
+# --- debug_log ---
+def test_debug_log_silent_without_env():
+    """When CF_DEBUG not set, should not write anything."""
+    original = os.environ.get("CF_DEBUG")
+    if "CF_DEBUG" in os.environ:
+        del os.environ["CF_DEBUG"]
+    try:
+        # Should not raise, should not create file
+        debug_log("test message")
+        assert not os.path.exists(".code-flow/.debug.log")
+    finally:
+        if original is not None:
+            os.environ["CF_DEBUG"] = original
+
+def test_debug_log_writes_when_enabled():
+    """When CF_DEBUG=1, should append to .debug.log."""
+    original = os.environ.get("CF_DEBUG")
+    os.environ["CF_DEBUG"] = "1"
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            debug_log("test hook test_event detail=foo", project_root=tmpdir)
+            log_path = os.path.join(tmpdir, ".code-flow", ".debug.log")
+            assert os.path.exists(log_path)
+            with open(log_path, "r") as f:
+                content = f.read()
+            assert "test hook test_event detail=foo" in content
+            # Should be ISO timestamp format
+            assert "T" in content
+    finally:
+        if original is None:
+            del os.environ["CF_DEBUG"]
+        else:
+            os.environ["CF_DEBUG"] = original
