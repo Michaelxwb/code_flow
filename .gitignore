@@ -1,4 +1,4 @@
 .code-flow/.inject-state
 .idea/
-
+.DS_Store
 node_modules/
