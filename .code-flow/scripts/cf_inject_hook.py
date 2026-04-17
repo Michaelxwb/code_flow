@@ -145,7 +145,7 @@ def main() -> None:
                 "context_tags": sorted(context_tags),
                 "matched_specs": [s["path"] for s in selected],
             }
-        sys.stdout.write(json.dumps(payload))
+        sys.stdout.write(json.dumps(payload, ensure_ascii=False))
         cleanup_none_logfile()
     except Exception as exc:
         # Fix #9: log errors to stderr instead of silently swallowing
