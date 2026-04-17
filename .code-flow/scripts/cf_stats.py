@@ -4,7 +4,7 @@ import os
 import sys
 from typing import Optional
 
-from cf_core import estimate_tokens, load_config
+from cf_core import compress_content, estimate_tokens, load_config
 
 
 def read_text(path: str) -> str:
@@ -73,6 +73,23 @@ def resolve_domains(config: dict, discovered: dict, domain_filter: Optional[str]
     return sorted((config.get("path_mapping") or {}).keys())
 
 
+def _build_item(rel: str, raw_content: str) -> dict:
+    raw_tokens = estimate_tokens(raw_content)
+    compressed_tokens = estimate_tokens(compress_content(raw_content))
+    saved_pct = (
+        round((raw_tokens - compressed_tokens) * 100 / raw_tokens, 1)
+        if raw_tokens
+        else 0.0
+    )
+    return {
+        "path": rel,
+        "tokens": compressed_tokens,
+        "tokens_raw": raw_tokens,
+        "tokens_compressed": compressed_tokens,
+        "saved_pct": saved_pct,
+    }
+
+
 def collect_domain_items(
     specs_root: str,
     domain: str,
@@ -93,7 +110,7 @@ def collect_domain_items(
             continue
         content = read_text(full_path)
         if content:
-            items.append({"path": rel, "tokens": estimate_tokens(content)})
+            items.append(_build_item(rel, content))
 
     for rel in discovered:
         if rel in seen:
@@ -102,7 +119,7 @@ def collect_domain_items(
         full_path = os.path.join(specs_root, rel)
         content = read_text(full_path)
         if content:
-            items.append({"path": rel, "tokens": estimate_tokens(content)})
+            items.append(_build_item(rel, content))
 
     return items, missing
 
@@ -185,6 +202,27 @@ def main() -> None:
         domains_text = ", ".join(sorted(set(domains_with_no_loaded_specs)))
         warnings.append(f"以下域未加载到任何 L1 spec: {domains_text}")
 
+    total_raw = sum(
+        item.get("tokens_raw", item["tokens"])
+        for items in l1.values()
+        for item in items
+    )
+    total_compressed = sum(
+        item.get("tokens_compressed", item["tokens"])
+        for items in l1.values()
+        for item in items
+    )
+    total_saved_pct = (
+        round((total_raw - total_compressed) * 100 / total_raw, 1)
+        if total_raw
+        else 0.0
+    )
+    compression_summary = {
+        "total_raw": total_raw,
+        "total_compressed": total_compressed,
+        "total_saved_pct": total_saved_pct,
+    }
+
     output = {
         "l0": {"file": "CLAUDE.md", "tokens": l0_tokens, "budget": l0_budget},
         "l1": l1,
@@ -194,6 +232,7 @@ def main() -> None:
         "warnings": warnings,
         "spec_domain_map": spec_domain_map,
         "missing_specs": missing_specs,
+        "compression_summary": compression_summary,
     }
     if json_output:
         print(json.dumps(output, ensure_ascii=False))
@@ -204,13 +243,20 @@ def main() -> None:
         total_domain = sum(item["tokens"] for item in items)
         print(f"L1 {domain}:", total_domain)
         for item in items:
-            print(" -", item["path"], item["tokens"])
+            raw = item.get("tokens_raw", item["tokens"])
+            compressed = item.get("tokens_compressed", item["tokens"])
+            saved = item.get("saved_pct", 0.0)
+            print(" -", item["path"], item["tokens"], f"(raw={raw}→compressed={compressed}, -{saved}%)")
     if missing_specs:
         print("MISSING SPECS:")
         for item in missing_specs:
             print(" -", item["domain"], item["path"])
     print("TOTAL:", f"{total_tokens} / {total_budget}")
     print("UTILIZATION:", utilization)
+    print(
+        "COMPRESSION:",
+        f"{total_raw} → {total_compressed} (-{total_saved_pct}%)",
+    )
     if warnings:
         print("WARNINGS:", "; ".join(warnings))
 

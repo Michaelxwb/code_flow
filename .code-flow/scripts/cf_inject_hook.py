@@ -17,6 +17,7 @@ from cf_core import (
     match_specs_by_tags,
     normalize_spec_entry,
     read_matched_specs,
+    resolve_compress,
     resolve_session_id,
     save_inject_state,
     select_specs_tiered,
@@ -54,6 +55,7 @@ def main() -> None:
             return
         if not is_code_file(rel_path, inject_config):
             return
+        compress_enabled = resolve_compress(inject_config)
 
         mapping = config.get("path_mapping") or {}
         effective_mapping = build_effective_mapping(project_root, mapping)
@@ -106,7 +108,9 @@ def main() -> None:
             # Filter already-injected
             new_matched = [m for m in matched if m["path"] not in injected_specs]
             if new_matched:
-                specs = read_matched_specs(project_root, domain, new_matched)
+                specs = read_matched_specs(
+                    project_root, domain, new_matched, compress=compress_enabled
+                )
                 all_matched.extend(specs)
 
         if not all_matched:

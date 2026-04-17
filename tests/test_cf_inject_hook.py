@@ -180,6 +180,87 @@ def test_inject_hook_no_fallback_log_when_tag_matches() -> None:
             os.environ["CF_DEBUG"] = original
 
 
+def _make_project_with_compressible_spec(tmpdir: str, compress: bool = True) -> str:
+    """Project with a spec file full of redundancy: multi-blank-lines, HTML comments,
+    trailing whitespace, duplicate bullets. Compression should demonstrably shrink it.
+    """
+    cf_dir = os.path.join(tmpdir, ".code-flow")
+    specs_dir = os.path.join(cf_dir, "specs", "backend")
+    os.makedirs(specs_dir, exist_ok=True)
+    with open(os.path.join(specs_dir, "_map.md"), "w", encoding="utf-8") as f:
+        f.write("# Map  \n\n\n\nkeep me\n")
+    with open(os.path.join(specs_dir, "rules.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "## Rules   \n"
+            "<!-- internal note: drop me -->\n"
+            "- always validate  \n"
+            "- always validate\n"
+            "\n\n\n\n"
+            "- handle errors\n"
+        )
+    config = {
+        "version": 1,
+        "budget": {"l1_max": 1700, "map_max": 400},
+        "inject": {
+            "auto": True,
+            "compress": compress,
+            "code_extensions": [".py"],
+        },
+        "path_mapping": {
+            "backend": {
+                "patterns": ["**/*.py"],
+                "specs": [
+                    {"path": "backend/_map.md", "tags": ["*"], "tier": 0},
+                    {"path": "backend/rules.md", "tags": ["*"], "tier": 1},
+                ],
+            }
+        },
+    }
+    import yaml
+    with open(os.path.join(cf_dir, "config.yml"), "w", encoding="utf-8") as f:
+        yaml.dump(config, f)
+    return tmpdir
+
+
+def test_inject_applies_compression() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _make_project_with_compressible_spec(tmpdir, compress=True)
+        result = _run_main("src/whatever.py", tmpdir)
+        ctx = result["hookSpecificOutput"]["additionalContext"]
+        assert "\n\n\n" not in ctx
+        assert "internal note" not in ctx
+        # Duplicate bullet collapsed
+        assert ctx.count("- always validate") == 1
+        # Real content preserved
+        assert "## Rules" in ctx
+        assert "handle errors" in ctx
+
+
+def test_inject_compress_disabled_via_config() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _make_project_with_compressible_spec(tmpdir, compress=False)
+        result = _run_main("src/whatever.py", tmpdir)
+        ctx = result["hookSpecificOutput"]["additionalContext"]
+        # Raw content should come through unaltered
+        assert "\n\n\n" in ctx
+        assert "internal note: drop me" in ctx
+        assert ctx.count("- always validate") == 2
+
+
+def test_inject_compress_falls_back_on_exception() -> None:
+    """compress_content raising must not drop the spec: raw text still injected."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _make_project_with_compressible_spec(tmpdir, compress=True)
+        with mock.patch("cf_core.compress_content", side_effect=RuntimeError("boom")):
+            result = _run_main("src/whatever.py", tmpdir)
+        assert "hookSpecificOutput" in result
+        ctx = result["hookSpecificOutput"]["additionalContext"]
+        # Raw content survives the broken compressor — markers from the
+        # redundant source should still be present.
+        assert "internal note: drop me" in ctx
+        assert ctx.count("- always validate") == 2
+
+
 if __name__ == "__main__":
     import traceback
 

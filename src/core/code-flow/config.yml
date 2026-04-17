@@ -8,6 +8,9 @@ budget:
 
 inject:
     auto: true
+    # 注入时对 spec 内容做保守无损压缩（去行尾空白、折叠多空行、剥 HTML 注释、去重 bullet）
+    # 缺省视为 true；仅显式 false 关闭
+    compress: true
     code_extensions:
         - ".py"
         - ".ts"

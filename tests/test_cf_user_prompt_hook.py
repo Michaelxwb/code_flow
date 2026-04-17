@@ -262,6 +262,61 @@ def test_main_resolve_session_id_from_hook_data():
         assert result2 == {}
 
 
+def _make_project_with_compressible_spec(tmpdir: str, compress: bool = True) -> str:
+    """Project where matched spec is full of redundancy for compression testing."""
+    cf_dir = os.path.join(tmpdir, ".code-flow")
+    specs_dir = os.path.join(cf_dir, "specs", "scripts")
+    os.makedirs(specs_dir, exist_ok=True)
+    with open(os.path.join(specs_dir, "_map.md"), "w", encoding="utf-8") as f:
+        f.write("# Map  \n\n\n\nkeep me\n")
+    with open(os.path.join(specs_dir, "rules.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "## Rules   \n"
+            "<!-- internal note: drop me -->\n"
+            "- always validate  \n"
+            "- always validate\n"
+            "\n\n\n\n"
+            "- handle errors\n"
+        )
+    config = {
+        "version": 1,
+        "budget": {"l1_max": 1700, "map_max": 400},
+        "inject": {
+            "auto": True,
+            "compress": compress,
+            "code_extensions": [".py"],
+        },
+        "path_mapping": {
+            "scripts": {
+                "patterns": ["**/*.py"],
+                "specs": [
+                    {"path": "scripts/_map.md", "tags": ["*"], "tier": 0},
+                    {"path": "scripts/rules.md", "tags": ["*"], "tier": 1},
+                ],
+            }
+        },
+    }
+    with open(os.path.join(cf_dir, "config.yml"), "w", encoding="utf-8") as f:
+        yaml.dump(config, f)
+    return tmpdir
+
+
+def test_user_prompt_applies_compression():
+    """Prompt referencing a .py file → matched spec should be compressed in context."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _make_project_with_compressible_spec(tmpdir, compress=True)
+        result = _run_main("edit src/whatever.py to fix a bug", tmpdir)
+        assert "hookSpecificOutput" in result
+        ctx = result["hookSpecificOutput"]["additionalContext"]
+        # Compression markers: no triple-blank, HTML comment stripped, dedup
+        assert "\n\n\n" not in ctx
+        assert "internal note" not in ctx
+        assert ctx.count("- always validate") == 1
+        # Real content preserved
+        assert "## Rules" in ctx
+        assert "handle errors" in ctx
+
+
 def test_main_fallback_writes_debug_log_with_loaded_count():
     """Prompt with no path / no tag hits → fallback debug line with loaded=N."""
     original = os.environ.get("CF_DEBUG")

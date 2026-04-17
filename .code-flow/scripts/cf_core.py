@@ -388,23 +388,105 @@ def match_specs_by_tags(
     return matched, has_tier1_match
 
 
-def read_matched_specs(project_root: str, domain: str, matched: list) -> list:
-    """Read only the matched spec files from disk."""
+# --- Lossless spec content compression (injected at Hook-time) ---
+
+_BULLET_PREFIXES = ("- ", "* ", "+ ")
+
+
+def compress_content(text: str) -> str:
+    """Lossless compression for spec content injected at Hook time.
+
+    Five conservative, semantics-preserving transforms:
+    1. Strip multi-line HTML comments ``<!-- ... -->``.
+    2. Strip trailing whitespace on every line.
+    3. Collapse runs of 2+ blank lines into a single blank line.
+    4. Drop a bullet line ( ``-`` / ``*`` / ``+`` ) equal to the previous line.
+    5. Strip leading/trailing blank lines of the whole text.
+
+    Idempotent: ``compress_content(compress_content(x)) == compress_content(x)``.
+    On any exception, log to stderr and return the original text so Hook
+    injection is never broken by a compression bug.
+    """
+    if not isinstance(text, str) or not text:
+        return text
+    try:
+        result = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
+        result = re.sub(r"[ \t]+$", "", result, flags=re.MULTILINE)
+        result = re.sub(r"\n{3,}", "\n\n", result)
+        lines = result.split("\n")
+        out_lines: list = []
+        prev_line: str = ""
+        for line in lines:
+            stripped = line.lstrip()
+            is_bullet = stripped.startswith(_BULLET_PREFIXES)
+            if is_bullet and out_lines and line == prev_line:
+                continue
+            out_lines.append(line)
+            prev_line = line
+        result = "\n".join(out_lines)
+        return result.strip()
+    except Exception as exc:
+        _log(f"compress_content error: {exc}")
+        return text
+
+
+def read_matched_specs(
+    project_root: str,
+    domain: str,
+    matched: list,
+    compress: bool = True,
+) -> list:
+    """Read matched spec files; optionally apply lossless compression.
+
+    When ``compress`` is True (default), each spec's content is passed through
+    :func:`compress_content` before token estimation so ``select_specs_tiered``
+    budget decisions benefit from compression savings.
+
+    Returned items carry:
+        - ``content``: final content (compressed when ``compress=True``)
+        - ``tokens``: token count of final content (drives budget decisions)
+        - ``tokens_raw``: token count of uncompressed content (for cf-stats)
+
+    ``CF_DEBUG=1`` emits a per-file ``compress path=... raw=... compressed=...
+    saved=...%`` record via :func:`debug_log`.
+    """
     specs_root = os.path.join(project_root, ".code-flow", "specs")
-    specs = []
+    specs: list = []
     for cfg in matched:
         rel = cfg["path"]
         spec_path = os.path.join(specs_root, rel)
         try:
             with open(spec_path, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-            if not content:
+                raw_content = f.read().strip()
+            if not raw_content:
                 continue
+            raw_tokens = estimate_tokens(raw_content)
+            if compress:
+                try:
+                    content = compress_content(raw_content)
+                except Exception as exc:
+                    _log(f"read_matched_specs compress failed path={rel}: {exc}")
+                    content = raw_content
+            else:
+                content = raw_content
+            tokens = estimate_tokens(content)
+            if compress and raw_tokens != tokens:
+                saved_pct = (
+                    round((raw_tokens - tokens) * 100 / raw_tokens, 1)
+                    if raw_tokens
+                    else 0.0
+                )
+                debug_log(
+                    f"compress path={rel} raw={raw_tokens} "
+                    f"compressed={tokens} saved={saved_pct}%",
+                    project_root,
+                )
             specs.append(
                 {
                     "path": rel,
                     "content": content,
-                    "tokens": estimate_tokens(content),
+                    "tokens": tokens,
+                    "tokens_raw": raw_tokens,
                     "domain": domain,
                     "tier": cfg.get("tier", 1),
                 }
@@ -543,6 +625,21 @@ def save_inject_state(project_root: str, payload: dict) -> None:
 def _log(msg: str) -> None:
     """Log to stderr (fix #9: don't pollute stdout which is hook output)."""
     print(msg, file=sys.stderr)
+
+
+def resolve_compress(inject_config: dict) -> bool:
+    """Return whether Hook-time spec compression is enabled.
+
+    Only a literal ``False`` turns it off; missing, ``None``, or any
+    non-bool value falls back to ``True`` so upgrades pick up compression
+    without requiring a config edit.
+    """
+    if not isinstance(inject_config, dict):
+        return True
+    value = inject_config.get("compress")
+    if value is False:
+        return False
+    return True
 
 
 def resolve_session_id(hook_data: dict) -> str:
