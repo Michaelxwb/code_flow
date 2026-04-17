@@ -8,6 +8,7 @@ budget:
 
 inject:
     auto: true
+    log: false
     code_extensions:
         - ".py"
         - ".ts"

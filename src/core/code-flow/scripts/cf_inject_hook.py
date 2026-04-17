@@ -21,10 +21,7 @@ from cf_core import (
     save_inject_state,
     select_specs_tiered,
 )
-from cf_log import (
-    reset_stdout,
-    cleanup_none_logfile,
-)
+from cf_log import reset_stdout
 
 
 def main() -> None:
@@ -34,9 +31,17 @@ def main() -> None:
             return
         data = json.loads(raw)
 
-        # log all inject data
+        # Resolve session id early (needed for both state and logging)
         sid = resolve_session_id(data)
-        reset_stdout("hook_inject_" + sid)
+
+        # Load config to check if logging is enabled
+        project_root = os.getcwd()
+        config = load_config(project_root)
+        inject_config = config.get("inject") or {} if config else {}
+
+        # Enable logging if configured (default off)
+        if inject_config.get("log") is True:
+            reset_stdout("hook_inject_" + sid)
 
         tool_name = data.get("tool_name", "")
         tool_input = data.get("tool_input") or {}
@@ -46,13 +51,11 @@ def main() -> None:
         if not isinstance(file_path, str) or not file_path:
             return
 
-        project_root = os.getcwd()
         abs_path = file_path
         if not os.path.isabs(abs_path):
             abs_path = os.path.join(project_root, file_path)
         rel_path = os.path.relpath(abs_path, project_root)
 
-        config = load_config(project_root)
         if not config:
             return
         inject_config = config.get("inject") or {}
@@ -146,7 +149,6 @@ def main() -> None:
                 "matched_specs": [s["path"] for s in selected],
             }
         sys.stdout.write(json.dumps(payload, ensure_ascii=False))
-        cleanup_none_logfile()
     except Exception as exc:
         # Fix #9: log errors to stderr instead of silently swallowing
         _log(f"cf_inject_hook error: {exc}")
