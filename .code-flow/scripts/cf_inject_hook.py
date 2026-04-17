@@ -21,9 +21,10 @@ from cf_core import (
     save_inject_state,
     select_specs_tiered,
 )
-
-
-
+from cf_log import (
+    reset_stdout,
+    cleanup_none_logfile,
+)
 
 
 def main() -> None:
@@ -32,6 +33,11 @@ def main() -> None:
         if not raw.strip():
             return
         data = json.loads(raw)
+
+        # log all inject data
+        sid = resolve_session_id(data)
+        reset_stdout("hook_inject_" + sid)
+
         tool_name = data.get("tool_name", "")
         tool_input = data.get("tool_input") or {}
         file_path = tool_input.get("file_path", "")
@@ -60,7 +66,6 @@ def main() -> None:
         domains = match_domains(rel_path, effective_mapping)
 
         # Load state with session isolation (fix #10)
-        sid = resolve_session_id(data)
         state = load_inject_state(project_root)
         state_sid = state.get("session_id", "")
         if state_sid != sid:
@@ -140,7 +145,8 @@ def main() -> None:
                 "context_tags": sorted(context_tags),
                 "matched_specs": [s["path"] for s in selected],
             }
-        sys.stdout.write(json.dumps(payload))
+        sys.stdout.write(json.dumps(payload, ensure_ascii=False))
+        cleanup_none_logfile()
     except Exception as exc:
         # Fix #9: log errors to stderr instead of silently swallowing
         _log(f"cf_inject_hook error: {exc}")
