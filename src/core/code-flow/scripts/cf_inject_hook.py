@@ -15,7 +15,6 @@ from cf_core import (
     load_inject_state,
     match_domains,
     match_specs_by_tags,
-    normalize_spec_entry,
     read_matched_specs,
     resolve_compress,
     resolve_session_id,
@@ -90,26 +89,18 @@ def main() -> None:
         except (ValueError, TypeError):
             pass
 
-        # Match specs by tags per domain, with fallback (fix #1)
+        # Strict tag-based matching per domain. No bulk-load fallback: when a
+        # Tier 1 spec's tags don't intersect context_tags, the spec is NOT
+        # injected. Tier 0 (_map.md) uses the "*" wildcard so it still reaches
+        # the model as navigation. Re-inject every call (session dedup removed).
         all_matched = []
         for domain in domains:
             domain_cfg = effective_mapping.get(domain) or {}
             specs_config = domain_cfg.get("specs") or []
-            matched, has_tier1_match = match_specs_by_tags(specs_config, context_tags)
-
-            # Fallback: if no tier 1 spec matched by tags, load ALL tier 1 specs
-            if not has_tier1_match:
-                matched = [normalize_spec_entry(e) for e in specs_config if normalize_spec_entry(e).get("path")]
-                debug_log(
-                    f"inject_hook fallback domain={domain} path={rel_path} loaded={len(matched)} reason=no_tag_match",
-                    project_root,
-                )
-
-            # Filter already-injected
-            new_matched = [m for m in matched if m["path"] not in injected_specs]
-            if new_matched:
+            matched, _ = match_specs_by_tags(specs_config, context_tags)
+            if matched:
                 specs = read_matched_specs(
-                    project_root, domain, new_matched, compress=compress_enabled
+                    project_root, domain, matched, compress=compress_enabled
                 )
                 all_matched.extend(specs)
 

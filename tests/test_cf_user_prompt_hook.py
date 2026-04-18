@@ -166,29 +166,37 @@ def test_main_empty_prompt_no_output():
         assert result == {}
 
 
-def test_main_no_paths_fallback_injects_tier0():
-    """Prompt without file refs → fallback loads all domains, injects Tier0 maps."""
+def test_main_no_paths_no_tags_injects_only_tier0():
+    """No file refs, no tag hits → only Tier 0 (wildcard) maps reach the model.
+
+    Tier 1 specs require an actual tag intersection — bulk-load fallback removed.
+    Tier 0 _map.md has tags=["*"] so it still makes it through as navigation.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         _make_project(tmpdir)
         result = _run_main("what does the auth flow do?", tmpdir)
         assert "hookSpecificOutput" in result
-        # Tier0 _map.md should be in the injected content
         ctx = result["hookSpecificOutput"]["additionalContext"]
-        assert "_map.md" in ctx or "Map" in ctx
+        assert "_map.md" in ctx
+        assert "code-standards.md" not in ctx
+        assert "code-quality-performance.md" not in ctx
 
 
-def test_main_already_injected_skips():
-    """Second call in same session with same spec → no output (already injected)."""
+def test_main_reinjects_on_every_call_within_session():
+    """Session-scope dedup was removed — every call re-injects matching specs.
+
+    Prior behavior skipped a spec once its path was in .inject-state.injected_specs
+    for the current session. That caused specs to drift out of model context after
+    auto-compaction with no way to bring them back. New behavior: always inject.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         _make_project(tmpdir)
         pid = "88888"
-        # First call
         result1 = _run_main("edit src/hook.py", tmpdir, pid=pid)
         assert "hookSpecificOutput" in result1
-        # Second call in same session — state persists on disk
         result2 = _run_main("also update src/other.py", tmpdir, pid=pid)
-        # specs already injected → no output
-        assert result2 == {}
+        assert "hookSpecificOutput" in result2
+        assert "Active Specs" in result2["hookSpecificOutput"]["additionalContext"]
 
 
 def test_main_inject_disabled_no_output():
@@ -251,15 +259,20 @@ def test_main_prompt_tags_debug_output():
 
 
 def test_main_resolve_session_id_from_hook_data():
-    """session_id should come from hook data, not PID."""
+    """session_id should come from hook data, not PID.
+
+    Verified by reading .inject-state after a run and asserting it persisted
+    the hook-provided session_id rather than the PID.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         _make_project(tmpdir)
         custom_session = "custom-session-12345"
-        result = _run_main("edit src/core/cf_core.py", tmpdir, pid="99999", session_id=custom_session)
-        # If session_id is properly resolved, subsequent call with same session should not re-inject
-        result2 = _run_main("edit src/other.py", tmpdir, pid="99999", session_id=custom_session)
-        # Same session, specs already injected → no output
-        assert result2 == {}
+        _run_main("edit src/core/cf_core.py", tmpdir, pid="99999", session_id=custom_session)
+        state_path = os.path.join(tmpdir, ".code-flow", ".inject-state")
+        with open(state_path, "r", encoding="utf-8") as f:
+            state = json.load(f)
+        assert state["session_id"] == custom_session
+        assert state["session_id"] != "99999"
 
 
 def _make_project_with_compressible_spec(tmpdir: str, compress: bool = True) -> str:
@@ -317,22 +330,24 @@ def test_user_prompt_applies_compression():
         assert "handle errors" in ctx
 
 
-def test_main_fallback_writes_debug_log_with_loaded_count():
-    """Prompt with no path / no tag hits → fallback debug line with loaded=N."""
+def test_main_no_tag_match_emits_no_fallback_log():
+    """Strict match: no path / no tag hit → no fallback log line.
+
+    The bulk-load fallback and its debug log entry were removed. This test
+    guards the regression: we should NEVER emit reason=no_tag_match again.
+    """
     original = os.environ.get("CF_DEBUG")
     os.environ["CF_DEBUG"] = "1"
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             _make_project(tmpdir)
-            # Prompt with no file ref and no Chinese/English tag aliases
             _run_main("hello there nothing matches anything at all", tmpdir)
             log_path = os.path.join(tmpdir, ".code-flow", ".debug.log")
-            assert os.path.exists(log_path), "CF_DEBUG=1 must produce debug log"
-            with open(log_path, "r", encoding="utf-8") as f:
-                content = f.read()
-            assert "fallback" in content
-            assert "loaded=" in content
-            assert "reason=no_tag_match" in content
+            if os.path.exists(log_path):
+                with open(log_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                assert "reason=no_tag_match" not in content
+                assert "user_prompt_hook fallback domain=" not in content
     finally:
         if original is None:
             del os.environ["CF_DEBUG"]

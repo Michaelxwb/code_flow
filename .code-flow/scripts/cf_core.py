@@ -123,6 +123,13 @@ def build_effective_mapping(project_root: str, mapping: dict) -> dict:
 
 
 def fallback_domains_for_context(mapping: dict, context_tags: set) -> set:
+    """Search space for per-spec tag matching when no path pattern fires.
+
+    Returns domains whose name matches context_tags when possible; otherwise
+    returns every configured domain so that per-spec tag matching downstream
+    can still cherry-pick. The per-spec tags in config.yml remain the real
+    filter — this function only widens the search space, never injects.
+    """
     if not mapping:
         return set()
     by_name = {domain for domain in mapping.keys() if domain.lower() in context_tags}

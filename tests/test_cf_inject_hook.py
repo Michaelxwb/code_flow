@@ -99,25 +99,31 @@ def _make_project_with_unmatched_tier1(tmpdir: str) -> str:
     return tmpdir
 
 
-def test_inject_hook_fallback_writes_debug_log() -> None:
-    """CF_DEBUG=1 + tag-miss → fallback line with loaded count appears in .debug.log."""
+def test_inject_hook_unmatched_tier1_injects_only_tier0() -> None:
+    """Strict match: Tier 1 tags miss → only Tier 0 (wildcard) gets injected.
+
+    Bulk-load fallback was removed. A Tier 1 spec whose tags don't intersect
+    context_tags must NOT be injected. Tier 0 uses '*' so navigation still
+    reaches the model.
+    """
     original = os.environ.get("CF_DEBUG")
     os.environ["CF_DEBUG"] = "1"
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             _make_project_with_unmatched_tier1(tmpdir)
             result = _run_main("src/whatever.py", tmpdir)
-            assert "hookSpecificOutput" in result, "expected fallback to inject specs"
+            assert "hookSpecificOutput" in result
+            ctx = result["hookSpecificOutput"]["additionalContext"]
+            assert "backend/_map.md" in ctx
+            assert "backend/rules-a.md" not in ctx
+            assert "backend/rules-b.md" not in ctx
 
             log_path = os.path.join(tmpdir, ".code-flow", ".debug.log")
-            assert os.path.exists(log_path), "CF_DEBUG=1 must produce debug log"
-            with open(log_path, "r", encoding="utf-8") as f:
-                content = f.read()
-            assert "fallback" in content
-            assert "domain=backend" in content
-            assert "reason=no_tag_match" in content
-            # 2 tier-1 specs in fixture → loaded should reflect total entries (incl. tier 0)
-            assert "loaded=" in content
+            if os.path.exists(log_path):
+                with open(log_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                assert "reason=no_tag_match" not in content
+                assert "inject_hook fallback" not in content
     finally:
         if original is None:
             del os.environ["CF_DEBUG"]
@@ -158,7 +164,7 @@ def _make_project_with_explicit_tag_hit(tmpdir: str) -> str:
 
 
 def test_inject_hook_no_fallback_log_when_tag_matches() -> None:
-    """Explicit tag-matched path → no fallback line emitted in debug log."""
+    """Explicit tag match → no fallback log (strict-match regime never emits it)."""
     original = os.environ.get("CF_DEBUG")
     os.environ["CF_DEBUG"] = "1"
     try:
