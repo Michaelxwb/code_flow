@@ -70,17 +70,17 @@
 子任务完成后，轻量检查本次编码是否引入了需要同步到 specs 或导航地图的内容：
 
 1. 回顾本次编码的变更（新增/修改了哪些文件和模式）
-2. 快速对照 `.code-flow/specs/` 下对应领域的规范文件和 `_map.md`
+2. 快速对照 `.code-flow/specs/` 下对应领域的规范文件和 `<map-file>.md`
 3. 如果发现以下情况，输出同步提示：
    - 新增了 specs 未记录的编码模式（如新的错误处理方式、新的中间件）
-   - 新增了目录或入口文件，但 `_map.md` 中未体现
+   - 新增了目录或入口文件，但 `<map-file>.md` 中未体现
    - 修改了数据流或模块关系
 
 ```
 Spec 同步提示:
   本次编码引入了以下变更，建议同步到规范:
-  - 新增 rate limiting 中间件 → specs/backend/platform-rules.md
-  - 新增 src/middleware/rateLimit.ts → backend/_map.md Key Files
+  - 新增 <模式描述> → <spec-path>/
+  - 新增 <文件路径> → <map-file>.md Key Files
 
   运行 /cf-learn --map 可自动更新导航地图。
 ```
@@ -154,8 +154,8 @@ Spec 同步提示:
 ```
 Spec 同步提示:
   本轮编码引入了以下变更，建议同步到规范:
-  - [TASK-001] 新增 AppError 统一错误类 → specs/backend/code-quality-performance.md
-  - [TASK-002] 新增 src/api/v2/ 目录 → backend/_map.md Module Map
+  - [<任务ID>] 新增 <模式描述> → <spec-path>/
+  - [<任务ID>] 新增 <文件路径> → <map-file>.md Module Map
 
   运行 /cf-learn --map 可自动更新导航地图。
 ```

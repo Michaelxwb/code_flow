@@ -15,7 +15,7 @@
 - `extract_context_tags(path)`：路径 → tag
 - `extract_prompt_tags(text)`：中英文关键词 → canonical tag（见 `_TAG_ALIASES`）
 - `match_domains(path)` / `match_specs_by_tags(specs, ctx_tags, prompt_tags=None)`
-- `read_matched_specs(..., compress=True)` / `select_specs_tiered()` / `assemble_context()`
+- `read_matched_specs(..., compress=True)` / `select_specs_tiered()` / `assemble_context()`：约束声明在输出顶部（强制）
 - `compress_content(text)` / `resolve_compress(inject_cfg)`：注入时无损压缩（行尾空白、多空行、HTML 注释、重复 bullet），幂等、异常回退原文
 - `resolve_session_id(hook_data)`：hook session_id 优先，回退 PID（PreToolUse / UserPromptSubmit 共享 inject-state）
 - `debug_log(msg)`：仅 `CF_DEBUG=1` 写 `.code-flow/.debug.log`

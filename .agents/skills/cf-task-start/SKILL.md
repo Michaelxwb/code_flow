@@ -63,7 +63,7 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 子任务完成后，轻量检查本次编码是否引入了需要同步到 specs 或导航地图的内容：
 
 1. 回顾本次编码的变更（新增/修改了哪些文件和模式）
-2. 快速对照 `.code-flow/specs/` 下对应领域的规范文件和 `_map.md`
+2. 快速对照 `.code-flow/specs/` 下对应领域的规范文件和 `<map-file>.md`
 3. 如果发现新增了 specs 未记录的模式或新增了目录，输出同步提示
 
 如果无需同步，跳过此步骤，不输出任何提示。
@@ -92,7 +92,7 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 
 ### 4. 按序执行
 
-对每个可激活的子任务，执行单任务模式的步骤 3-4。
+对每个可激活的子任务，执行单任务模式的步骤 3-4（详设已在步骤 2 加载，无需重复读取）。
 
 完成一个子任务后，检查是否解锁了新的子任务（依赖已满足），如果是则继续执行。
 

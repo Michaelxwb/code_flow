@@ -588,6 +588,8 @@ def select_specs_tiered(specs: list, budget: int, map_max: int = 400) -> list:
 
 def assemble_context(specs: list, heading: str) -> str:
     parts = [heading]
+    parts.append("以上规范是本次开发的约束条件，生成代码必须遵循。")
+    parts.append("---")
     tier0 = [s for s in specs if s.get("tier", 1) == 0]
     tier1 = [s for s in specs if s.get("tier", 1) != 0]
 
@@ -603,8 +605,6 @@ def assemble_context(specs: list, heading: str) -> str:
             parts.append(f"#### {spec['path']}")
             parts.append(spec["content"])
 
-    parts.append("---")
-    parts.append("以上规范是本次开发的约束条件，生成代码必须遵循。")
     return "\n\n".join(parts)
 
 
