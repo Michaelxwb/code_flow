@@ -216,6 +216,8 @@ AI 调用 Edit/Write → Hook 拦截（文件路径）
 | `l1_max` | 1700 | 所有 tier 1 specs 合计上限 |
 | `map_max` | 400 | 单个 `_map.md` 最大 token |
 
+> Hook 注入前默认对 spec 做**保守无损压缩**（`inject.compress: true`），压缩后的 token 才参与预算决策，相同预算下可容纳更完整的 spec。设 `inject.compress: false` 可关闭；`cf-stats` 输出 `compression_summary` 及 `COMPRESSION: raw → compressed (-pct%)` 行。
+
 ---
 
 ## CLI 命令
@@ -658,6 +660,7 @@ budget:
 # 注入行为配置
 inject:
   auto: true        # 是否启用自动注入
+  compress: true    # 注入时对 spec 做保守无损压缩（去行尾空白、折叠多空行、剥 HTML 注释、去重 bullet）；缺省/非布尔按 true 处理
   code_extensions:  # 触发注入的文件扩展名
     - ".py"
     - ".js"
