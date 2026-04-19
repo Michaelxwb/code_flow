@@ -8,6 +8,7 @@ import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", "code-flow", "scripts"))
 
 from cf_core import (
+    compress_content,
     extract_context_tags,
     extract_prompt_tags,
     match_specs_by_tags,
@@ -406,3 +407,106 @@ def test_debug_log_writes_when_enabled():
             del os.environ["CF_DEBUG"]
         else:
             os.environ["CF_DEBUG"] = original
+
+
+# --- compress_content ---
+
+
+def test_compress_content_happy():
+    text = (
+        "## Rules   \n"
+        "- use type hints\n"
+        "- handle errors\n"
+        "\n\n\n"
+        "## Patterns\n"
+        "- single responsibility\n"
+    )
+    result = compress_content(text)
+    assert "\n\n\n" not in result
+    assert "## Rules" in result
+    assert "## Patterns" in result
+    assert result.count("- ") == 3
+    assert not any(line.endswith(" ") for line in result.split("\n"))
+    assert estimate_tokens(result) <= estimate_tokens(text)
+
+
+def test_compress_content_empty():
+    assert compress_content("") == ""
+    assert compress_content("   \n\n  \n") == ""
+
+
+def test_compress_content_no_blank_lines():
+    text = "## Rules\n- a\n- b\n- c"
+    assert compress_content(text) == text
+
+
+def test_compress_content_html_comments():
+    text = "## Title\n<!-- TODO: drop this -->\nkeep me\n<!--\nmulti\nline\n-->\nalso kept"
+    result = compress_content(text)
+    assert "TODO" not in result
+    assert "multi" not in result
+    assert "keep me" in result
+    assert "also kept" in result
+    assert "## Title" in result
+
+
+def test_compress_content_multi_blank_lines():
+    text = "a\n\n\n\n\nb"
+    result = compress_content(text)
+    assert result == "a\n\nb"
+
+
+def test_compress_content_duplicate_bullets():
+    text = "- foo\n- foo\n- bar\n- bar\n- bar"
+    result = compress_content(text)
+    assert result == "- foo\n- bar"
+
+
+def test_compress_content_preserves_structure():
+    text = (
+        "# H1\n"
+        "## H2\n"
+        "### H3\n"
+        "| col1 | col2 |\n"
+        "|------|------|\n"
+        "| a | b |\n"
+        "\n"
+        "```python\n"
+        "def f():\n"
+        "    pass\n"
+        "```\n"
+        "\n"
+        "[link](https://example.com)\n"
+        "- item1\n"
+        "- item2\n"
+        "* star item\n"
+    )
+    result = compress_content(text)
+    assert "# H1" in result
+    assert "## H2" in result
+    assert "### H3" in result
+    assert result.count("|") == text.count("|")
+    assert "```python" in result
+    assert "```" in result
+    assert "[link](https://example.com)" in result
+    assert "- item1" in result
+    assert "- item2" in result
+    assert "* star item" in result
+
+
+def test_compress_content_idempotent():
+    text = (
+        "## Rules   \n\n\n\n"
+        "- a  \n"
+        "- a\n"
+        "<!-- drop -->\n"
+        "- b\n"
+    )
+    once = compress_content(text)
+    twice = compress_content(once)
+    assert once == twice
+
+
+def test_compress_content_non_string_returns_input():
+    assert compress_content(None) is None
+    assert compress_content(123) == 123

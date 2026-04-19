@@ -6,10 +6,9 @@ description: Scan project configs and code patterns to extract coding standards 
 ## 输入
 
 - `cf-learn` — 全量扫描
-- `cf-learn frontend` — 仅扫描前端相关
-- `cf-learn backend` — 仅扫描后端相关
+- `cf-learn <域>` — 仅扫描指定域相关（如 `scripts`、`cli` 等，以实际存在的域目录为准）
 - `cf-learn --map` — 扫描并生成/更新 Retrieval Map（导航地图）
-- `cf-learn frontend --map` — 仅生成前端导航地图
+- `cf-learn <域> --map` — 仅生成指定域的导航地图
 - `cf-learn --review` — 基于当前工作区变更提炼可沉淀的规范建议（默认 staged + unstaged + untracked 代码文件）
 - `cf-learn --review --staged` — 仅分析 staged 变更
 
@@ -70,17 +69,13 @@ description: Scan project configs and code patterns to extract coding standards 
 ```
 项目扫描完成，发现以下模块/功能域：
 
-前端:
-  1. [x] components/ — 23 个组件文件，React + TypeScript
-  2. [x] pages/ — 8 个页面，使用 React Router
-  3. [ ] styles/ — Tailwind CSS 配置
-  4. [x] hooks/ — 12 个自定义 hook
+<模块组 A>（如前端/客户端）：
+  1. [x] <子目录/> — N 个文件，<技术栈>
+  ...
 
-后端:
-  5. [x] api/ — 15 个路由文件，FastAPI
-  6. [x] services/ — 10 个业务逻辑模块
-  7. [ ] models/ — 8 个 ORM 模型
-  8. [x] middleware/ — 认证 + 日志中间件
+<模块组 B>（如后端/服务端）：
+  2. [x] <子目录/> — N 个文件，<技术栈>
+  ...
 
 选择要分析的模块（输入编号，all 全选，或 skip 跳过直接生成）：
 ```
@@ -118,17 +113,12 @@ description: Scan project configs and code patterns to extract coding standards 
 扫描发现以下未记录的编码约束：
 
 全局约束（建议写入 AGENTS.md）：
-  1. [x] [tsconfig.json] strict 模式已启用，禁止 implicit any
-  2. [x] [CI] PR 必须通过 lint + type check
-  3. [ ] [.editorconfig] 缩进使用 2 空格
+  1. [x] [<来源文件>] <约束描述>
+  ...
 
-前端约束（建议写入 specs/frontend/）：
-  4. [x] [.eslintrc] React hooks 必须遵循 exhaustive-deps 规则
-  5. [x] [代码模式] 组件文件使用 PascalCase 命名
-
-后端约束（建议写入 specs/backend/）：
-  6. [x] [pyproject.toml] 使用 ruff 替代 flake8/isort
-  7. [x] [代码模式] 所有 API handler 使用 async def
+<域> 约束（建议写入 <spec-path>/）：
+  2. [x] [<来源文件>] <约束描述>
+  ...
 
 确认要写入的条目（输入编号，或 all 全部写入，或 none 跳过）：
 ```
@@ -137,23 +127,23 @@ description: Scan project configs and code patterns to extract coding standards 
 
 ### 6. 写入确认的条目
 
-根据用户选择，将每条约束**分类后插入对应章节**：
+根据用户选择，将每条约束**分类后插入对应章节**（章节名称以实际 spec 文件中已存在的为准，追加到同类约束附近）：
 
-- **规则类**（必须遵守的硬性约束）→ 追加到目标文件的 `## Rules` 段落
-- **模式类**（推荐的实现方式）→ 追加到目标文件的 `## Patterns` 段落
-- **反模式类**（明确禁止的做法）→ 追加到目标文件的 `## Anti-Patterns` 段落
+- **规则类**（必须遵守的硬性约束）→ 追加到目标文件的约束类章节
+- **模式类**（推荐的实现方式）→ 追加到目标文件的模式类章节
+- **反模式类**（明确禁止的做法）→ 追加到目标文件的禁忌类章节
 
 写入目标：
-- **全局约束** → 用 Edit 追加到 `AGENTS.md` 的 `## Core Principles` 或 `## Forbidden Patterns`
+- **全局约束** → 用 Edit 追加到 `AGENTS.md` 的合适章节
 - **域约束** → 询问用户写入哪个 spec 文件，用 Edit 追加到对应章节
 
 每条写入后输出确认。
 
 ### 7. Retrieval Map 生成（--map 或自动建议）
 
-如果传入 `--map` 参数，或者检测到 `_map.md` 文件内容仍为初始模板（含 `[一句话描述` 占位符），自动进入 Map 生成流程：
+如果传入 `--map` 参数，或者检测到 `<domain>/<map-file>.md` 文件内容仍为初始模板（含 `[一句话描述` 占位符），自动进入 Map 生成流程：
 
-1. 基于步骤 2 的代码结构扫描结果，填充 `_map.md` 的各个段落：
+1. 基于步骤 2 的代码结构扫描结果，填充 `<domain>/<map-file>.md` 的各个段落：
    - **Purpose**：从 README 或 package.json description 提取项目描述
    - **Architecture**：从依赖和配置文件推断技术栈
    - **Key Files**：列出入口文件和核心模块文件（用 Read 验证存在性）
@@ -163,17 +153,17 @@ description: Scan project configs and code patterns to extract coding standards 
 
 2. 展示生成的 Map 内容，等待用户确认或调整
 
-3. 用户确认后，用 Write 写入 `.code-flow/specs/<domain>/_map.md`
+3. 用户确认后，用 Write 写入 `.code-flow/specs/<domain>/<map-file>.md`
 
 ```
 Retrieval Map 已生成:
 
-frontend/_map.md:
-  Purpose: 基于 React 18 + TypeScript 的管理后台
-  Architecture: Vite + React Router + Zustand + Tailwind
-  Key Files: 6 个入口文件
-  Modules: 7 个模块
-  Navigation: 4 条导航规则
+<domain>/<map-file>.md:
+  Purpose: <项目描述>
+  Architecture: <技术栈>
+  Key Files: N 个入口文件
+  Modules: N 个模块
+  Navigation: N 条导航规则
 
 确认写入？可先修改再确认:
 ```
@@ -182,11 +172,10 @@ frontend/_map.md:
 
 ```
 已写入 N 条约束：
-- AGENTS.md: +3 条
-- specs/frontend/quality-standards.md: +2 条
-- specs/backend/code-quality-performance.md: +2 条
-- specs/frontend/_map.md: 已更新导航地图
-Token 变化: AGENTS.md 138 → 195 tokens
+- AGENTS.md: +X 条
+- <spec-path>/: +Y 条
+- <spec-path>/<map-file>.md: 已更新导航地图
+Token 变化: AGENTS.md: <旧> → <新> tokens
 ```
 
 ## --review 模式：基于当前变更提炼规范
@@ -224,9 +213,9 @@ git diff --cached -- <file>
 从当前变更中提炼“值得沉淀为 spec 的稳定规则”：
 
 **提取维度**：
-- 新增的强约束（Rule）：例如统一错误处理、统一校验入口、必须补测试
-- 新增的推荐实现（Pattern）：例如目录组织、接口分层、命名习惯
-- 新增的明确禁用（Anti-Pattern）：例如裸异常吞掉、重复配置解析、stdout 非协议输出
+- 新增的强约束（规则类）：例如统一错误处理、统一校验入口、必须补测试
+- 新增的推荐实现（模式类）：例如目录组织、接口分层、命名习惯
+- 新增的明确禁用（禁忌类）：例如裸异常吞掉、重复配置解析、stdout 非协议输出
 
 **置信度规则**：
 - 同一模式在多个文件中重复出现：高置信度
@@ -248,10 +237,10 @@ git diff --cached -- <file>
 
 ```
 review 完成：
-- 扫描变更文件: 9（staged: 3, unstaged: 4, untracked: 2）
-- 提取候选规则: 5（高置信度: 3, 低置信度: 2）
-- 已覆盖跳过: 1
-- 用户确认写入: 3
+- 扫描变更文件: N（staged: X, unstaged: Y, untracked: Z）
+- 提取候选规则: N（高置信度: X, 低置信度: Y）
+- 已覆盖跳过: X
+- 用户确认写入: Y
 ```
 
 ## 异常处理
@@ -259,6 +248,6 @@ review 完成：
 - 无配置文件可扫描 → 提示项目可能未初始化，建议手动添加
 - 未发现新约束 → 输出"未发现未记录的约束，当前规范已覆盖项目配置"
 - `.code-flow/` 不存在 → 提示运行 `cf-init`
-- `_map.md` 已有自定义内容 → 展示 diff，让用户选择合并方式
+- 导航地图文件已有自定义内容 → 展示 diff，让用户选择合并方式
 - 无变更文件 → 提示"当前工作区无代码变更，先完成改动后再运行 --review"
 - 仅文档/配置变更 → 提示"未检测到代码变更，暂无可沉淀的实现规范"

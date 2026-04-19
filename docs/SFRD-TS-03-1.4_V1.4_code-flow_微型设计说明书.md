@@ -1123,6 +1123,7 @@ budget:
 # 注入过滤规则
 inject:
   auto: true           # 是否启用 Hook 自动注入
+  compress: true       # 注入时对 spec 做保守无损压缩；缺省/非布尔按 true 处理
   code_extensions:     # 触发注入的代码文件扩展名
     - ".py"
     - ".go"

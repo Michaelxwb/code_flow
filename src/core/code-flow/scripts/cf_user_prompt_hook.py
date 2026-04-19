@@ -28,8 +28,8 @@ from cf_core import (
     match_domains,
     match_specs_by_tags,
     normalize_path,
-    normalize_spec_entry,
     read_matched_specs,
+    resolve_compress,
     resolve_session_id,
     save_inject_state,
     select_specs_tiered,
@@ -78,6 +78,7 @@ def main() -> None:
         inject_config = config.get("inject") or {}
         if inject_config.get("auto") is False:
             return
+        compress_enabled = resolve_compress(inject_config)
 
         mapping = config.get("path_mapping") or {}
         effective_mapping = build_effective_mapping(project_root, mapping)
@@ -117,25 +118,19 @@ def main() -> None:
         else:
             injected_specs = set(state.get("injected_specs") or [])
 
+        # Strict tag-based matching per domain. No bulk-load fallback: when a
+        # Tier 1 spec's tags don't intersect (context_tags ∪ prompt_tags), the
+        # spec is NOT injected. Tier 0 (_map.md) uses "*" so navigation still
+        # reaches the model. Re-inject every call (session dedup removed).
         all_matched = []
         for domain in matched_domains:
             domain_cfg = effective_mapping.get(domain) or {}
             specs_config = domain_cfg.get("specs") or []
-            # Pass prompt_tags to match_specs_by_tags for Chinese/English keyword matching
-            matched, has_tier1 = match_specs_by_tags(specs_config, context_tags, prompt_tags)
-            if not has_tier1:
-                # Fallback: load all specs for this domain
-                matched = [
-                    normalize_spec_entry(e) for e in specs_config
-                    if normalize_spec_entry(e).get("path")
-                ]
-                debug_log(
-                    f"user_prompt_hook fallback domain={domain} loaded={len(matched)} reason=no_tag_match",
-                    project_root,
+            matched, _ = match_specs_by_tags(specs_config, context_tags, prompt_tags)
+            if matched:
+                specs = read_matched_specs(
+                    project_root, domain, matched, compress=compress_enabled
                 )
-            new_matched = [m for m in matched if m["path"] not in injected_specs]
-            if new_matched:
-                specs = read_matched_specs(project_root, domain, new_matched)
                 all_matched.extend(specs)
 
         if not all_matched:

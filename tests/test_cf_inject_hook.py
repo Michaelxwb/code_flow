@@ -99,25 +99,31 @@ def _make_project_with_unmatched_tier1(tmpdir: str) -> str:
     return tmpdir
 
 
-def test_inject_hook_fallback_writes_debug_log() -> None:
-    """CF_DEBUG=1 + tag-miss → fallback line with loaded count appears in .debug.log."""
+def test_inject_hook_unmatched_tier1_injects_only_tier0() -> None:
+    """Strict match: Tier 1 tags miss → only Tier 0 (wildcard) gets injected.
+
+    Bulk-load fallback was removed. A Tier 1 spec whose tags don't intersect
+    context_tags must NOT be injected. Tier 0 uses '*' so navigation still
+    reaches the model.
+    """
     original = os.environ.get("CF_DEBUG")
     os.environ["CF_DEBUG"] = "1"
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             _make_project_with_unmatched_tier1(tmpdir)
             result = _run_main("src/whatever.py", tmpdir)
-            assert "hookSpecificOutput" in result, "expected fallback to inject specs"
+            assert "hookSpecificOutput" in result
+            ctx = result["hookSpecificOutput"]["additionalContext"]
+            assert "backend/_map.md" in ctx
+            assert "backend/rules-a.md" not in ctx
+            assert "backend/rules-b.md" not in ctx
 
             log_path = os.path.join(tmpdir, ".code-flow", ".debug.log")
-            assert os.path.exists(log_path), "CF_DEBUG=1 must produce debug log"
-            with open(log_path, "r", encoding="utf-8") as f:
-                content = f.read()
-            assert "fallback" in content
-            assert "domain=backend" in content
-            assert "reason=no_tag_match" in content
-            # 2 tier-1 specs in fixture → loaded should reflect total entries (incl. tier 0)
-            assert "loaded=" in content
+            if os.path.exists(log_path):
+                with open(log_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                assert "reason=no_tag_match" not in content
+                assert "inject_hook fallback" not in content
     finally:
         if original is None:
             del os.environ["CF_DEBUG"]
@@ -158,7 +164,7 @@ def _make_project_with_explicit_tag_hit(tmpdir: str) -> str:
 
 
 def test_inject_hook_no_fallback_log_when_tag_matches() -> None:
-    """Explicit tag-matched path → no fallback line emitted in debug log."""
+    """Explicit tag match → no fallback log (strict-match regime never emits it)."""
     original = os.environ.get("CF_DEBUG")
     os.environ["CF_DEBUG"] = "1"
     try:
@@ -178,6 +184,87 @@ def test_inject_hook_no_fallback_log_when_tag_matches() -> None:
             del os.environ["CF_DEBUG"]
         else:
             os.environ["CF_DEBUG"] = original
+
+
+def _make_project_with_compressible_spec(tmpdir: str, compress: bool = True) -> str:
+    """Project with a spec file full of redundancy: multi-blank-lines, HTML comments,
+    trailing whitespace, duplicate bullets. Compression should demonstrably shrink it.
+    """
+    cf_dir = os.path.join(tmpdir, ".code-flow")
+    specs_dir = os.path.join(cf_dir, "specs", "backend")
+    os.makedirs(specs_dir, exist_ok=True)
+    with open(os.path.join(specs_dir, "_map.md"), "w", encoding="utf-8") as f:
+        f.write("# Map  \n\n\n\nkeep me\n")
+    with open(os.path.join(specs_dir, "rules.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "## Rules   \n"
+            "<!-- internal note: drop me -->\n"
+            "- always validate  \n"
+            "- always validate\n"
+            "\n\n\n\n"
+            "- handle errors\n"
+        )
+    config = {
+        "version": 1,
+        "budget": {"l1_max": 1700, "map_max": 400},
+        "inject": {
+            "auto": True,
+            "compress": compress,
+            "code_extensions": [".py"],
+        },
+        "path_mapping": {
+            "backend": {
+                "patterns": ["**/*.py"],
+                "specs": [
+                    {"path": "backend/_map.md", "tags": ["*"], "tier": 0},
+                    {"path": "backend/rules.md", "tags": ["*"], "tier": 1},
+                ],
+            }
+        },
+    }
+    import yaml
+    with open(os.path.join(cf_dir, "config.yml"), "w", encoding="utf-8") as f:
+        yaml.dump(config, f)
+    return tmpdir
+
+
+def test_inject_applies_compression() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _make_project_with_compressible_spec(tmpdir, compress=True)
+        result = _run_main("src/whatever.py", tmpdir)
+        ctx = result["hookSpecificOutput"]["additionalContext"]
+        assert "\n\n\n" not in ctx
+        assert "internal note" not in ctx
+        # Duplicate bullet collapsed
+        assert ctx.count("- always validate") == 1
+        # Real content preserved
+        assert "## Rules" in ctx
+        assert "handle errors" in ctx
+
+
+def test_inject_compress_disabled_via_config() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _make_project_with_compressible_spec(tmpdir, compress=False)
+        result = _run_main("src/whatever.py", tmpdir)
+        ctx = result["hookSpecificOutput"]["additionalContext"]
+        # Raw content should come through unaltered
+        assert "\n\n\n" in ctx
+        assert "internal note: drop me" in ctx
+        assert ctx.count("- always validate") == 2
+
+
+def test_inject_compress_falls_back_on_exception() -> None:
+    """compress_content raising must not drop the spec: raw text still injected."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _make_project_with_compressible_spec(tmpdir, compress=True)
+        with mock.patch("cf_core.compress_content", side_effect=RuntimeError("boom")):
+            result = _run_main("src/whatever.py", tmpdir)
+        assert "hookSpecificOutput" in result
+        ctx = result["hookSpecificOutput"]["additionalContext"]
+        # Raw content survives the broken compressor — markers from the
+        # redundant source should still be present.
+        assert "internal note: drop me" in ctx
+        assert ctx.count("- always validate") == 2
 
 
 if __name__ == "__main__":

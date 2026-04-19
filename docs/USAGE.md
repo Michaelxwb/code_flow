@@ -216,6 +216,8 @@ AI 调用 Edit/Write → Hook 拦截（文件路径）
 | `l1_max` | 1700 | 所有 tier 1 specs 合计上限 |
 | `map_max` | 400 | 单个 `_map.md` 最大 token |
 
+> Hook 注入前默认对 spec 做**保守无损压缩**（`inject.compress: true`），压缩后的 token 才参与预算决策，相同预算下可容纳更完整的 spec。设 `inject.compress: false` 可关闭；`cf-stats` 输出 `compression_summary` 及 `COMPRESSION: raw → compressed (-pct%)` 行。
+
 ---
 
 ## CLI 命令
@@ -658,6 +660,7 @@ budget:
 # 注入行为配置
 inject:
   auto: true        # 是否启用自动注入
+  compress: true    # 注入时对 spec 做保守无损压缩（去行尾空白、折叠多空行、剥 HTML 注释、去重 bullet）；缺省/非布尔按 true 处理
   code_extensions:  # 触发注入的文件扩展名
     - ".py"
     - ".js"
@@ -851,7 +854,8 @@ AI 调用 Edit("src/api/users.py", ...)
   → 从文件路径提取上下文标签：{api, user, route, ...}
   → 标签与 config.yml 中的 specs tags 做交集匹配
   → 读取匹配到的 spec 文件内容
-  → 按 tier 分层、按 token 预算裁剪
+  → 按 tier 分层（Tier 0 导航地图在前、Tier 1 约束规范在后）、按 token 预算裁剪
+  → **约束声明"以上规范是本次开发的约束条件，生成代码必须遵循"始终置于输出顶部**（assemble_context 强制）
   → 通过 stdout JSON 返回 hookSpecificOutput.additionalContext
   → 规范内容注入到 AI 上下文，指导代码生成
 ```
@@ -867,7 +871,7 @@ code-flow 通过 Codex 的 `UserPromptSubmit` Hook 在 prompt 提交前注入规
   → 从 prompt 文本中提取文件引用（@前缀、反引号、裸路径）→ context_tags
   → 从 prompt 文本中提取中英文关键词（"性能"/performance、"接口"/api 等）→ prompt_tags
   → 文件路径映射到域；context_tags ∪ prompt_tags 与 config.yml 中的 specs tags 做交集匹配
-  → 若无文件引用且 prompt_tags 也无命中：fallback 注入所有域的 Tier 0 导航地图
+  → 若无文件引用且 prompt_tags 也无命中：fallback 仅注入所有域的 Tier 0 导航地图（Tier 1 约束规范不参与 fallback，必须通过标签交集命中）
   → 通过 stdout JSON 返回 hookSpecificOutput.additionalContext
   → 规范内容注入到本次 prompt 上下文
 ```
@@ -965,7 +969,7 @@ CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool
    ```bash
    printf '%s' '{"session_id":"test","prompt":"修改 @src/api/users.py 注意性能"}' | python3 .code-flow/scripts/cf_user_prompt_hook.py
    ```
-5. 若 prompt 中既无文件引用也无关键词命中，Hook 会 fallback 注入所有域的 Tier 0 导航地图，这是正常行为
+5. 若 prompt 中既无文件引用也无关键词命中，Hook fallback 仅注入所有域的 Tier 0 导航地图；Tier 1 约束规范必须通过标签交集命中，不会 fallback 批量注入
 6. `CF_DEBUG=1` 时会把 prompt_tags 命中、最终注入 spec、fallback 触发等关键节点写入 `.code-flow/.debug.log`，建议把它加入 `.gitignore`
 
 ### Codex 命令不可用
@@ -1010,7 +1014,7 @@ CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool
 
 1. 用 `CF_DEBUG=1` 运行 Hook，查看 `context_tags` 和 `matched_specs`
 2. 检查 `config.yml` 中对应 spec 的 `tags` 是否包含文件路径能提取出的标签
-3. 当标签无法匹配时，Hook 会 fallback 到加载该域的所有 tier 1 specs
+3. Tier 1 约束规范无 fallback，当 context_tags ∪ prompt_tags 与 spec.tags 无交集时，对应规范不会被注入
 
 ### Python 环境问题
 
