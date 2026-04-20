@@ -475,24 +475,53 @@ scripts 域（建议写入 specs/scripts/code-standards.md）：
 
 code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 
-### `/cf-task:align` — 需求对齐与设计简报
+### `/cf-task:prd` — 产品需求文档
 
-从一句话需求出发，通过结构化对话产出设计简报（`.design.md`），包含数据库设计、接口设计、技术决策、验收标准等，为 `/cf-task:plan` 提供足够丰富的输入。
+从一句话需求出发，通过结构化对话产出产品需求文档（`.prd.md`），包含问题陈述、用户故事、功能清单、范围边界等，为 `/cf-task:align` 提供足够丰富的需求输入。
 
 ```
-/cf-task:align "给项目加上用户认证"                              # 从需求描述新建
-/cf-task:align                                                 # 交互式
-/cf-task:align .code-flow/tasks/2026-04-06/user-auth.design.md # 恢复草稿继续讨论
+/cf-task:prd "给项目加上用户认证"                              # 从需求描述新建
+/cf-task:prd                                                   # 交互式
+/cf-task:prd .code-flow/tasks/2026-04-06/user-auth.prd.md      # 恢复草稿继续讨论
 ```
 
 **执行流程**：
-1. 扫描代码库上下文（技术栈、现有模式）
-2. 围绕 5 个维度逐步交互：目标与边界 → 数据模型 → 接口设计 → 技术决策 → 验收标准
-3. 基于代码库上下文提出具体默认建议（而非泛泛提问）
-4. 展示设计简报草稿供确认
-5. 写入 `.code-flow/tasks/<YYYY-MM-DD>/<name>.design.md`
+1. 扫描项目背景（`.code-flow/specs/shared/_map.md`、已有 PRD）
+2. 围绕 PRD 要素交互：背景与目标 → 用户与场景 → 功能需求 → 非功能需求（按需）→ 范围与边界 → 依赖与风险（按需）
+3. 基于 `.code-flow/specs/shared/prd-template.md` 模板生成文档
+4. 写入 `.code-flow/tasks/<YYYY-MM-DD>/<name>.prd.md`（PRD 与后续 design 同目录，便于归档）
 
-产出的 `.design.md` 可直接作为 `/cf-task:plan` 的输入。支持中断恢复——对话进行中即写入草稿，下次通过文件路径继续。
+产出的 `.prd.md` 可直接作为 `/cf-task:align` 的输入。**适用场景**：需求早期阶段，在设计之前；**不适用**：已有明确技术方案（请直接用 `/cf-task:align`）。
+
+### `/cf-task:align` — 需求对齐与设计简报
+
+从需求出发，通过结构化对话产出设计简报（`.design.md`），包含技术选型、架构设计、接口设计、验收条件等，为 `/cf-task:plan` 提供足够丰富的输入。支持三种输入：
+
+```
+/cf-task:align "给项目加上用户认证"                              # 纯文本需求，新建
+/cf-task:align .code-flow/tasks/2026-04-06/user-auth.prd.md    # 从 PRD 派生（推荐路径）
+/cf-task:align .code-flow/tasks/2026-04-06/user-auth.design.md # 恢复草稿继续讨论
+/cf-task:align                                                 # 交互式
+```
+
+**输入模式**：
+
+| 参数形态 | 模式 | 行为 |
+|---------|------|------|
+| `.design.md` | 恢复模式 | 读取草稿，展示当前内容，询问调整点 |
+| `.prd.md` | PRD 派生模式 | 继承 PRD 的目标/用户/功能/范围，只补技术维度 |
+| 其他 `.md` | 新建（带上下文） | 作为参考材料进入细化 |
+| 纯文本 / 无参数 | 新建 / 交互 | 从零开始细化 |
+
+**执行流程**：
+1. 识别输入模式，扫描代码库上下文（技术栈、现有模式）
+2. 根据需求复杂度选择模板（`design-lite.md` 简单 / `design-full.md` 跨系统/架构演进）
+3. 围绕维度交互：目标与边界 → 数据模型（按需）→ 接口设计（按需）→ 技术方案 → 约束条件 → 验收标准
+4. **PRD 派生模式**：已从 PRD 覆盖的维度不再提问；FEAT 保留对 US-XX 的来源追溯
+5. 基于模板生成设计简报并展示
+6. 写入：Lite → `<name>-lite.design.md`，Full → `<name>.design.md`（PRD 派生时同目录同名继承）
+
+支持中断恢复——对话进行中即写入草稿，下次通过文件路径继续。
 
 ### `/cf-task:plan` — 从设计文档拆解任务
 
@@ -796,12 +825,16 @@ codex_hooks = true
    code-flow init
    /cf-learn --map                          ← 填充导航地图
 
-2. ���求对齐（两种入口，按需选择）
+2. 需求对齐（三种入口，按需选择）
    a) 有设计文档:
       /cf-task:plan docs/feature-design.md  ← 缺口分析 + 拆解任务
-   b) 只有一句话需求:
+   b) 只有一句话需求、需要先理清业务（推荐）:
+      /cf-task:prd   "给项目加用户认证"       ← 交互式产出 .prd.md（业务需求）
+      /cf-task:align .code-flow/tasks/.../xxx.prd.md    ← 从 PRD 派生 .design.md（技术设计）
+      /cf-task:plan  .code-flow/tasks/.../xxx.design.md ← 从设计简报拆解任务
+   c) 技术方案已明确，直接做设计:
       /cf-task:align "给项目加用户认证"       ← 交互式需求细化，产出 .design.md
-      /cf-task:plan .code-flow/tasks/.../xxx.design.md  ← 从设计简���拆解任务
+      /cf-task:plan .code-flow/tasks/.../xxx.design.md  ← 从设计简报拆解任务
 
 3. 任务审阅
    （review 任务文件，标注 #NOTES）

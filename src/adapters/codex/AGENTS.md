@@ -33,3 +33,9 @@ This project uses the code-flow two-tier spec system.
 5. If no domain matches, skip spec loading
 
 Do NOT ask the user which specs to load — the system handles constraint injection automatically.
+
+## Task Documents (cf-task workflow)
+
+- `.code-flow/specs/shared/` holds PRD/design templates used by `cf-task-prd` and `cf-task-align`
+- Workflow: `cf-task-prd` → `.prd.md` → `cf-task-align <.prd.md>` → `.design.md` → `cf-task-plan <.design.md>` → tasks
+- Templates are read by the skills themselves; you do not need to pre-load them
