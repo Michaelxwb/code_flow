@@ -23,6 +23,8 @@ from cf_core import (
 )
 from cf_log import reset_stdout
 
+HOOK_TYPE = "hook_inject"
+
 
 def main() -> None:
     try:
@@ -41,7 +43,7 @@ def main() -> None:
 
         # Enable logging if configured (default off)
         if inject_config.get("log") is True:
-            reset_stdout("hook_inject_" + sid)
+            reset_stdout(HOOK_TYPE + sid)
 
         tool_name = data.get("tool_name", "")
         tool_input = data.get("tool_input") or {}
