@@ -37,17 +37,18 @@ function ensurePython3() {
 // --- File classification ---
 
 function fileCategory(relPath) {
-  if (relPath.startsWith('.claude/commands/')) return 'tool';
-  if (relPath.startsWith('.costrict/commands/')) return 'tool';
-  if (relPath.startsWith('.agents/skills/')) return 'tool';
-  if (relPath.startsWith('.code-flow/scripts/')) return 'tool';
-  if (relPath === 'CLAUDE.md') return 'merge';
-  if (relPath === 'AGENTS.md') return 'merge';
-  if (relPath === '.claude/settings.local.json') return 'merge';
-  if (relPath === '.costrict/settings.local.json') return 'merge';
-  if (relPath === '.codex/hooks.json') return 'tool';
-  if (relPath === '.code-flow/config.yml') return 'merge';
-  if (relPath === '.codex/config.toml') return 'tool';
+  const p = relPath.replace(/\\/g, '/');
+  if (p.startsWith('.claude/commands/')) return 'tool';
+  if (p.startsWith('.costrict/commands/')) return 'tool';
+  if (p.startsWith('.agents/skills/')) return 'tool';
+  if (p.startsWith('.code-flow/scripts/')) return 'tool';
+  if (p === 'CLAUDE.md') return 'merge';
+  if (p === 'AGENTS.md') return 'merge';
+  if (p === '.claude/settings.local.json') return 'merge';
+  if (p === '.costrict/settings.local.json') return 'merge';
+  if (p === '.codex/hooks.json') return 'tool';
+  if (p === '.code-flow/config.yml') return 'merge';
+  if (p === '.codex/config.toml') return 'tool';
   return 'user';
 }
 
