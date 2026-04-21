@@ -34,6 +34,10 @@ from cf_core import (
     save_inject_state,
     select_specs_tiered,
 )
+from cf_log import reset_stdout
+
+
+HOOK_TYPE = "hook_user_prompt"
 
 # Match bare paths, @-prefixed paths, and backtick-quoted paths
 _PATH_RE = re.compile(r'[@`]?([a-zA-Z0-9_.][a-zA-Z0-9_./\-]*\.[a-zA-Z]{1,6})\b')
@@ -79,6 +83,9 @@ def main() -> None:
         if inject_config.get("auto") is False:
             return
         compress_enabled = resolve_compress(inject_config)
+        # Enable logging if configured (default off)
+        if inject_config.get("log") is True:
+            reset_stdout(HOOK_TYPE + sid)
 
         mapping = config.get("path_mapping") or {}
         effective_mapping = build_effective_mapping(project_root, mapping)
@@ -165,7 +172,7 @@ def main() -> None:
                 "matched_specs": [s["path"] for s in selected],
             }
 
-        sys.stdout.write(json.dumps(payload))
+        sys.stdout.write(json.dumps(payload, ensure_ascii=False))
 
     except Exception as exc:
         _log(f"cf_user_prompt_hook error: {exc}")

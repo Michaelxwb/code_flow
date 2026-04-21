@@ -21,9 +21,9 @@ from cf_core import (
     save_inject_state,
     select_specs_tiered,
 )
+from cf_log import reset_stdout
 
-
-
+HOOK_TYPE = "hook_inject"
 
 
 def main() -> None:
@@ -32,6 +32,19 @@ def main() -> None:
         if not raw.strip():
             return
         data = json.loads(raw)
+
+        # Resolve session id early (needed for both state and logging)
+        sid = resolve_session_id(data)
+
+        # Load config to check if logging is enabled
+        project_root = os.getcwd()
+        config = load_config(project_root)
+        inject_config = config.get("inject") or {} if config else {}
+
+        # Enable logging if configured (default off)
+        if inject_config.get("log") is True:
+            reset_stdout(HOOK_TYPE + sid)
+
         tool_name = data.get("tool_name", "")
         tool_input = data.get("tool_input") or {}
         file_path = tool_input.get("file_path", "")
@@ -40,13 +53,11 @@ def main() -> None:
         if not isinstance(file_path, str) or not file_path:
             return
 
-        project_root = os.getcwd()
         abs_path = file_path
         if not os.path.isabs(abs_path):
             abs_path = os.path.join(project_root, file_path)
         rel_path = os.path.relpath(abs_path, project_root)
 
-        config = load_config(project_root)
         if not config:
             return
         inject_config = config.get("inject") or {}
@@ -61,7 +72,6 @@ def main() -> None:
         domains = match_domains(rel_path, effective_mapping)
 
         # Load state with session isolation (fix #10)
-        sid = resolve_session_id(data)
         state = load_inject_state(project_root)
         state_sid = state.get("session_id", "")
         if state_sid != sid:
@@ -135,7 +145,7 @@ def main() -> None:
                 "context_tags": sorted(context_tags),
                 "matched_specs": [s["path"] for s in selected],
             }
-        sys.stdout.write(json.dumps(payload))
+        sys.stdout.write(json.dumps(payload, ensure_ascii=False))
     except Exception as exc:
         # Fix #9: log errors to stderr instead of silently swallowing
         _log(f"cf_inject_hook error: {exc}")
