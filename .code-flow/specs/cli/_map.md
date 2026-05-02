@@ -4,66 +4,42 @@
 
 ## Purpose
 
-Node.js CLI 工具，负责项目规范体系的初始化和版本升级管理。通过 `npx code-flow init` 调用。
+Node.js CLI，负责四个 AI 平台适配器的初始化与版本升级。`code-flow init [--force] [--platform=<claude|codex|costrict|opencode>]`。
 
 ## Architecture
 
-- Runtime: Node.js (CommonJS)
-- 依赖: 零外部依赖（仅 fs/path/child_process/os）
+- Runtime: Node.js (CommonJS)，零外部依赖（仅 fs/path/child_process/os）
 - 分发: npm 包 `@jahanxu/code-flow`
+- 唯一入口: `src/cli.js`
+- 模板源: `src/core/code-flow/`（核心）、`src/adapters/<platform>/`（平台适配）
 
-## Key Files
+## Key Functions (src/cli.js)
 
-| File | Purpose |
-|------|---------|
-| `src/cli.js` | 唯一入口，包含全部 CLI 逻辑（init/upgrade/merge） |
-| `package.json` | 版本号、bin 入口定义 |
+| 函数 | 职责 |
+|------|------|
+| `fileCategory(path)` | 三级分类：`tool`（覆盖）/ `merge`（增量合并）/ `user`（保留） |
+| `mergeClaudeMd` | CLAUDE.md / AGENTS.md 段落级合并 |
+| `mergeSettingsJson` | settings.json / opencode.json 顶层 key + hooks 合并 |
+| `mergeConfigYml` | config.yml 顶层 key 合并 |
+| `processDir` | 递归复制目录，按分类决定覆盖策略 |
+| `parsePlatform` | 解析 `--platform=<value>` |
+| `runInit(force, platform)` | 主流程：mode 判定 → core 部署 → 平台分支 → 摘要输出 |
 
-## Module Map
+## Platform Branches (in `runInit`)
 
-```
-src/cli.js
-├── fileCategory()         # 文件三级分类: tool / merge / user
-├── readInstalledVersion() # 读取 .code-flow/.version
-├── compareVersions()      # 语义版本比较
-├── mergeClaudeMd()        # CLAUDE.md / AGENTS.md 段落级合并
-├── mergeSettingsJson()    # settings.json deep merge
-├── mergeConfigYml()       # config.yml 顶层 key 合并
-├── collectFiles()         # 递归收集目录文件列表
-├── parsePlatform()        # 解析 --platform=<claude|codex> 参数
-└── runInit(force, platform)
-    ├── processDir()       # 目录递归复制（带分类策略）
-    ├── Claude adapter     # platform === 'claude' 分支
-    │   ├── CLAUDE.md
-    │   ├── .claude/commands/
-    │   └── .claude/settings.local.json
-    └── Codex adapter      # platform === 'codex' 分支
-        ├── AGENTS.md
-        ├── .codex/hooks.json
-        ├── .codex/config.toml
-        └── .agents/skills/<skill>/SKILL.md (project-level deploy)
-```
+- `claude` → `.claude/commands/` + `.claude/settings.local.json` + `CLAUDE.md`
+- `codex` → `.codex/{hooks.json,config.toml}` + `.agents/skills/` + `AGENTS.md`
+- `costrict` → `.costrict/commands/` + `.costrict/settings.local.json` + `CLAUDE.md`
+- `opencode` → `.opencode/{commands/,plugins/code-flow/}` + `opencode.json` + `AGENTS.md`
 
-## Data Flow
+## Mode Decision
 
-```
-code-flow init [--force] [--platform=<claude|codex>]
-  → parsePlatform() → 默认 'claude'
-  → 检测模式(fresh/upgrade/current/force)
-  → processDir(.code-flow/)          # 核心，始终部署
-  → if claude: 部署 Claude adapter
-  → if codex:  部署 Codex adapter + .agents/skills/
-  → mergeConfigYml()                 # upgrade 时增量合并
-  → 清理 legacy .claude/skills/
-  → pip install pyyaml
-  → 写 .code-flow/.version
-  → 输出摘要
-```
+`fresh`（无 .version）→ 全量创建；`upgrade`（旧版本号）→ tool 覆盖、merge 增量、user 保留；`force` → 全部覆盖；`current` → 跳过。
 
 ## Navigation Guide
 
-- 修改初始化行为 → `runInit()` 函数
-- 新增/修改文件分类 → `fileCategory()` 函数
-- 修改合并策略 → `mergeClaudeMd()` / `mergeSettingsJson()` / `mergeConfigYml()`
-- 新增平台适配器 → `runInit()` 中添加 `if (platform === '...')` 分支
-- 新增 CLI 参数 → 文件末尾 args 解析区域
+- 改初始化逻辑 → `runInit()`
+- 新增/修改文件分类 → `fileCategory()`
+- 改合并策略 → 三个 `mergeXxx()` 之一
+- 新增平台 → `runInit()` 加 `if (platform === '...')` 分支 + `fileCategory` 加路径前缀 + `parsePlatform` 校验集合
+- 新增 CLI 参数 → 文件末尾 args 解析区

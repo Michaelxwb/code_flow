@@ -46,10 +46,14 @@ pnpm remove -g @jahanxu/code-flow
 
 ## 基本用法
 
-初始化：
+初始化（默认 `--platform=claude`）：
 
 ```bash
 code-flow init
+code-flow init --platform=codex
+code-flow init --platform=costrict
+code-flow init --platform=opencode
+code-flow init --force                # 覆盖所有文件，包括用户已编辑内容
 ```
 
 查看帮助：
@@ -60,26 +64,43 @@ code-flow --help
 
 ## 支持的 AI 工具
 
-| 工具 | 状态 |
-|------|------|
-| [Claude Code](https://claude.ai/code) | ✅ 完整支持 |
-| [Codex CLI](https://github.com/openai/codex) | ✅ 完整支持 |
-| [Costrict](https://costrict.com) | ✅ 完整支持 |
+| 工具 | `--platform` | 状态 |
+|------|-------------|------|
+| [Claude Code](https://claude.ai/code) | `claude` | ✅ 完整支持 |
+| [Codex CLI](https://github.com/openai/codex) | `codex` | ✅ 完整支持 |
+| [Costrict](https://costrict.com) | `costrict` | ✅ 完整支持 |
+| [OpenCode](https://opencode.ai) | `opencode` | ✅ 完整支持 |
 
 ## 生成的目录与文件
 
 运行 `code-flow init` 后，将在项目根目录生成（或更新）以下结构：
 
 ```
-.code-flow/       # 规范核心（共用）
-.claude/          # Claude Code 适配
-CLAUDE.md         # Claude Code 全局指令
-.codex/           # Codex CLI 适配
-AGENTS.md         # Codex CLI 全局指令
-.agents/skills/   # Codex Skills（项目级）
-  <skill>/SKILL.md
-.costrict/        # Costrict 适配
-AGENTS.md         # Costrict 全局指令（与 Codex 共用）
+.code-flow/                       # 规范核心（共用）
+  scripts/                        # Python Hook 脚本（三端共用）
+  specs/<domain>/                 # 领域 spec（_map.md + 约束规则）
+
+# Claude Code (--platform=claude)
+.claude/commands/                 # 命令模板
+.claude/settings.local.json       # Hook 注册（PreToolUse + UserPromptSubmit）
+CLAUDE.md                         # 全局指令
+
+# Codex CLI (--platform=codex)
+.codex/hooks.json                 # UserPromptSubmit Hook 注册
+.codex/config.toml                # Codex 配置
+.agents/skills/<skill>/SKILL.md   # 项目级 Skills
+AGENTS.md                         # 全局指令
+
+# Costrict (--platform=costrict)
+.costrict/commands/               # 命令模板
+.costrict/settings.local.json     # Hook 注册
+CLAUDE.md                         # 与 Claude 共用全局指令
+
+# OpenCode (--platform=opencode)
+.opencode/commands/               # 命令模板（含 cf-task/）
+.opencode/plugins/code-flow/      # 插件：转发到 cf_user_prompt_hook.py
+opencode.json                     # 插件注册
+AGENTS.md                         # 全局指令
 ```
 
 ## 依赖说明

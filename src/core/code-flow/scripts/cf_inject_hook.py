@@ -135,7 +135,7 @@ def main() -> None:
                 "context_tags": sorted(context_tags),
                 "matched_specs": [s["path"] for s in selected],
             }
-        sys.stdout.write(json.dumps(payload))
+        sys.stdout.write(json.dumps(payload, ensure_ascii=False))
     except Exception as exc:
         # Fix #9: log errors to stderr instead of silently swallowing
         _log(f"cf_inject_hook error: {exc}")

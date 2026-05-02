@@ -1,0 +1,7 @@
+{
+  "name": "code-flow-opencode",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "description": "code-flow spec injection plugin for OpenCode"
+}

@@ -8,6 +8,7 @@ import sys
 # --- Config cache (fix #3: avoid re-parsing YAML on every hook call) ---
 
 _config_cache: dict = {}
+_spec_domains_cache: dict = {}
 
 
 def load_config(project_root: str) -> dict:
@@ -49,9 +50,13 @@ def _spec_path_from_entry(entry) -> str:
 
 
 def discover_spec_domains(project_root: str) -> dict:
+    cached = _spec_domains_cache.get(project_root)
+    if cached is not None:
+        return cached
     specs_root = os.path.join(project_root, ".code-flow", "specs")
     discovered = {}
     if not os.path.isdir(specs_root):
+        _spec_domains_cache[project_root] = discovered
         return discovered
 
     for root, _, files in os.walk(specs_root):
@@ -68,6 +73,7 @@ def discover_spec_domains(project_root: str) -> dict:
 
     for domain in discovered:
         discovered[domain] = sorted(set(discovered[domain]))
+    _spec_domains_cache[project_root] = discovered
     return discovered
 
 
@@ -312,9 +318,9 @@ _TAG_ALIASES = {
     "state": ["状态"],
 }
 
-# ASCII aliases this short would false-match inside English words
-# ("ui" inside "guide", "db" inside "idb"), so we require word boundaries.
 _SHORT_ASCII_ALIAS_THRESHOLD = 3
+
+_PTAG_COMPILED_RE: dict = {}
 
 
 def _is_short_ascii(token: str) -> bool:
@@ -345,7 +351,11 @@ def extract_prompt_tags(prompt_text) -> set:
         for alias in candidates:
             needle = alias.lower()
             if _is_short_ascii(needle):
-                if re.search(r"\b" + re.escape(needle) + r"\b", lower):
+                pattern = _PTAG_COMPILED_RE.get(needle)
+                if pattern is None:
+                    pattern = re.compile(r"\b" + re.escape(needle) + r"\b", re.IGNORECASE)
+                    _PTAG_COMPILED_RE[needle] = pattern
+                if pattern.search(lower):
                     hits.add(canonical)
                     break
             else:
@@ -395,9 +405,10 @@ def match_specs_by_tags(
     return matched, has_tier1_match
 
 
-# --- Lossless spec content compression (injected at Hook-time) ---
-
 _BULLET_PREFIXES = ("- ", "* ", "+ ")
+_COMPRESS_HTML_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+_COMPRESS_TRAILING_WS_RE = re.compile(r"[ \t]+$", re.MULTILINE)
+_COMPRESS_BLANK_LINES_RE = re.compile(r"\n{3,}")
 
 
 def compress_content(text: str) -> str:
@@ -417,9 +428,9 @@ def compress_content(text: str) -> str:
     if not isinstance(text, str) or not text:
         return text
     try:
-        result = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
-        result = re.sub(r"[ \t]+$", "", result, flags=re.MULTILINE)
-        result = re.sub(r"\n{3,}", "\n\n", result)
+        result = _COMPRESS_HTML_RE.sub("", text)
+        result = _COMPRESS_TRAILING_WS_RE.sub("", result)
+        result = _COMPRESS_BLANK_LINES_RE.sub("\n\n", result)
         lines = result.split("\n")
         out_lines: list = []
         prev_line: str = ""

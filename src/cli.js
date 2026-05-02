@@ -9,7 +9,7 @@ const { spawnSync } = require('child_process');
 const pkg = require('../package.json');
 
 const usage = [
-  'Usage: code-flow init [--force] [--platform=<claude|codex|costrict>]',
+  'Usage: code-flow init [--force] [--platform=<claude|codex|costrict|opencode>]',
   '       code-flow -v | --version',
   '       code-flow -h | --help'
 ].join('\n');
@@ -41,6 +41,7 @@ function fileCategory(relPath) {
   if (p.startsWith('.claude/commands/')) return 'tool';
   if (p.startsWith('.costrict/commands/')) return 'tool';
   if (p.startsWith('.agents/skills/')) return 'tool';
+  if (p.startsWith('.opencode/commands/')) return 'tool';
   if (p.startsWith('.code-flow/scripts/')) return 'tool';
   if (p === 'CLAUDE.md') return 'merge';
   if (p === 'AGENTS.md') return 'merge';
@@ -49,6 +50,8 @@ function fileCategory(relPath) {
   if (p === '.codex/hooks.json') return 'tool';
   if (p === '.code-flow/config.yml') return 'merge';
   if (p === '.codex/config.toml') return 'tool';
+  if (p.startsWith('.opencode/plugins/')) return 'tool';
+  if (p === 'opencode.json') return 'merge';
   return 'user';
 }
 
@@ -503,6 +506,55 @@ function runInit(force, platform) {
     processDir(codexSkillsSrc, path.join(cwd, '.agents', 'skills'), '.agents/skills');
   }
 
+  // Process OpenCode adapter
+  if (platform === 'opencode') {
+    const agentsMdSrc = path.join(adaptersDir, 'opencode', 'AGENTS.md');
+    const agentsMdDest = path.join(cwd, 'AGENTS.md');
+    if (!fs.existsSync(agentsMdDest)) {
+      created.push('AGENTS.md');
+      fs.copyFileSync(agentsMdSrc, agentsMdDest);
+    } else if (mode === 'force') {
+      updated.push('AGENTS.md');
+      fs.copyFileSync(agentsMdSrc, agentsMdDest);
+    } else if (mode === 'upgrade') {
+      const added = mergeClaudeMd(agentsMdSrc, agentsMdDest);
+      if (added.length > 0) {
+        merged.push(`AGENTS.md — added: ${added.join(', ')}`);
+      } else {
+        skipped.push('AGENTS.md');
+      }
+    } else {
+      skipped.push('AGENTS.md');
+    }
+
+    // Plugin files under .opencode/plugins/code-flow/
+    const opencodePluginSrc = path.join(adaptersDir, 'opencode', 'plugins');
+    processDir(opencodePluginSrc, path.join(cwd, '.opencode', 'plugins'), '.opencode/plugins');
+
+    // Command files under .opencode/commands/
+    const opencodeCommandsSrc = path.join(adaptersDir, 'opencode', 'commands');
+    processDir(opencodeCommandsSrc, path.join(cwd, '.opencode', 'commands'), '.opencode/commands');
+
+    const opencodeJsonSrc = path.join(adaptersDir, 'opencode', 'opencode.json');
+    const opencodeJsonDest = path.join(cwd, 'opencode.json');
+    if (!fs.existsSync(opencodeJsonDest)) {
+      created.push('opencode.json');
+      fs.copyFileSync(opencodeJsonSrc, opencodeJsonDest);
+    } else if (mode === 'force') {
+      updated.push('opencode.json');
+      fs.copyFileSync(opencodeJsonSrc, opencodeJsonDest);
+    } else if (mode === 'upgrade') {
+      const added = mergeSettingsJson(opencodeJsonSrc, opencodeJsonDest);
+      if (added.length > 0) {
+        merged.push(`opencode.json — added: ${added.join(', ')}`);
+      } else {
+        skipped.push('opencode.json');
+      }
+    } else {
+      skipped.push('opencode.json');
+    }
+  }
+
   // Merge config.yml on upgrade
   const configSrc = path.join(coreDir, 'code-flow', 'config.yml');
   const configDest = path.join(cwd, '.code-flow', 'config.yml');
@@ -587,6 +639,16 @@ function runInit(force, platform) {
       process.stdout.write('  Run /cf-learn in Costrict to update specs with project conventions\n');
       process.stdout.write('  Run /cf-learn --map to update retrieval maps\n');
     }
+  } else if (platform === 'opencode') {
+    if (mode === 'fresh') {
+      process.stdout.write('  1. Edit AGENTS.md — fill in team/project info\n');
+      process.stdout.write('  2. Start opencode in this directory — the plugin auto-loads\n');
+      process.stdout.write('  3. Run /cf-init in OpenCode to auto-scan and populate specs\n');
+      process.stdout.write('     Or manually edit .code-flow/specs/ to fill in your coding standards\n');
+    } else {
+      process.stdout.write('  Run /cf-learn in OpenCode to update specs with project conventions\n');
+      process.stdout.write('  Run /cf-learn --map to update retrieval maps\n');
+    }
   } else {
     if (mode === 'fresh') {
       process.stdout.write('  1. Edit CLAUDE.md — fill in team/project info\n');
@@ -619,8 +681,8 @@ if (args[0] === 'init') {
   const force = args.includes('--force');
   const rawPlatform = parsePlatform(args);
   const platform = rawPlatform === null ? 'claude' : rawPlatform;
-  if (platform !== 'claude' && platform !== 'codex' && platform !== 'costrict') {
-    fail(`Error: --platform must be "claude", "codex", or "costrict", got "${platform}".`);
+  if (platform !== 'claude' && platform !== 'codex' && platform !== 'costrict' && platform !== 'opencode') {
+    fail(`Error: --platform must be "claude", "codex", "costrict", or "opencode", got "${platform}".`);
   }
   runInit(force, platform);
 }

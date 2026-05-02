@@ -68,7 +68,11 @@ def main() -> None:
         
         # Resolve session_id consistently with PreToolUse hook
         sid = resolve_session_id(data)
-        debug_log(f"user_prompt_hook start session={sid} prompt_len={len(prompt)}", project_root)
+        debug_log(
+            f"user_prompt_hook start session={sid} "
+            f"prompt_len={len(prompt)} prompt_head={prompt[:200]!r}",
+            project_root,
+        )
 
         config = load_config(project_root)
         if not config:
@@ -165,7 +169,7 @@ def main() -> None:
                 "matched_specs": [s["path"] for s in selected],
             }
 
-        sys.stdout.write(json.dumps(payload))
+        sys.stdout.write(json.dumps(payload, ensure_ascii=False))
 
     except Exception as exc:
         _log(f"cf_user_prompt_hook error: {exc}")
