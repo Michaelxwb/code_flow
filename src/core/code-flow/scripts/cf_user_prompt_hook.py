@@ -37,6 +37,7 @@ from cf_core import (
 
 # Match bare paths, @-prefixed paths, and backtick-quoted paths
 _PATH_RE = re.compile(r'[@`]?([a-zA-Z0-9_.][a-zA-Z0-9_./\-]*\.[a-zA-Z]{1,6})\b')
+_EXT_RE = re.compile(r'\.(py|js|ts|go|rs|java|rb|cs|cpp|c|h)$')
 
 
 def extract_paths_from_prompt(prompt: str) -> list:
@@ -48,7 +49,7 @@ def extract_paths_from_prompt(prompt: str) -> list:
         # Require at least one slash or a meaningful extension to reduce noise
         if candidate in seen:
             continue
-        if '/' in candidate or re.search(r'\.(py|js|ts|go|rs|java|rb|cs|cpp|c|h)$', candidate):
+        if '/' in candidate or _EXT_RE.search(candidate):
             paths.append(candidate)
             seen.add(candidate)
     return paths
@@ -116,12 +117,6 @@ def main() -> None:
             matched_domains = fallback_domains_for_context(effective_mapping, context_tags)
             debug_log(f"user_prompt_hook fallback_domains={sorted(matched_domains)}", project_root)
 
-        state = load_inject_state(project_root)
-        if state.get("session_id") != sid:
-            injected_specs: set = set()
-        else:
-            injected_specs = set(state.get("injected_specs") or [])
-
         # Strict tag-based matching per domain. No bulk-load fallback: when a
         # Tier 1 spec's tags don't intersect (context_tags ∪ prompt_tags), the
         # spec is NOT injected. Tier 0 (_map.md) uses "*" so navigation still
@@ -144,6 +139,13 @@ def main() -> None:
         selected = select_specs_tiered(all_matched, l1_budget, map_max)
         if not selected:
             return
+
+        # Load state with session isolation (deferred until after match success)
+        state = load_inject_state(project_root)
+        if state.get("session_id") != sid:
+            injected_specs: set = set()
+        else:
+            injected_specs = set(state.get("injected_specs") or [])
 
         new_injected = injected_specs | {s["path"] for s in selected}
         save_inject_state(project_root, {

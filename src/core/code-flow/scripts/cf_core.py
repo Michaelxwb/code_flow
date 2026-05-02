@@ -9,6 +9,8 @@ import sys
 
 _config_cache: dict = {}
 _spec_domains_cache: dict = {}
+_effective_mapping_cache: dict = {}
+_ext_set_cache: dict = {}
 
 
 def load_config(project_root: str) -> dict:
@@ -83,6 +85,10 @@ def _default_spec_entry(rel: str) -> dict:
 
 
 def build_effective_mapping(project_root: str, mapping: dict) -> dict:
+    cache_key = (project_root, id(mapping))
+    cached = _effective_mapping_cache.get(cache_key)
+    if cached is not None:
+        return cached
     discovered = discover_spec_domains(project_root)
     effective = {}
 
@@ -125,6 +131,7 @@ def build_effective_mapping(project_root: str, mapping: dict) -> dict:
             "specs": normalized_specs,
         }
 
+    _effective_mapping_cache[cache_key] = effective
     return effective
 
 
@@ -153,7 +160,11 @@ def is_code_file(rel_path: str, inject_config: dict) -> bool:
     if ext in (inject_config.get("skip_extensions") or []):
         return False
     code_exts = inject_config.get("code_extensions") or []
-    return ext in code_exts
+    ext_set = _ext_set_cache.get(id(code_exts))
+    if ext_set is None:
+        ext_set = frozenset(code_exts)
+        _ext_set_cache[id(code_exts)] = ext_set
+    return ext in ext_set
 
 
 def match_domains(rel_path: str, mapping: dict) -> list:
@@ -271,7 +282,7 @@ def extract_context_tags(rel_path: str) -> set:
     filename = parts[-1] if parts else ""
     stem = os.path.splitext(filename)[0].lower()
     if stem:
-        words = re.findall(r"[a-z]+", stem.replace("_", " ").replace("-", " "))
+        words = _FILENAME_WORDS_RE.findall(stem.replace("_", " ").replace("-", " "))
         tags.update(words)
         for word in words:
             semantic = _DIR_SEMANTIC_TAGS.get(word)
@@ -320,9 +331,6 @@ _TAG_ALIASES = {
 
 _SHORT_ASCII_ALIAS_THRESHOLD = 3
 
-_PTAG_COMPILED_RE: dict = {}
-
-
 def _is_short_ascii(token: str) -> bool:
     if len(token) > _SHORT_ASCII_ALIAS_THRESHOLD:
         return False
@@ -333,29 +341,43 @@ def _is_short_ascii(token: str) -> bool:
         return False
 
 
+# Precompute (needle, is_short_ascii, compiled_pattern_or_None) at import time
+# so extract_prompt_tags() is a pure lookup loop with zero per-call overhead.
+_PREPARED_ALIASES: list = []
+
+
+def _init_prepared_aliases() -> None:
+    for canonical, aliases in _TAG_ALIASES.items():
+        entries = []
+        for alias in [canonical, *aliases]:
+            needle = alias.lower()
+            if _is_short_ascii(needle):
+                pattern = re.compile(r"\b" + re.escape(needle) + r"\b", re.IGNORECASE)
+                entries.append((needle, True, pattern))
+            else:
+                entries.append((needle, False, None))
+        _PREPARED_ALIASES.append((canonical, entries))
+
+
+_init_prepared_aliases()
+
+
 def extract_prompt_tags(prompt_text) -> set:
     """Scan prompt text for alias hits and return canonical tags.
 
     - Lowercases ASCII (Chinese is unaffected by .lower()).
-    - Short ASCII aliases are matched with word boundaries to avoid false
-      positives like "guide" matching "ui".
+    - Short ASCII aliases matched with word-boundary regex (precompiled at import).
     - Chinese aliases and long English aliases use plain substring match.
     - Silent on empty/non-string input.
     """
     if not isinstance(prompt_text, str) or not prompt_text.strip():
         return set()
     lower = prompt_text.lower()
-    hits = set()
-    for canonical, aliases in _TAG_ALIASES.items():
-        candidates = [canonical, *aliases]
-        for alias in candidates:
-            needle = alias.lower()
-            if _is_short_ascii(needle):
-                pattern = _PTAG_COMPILED_RE.get(needle)
-                if pattern is None:
-                    pattern = re.compile(r"\b" + re.escape(needle) + r"\b", re.IGNORECASE)
-                    _PTAG_COMPILED_RE[needle] = pattern
-                if pattern.search(lower):
+    hits: set = set()
+    for canonical, entries in _PREPARED_ALIASES:
+        for needle, is_short, pattern in entries:
+            if is_short:
+                if pattern.search(lower):  # type: ignore[union-attr]
                     hits.add(canonical)
                     break
             else:
@@ -405,6 +427,7 @@ def match_specs_by_tags(
     return matched, has_tier1_match
 
 
+_FILENAME_WORDS_RE = re.compile(r"[a-z]+")
 _BULLET_PREFIXES = ("- ", "* ", "+ ")
 _COMPRESS_HTML_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 _COMPRESS_TRAILING_WS_RE = re.compile(r"[ \t]+$", re.MULTILINE)

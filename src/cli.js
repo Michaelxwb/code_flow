@@ -531,6 +531,14 @@ function runInit(force, platform) {
     const opencodePluginSrc = path.join(adaptersDir, 'opencode', 'plugins');
     processDir(opencodePluginSrc, path.join(cwd, '.opencode', 'plugins'), '.opencode/plugins');
 
+    // Stamp main package version into the plugin's package.json
+    const pluginPkgPath = path.join(cwd, '.opencode', 'plugins', 'code-flow', 'package.json');
+    if (fs.existsSync(pluginPkgPath)) {
+      const pluginPkg = JSON.parse(fs.readFileSync(pluginPkgPath, 'utf8'));
+      pluginPkg.version = pkg.version;
+      fs.writeFileSync(pluginPkgPath, JSON.stringify(pluginPkg, null, 2) + '\n');
+    }
+
     // Command files under .opencode/commands/
     const opencodeCommandsSrc = path.join(adaptersDir, 'opencode', 'commands');
     processDir(opencodeCommandsSrc, path.join(cwd, '.opencode', 'commands'), '.opencode/commands');

@@ -60,14 +60,7 @@ def main() -> None:
         effective_mapping = build_effective_mapping(project_root, mapping)
         domains = match_domains(rel_path, effective_mapping)
 
-        # Load state with session isolation (fix #10)
         sid = resolve_session_id(data)
-        state = load_inject_state(project_root)
-        state_sid = state.get("session_id", "")
-        if state_sid != sid:
-            injected_specs = set()
-        else:
-            injected_specs = set(state.get("injected_specs") or [])
 
         # Extract context tags from file path
         context_tags = extract_context_tags(rel_path)
@@ -110,6 +103,13 @@ def main() -> None:
         selected = select_specs_tiered(all_matched, l1_budget, map_max)
         if not selected:
             return
+
+        # Load state with session isolation (deferred until after match success)
+        state = load_inject_state(project_root)
+        if state.get("session_id", "") != sid:
+            injected_specs = set()
+        else:
+            injected_specs = set(state.get("injected_specs") or [])
 
         # Update state with newly injected spec paths
         new_injected = injected_specs | {s["path"] for s in selected}
