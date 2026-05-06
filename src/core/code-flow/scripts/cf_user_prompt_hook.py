@@ -20,6 +20,7 @@ from cf_core import (
     assemble_context,
     build_effective_mapping,
     debug_log,
+    ensure_utf8_io,
     extract_context_tags,
     extract_prompt_tags,
     fallback_domains_for_context,
@@ -57,6 +58,7 @@ def extract_paths_from_prompt(prompt: str) -> list:
 
 def main() -> None:
     try:
+        ensure_utf8_io()
         raw = sys.stdin.read()
         if not raw.strip():
             return

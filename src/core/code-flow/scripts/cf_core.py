@@ -672,6 +672,25 @@ def _log(msg: str) -> None:
     print(msg, file=sys.stderr)
 
 
+def ensure_utf8_io() -> None:
+    """Force stdin/stdout/stderr to UTF-8 so Windows hooks don't mojibake.
+
+    Claude Code/Codex pass UTF-8 JSON over stdin and expect UTF-8 over stdout,
+    but Python on Windows defaults streams to the system codepage (cp936 on
+    zh-CN locales). That corrupts CJK content end-to-end — both the parsed
+    prompt and anything written back, including the CF_DEBUG=1 .debug.log.
+    ``reconfigure`` is a TextIOWrapper-only method, so test doubles built on
+    ``io.StringIO`` are silently skipped.
+    """
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8")
+            except Exception:
+                pass
+
+
 def resolve_compress(inject_config: dict) -> bool:
     """Return whether Hook-time spec compression is enabled.
 

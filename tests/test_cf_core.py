@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", 
 
 from cf_core import (
     compress_content,
+    ensure_utf8_io,
     extract_context_tags,
     extract_prompt_tags,
     match_specs_by_tags,
@@ -510,3 +511,63 @@ def test_compress_content_idempotent():
 def test_compress_content_non_string_returns_input():
     assert compress_content(None) is None
     assert compress_content(123) == 123
+
+
+# --- ensure_utf8_io: Windows cp936 mojibake guard ---
+
+
+class _FakeReconfigurableStream:
+    """Stand-in for sys.stdin/stdout that records reconfigure() calls."""
+
+    def __init__(self) -> None:
+        self.calls: list = []
+
+    def reconfigure(self, **kwargs) -> None:
+        self.calls.append(kwargs)
+
+
+class _FakeRaisingStream:
+    def __init__(self) -> None:
+        self.called: bool = False
+
+    def reconfigure(self, **kwargs) -> None:
+        self.called = True
+        raise OSError("not a terminal")
+
+
+def test_ensure_utf8_io_reconfigures_text_streams():
+    fake_in = _FakeReconfigurableStream()
+    fake_out = _FakeReconfigurableStream()
+    fake_err = _FakeReconfigurableStream()
+    saved = sys.stdin, sys.stdout, sys.stderr
+    sys.stdin, sys.stdout, sys.stderr = fake_in, fake_out, fake_err
+    try:
+        ensure_utf8_io()
+    finally:
+        sys.stdin, sys.stdout, sys.stderr = saved
+    assert fake_in.calls == [{"encoding": "utf-8"}]
+    assert fake_out.calls == [{"encoding": "utf-8"}]
+    assert fake_err.calls == [{"encoding": "utf-8"}]
+
+
+def test_ensure_utf8_io_skips_streams_without_reconfigure():
+    import io as _io
+    saved = sys.stdin, sys.stdout, sys.stderr
+    sys.stdin = _io.StringIO("ignored")
+    sys.stdout = _io.StringIO()
+    sys.stderr = _io.StringIO()
+    try:
+        ensure_utf8_io()
+    finally:
+        sys.stdin, sys.stdout, sys.stderr = saved
+
+
+def test_ensure_utf8_io_swallows_reconfigure_errors():
+    fake = _FakeRaisingStream()
+    saved_in = sys.stdin
+    sys.stdin = fake
+    try:
+        ensure_utf8_io()
+    finally:
+        sys.stdin = saved_in
+    assert fake.called is True
