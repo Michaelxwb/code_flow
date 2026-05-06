@@ -62,6 +62,23 @@ inject:
         - ".git/**"
 
 path_mapping:
+    shared:
+        # 共享模板供 cf-task:align / cf-task:prd 命令显式 Read 使用，
+        # 不是约束规范，禁止通配符自动注入。
+        # 仅 _map.md 保持 "*" 作为 Tier 0 导航。
+        specs:
+            - path: "shared/_map.md"
+              tags: ["*"]
+              tier: 0
+            - path: "shared/prd-template.md"
+              tags: []          # 永不自动注入，仅 cf-task:prd 命令显式 Read
+              tier: 1
+            - path: "shared/design/design-lite.md"
+              tags: []          # 永不自动注入，仅 cf-task:align 命令显式 Read
+              tier: 1
+            - path: "shared/design/design-full.md"
+              tags: []          # 永不自动注入，仅 cf-task:align 命令显式 Read
+              tier: 1
     cli:
         patterns:
             - "src/cli.js"

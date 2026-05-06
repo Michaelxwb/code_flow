@@ -81,6 +81,10 @@ def discover_spec_domains(project_root: str) -> dict:
 
 def _default_spec_entry(rel: str) -> dict:
     tier = 0 if rel.endswith("/_map.md") else 1
+    # shared/ 下非 _map.md 的文件是供 cf-task:align / cf-task:prd 命令
+    # 显式 Read 的模板，不是约束规范，禁止通配符自动注入。
+    if rel.startswith("shared/") and not rel.endswith("/_map.md"):
+        return {"path": rel, "tags": [], "tier": tier}
     return {"path": rel, "tags": ["*"], "tier": tier}
 
 
@@ -394,7 +398,7 @@ def normalize_spec_entry(entry) -> dict:
     if isinstance(entry, dict):
         return {
             "path": entry.get("path", ""),
-            "tags": entry.get("tags") or ["*"],
+            "tags": entry.get("tags", ["*"]),
             "tier": entry.get("tier", 1),
         }
     return {}

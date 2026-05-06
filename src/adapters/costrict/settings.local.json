@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .code-flow/scripts/cf_inject_hook.py",
+            "command": "python3 \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.code-flow/scripts/cf_inject_hook.py\"",
             "timeout": 5
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .code-flow/scripts/cf_session_hook.py"
+            "command": "python3 \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.code-flow/scripts/cf_session_hook.py\""
           }
         ]
       }
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .code-flow/scripts/cf_user_prompt_hook.py",
+            "command": "python3 \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.code-flow/scripts/cf_user_prompt_hook.py\"",
             "timeout": 5
           }
         ]
