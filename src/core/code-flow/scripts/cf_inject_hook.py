@@ -108,7 +108,7 @@ def main() -> None:
 
         # Load state with session isolation (deferred until after match success)
         state = load_inject_state(project_root)
-        if state.get("session_id", "") != sid:
+        if state.get("session_id") != sid:
             injected_specs = set()
         else:
             injected_specs = set(state.get("injected_specs") or [])

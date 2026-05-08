@@ -58,6 +58,31 @@ def test_extract_multiple_paths():
     assert "tests/test_cf_core.py" in paths
 
 
+def test_extract_path_followed_by_chinese():
+    # Python \b is Unicode-aware → "js中" was treated as a word-internal
+    # boundary and the whole match was dropped. ASCII negative lookahead
+    # restores correct termination.
+    paths = extract_paths_from_prompt("看看 src/cli.js中的逻辑")
+    assert paths == ["src/cli.js"]
+
+
+def test_extract_paths_separated_by_chinese():
+    paths = extract_paths_from_prompt("修改 src/a.py 和 src/b.py 都要测试")
+    assert "src/a.py" in paths
+    assert "src/b.py" in paths
+
+
+def test_extract_path_chinese_glued_no_separator():
+    paths = extract_paths_from_prompt("src/a.py和src/b.py都改")
+    assert "src/a.py" in paths
+    assert "src/b.py" in paths
+
+
+def test_extract_path_with_extension_at_eol_chinese():
+    paths = extract_paths_from_prompt("打开 cf_core.py")
+    assert "cf_core.py" in paths
+
+
 # --- main() integration ---
 def _make_project(tmpdir: str, domains_with_specs: bool = True) -> str:
     """Set up a minimal .code-flow project in tmpdir."""

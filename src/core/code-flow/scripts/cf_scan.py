@@ -23,7 +23,7 @@ def normalize_line(line: str) -> str:
 
 
 def find_redundant_lines(specs: list) -> dict:
-    line_map = {}
+    line_map: dict = {}
     for spec in specs:
         for raw in spec["content"].splitlines():
             line = normalize_line(raw)
@@ -39,7 +39,7 @@ def find_redundant_lines(specs: list) -> dict:
 
 
 def find_missing_paths(text: str, project_root: str) -> list:
-    missing = []
+    missing: list = []
     for token in set(PATH_PATTERN.findall(text)):
         if token.startswith("http://") or token.startswith("https://"):
             continue

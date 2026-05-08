@@ -377,14 +377,18 @@ def test_resolve_session_id_empty_dict():
 
 # --- debug_log ---
 def test_debug_log_silent_without_env():
-    """When CF_DEBUG not set, should not write anything."""
+    """When CF_DEBUG not set, should not write anything.
+
+    Run inside a tmp project_root so the assertion isn't polluted by leftover
+    .debug.log files in the repo cwd from prior CF_DEBUG=1 sessions.
+    """
     original = os.environ.get("CF_DEBUG")
     if "CF_DEBUG" in os.environ:
         del os.environ["CF_DEBUG"]
     try:
-        # Should not raise, should not create file
-        debug_log("test message")
-        assert not os.path.exists(".code-flow/.debug.log")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            debug_log("test message", project_root=tmpdir)
+            assert not os.path.exists(os.path.join(tmpdir, ".code-flow", ".debug.log"))
     finally:
         if original is not None:
             os.environ["CF_DEBUG"] = original

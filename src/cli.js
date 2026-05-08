@@ -83,39 +83,85 @@ function compareVersions(a, b) {
 
 // --- Merge functions ---
 
+// Replace fenced code blocks with same-length whitespace so byte offsets in
+// the original text stay valid for slice operations downstream — but ## lines
+// inside ```...``` no longer match the section regex.
+function maskFencedCode(text) {
+  return text.replace(/```[\s\S]*?```/g, block => block.replace(/[^\n]/g, ' '));
+}
+
 function mergeClaudeMd(srcFile, destFile) {
   const srcText = fs.readFileSync(srcFile, 'utf8');
   const destText = fs.readFileSync(destFile, 'utf8');
+  const srcMasked = maskFencedCode(srcText);
+  const destMasked = maskFencedCode(destText);
 
   const sectionRegex = /^## .+$/gm;
   const srcSections = [];
   let match;
-  while ((match = sectionRegex.exec(srcText)) !== null) {
-    srcSections.push(match[0].trim());
+  while ((match = sectionRegex.exec(srcMasked)) !== null) {
+    srcSections.push({ heading: match[0].trim(), index: match.index });
   }
 
   const destSectionSet = new Set();
   const destRegex = /^## .+$/gm;
-  while ((match = destRegex.exec(destText)) !== null) {
+  while ((match = destRegex.exec(destMasked)) !== null) {
     destSectionSet.add(match[0].trim());
   }
 
-  const missing = srcSections.filter(s => !destSectionSet.has(s));
+  const missing = srcSections.filter(s => !destSectionSet.has(s.heading));
   if (missing.length === 0) return [];
 
   const additions = [];
-  for (const heading of missing) {
-    const idx = srcText.indexOf(heading);
-    const nextHeadingIdx = srcText.indexOf('\n## ', idx + 1);
-    const block = nextHeadingIdx === -1
-      ? srcText.slice(idx)
-      : srcText.slice(idx, nextHeadingIdx);
-    additions.push(block.trimEnd());
+  for (const { heading, index } of missing) {
+    // Find next real section heading using the masked text, then slice the
+    // original text by that offset so we keep any code-block content intact.
+    const nextRel = srcMasked.slice(index + heading.length).search(/^## /m);
+    const end = nextRel === -1 ? srcText.length : index + heading.length + nextRel;
+    additions.push(srcText.slice(index, end).trimEnd());
   }
 
   const merged = destText.trimEnd() + '\n\n' + additions.join('\n\n') + '\n';
   fs.writeFileSync(destFile, merged);
-  return missing;
+  return missing.map(m => m.heading);
+}
+
+// Deep-merge a single hook event array. Each item has shape
+//   { matcher?: string, hooks: [{ type, command, ... }] }
+// We treat (matcher || '') as the identity key. New src items become new
+// dest items; for existing items we union the inner hooks array by command
+// string. User-added items / commands are never removed or rewritten — the
+// merge is purely additive, in line with cli/code-standards.md "合并策略
+// 必须保证用户自定义内容不被覆盖".
+function mergeHookEventArray(srcArr, destArr, eventName, added) {
+  if (!Array.isArray(srcArr) || !Array.isArray(destArr)) return;
+  for (const srcItem of srcArr) {
+    if (!srcItem || typeof srcItem !== 'object') continue;
+    const srcMatcher = typeof srcItem.matcher === 'string' ? srcItem.matcher : '';
+    const destItem = destArr.find(d => {
+      if (!d || typeof d !== 'object') return false;
+      const m = typeof d.matcher === 'string' ? d.matcher : '';
+      return m === srcMatcher;
+    });
+    if (!destItem) {
+      destArr.push(srcItem);
+      added.push(`hook: ${eventName}${srcMatcher ? '@' + srcMatcher : ''}`);
+      continue;
+    }
+    if (!Array.isArray(destItem.hooks)) destItem.hooks = [];
+    const destCmds = new Set(
+      destItem.hooks.map(h => (h && typeof h.command === 'string' ? h.command : ''))
+    );
+    for (const srcHook of (Array.isArray(srcItem.hooks) ? srcItem.hooks : [])) {
+      if (!srcHook || typeof srcHook !== 'object') continue;
+      const cmd = typeof srcHook.command === 'string' ? srcHook.command : '';
+      if (destCmds.has(cmd)) continue;
+      destItem.hooks.push(srcHook);
+      destCmds.add(cmd);
+      const tag = srcMatcher ? `${eventName}@${srcMatcher}` : eventName;
+      added.push(`hook: ${tag} +${cmd.slice(0, 60)}`);
+    }
+  }
 }
 
 function mergeSettingsJson(srcFile, destFile) {
@@ -123,18 +169,19 @@ function mergeSettingsJson(srcFile, destFile) {
   const dest = JSON.parse(fs.readFileSync(destFile, 'utf8'));
   const added = [];
 
-  // Merge hooks
-  if (src.hooks) {
-    if (!dest.hooks) dest.hooks = {};
+  if (src.hooks && typeof src.hooks === 'object') {
+    if (!dest.hooks || typeof dest.hooks !== 'object') dest.hooks = {};
     for (const event of Object.keys(src.hooks)) {
+      const srcEvent = src.hooks[event];
       if (!dest.hooks[event]) {
-        dest.hooks[event] = src.hooks[event];
+        dest.hooks[event] = srcEvent;
         added.push(`hook: ${event}`);
+        continue;
       }
+      mergeHookEventArray(srcEvent, dest.hooks[event], event, added);
     }
   }
 
-  // Merge other top-level keys
   for (const key of Object.keys(src)) {
     if (key === 'hooks') continue;
     if (!(key in dest)) {
@@ -282,6 +329,67 @@ function removeLegacyClaudeSkills(cwd, removed) {
   process.stderr.write('Warning: failed to remove deprecated .claude/skills/. Remove it manually.\n');
 }
 
+// --- pyyaml dependency: probe first, fall back through PEP 668 strategies ---
+
+function ensurePyYaml() {
+  const probe = spawnSync('python3', ['-c', 'import yaml'], { stdio: 'ignore' });
+  if (!probe.error && probe.status === 0) return; // already installed
+
+  const attempts = [
+    ['-m', 'pip', 'install', '--user', 'pyyaml'],
+    ['-m', 'pip', 'install', 'pyyaml'],
+    ['-m', 'pip', 'install', '--user', '--break-system-packages', 'pyyaml'],
+  ];
+  for (const args of attempts) {
+    const result = spawnSync('python3', args, { stdio: 'ignore' });
+    if (!result.error && result.status === 0) return;
+  }
+  process.stderr.write(
+    'Warning: pyyaml install failed. Run manually:\n' +
+    '  python3 -m pip install --user pyyaml\n' +
+    '  # or, on PEP 668 systems:\n' +
+    '  python3 -m pip install --user --break-system-packages pyyaml\n'
+  );
+}
+
+// --- Adapter file installer: shared by every platform branch ---
+
+// Install one adapter file with the standard create / force / upgrade /
+// skip semantics. `mergeFn` is consulted only on upgrade for `merge`-class
+// files; pass null for `tool`-class files (overwrite on upgrade) or for
+// fresh-only files (skip on upgrade).
+function installAdapterFile(opts) {
+  const { src, dest, label, mode, mergeFn, toolOnUpgrade, results } = opts;
+  if (!fs.existsSync(dest)) {
+    results.created.push(label);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.copyFileSync(src, dest);
+    return;
+  }
+  if (mode === 'force') {
+    results.updated.push(label);
+    fs.copyFileSync(src, dest);
+    return;
+  }
+  if (mode === 'upgrade') {
+    if (toolOnUpgrade) {
+      results.updated.push(label);
+      fs.copyFileSync(src, dest);
+      return;
+    }
+    if (mergeFn) {
+      const added = mergeFn(src, dest);
+      if (added.length > 0) {
+        results.merged.push(`${label} — added: ${added.join(', ')}`);
+      } else {
+        results.skipped.push(label);
+      }
+      return;
+    }
+  }
+  results.skipped.push(label);
+}
+
 // --- Platform argument parsing ---
 
 function parsePlatform(args) {
@@ -325,6 +433,7 @@ function runInit(force, platform) {
   const merged = [];
   const skipped = [];
   const removed = [];
+  const results = { created, updated, merged, skipped };
 
   // Track + copy helper for directory trees
   const processDir = (srcDir, destDir, prefix) => {
@@ -357,24 +466,15 @@ function runInit(force, platform) {
 
   // Process Claude adapter
   if (platform === 'claude') {
-    const claudeMdSrc = path.join(adaptersDir, 'claude', 'CLAUDE.md');
-    const claudeMdDest = path.join(cwd, 'CLAUDE.md');
-    if (!fs.existsSync(claudeMdDest)) {
-      created.push('CLAUDE.md');
-      fs.copyFileSync(claudeMdSrc, claudeMdDest);
-    } else if (mode === 'force') {
-      updated.push('CLAUDE.md');
-      fs.copyFileSync(claudeMdSrc, claudeMdDest);
-    } else if (mode === 'upgrade') {
-      const added = mergeClaudeMd(claudeMdSrc, claudeMdDest);
-      if (added.length > 0) {
-        merged.push(`CLAUDE.md — added: ${added.join(', ')}`);
-      } else {
-        skipped.push('CLAUDE.md');
-      }
-    } else {
-      skipped.push('CLAUDE.md');
-    }
+    installAdapterFile({
+      src: path.join(adaptersDir, 'claude', 'CLAUDE.md'),
+      dest: path.join(cwd, 'CLAUDE.md'),
+      label: 'CLAUDE.md',
+      mode,
+      mergeFn: mergeClaudeMd,
+      toolOnUpgrade: false,
+      results,
+    });
 
     fs.mkdirSync(path.join(cwd, '.claude', 'commands'), { recursive: true });
     processDir(
@@ -383,47 +483,28 @@ function runInit(force, platform) {
       '.claude/commands'
     );
 
-    const settingsSrc = path.join(adaptersDir, 'claude', 'settings.local.json');
-    const settingsDest = path.join(cwd, '.claude', 'settings.local.json');
-    if (!fs.existsSync(settingsDest)) {
-      created.push('.claude/settings.local.json');
-      fs.mkdirSync(path.dirname(settingsDest), { recursive: true });
-      fs.copyFileSync(settingsSrc, settingsDest);
-    } else if (mode === 'force') {
-      updated.push('.claude/settings.local.json');
-      fs.copyFileSync(settingsSrc, settingsDest);
-    } else if (mode === 'upgrade') {
-      const added = mergeSettingsJson(settingsSrc, settingsDest);
-      if (added.length > 0) {
-        merged.push(`.claude/settings.local.json — added: ${added.join(', ')}`);
-      } else {
-        skipped.push('.claude/settings.local.json');
-      }
-    } else {
-      skipped.push('.claude/settings.local.json');
-    }
+    installAdapterFile({
+      src: path.join(adaptersDir, 'claude', 'settings.local.json'),
+      dest: path.join(cwd, '.claude', 'settings.local.json'),
+      label: '.claude/settings.local.json',
+      mode,
+      mergeFn: mergeSettingsJson,
+      toolOnUpgrade: false,
+      results,
+    });
   }
 
   // Process Costrict adapter
   if (platform === 'costrict') {
-    const costrictMdSrc = path.join(adaptersDir, 'costrict', 'AGENTS.md');
-    const costrictMdDest = path.join(cwd, 'AGENTS.md');
-    if (!fs.existsSync(costrictMdDest)) {
-      created.push('AGENTS.md');
-      fs.copyFileSync(costrictMdSrc, costrictMdDest);
-    } else if (mode === 'force') {
-      updated.push('AGENTS.md');
-      fs.copyFileSync(costrictMdSrc, costrictMdDest);
-    } else if (mode === 'upgrade') {
-      const added = mergeClaudeMd(costrictMdSrc, costrictMdDest);
-      if (added.length > 0) {
-        merged.push(`AGENTS.md — added: ${added.join(', ')}`);
-      } else {
-        skipped.push('AGENTS.md');
-      }
-    } else {
-      skipped.push('AGENTS.md');
-    }
+    installAdapterFile({
+      src: path.join(adaptersDir, 'costrict', 'AGENTS.md'),
+      dest: path.join(cwd, 'AGENTS.md'),
+      label: 'AGENTS.md',
+      mode,
+      mergeFn: mergeClaudeMd,
+      toolOnUpgrade: false,
+      results,
+    });
 
     fs.mkdirSync(path.join(cwd, '.costrict', 'commands'), { recursive: true });
     processDir(
@@ -432,104 +513,75 @@ function runInit(force, platform) {
       '.costrict/commands'
     );
 
-    const settingsSrc = path.join(adaptersDir, 'costrict', 'settings.local.json');
-    const settingsDest = path.join(cwd, '.costrict', 'settings.local.json');
-    if (!fs.existsSync(settingsDest)) {
-      created.push('.costrict/settings.local.json');
-      fs.mkdirSync(path.dirname(settingsDest), { recursive: true });
-      fs.copyFileSync(settingsSrc, settingsDest);
-    } else if (mode === 'force') {
-      updated.push('.costrict/settings.local.json');
-      fs.copyFileSync(settingsSrc, settingsDest);
-    } else if (mode === 'upgrade') {
-      const added = mergeSettingsJson(settingsSrc, settingsDest);
-      if (added.length > 0) {
-        merged.push(`.costrict/settings.local.json — added: ${added.join(', ')}`);
-      } else {
-        skipped.push('.costrict/settings.local.json');
-      }
-    } else {
-      skipped.push('.costrict/settings.local.json');
-    }
+    installAdapterFile({
+      src: path.join(adaptersDir, 'costrict', 'settings.local.json'),
+      dest: path.join(cwd, '.costrict', 'settings.local.json'),
+      label: '.costrict/settings.local.json',
+      mode,
+      mergeFn: mergeSettingsJson,
+      toolOnUpgrade: false,
+      results,
+    });
   }
 
   // Process Codex adapter
   if (platform === 'codex') {
-    const agentsMdSrc = path.join(adaptersDir, 'codex', 'AGENTS.md');
-    const agentsMdDest = path.join(cwd, 'AGENTS.md');
-    if (!fs.existsSync(agentsMdDest)) {
-      created.push('AGENTS.md');
-      fs.copyFileSync(agentsMdSrc, agentsMdDest);
-    } else if (mode === 'force') {
-      updated.push('AGENTS.md');
-      fs.copyFileSync(agentsMdSrc, agentsMdDest);
-    } else if (mode === 'upgrade') {
-      const added = mergeClaudeMd(agentsMdSrc, agentsMdDest);
-      if (added.length > 0) {
-        merged.push(`AGENTS.md — added: ${added.join(', ')}`);
-      } else {
-        skipped.push('AGENTS.md');
-      }
-    } else {
-      skipped.push('AGENTS.md');
-    }
+    installAdapterFile({
+      src: path.join(adaptersDir, 'codex', 'AGENTS.md'),
+      dest: path.join(cwd, 'AGENTS.md'),
+      label: 'AGENTS.md',
+      mode,
+      mergeFn: mergeClaudeMd,
+      toolOnUpgrade: false,
+      results,
+    });
 
-    const codexHooksSrc = path.join(adaptersDir, 'codex', 'hooks.json');
-    const codexHooksDest = path.join(cwd, '.codex', 'hooks.json');
-    if (!fs.existsSync(codexHooksDest)) {
-      created.push('.codex/hooks.json');
-      fs.mkdirSync(path.dirname(codexHooksDest), { recursive: true });
-      fs.copyFileSync(codexHooksSrc, codexHooksDest);
-    } else if (mode === 'force' || mode === 'upgrade') {
-      updated.push('.codex/hooks.json');
-      fs.copyFileSync(codexHooksSrc, codexHooksDest);
-    } else {
-      skipped.push('.codex/hooks.json');
-    }
+    installAdapterFile({
+      src: path.join(adaptersDir, 'codex', 'hooks.json'),
+      dest: path.join(cwd, '.codex', 'hooks.json'),
+      label: '.codex/hooks.json',
+      mode,
+      mergeFn: null,
+      toolOnUpgrade: true,
+      results,
+    });
 
-    const codexConfigSrc = path.join(adaptersDir, 'codex', 'config.toml');
-    const codexConfigDest = path.join(cwd, '.codex', 'config.toml');
-    if (!fs.existsSync(codexConfigDest)) {
-      created.push('.codex/config.toml');
-      fs.mkdirSync(path.dirname(codexConfigDest), { recursive: true });
-      fs.copyFileSync(codexConfigSrc, codexConfigDest);
-    } else if (mode === 'force' || mode === 'upgrade') {
-      updated.push('.codex/config.toml');
-      fs.copyFileSync(codexConfigSrc, codexConfigDest);
-    } else {
-      skipped.push('.codex/config.toml');
-    }
-
-    const codexSkillsSrc = path.join(adaptersDir, 'codex', 'skills');
+    installAdapterFile({
+      src: path.join(adaptersDir, 'codex', 'config.toml'),
+      dest: path.join(cwd, '.codex', 'config.toml'),
+      label: '.codex/config.toml',
+      mode,
+      mergeFn: null,
+      toolOnUpgrade: true,
+      results,
+    });
 
     // Project-level .agents/skills/ (version-controlled, committed to repo)
-    processDir(codexSkillsSrc, path.join(cwd, '.agents', 'skills'), '.agents/skills');
+    processDir(
+      path.join(adaptersDir, 'codex', 'skills'),
+      path.join(cwd, '.agents', 'skills'),
+      '.agents/skills'
+    );
   }
 
   // Process OpenCode adapter
   if (platform === 'opencode') {
-    const agentsMdSrc = path.join(adaptersDir, 'opencode', 'AGENTS.md');
-    const agentsMdDest = path.join(cwd, 'AGENTS.md');
-    if (!fs.existsSync(agentsMdDest)) {
-      created.push('AGENTS.md');
-      fs.copyFileSync(agentsMdSrc, agentsMdDest);
-    } else if (mode === 'force') {
-      updated.push('AGENTS.md');
-      fs.copyFileSync(agentsMdSrc, agentsMdDest);
-    } else if (mode === 'upgrade') {
-      const added = mergeClaudeMd(agentsMdSrc, agentsMdDest);
-      if (added.length > 0) {
-        merged.push(`AGENTS.md — added: ${added.join(', ')}`);
-      } else {
-        skipped.push('AGENTS.md');
-      }
-    } else {
-      skipped.push('AGENTS.md');
-    }
+    installAdapterFile({
+      src: path.join(adaptersDir, 'opencode', 'AGENTS.md'),
+      dest: path.join(cwd, 'AGENTS.md'),
+      label: 'AGENTS.md',
+      mode,
+      mergeFn: mergeClaudeMd,
+      toolOnUpgrade: false,
+      results,
+    });
 
     // Plugin files under .opencode/plugins/code-flow/
-    const opencodePluginSrc = path.join(adaptersDir, 'opencode', 'plugins');
-    processDir(opencodePluginSrc, path.join(cwd, '.opencode', 'plugins'), '.opencode/plugins');
+    processDir(
+      path.join(adaptersDir, 'opencode', 'plugins'),
+      path.join(cwd, '.opencode', 'plugins'),
+      '.opencode/plugins'
+    );
 
     // Stamp main package version into the plugin's package.json
     const pluginPkgPath = path.join(cwd, '.opencode', 'plugins', 'code-flow', 'package.json');
@@ -540,27 +592,21 @@ function runInit(force, platform) {
     }
 
     // Command files under .opencode/commands/
-    const opencodeCommandsSrc = path.join(adaptersDir, 'opencode', 'commands');
-    processDir(opencodeCommandsSrc, path.join(cwd, '.opencode', 'commands'), '.opencode/commands');
+    processDir(
+      path.join(adaptersDir, 'opencode', 'commands'),
+      path.join(cwd, '.opencode', 'commands'),
+      '.opencode/commands'
+    );
 
-    const opencodeJsonSrc = path.join(adaptersDir, 'opencode', 'opencode.json');
-    const opencodeJsonDest = path.join(cwd, 'opencode.json');
-    if (!fs.existsSync(opencodeJsonDest)) {
-      created.push('opencode.json');
-      fs.copyFileSync(opencodeJsonSrc, opencodeJsonDest);
-    } else if (mode === 'force') {
-      updated.push('opencode.json');
-      fs.copyFileSync(opencodeJsonSrc, opencodeJsonDest);
-    } else if (mode === 'upgrade') {
-      const added = mergeSettingsJson(opencodeJsonSrc, opencodeJsonDest);
-      if (added.length > 0) {
-        merged.push(`opencode.json — added: ${added.join(', ')}`);
-      } else {
-        skipped.push('opencode.json');
-      }
-    } else {
-      skipped.push('opencode.json');
-    }
+    installAdapterFile({
+      src: path.join(adaptersDir, 'opencode', 'opencode.json'),
+      dest: path.join(cwd, 'opencode.json'),
+      label: 'opencode.json',
+      mode,
+      mergeFn: mergeSettingsJson,
+      toolOnUpgrade: false,
+      results,
+    });
   }
 
   // Merge config.yml on upgrade
@@ -584,13 +630,8 @@ function runInit(force, platform) {
     removeOrphanFiles(cwd, removed);
   }
 
-  // Install pyyaml
-  const pip = spawnSync('python3', ['-m', 'pip', 'install', 'pyyaml'], {
-    stdio: 'ignore'
-  });
-  if (pip.error || pip.status !== 0) {
-    process.stderr.write('Warning: pyyaml install failed. Run manually: pip install pyyaml\n');
-  }
+  // Install pyyaml — probe first, fall back through PEP 668 strategies
+  ensurePyYaml();
 
   // Write version
   writeVersion(cwd, pkg.version);

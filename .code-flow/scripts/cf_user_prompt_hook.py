@@ -20,6 +20,7 @@ from cf_core import (
     assemble_context,
     build_effective_mapping,
     debug_log,
+    ensure_utf8_io,
     extract_context_tags,
     extract_prompt_tags,
     fallback_domains_for_context,
@@ -35,8 +36,12 @@ from cf_core import (
     select_specs_tiered,
 )
 
-# Match bare paths, @-prefixed paths, and backtick-quoted paths
-_PATH_RE = re.compile(r'[@`]?([a-zA-Z0-9_.][a-zA-Z0-9_./\-]*\.[a-zA-Z]{1,6})\b')
+# Match bare paths, @-prefixed paths, and backtick-quoted paths.
+# Right boundary uses an ASCII-only negative lookahead instead of \b. Python's
+# \b is Unicode-aware on every platform, so "src/cli.js中" never terminated
+# the match — common Chinese phrasing dropped real paths. The explicit ASCII
+# class is locale- and OS-independent, so Windows/macOS/Linux behave the same.
+_PATH_RE = re.compile(r'[@`]?([a-zA-Z0-9_.][a-zA-Z0-9_./\-]*\.[a-zA-Z]{1,6})(?![a-zA-Z0-9_])')
 _EXT_RE = re.compile(r'\.(py|js|ts|go|rs|java|rb|cs|cpp|c|h)$')
 
 
@@ -57,6 +62,7 @@ def extract_paths_from_prompt(prompt: str) -> list:
 
 def main() -> None:
     try:
+        ensure_utf8_io()
         raw = sys.stdin.read()
         if not raw.strip():
             return

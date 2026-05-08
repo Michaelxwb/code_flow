@@ -8,6 +8,7 @@ from cf_core import (
     assemble_context,
     build_effective_mapping,
     debug_log,
+    ensure_utf8_io,
     extract_context_tags,
     fallback_domains_for_context,
     is_code_file,
@@ -28,6 +29,7 @@ from cf_core import (
 
 def main() -> None:
     try:
+        ensure_utf8_io()
         raw = sys.stdin.read()
         if not raw.strip():
             return
@@ -106,7 +108,7 @@ def main() -> None:
 
         # Load state with session isolation (deferred until after match success)
         state = load_inject_state(project_root)
-        if state.get("session_id", "") != sid:
+        if state.get("session_id") != sid:
             injected_specs = set()
         else:
             injected_specs = set(state.get("injected_specs") or [])
