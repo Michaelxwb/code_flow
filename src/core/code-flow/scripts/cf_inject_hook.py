@@ -108,19 +108,28 @@ def main() -> None:
 
         # Load state with session isolation (deferred until after match success)
         state = load_inject_state(project_root)
-        if state.get("session_id") != sid:
-            injected_specs = set()
-        else:
+        same_session = state.get("session_id") == sid
+        if same_session:
             injected_specs = set(state.get("injected_specs") or [])
+        else:
+            injected_specs = set()
 
-        # Update state with newly injected spec paths
+        # Update state with newly injected spec paths. Preserve
+        # UserPromptSubmit-owned fields (prompt_count / prompt_inject_window)
+        # verbatim so cross-hook writes don't reset the dedup window.
         new_injected = injected_specs | {s["path"] for s in selected}
         debug_log(f"inject_hook injected={[s['path'] for s in selected]} path={rel_path}", project_root)
-        save_inject_state(project_root, {
+        new_state = {
             "session_id": sid,
             "injected_specs": sorted(new_injected),
             "last_file": abs_path,
-        })
+        }
+        if same_session:
+            if "prompt_count" in state:
+                new_state["prompt_count"] = state["prompt_count"]
+            if "prompt_inject_window" in state:
+                new_state["prompt_inject_window"] = state["prompt_inject_window"]
+        save_inject_state(project_root, new_state)
 
         payload = {
             "hookSpecificOutput": {

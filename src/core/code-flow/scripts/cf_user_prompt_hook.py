@@ -41,7 +41,9 @@ from cf_core import (
 # \b is Unicode-aware on every platform, so "src/cli.js中" never terminated
 # the match — common Chinese phrasing dropped real paths. The explicit ASCII
 # class is locale- and OS-independent, so Windows/macOS/Linux behave the same.
-_PATH_RE = re.compile(r'[@`]?([a-zA-Z0-9_.][a-zA-Z0-9_./\-]*\.[a-zA-Z]{1,6})(?![a-zA-Z0-9_])')
+# Character class includes `\` so Windows-style paths (`src\cli.js`) pasted
+# from Explorer also match; `normalize_path()` downstream converts to `/`.
+_PATH_RE = re.compile(r'[@`]?([a-zA-Z0-9_.][a-zA-Z0-9_./\\\-]*\.[a-zA-Z]{1,6})(?![a-zA-Z0-9_])')
 _EXT_RE = re.compile(r'\.(py|js|ts|go|rs|java|rb|cs|cpp|c|h)$')
 
 
@@ -148,24 +150,69 @@ def main() -> None:
 
         # Load state with session isolation (deferred until after match success)
         state = load_inject_state(project_root)
-        if state.get("session_id") != sid:
-            injected_specs: set = set()
-        else:
+        same_session = state.get("session_id") == sid
+        if same_session:
             injected_specs = set(state.get("injected_specs") or [])
+            prompt_window = dict(state.get("prompt_inject_window") or {})
+            prompt_count = int(state.get("prompt_count") or 0) + 1
+        else:
+            injected_specs = set()
+            prompt_window = {}
+            prompt_count = 1
 
-        new_injected = injected_specs | {s["path"] for s in selected}
+        # TTL-window dedup: skip specs re-injected within the last N prompts in
+        # this session. dedup_window <= 0 disables dedup (every call re-injects).
+        # The window bounds — not removes — re-injection, so an auto-compaction
+        # that drops earlier context can still recover specs after N prompts.
+        try:
+            dedup_window = int(inject_config.get("dedup_window", 5))
+        except (ValueError, TypeError):
+            dedup_window = 5
+
+        if dedup_window > 0:
+            emitted = [
+                s for s in selected
+                if (s["path"] not in prompt_window)
+                or (prompt_count - int(prompt_window[s["path"]]) >= dedup_window)
+            ]
+        else:
+            emitted = list(selected)
+
+        # Compare by path so this stays correct if `emitted` is ever rebuilt
+        # from copies instead of filtered references to the same dicts.
+        emitted_paths = {s["path"] for s in emitted}
+        skipped = [s["path"] for s in selected if s["path"] not in emitted_paths]
+
+        # Always persist prompt_count so the dedup window keeps advancing even
+        # on fully-deduped turns. Preserve PreToolUse-owned fields verbatim.
+        for s in emitted:
+            prompt_window[s["path"]] = prompt_count
         save_inject_state(project_root, {
             "session_id": sid,
-            "injected_specs": sorted(new_injected),
-            "last_file": "",
+            "injected_specs": sorted(injected_specs | {s["path"] for s in emitted}),
+            "last_file": state.get("last_file", "") if same_session else "",
+            "prompt_count": prompt_count,
+            "prompt_inject_window": prompt_window,
         })
 
-        debug_log(f"user_prompt_hook injected={[s['path'] for s in selected]} session={sid}", project_root)
+        if not emitted:
+            debug_log(
+                f"user_prompt_hook dedup_all_skipped session={sid} "
+                f"prompt_count={prompt_count} skipped={skipped}",
+                project_root,
+            )
+            return
+
+        debug_log(
+            f"user_prompt_hook injected={[s['path'] for s in emitted]} "
+            f"skipped={skipped} prompt_count={prompt_count} session={sid}",
+            project_root,
+        )
 
         payload = {
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
-                "additionalContext": assemble_context(selected, "## Active Specs (auto-injected)"),
+                "additionalContext": assemble_context(emitted, "## Active Specs (auto-injected)"),
             }
         }
         if os.environ.get("CF_DEBUG") == "1":
@@ -174,7 +221,10 @@ def main() -> None:
                 "domains": sorted(matched_domains),
                 "context_tags": sorted(context_tags),
                 "prompt_tags": sorted(prompt_tags),
-                "matched_specs": [s["path"] for s in selected],
+                "matched_specs": [s["path"] for s in emitted],
+                "deduped_specs": skipped,
+                "prompt_count": prompt_count,
+                "dedup_window": dedup_window,
             }
 
         sys.stdout.write(json.dumps(payload, ensure_ascii=False))

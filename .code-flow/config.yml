@@ -11,6 +11,11 @@ inject:
     # 注入时对 spec 内容做保守无损压缩（去行尾空白、折叠多空行、剥 HTML 注释、去重 bullet）
     # 缺省视为 true；仅显式 false 关闭
     compress: true
+    # UserPromptSubmit 去重窗口：同一 spec 在最近 N 个 prompt 内不重复注入。
+    # 0 或负数 关闭去重（每次都注入，等同旧行为）；缺省 5。
+    # 窗口"限速"而非"永久跳过"，超过 N 个 prompt 后会再次注入，保证 auto-compaction
+    # 丢掉早期上下文后仍能恢复 spec。
+    dedup_window: 5
     code_extensions:
         - ".py"
         - ".ts"

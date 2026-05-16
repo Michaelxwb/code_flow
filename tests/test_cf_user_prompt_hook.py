@@ -83,6 +83,26 @@ def test_extract_path_with_extension_at_eol_chinese():
     assert "cf_core.py" in paths
 
 
+def test_extract_windows_backslash_path():
+    """Windows users pasting Explorer paths get backslashes; the regex character
+    class now matches `\\`, and normalize_path() downstream converts to `/` so
+    downstream consumers (match_domains, extract_context_tags) stay forward-
+    slash-only."""
+    paths = extract_paths_from_prompt("edit src\\components\\Button.tsx")
+    assert "src/components/Button.tsx" in paths
+
+
+def test_extract_windows_backslash_path_with_at_prefix():
+    paths = extract_paths_from_prompt("see @src\\core\\cf_core.py")
+    assert "src/core/cf_core.py" in paths
+
+
+def test_extract_mixed_separators_normalized():
+    """Mixed `\\` and `/` in one path still extracts and normalizes."""
+    paths = extract_paths_from_prompt("look at src\\foo/bar.py for the bug")
+    assert "src/foo/bar.py" in paths
+
+
 # --- main() integration ---
 def _make_project(tmpdir: str, domains_with_specs: bool = True) -> str:
     """Set up a minimal .code-flow project in tmpdir."""
@@ -207,21 +227,88 @@ def test_main_no_paths_no_tags_injects_only_tier0():
         assert "code-quality-performance.md" not in ctx
 
 
-def test_main_reinjects_on_every_call_within_session():
-    """Session-scope dedup was removed — every call re-injects matching specs.
+def _set_dedup_window(tmpdir: str, window: int) -> None:
+    """Patch inject.dedup_window in the project's config.yml."""
+    config_path = os.path.join(tmpdir, ".code-flow", "config.yml")
+    with open(config_path) as f:
+        cfg = yaml.safe_load(f)
+    cfg.setdefault("inject", {})["dedup_window"] = window
+    with open(config_path, "w") as f:
+        yaml.dump(cfg, f)
 
-    Prior behavior skipped a spec once its path was in .inject-state.injected_specs
-    for the current session. That caused specs to drift out of model context after
-    auto-compaction with no way to bring them back. New behavior: always inject.
+
+def test_main_dedup_skips_same_spec_within_window():
+    """Same session, dedup_window=5: spec injected in turn 1 is skipped in turn 2.
+
+    Both prompts hit only the wildcard Tier 0 _map.md (no tag matches), so
+    turn 2 produces a fully-deduped no-op.
     """
     with tempfile.TemporaryDirectory() as tmpdir:
         _make_project(tmpdir)
-        pid = "88888"
-        result1 = _run_main("edit src/hook.py", tmpdir, pid=pid)
-        assert "hookSpecificOutput" in result1
-        result2 = _run_main("also update src/other.py", tmpdir, pid=pid)
-        assert "hookSpecificOutput" in result2
-        assert "Active Specs" in result2["hookSpecificOutput"]["additionalContext"]
+        _set_dedup_window(tmpdir, 5)
+        sid = "sess-aaa"
+        r1 = _run_main("edit src/hook.py", tmpdir, session_id=sid)
+        assert "hookSpecificOutput" in r1
+        r2 = _run_main("edit src/hook.py again", tmpdir, session_id=sid)
+        # All matched specs already injected within window → no stdout emitted.
+        assert r2 == {}
+
+
+def test_main_dedup_reinjects_after_window_expires():
+    """Same session, dedup_window=2: turn 1 injects, turns 2-3 skip, turn 4 re-injects."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _make_project(tmpdir)
+        _set_dedup_window(tmpdir, 2)
+        sid = "sess-bbb"
+        r1 = _run_main("edit src/hook.py", tmpdir, session_id=sid)
+        assert "hookSpecificOutput" in r1
+        r2 = _run_main("edit src/hook.py", tmpdir, session_id=sid)
+        assert r2 == {}  # turn 2 within window
+        r3 = _run_main("edit src/hook.py", tmpdir, session_id=sid)
+        # turn 3: prompt_count - window_value = 3 - 1 = 2 >= dedup_window=2 → re-inject
+        assert "hookSpecificOutput" in r3
+
+
+def test_main_dedup_emits_only_new_specs():
+    """Turn 1 matches A only; turn 2 matches A+B → turn 2 emits only B."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _make_project(tmpdir)
+        _set_dedup_window(tmpdir, 5)
+        sid = "sess-ccc"
+        # Turn 1: prompt has no perf keyword → only _map.md matches (wildcard).
+        r1 = _run_main("edit src/hook.py", tmpdir, session_id=sid)
+        assert "_map.md" in r1["hookSpecificOutput"]["additionalContext"]
+        assert "code-quality-performance" not in r1["hookSpecificOutput"]["additionalContext"]
+        # Turn 2: add "性能" → performance spec joins; _map.md was deduped.
+        r2 = _run_main("edit src/hook.py 注意性能", tmpdir, session_id=sid)
+        ctx2 = r2["hookSpecificOutput"]["additionalContext"]
+        assert "code-quality-performance" in ctx2
+        assert "_map.md" not in ctx2
+
+
+def test_main_dedup_resets_on_new_session():
+    """Different session_id → dedup state reset, spec re-injects on first turn."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _make_project(tmpdir)
+        _set_dedup_window(tmpdir, 5)
+        r1 = _run_main("edit src/hook.py", tmpdir, session_id="sess-1")
+        assert "hookSpecificOutput" in r1
+        r2 = _run_main("edit src/hook.py", tmpdir, session_id="sess-2")
+        assert "hookSpecificOutput" in r2
+        assert "_map.md" in r2["hookSpecificOutput"]["additionalContext"]
+
+
+def test_main_dedup_disabled_when_window_zero():
+    """dedup_window=0 → every call re-injects (legacy behavior preserved)."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _make_project(tmpdir)
+        _set_dedup_window(tmpdir, 0)
+        sid = "sess-ddd"
+        r1 = _run_main("edit src/hook.py", tmpdir, session_id=sid)
+        assert "hookSpecificOutput" in r1
+        r2 = _run_main("edit src/hook.py", tmpdir, session_id=sid)
+        assert "hookSpecificOutput" in r2  # not deduped
+        assert "_map.md" in r2["hookSpecificOutput"]["additionalContext"]
 
 
 def test_main_inject_disabled_no_output():

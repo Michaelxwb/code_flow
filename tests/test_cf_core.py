@@ -141,6 +141,33 @@ def test_extract_prompt_tags_word_boundary_api():
     assert "api" in extract_prompt_tags("expose the api route")
 
 
+def test_extract_prompt_tags_code_flow_meta_terms():
+    """Meta-questions about code-flow itself (hook/inject/spec) should hit
+    canonical tags so scripts/code-standards.md is reachable without paths."""
+    hits = extract_prompt_tags("hook 注入机制是怎么工作的")
+    assert "hook" in hits
+    assert "inject" in hits
+    hits2 = extract_prompt_tags("规范如何匹配 spec")
+    assert "spec" in hits2
+
+
+def test_extract_prompt_tags_cli_init_upgrade():
+    """CLI lifecycle words should hit cli/code-standards.md canonical tags."""
+    hits = extract_prompt_tags("升级时合并 config 还是覆盖")
+    assert "upgrade" in hits
+    assert "merge" in hits
+    hits2 = extract_prompt_tags("init 一个新项目")
+    assert "init" in hits2
+
+
+def test_extract_prompt_tags_platform_and_adapter_coalias():
+    """'适配器' is listed under both 'platform' and 'adapter' so it adds both
+    canonicals — that's intentional to broaden cli/code-standards.md matching."""
+    hits = extract_prompt_tags("新增一个平台适配器")
+    assert "platform" in hits
+    assert "adapter" in hits
+
+
 # --- normalize_spec_entry ---
 
 

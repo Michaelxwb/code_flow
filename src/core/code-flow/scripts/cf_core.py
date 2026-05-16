@@ -43,7 +43,10 @@ def estimate_tokens(text: str) -> int:
 
 
 def normalize_path(path: str) -> str:
-    return path.replace(os.sep, "/")
+    # Unconditional backslash replacement, not `os.sep`, so paths pasted from
+    # a Windows machine into a prompt on macOS/Linux still normalize correctly.
+    # On Windows `os.sep == '\\'`, so behavior there is unchanged.
+    return path.replace("\\", "/")
 
 
 def _spec_path_from_entry(entry) -> str:
@@ -331,6 +334,17 @@ _TAG_ALIASES = {
     "route": ["路由"],
     "page": ["页面"],
     "state": ["状态"],
+    "hook": ["hook", "钩子"],
+    "inject": ["inject", "注入", "注入规范"],
+    "spec": ["spec", "规范", "约束"],
+    "scan": ["scan", "扫描", "审计"],
+    "stats": ["stats", "统计"],
+    "session": ["session", "会话"],
+    "init": ["init", "初始化"],
+    "upgrade": ["upgrade", "升级"],
+    "merge": ["merge", "合并"],
+    "platform": ["platform", "平台", "适配器"],
+    "adapter": ["adapter", "适配器"],
 }
 
 _SHORT_ASCII_ALIAS_THRESHOLD = 3
