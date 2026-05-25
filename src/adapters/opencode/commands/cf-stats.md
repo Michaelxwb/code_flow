@@ -30,7 +30,7 @@ python3 .code-flow/scripts/cf_stats.py [--human] [--domain=frontend]
 
 ```json
 {
-  "l0": {"file": "CLAUDE.md", "tokens": 650, "budget": 800},
+  "l0": {"file": "AGENTS.md", "tokens": 650, "budget": 800},
   "l1": {
     "frontend": [
       {"path": "frontend/directory-structure.md", "tokens": 180, "tokens_raw": 200, "tokens_compressed": 180, "saved_pct": 10.0}
@@ -53,7 +53,7 @@ python3 .code-flow/scripts/cf_stats.py [--human] [--domain=frontend]
 将 JSON 格式化为人类可读的统计信息：
 
 ```
-L0 (CLAUDE.md): ~650 / 800 tokens
+L0 (AGENTS.md): ~650 / 800 tokens
 
 L1 Frontend:
   - directory-structure.md: ~180 tokens (raw=200→compressed=180, -10.0%)

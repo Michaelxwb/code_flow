@@ -1,190 +1,135 @@
 ---
 name: cf-learn
-description: Scan project configs and code patterns to extract coding standards and generate retrieval maps. Use for cf-learn, cf-learn --map, cf-learn --review, or when updating project specs from existing code conventions and current workspace changes.
+description: Scan project configs, current workspace changes, and code patterns to extract evidence-backed coding standards and retrieval maps. Use for cf-learn, cf-learn --map, cf-learn --review, or when updating specs from existing conventions.
 ---
+
+# cf-learn
+
+自动扫描项目配置、代码模式和当前工作区变更，提炼有证据支撑的团队规范。输出先作为候选项给用户确认，再写入 `AGENTS.md` 或 `.code-flow/specs/<domain>/`。
 
 ## 输入
 
-- `cf-learn` — 全量扫描
-- `cf-learn <域>` — 仅扫描指定域相关（如 `scripts`、`cli` 等，以实际存在的域目录为准）
-- `cf-learn --map` — 扫描并生成/更新 Retrieval Map（导航地图）
-- `cf-learn <域> --map` — 仅生成指定域的导航地图
-- `cf-learn --review` — 基于当前工作区变更提炼可沉淀的规范建议（默认 staged + unstaged + untracked 代码文件）
-- `cf-learn --review --staged` — 仅分析 staged 变更
+- `cf-learn` - 全量扫描
+- `cf-learn <域>` - 仅扫描指定域，如 `scripts`、`cli`，以 `.code-flow/config.yml` 中实际域为准
+- `cf-learn --map` - 生成或更新 Retrieval Map
+- `cf-learn <域> --map` - 仅生成指定域的 Retrieval Map
+- `cf-learn --review` - 基于当前工作区变更提炼可沉淀规范，默认 staged + unstaged + untracked
+- `cf-learn --review --staged` - 仅分析 staged 变更
 
-## 执行步骤
+## 核心原则
 
-### 1. 扫描项目配置文件
+- 证据优先：只根据配置文件、CI、测试、代码重复模式或当前 diff 写候选规范，禁止编造不存在的团队规则。
+- 用户确认优先：任何写入前都要展示候选项、目标文件、置信度、来源文件和证据片段。
+- 低置信度不自动写入：单点样例、语义不稳定或只出现在临时代码中的模式，只作为观察项展示。
+- 保持现有结构：优先匹配现有 domain、spec 文件和章节，不新增无必要文件；无法判断目标时询问用户。
 
-用 Glob 查找以下配置文件（存在则 Read 读取内容）：
+## 1. 建立扫描范围
 
-**前端配置**：
-- `.eslintrc*` / `eslint.config.*` — 提取 lint 规则（no-any、import 排序、命名规范等）
-- `tsconfig.json` — 提取 strict 模式、path alias、target 等关键配置
-- `.prettierrc*` / `prettier.config.*` — 提取格式化规则（缩进、引号、分号）
-- `tailwind.config.*` — 提取自定义 theme、spacing 规则
-- `next.config.*` / `nuxt.config.*` / `vite.config.*` — 提取框架特定约束
-- `jest.config.*` / `vitest.config.*` — 提取测试配置（覆盖率阈值等）
+先读取 `.code-flow/config.yml`，确定 domain、spec 文件、map 文件和 `path_mapping`。如果配置不存在或不完整，只做只读扫描并提示先运行 `cf-init`。
 
-**后端配置**：
-- `pyproject.toml` — 提取 ruff/mypy/pytest 配置、Python 版本要求
-- `setup.cfg` / `tox.ini` — 提取测试和 lint 配置
-- `.golangci.yml` — 提取 Go lint 规则
-- `Makefile` — 提取构建和测试命令
-- `Dockerfile` / `docker-compose.yml` — 提取运行时约束
-
-**通用配置**：
-- `.github/workflows/*.yml` / `.gitlab-ci.yml` — 提取 CI 检查步骤（哪些 lint/test 是必须通过的）
-- `.editorconfig` — 提取编辑器统一配置
-- `.gitignore` — 解析为扫描排除规则（而非仅参考）
-- `package.json` 的 scripts 字段 — 提取常用命令
-
-在进入代码扫描前，先构建 **统一排除集**：
-- 默认排除：`.git/**`、`.code-flow/**`、`.claude/**`、`.codex/**`、`.agents/**`、`.codex_flow/**`、`node_modules/**`、`dist/**`、`build/**`、`coverage/**`、`.next/**`、`.venv/**`、`venv/**`、`__pycache__/**`
+用 `rg --files` 或 `find` 收集配置和源码。进入扫描前必须构建 **统一排除集**：
+- 默认排除：`.git/**`、`.code-flow/**`、`.claude/**`、`.costrict/**`、`.opencode/**`、`.codex/**`、`.agents/**`、`.codex_flow/**`、`node_modules/**`、`dist/**`、`build/**`、`coverage/**`、`.next/**`、`.venv/**`、`venv/**`、`__pycache__/**`
 - 额外排除所有隐藏目录（名称以 `.` 开头），但保留白名单 `.github/workflows/**` 用于 CI 规则提取
-- 从 `.gitignore` 追加排除模式（忽略空行和注释行）
-- 所有 Glob/Grep/Read 仅针对“未被排除”的路径执行
+- 从 `.gitignore` 追加排除模式，忽略空行和注释行
+- 所有 `rg --files`、`rg` 和文件读取仅针对“未被排除”的路径执行
 
-### 2. 扫描代码结构和模式（遵循排除集）
+## 2. 采集证据
 
-用 Grep 在项目代码中搜索以下模式，提取隐含规范：
+读取存在的配置文件并记录证据来源：
+- 前端：`.eslintrc*`、`eslint.config.*`、`tsconfig.json`、`.prettierrc*`、`tailwind.config.*`、`next.config.*`、`nuxt.config.*`、`vite.config.*`、`jest.config.*`、`vitest.config.*`
+- 后端：`pyproject.toml`、`setup.cfg`、`tox.ini`、`.golangci.yml`、`Makefile`、`Dockerfile`、`docker-compose.yml`
+- 通用：`.github/workflows/*.yml`、`.gitlab-ci.yml`、`.editorconfig`、`.gitignore`、`package.json`
 
-- 错误处理模式：`try/except`、`catch`、自定义 Error 类的使用方式
-- 日志模式：使用的日志库和格式（structlog、winston、pino 等）
-- 测试模式：测试框架、断言风格、mock 方式
-- 导入规范：absolute vs relative imports、barrel exports
-- 命名模式：文件命名（kebab-case / PascalCase）、变量命名风格
+用 `rg` 搜索代码模式：
+- 错误处理：`try/except`、`catch`、自定义 Error、显式返回错误
+- 日志：日志库、字段结构、stdout/stderr 使用边界
+- 测试：测试框架、断言风格、fixture、mock、覆盖率入口
+- 导入与模块：alias、相对路径、barrel export、入口文件
+- 命名与组织：文件命名、目录分层、组件/服务/脚本边界
 
-**代码结构扫描**（用于 Retrieval Map）：
-- 用 Glob 扫描 `src/**/*` 顶层目录结构（先应用统一排除集）
-- 识别入口文件（main.ts/py、index.ts、app.ts 等）
-- 识别框架和技术栈（从 package.json dependencies、pyproject.toml 等提取）
-- 识别模块划分方式（按功能域 / 按技术层 / 混合）
-- 追踪关键数据流（路由 → handler → service → model）
+每条候选都必须保留来源文件和证据片段，证据片段只截取能支撑判断的最小内容。
 
-### 3. 呈现扫描发现，用户选择聚焦域
+## 3. 生成候选规范
 
-将扫描结果按模块/功能域分组展示，让用户选择关注的领域：
+候选项格式：
 
-```
-项目扫描完成，发现以下模块/功能域：
-
-<模块组 A>（如前端/客户端）：
-  1. [x] <子目录/> — N 个文件，<技术栈>
-  ...
-
-<模块组 B>（如后端/服务端）：
-  2. [x] <子目录/> — N 个文件，<技术栈>
-  ...
-
-选择要分析的模块（输入编号，all 全选，或 skip 跳过直接生成）：
+```text
+[置信度: 高|中|低] [来源: <file>] [目标: <target-file>] <规范描述>
+证据: <短片段或 diff 摘要>
+原因: <为什么这会影响 AI 生成代码>
 ```
 
-用户选择后，仅对选中的模块深入扫描代码模式。未选中的模块跳过详细分析。
+置信度判断：
+- 高：配置、CI 或测试明确要求，或同一模式在多个相关文件中重复出现
+- 中：单个模块内稳定出现，且与目录结构、测试或调用链相互印证
+- 低：只有单点样例、上下文不足或可能只是临时实现；默认不勾选写入
 
-### 4. 综合分析并生成候选约束
+过滤规则：
+- 与 `AGENTS.md` 和现有 spec 已覆盖的内容去重，已覆盖项只标记 `[已覆盖]`
+- 忽略纯格式化细节，除非 formatter 配置会影响生成代码结构
+- 不把框架默认行为写成团队规范，除非项目配置显式覆盖或代码中反复体现
 
-将扫描结果综合分析，提取 **具体的、可执行的** 编码约束。每条约束格式：
+## 4. 选择写入目标
 
-```
-[来源] 约束描述
-```
+按内容路由到目标文件，目标文件名以实际 `.code-flow/config.yml` 和现有 spec 为准：
+- 全局原则、禁忌、验证命令、跨域规则 -> `AGENTS.md`
+- 目录、模块边界、入口文件、数据流 -> `directory-structure.md`
+- 前端组件、hook、样式、状态管理 -> `component-specs.md`
+- 类型、lint、测试、错误处理、导入规则 -> `quality-standards.md`
+- 数据库、ORM、migration、schema、query -> `database.md`
+- 日志、观测、审计字段 -> `logging.md`
+- API、部署、配置、版本兼容 -> `platform-rules.md`
+- 性能、缓存、重试、异常、测试策略 -> `code-quality-performance.md`
 
-例如：
-```
-[tsconfig.json] strict 模式已启用，禁止 implicit any
-[.eslintrc] import 必须按 builtin → external → internal 排序
-[pyproject.toml] Python 最低版本 3.11，可使用 match/case 语法
-[CI: lint.yml] PR 必须通过 ruff check + mypy --strict
-[代码模式] 错误处理统一使用自定义 AppError 类，不使用裸 Exception
-[Makefile] 测试命令为 make test，覆盖率阈值 80%
-```
+如果目标 domain 或 spec 文件不存在，不要创建猜测文件；把候选标为“需用户选择目标”。
 
-**过滤规则**：
-- 跳过已在 AGENTS.md 或 spec 文件中记录的规范（避免重复）
-- 只提取对 AI 生成代码有实际影响的约束
-- 忽略纯格式化规则（如果有 Prettier/formatter 自动处理）
+## 5. 用户确认
 
-### 5. 呈现给用户确认
+按 domain 分组展示候选：
 
-将候选约束分组展示：
+```text
+扫描发现以下未记录的规范候选：
 
-```
-扫描发现以下未记录的编码约束：
+全局（建议写入 AGENTS.md）：
+  1. [x] [高] [pyproject.toml] 所有测试通过 pytest 运行
 
-全局约束（建议写入 AGENTS.md）：
-  1. [x] [<来源文件>] <约束描述>
-  ...
+cli（建议写入 .code-flow/specs/cli/quality-standards.md）：
+  2. [x] [中] [tests/test_cli_init.py] init 行为必须有回归测试
+  3. [ ] [低] [src/example.js] 单点命名习惯，暂不建议写入
 
-<域> 约束（建议写入 <spec-path>/）：
-  2. [x] [<来源文件>] <约束描述>
-  ...
-
-确认要写入的条目（输入编号，或 all 全部写入，或 none 跳过）：
+确认要写入的条目（编号、all、none，或修改目标文件）：
 ```
 
-等待用户确认。
+等待用户确认后再编辑。
 
-### 6. 写入确认的条目
+## 6. 写入
 
-根据用户选择，将每条约束**分类后插入对应章节**（章节名称以实际 spec 文件中已存在的为准，追加到同类约束附近）：
+用 `apply_patch` 追加到目标文件的相近章节：
+- 规则类 -> Rules、Core Principles、Constraints 或同义章节
+- 模式类 -> Patterns、Conventions、Implementation Notes 或同义章节
+- 禁忌类 -> Anti-Patterns、Forbidden Patterns 或同义章节
 
-- **规则类**（必须遵守的硬性约束）→ 追加到目标文件的约束类章节
-- **模式类**（推荐的实现方式）→ 追加到目标文件的模式类章节
-- **反模式类**（明确禁止的做法）→ 追加到目标文件的禁忌类章节
+保持原文件风格，不重排无关内容。写入后输出文件和新增条目数量。
 
-写入目标：
-- **全局约束** → 用 Edit 追加到 `AGENTS.md` 的合适章节
-- **域约束** → 询问用户写入哪个 spec 文件，用 Edit 追加到对应章节
+## 7. Retrieval Map
 
-每条写入后输出确认。
+当传入 `--map`，或检测到 `_map.md` 仍含初始占位符时，生成/更新 map：
+- Purpose：来自 README、package metadata 或入口注释
+- Architecture：来自依赖、配置、目录和入口文件
+- Key Files：只列出实际存在并读取过的核心文件
+- Module Map：基于真实目录结构，不列空目录
+- Data Flow：只写能从调用链、路由或脚本入口推断出的流向
+- Navigation Guide：写“做 X 去哪里”的可执行导航
 
-### 7. Retrieval Map 生成（--map 或自动建议）
+更新前展示 diff 摘要。已有人工内容要保留，只补充缺失或明显过期的段落。
 
-如果传入 `--map` 参数，或者检测到 `<domain>/<map-file>.md` 文件内容仍为初始模板（含 `[一句话描述` 占位符），自动进入 Map 生成流程：
+## --review 模式：基于当前工作区变更提炼规范
 
-1. 基于步骤 2 的代码结构扫描结果，填充 `<domain>/<map-file>.md` 的各个段落：
-   - **Purpose**：从 README 或 package.json description 提取项目描述
-   - **Architecture**：从依赖和配置文件推断技术栈
-   - **Key Files**：列出入口文件和核心模块文件（用 Read 验证存在性）
-   - **Module Map**：基于实际目录结构生成树形图
-   - **Data Flow**：从代码模式推断数据流向
-   - **Navigation Guide**：基于现有模式生成"做 X 去哪里"的快速指引
+传入 `--review` 时跳过全量扫描，专注当前工作区变更。
 
-2. 展示生成的 Map 内容，等待用户确认或调整
+### R1. 采集变更范围
 
-3. 用户确认后，用 Write 写入 `.code-flow/specs/<domain>/<map-file>.md`
-
-```
-Retrieval Map 已生成:
-
-<domain>/<map-file>.md:
-  Purpose: <项目描述>
-  Architecture: <技术栈>
-  Key Files: N 个入口文件
-  Modules: N 个模块
-  Navigation: N 条导航规则
-
-确认写入？可先修改再确认:
-```
-
-### 8. 输出摘要
-
-```
-已写入 N 条约束：
-- AGENTS.md: +X 条
-- <spec-path>/: +Y 条
-- <spec-path>/<map-file>.md: 已更新导航地图
-Token 变化: AGENTS.md: <旧> → <新> tokens
-```
-
-## --review 模式：基于当前变更提炼规范
-
-当传入 `--review` 参数时，跳过步骤 1-8，执行以下流程：
-
-### R1. 采集当前变更范围
-
-运行以下命令获取工作区变更：
+运行：
 
 ```bash
 git diff --name-only
@@ -192,62 +137,38 @@ git diff --cached --name-only
 git ls-files --others --exclude-standard
 ```
 
-合并去重后得到候选文件集，并过滤：
-- 仅保留代码文件（`.py`、`.js`、`.ts`、`.tsx`、`.jsx`、`.go`、`.rs` 等）
-- 排除配置、文档和生成产物
-- 路径过滤遵循步骤 1 的统一排除集与 `.gitignore`
+`--review --staged` 只使用 `git diff --cached --name-only`。合并去重后应用统一排除集，仅保留代码、测试、配置和会影响规范的脚本文件。
 
-### R2. 读取变更内容与上下文
+### R2. 读取变更证据
 
-对候选文件读取变更：
+对候选文件读取：
 
 ```bash
 git diff -- <file>
 git diff --cached -- <file>
 ```
 
-如果是新文件（untracked）没有 diff 上下文，则用 Read 读取完整文件内容作为分析输入。
+untracked 文件读取完整内容。每个候选规范必须附带来源文件和证据片段。
 
-### R3. 提炼候选规范模式
+### R3. 提炼与去重
 
-从当前变更中提炼“值得沉淀为 spec 的稳定规则”：
+从当前工作区变更中提炼稳定模式：
+- 新增强约束：测试、校验、错误处理、协议输出、兼容性边界
+- 新增推荐模式：目录组织、接口分层、复用 helper、命名习惯
+- 新增禁忌：静默异常、重复解析、非 JSON hook stdout、硬编码路径或 secret
 
-**提取维度**：
-- 新增的强约束（规则类）：例如统一错误处理、统一校验入口、必须补测试
-- 新增的推荐实现（模式类）：例如目录组织、接口分层、命名习惯
-- 新增的明确禁用（禁忌类）：例如裸异常吞掉、重复配置解析、stdout 非协议输出
+与现有 spec 和 `AGENTS.md` 对比，已覆盖项不再写入。按置信度排序，低置信度默认不选。
 
-**置信度规则**：
-- 同一模式在多个文件中重复出现：高置信度
-- 仅单点改动但语义明确：低置信度（保留，展示时排后）
+### R4. 确认与写入
 
-### R4. 去重过滤
+展示目标文件、置信度、来源文件、证据片段和建议文本。用户确认后按第 6 步写入。
 
-将候选规则与**现有 spec 文件**和 **AGENTS.md** 对比，已覆盖的规则标记为 `[已覆盖]` 并跳过，仅保留**未覆盖**的候选规则。
+## 输出摘要
 
-### R5. 呈现给用户确认
-
-按 domain 分组、按置信度排序展示，等待用户确认要写入的条目。展示内容必须附带“来源文件 + 变更证据片段”，便于快速判断是否值得沉淀。
-
-### R6. 写入确认的条目
-
-与主流程步骤 6 相同：按分类插入对应 spec 文件的对应章节。
-
-### R7. 输出摘要
-
+```text
+cf-learn 完成：
+- 扫描文件：N
+- 候选规范：M（高 X / 中 Y / 低 Z）
+- 写入：AGENTS.md +A，<domain>/<spec>.md +B
+- Map 更新：<domain>/_map.md
 ```
-review 完成：
-- 扫描变更文件: N（staged: X, unstaged: Y, untracked: Z）
-- 提取候选规则: N（高置信度: X, 低置信度: Y）
-- 已覆盖跳过: X
-- 用户确认写入: Y
-```
-
-## 异常处理
-
-- 无配置文件可扫描 → 提示项目可能未初始化，建议手动添加
-- 未发现新约束 → 输出"未发现未记录的约束，当前规范已覆盖项目配置"
-- `.code-flow/` 不存在 → 提示运行 `cf-init`
-- 导航地图文件已有自定义内容 → 展示 diff，让用户选择合并方式
-- 无变更文件 → 提示"当前工作区无代码变更，先完成改动后再运行 --review"
-- 仅文档/配置变更 → 提示"未检测到代码变更，暂无可沉淀的实现规范"

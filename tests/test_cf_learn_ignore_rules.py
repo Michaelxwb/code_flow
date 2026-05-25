@@ -21,21 +21,16 @@ def _assert_ignore_rules(text: str) -> None:
     assert "仅针对“未被排除”的路径执行" in text
 
 
-def test_codex_cf_learn_declares_gitignore_based_scan_exclusions() -> None:
-    content = _read_text("src/adapters/codex/skills/cf-learn/SKILL.md")
-    _assert_ignore_rules(content)
-
-
-def test_claude_cf_learn_declares_gitignore_based_scan_exclusions() -> None:
-    content = _read_text("src/adapters/claude/commands/cf-learn.md")
-    _assert_ignore_rules(content)
-
-
-def test_project_codex_cf_learn_declares_gitignore_based_scan_exclusions() -> None:
-    content = _read_text(".agents/skills/cf-learn/SKILL.md")
-    _assert_ignore_rules(content)
-
-
-def test_project_claude_cf_learn_declares_gitignore_based_scan_exclusions() -> None:
-    content = _read_text(".claude/commands/cf-learn.md")
-    _assert_ignore_rules(content)
+def test_cf_learn_docs_declare_gitignore_based_scan_exclusions() -> None:
+    paths = [
+        "src/adapters/codex/skills/cf-learn/SKILL.md",
+        "src/adapters/claude/commands/cf-learn.md",
+        "src/adapters/costrict/commands/cf-learn.md",
+        "src/adapters/opencode/commands/cf-learn.md",
+        ".agents/skills/cf-learn/SKILL.md",
+        ".claude/commands/cf-learn.md",
+        ".costrict/commands/cf-learn.md",
+        ".opencode/commands/cf-learn.md",
+    ]
+    for path in paths:
+        _assert_ignore_rules(_read_text(path))

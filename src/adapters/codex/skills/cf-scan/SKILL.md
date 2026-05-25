@@ -14,7 +14,7 @@ description: Audit spec file token distribution, detect redundant or outdated co
 
 ### 1. 调用 Python 脚本
 
-用 Bash 执行：
+用 shell 命令执行：
 
 ```bash
 python3 .code-flow/scripts/cf_scan.py [--json] [--only-issues] [--limit=N]

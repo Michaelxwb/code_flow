@@ -13,7 +13,7 @@ description: Run validation rules (lint, type check, tests) against changed file
 
 ### 1. 获取变更文件列表
 
-用 Bash 执行：
+用 shell 命令执行：
 
 ```bash
 git diff --name-only HEAD
@@ -23,7 +23,7 @@ git diff --name-only HEAD
 
 ### 2. 读取验证规则
 
-用 Read 读取 `.code-flow/validation.yml`。如果不存在，尝试读取 `package.json` 中的 `scripts.test` 和 `scripts.lint` 作为回退。
+读取 `.code-flow/validation.yml`。如果不存在，尝试读取 `package.json` 中的 `scripts.test` 和 `scripts.lint` 作为回退。
 
 validation.yml 格式：
 
@@ -40,7 +40,7 @@ validators:
 
 对每条验证规则：
 - 将 `trigger` glob 与变更文件列表做匹配
-- 匹配到 → 用 Bash 执行 `command`
+- 匹配到 → 用 shell 命令执行 `command`
   - 如果 command 包含 `{files}` → 替换为匹配到的文件路径列表，**每个路径用单引号包裹**（如 `'src/foo.ts' 'src/bar.ts'`）
   - 如果 command 不含 `{files}` → 直接执行原命令（如 `npx tsc --noEmit` 本身就检查全局）
 - 未匹配 → 跳过该规则

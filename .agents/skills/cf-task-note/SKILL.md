@@ -42,13 +42,13 @@ description: Discuss #NOTES annotations in task files or design briefs, propose 
 
 其中 `<file>` 可省略日期目录前缀和 `.md` 后缀。
 
-查找逻辑：用 Glob 搜索 `.code-flow/tasks/**/<file>.md` 和 `.code-flow/tasks/**/<file>.design.md`，从结果中排除包含 `archived/` 的路径。如果匹配到多个结果，输出警告列出所有匹配项，让用户指定完整路径；如果只有一个结果，直接使用。
+查找逻辑：用 `rg --files` 或 `find` 搜索 `.code-flow/tasks/**/<file>.md` 和 `.code-flow/tasks/**/<file>.design.md`，从结果中排除包含 `archived/` 的路径。如果匹配到多个结果，输出警告列出所有匹配项，让用户指定完整路径；如果只有一个结果，直接使用。
 
 ## 执行步骤
 
 ### 0. 判断文件类型
 
-Read 读取匹配到的文件后，判断类型：
+读取匹配到的文件后，判断类型：
 - 文件路径以 `.design.md` 结尾 → **设计简报模式**
 - 其他 → **任务文件模式**
 
@@ -58,7 +58,7 @@ Read 读取匹配到的文件后，判断类型：
 
 ### 1. 扫描 #NOTES 标记
 
-1. 用 Glob 定位任务文件，Read 读取全文
+1. 用 `rg --files` 或 `find` 定位任务文件，读取全文
 2. 用正则扫描所有包含 `#NOTES` 的行，记录：
    - 所在的子任务（`## TASK-xxx`）
    - 所在的段落（Description / Checklist / 其他）
@@ -69,7 +69,7 @@ Read 读取匹配到的文件后，判断类型：
 ### 2. 加载上下文
 
 1. 读取当前子任务的 `Source` 字段，解析章节引用
-2. 用 Read 按行号范围读取详设文档的对应章节
+2. 按行号范围读取详设文档的对应章节
 3. 将详设上下文作为讨论背景
 
 ### 3. 逐条讨论
@@ -99,13 +99,13 @@ Read 读取匹配到的文件后，判断类型：
 
 用户确认方案后：
 
-1. 用 Edit 将该行中的 `#NOTES xxx` 删除，并将结论融入原文
+1. 用 apply_patch 将该行中的 `#NOTES xxx` 删除，并将结论融入原文
    - 修改前：`- [ ] 密码加密存储  #NOTES 用 bcrypt 还是 argon2？`
    - 修改后：`- [ ] 密码使用 bcrypt 加密存储`
-2. 如果结论需要新增步骤 → 用 Edit 追加 Checklist 条目或补充 Description
+2. 如果结论需要新增步骤 → 用 apply_patch 追加 Checklist 条目或补充 Description
 3. 在 `### Log` 追加：`- [<当前日期>] resolved #NOTES: <结论摘要>`
 
-**Edit 边界约束（必须遵守）**：
+**编辑边界约束（必须遵守）**：
 - `old_string` 必须严格限定在当前 TASK 段落内，**绝对禁止**匹配到 `---` 分隔线或下一个 `## TASK-xxx` 标题
 - Log 追加时，`old_string` 只匹配 Log 段落的最后一行内容，不要向下延伸到段落外
 
@@ -116,7 +116,7 @@ Read 读取匹配到的文件后，判断类型：
 1. 再次扫描文件，确认无残留 `#NOTES` 标记
 2. 如果子任务之前因 `#NOTES` 被标记为 `blocked`：
    - 扫描 `### Log`，查找 `blocked` 记录中的原状态
-   - 用 Edit 恢复原状态
+   - 用 apply_patch 恢复原状态
    - 在 `### Log` 追加：`- [<当前日期>] unblocked (all #NOTES resolved, restored to <原状态>)`
 3. 更新文件头 `Updated` 日期
 
@@ -140,7 +140,7 @@ Read 读取匹配到的文件后，判断类型：
 
 ### 1. 扫描 #NOTES 标记
 
-1. Read 读取 `.design.md` 全文
+1. 读取 `.design.md` 全文
 2. 用正则扫描所有包含 `#NOTES` 的行，记录：
    - 所在的章节（`## Goal` / `## Database Design` / `## API Design` 等）
    - 原始行内容
@@ -165,7 +165,7 @@ Read 读取匹配到的文件后，判断类型：
 设计简报本身就是设计文档，无需加载外部 Source。上下文来自：
 
 1. 读取 `.design.md` 中该 `#NOTES` 所在章节的完整内容
-2. 扫描代码库中与该问题相关的现有实现（如 Glob 搜索现有 model/route/middleware）
+2. 扫描代码库中与该问题相关的现有实现（如用 `rg --files` 或 `find` 搜索现有 model/route/middleware）
 3. 将代码库上下文 + 设计文档上下文作为讨论背景
 
 ### 3. 逐条讨论
@@ -193,7 +193,7 @@ Read 读取匹配到的文件后，判断类型：
 
 用户确认方案后：
 
-1. 用 Edit 将该行中的 `#NOTES xxx` 删除，并将结论融入原文
+1. 用 apply_patch 将该行中的 `#NOTES xxx` 删除，并将结论融入原文
    - 修改前：`| email | VARCHAR(255) | UNIQUE NOT NULL | 登录凭证 #NOTES 需要支持手机号登录吗？ |`
    - 修改后：`| email | VARCHAR(255) | UNIQUE NOT NULL | 登录凭证（仅邮箱，手机号后续迭代） |`
 2. 如果结论影响其他章节（如 Database Design 的结论影响 API Design），同步更新相关章节

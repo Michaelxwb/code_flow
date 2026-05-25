@@ -35,6 +35,7 @@ def test_codex_init_deploys_skills_and_upgrade_overwrites_tool_files(tmp_path: P
 
     cf_init_skill = tmp_path / ".agents" / "skills" / "cf-init" / "SKILL.md"
     assert cf_init_skill.exists()
+    assert (tmp_path / ".agents" / "skills" / "cf-task-prd" / "SKILL.md").exists()
     assert not (tmp_path / ".codex" / "prompts").exists()
 
     cf_init_skill.write_text("SENTINEL\n", encoding="utf-8")
@@ -75,3 +76,53 @@ def test_codex_upgrade_removes_orphan_codex_user_prompt_hook(tmp_path: Path) -> 
     assert not orphan.exists(), "orphan cf_codex_user_prompt_hook.py must be removed on upgrade"
     assert "Removed (deprecated):" in second.stdout
     assert "cf_codex_user_prompt_hook.py" in second.stdout
+
+
+def test_codex_upgrade_merges_hooks_and_config_without_overwriting_user_values(tmp_path: Path) -> None:
+    first = run_cli(tmp_path)
+    assert first.returncode == 0, first.stderr
+
+    hooks_path = tmp_path / ".codex" / "hooks.json"
+    hooks_path.write_text(
+        """{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo user-custom"
+          }
+        ]
+      }
+    ]
+  },
+  "userSetting": true
+}
+""",
+        encoding="utf-8",
+    )
+    config_path = tmp_path / ".codex" / "config.toml"
+    config_path.write_text(
+        """model = "user-model"
+
+[features]
+custom_feature = true
+""",
+        encoding="utf-8",
+    )
+    (tmp_path / ".code-flow" / ".version").write_text("0.0.1\n", encoding="utf-8")
+
+    second = run_cli(tmp_path)
+    assert second.returncode == 0, second.stderr
+
+    hooks_text = hooks_path.read_text(encoding="utf-8")
+    assert "echo user-custom" in hooks_text
+    assert "cf_user_prompt_hook.py" in hooks_text
+    assert "cf_session_hook.py" in hooks_text
+    assert '"userSetting": true' in hooks_text
+
+    config_text = config_path.read_text(encoding="utf-8")
+    assert 'model = "user-model"' in config_text
+    assert "custom_feature = true" in config_text
+    assert "codex_hooks = true" in config_text

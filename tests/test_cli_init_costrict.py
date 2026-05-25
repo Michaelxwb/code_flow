@@ -34,7 +34,7 @@ def test_costrict_init_deploys_commands_and_settings(tmp_path: Path) -> None:
     assert first.returncode == 0, first.stderr
 
     # L0 file
-    costrict_md = tmp_path / "AGENTS.md"
+    costrict_md = tmp_path / "CLAUDE.md"
     assert costrict_md.exists()
 
     # Commands directory
@@ -75,7 +75,7 @@ def test_costrict_init_preserves_merge_files_on_upgrade(tmp_path: Path) -> None:
     first = run_cli(tmp_path)
     assert first.returncode == 0, first.stderr
 
-    costrict_md = tmp_path / "AGENTS.md"
+    costrict_md = tmp_path / "CLAUDE.md"
     original_content = costrict_md.read_text(encoding="utf-8")
     # Add user customization
     modified_content = original_content + "\n## Custom Section\n- My custom rule\n"
@@ -86,7 +86,7 @@ def test_costrict_init_preserves_merge_files_on_upgrade(tmp_path: Path) -> None:
 
     second = run_cli(tmp_path)
     assert second.returncode == 0, second.stderr
-    # AGENTS.md should be merged, not overwritten
+    # CLAUDE.md should be merged, not overwritten
     current = costrict_md.read_text(encoding="utf-8")
     assert "## Custom Section" in current
     assert "- My custom rule" in current

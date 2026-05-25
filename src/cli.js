@@ -47,9 +47,9 @@ function fileCategory(relPath) {
   if (p === 'AGENTS.md') return 'merge';
   if (p === '.claude/settings.local.json') return 'merge';
   if (p === '.costrict/settings.local.json') return 'merge';
-  if (p === '.codex/hooks.json') return 'tool';
+  if (p === '.codex/hooks.json') return 'merge';
   if (p === '.code-flow/config.yml') return 'merge';
-  if (p === '.codex/config.toml') return 'tool';
+  if (p === '.codex/config.toml') return 'merge';
   if (p.startsWith('.opencode/plugins/')) return 'tool';
   if (p === 'opencode.json') return 'merge';
   return 'user';
@@ -133,6 +133,8 @@ function mergeClaudeMd(srcFile, destFile) {
 // string. User-added items / commands are never removed or rewritten — the
 // merge is purely additive, in line with cli/code-standards.md "合并策略
 // 必须保证用户自定义内容不被覆盖".
+// If a future release changes a managed hook command string, add an explicit
+// migration before merging; otherwise old and new commands will both run.
 function mergeHookEventArray(srcArr, destArr, eventName, added) {
   if (!Array.isArray(srcArr) || !Array.isArray(destArr)) return;
   for (const srcItem of srcArr) {
@@ -235,6 +237,37 @@ function mergeConfigYml(srcFile, destFile) {
     fs.writeFileSync(destFile, merged);
   }
   return missing;
+}
+
+function mergeCodexConfigToml(srcFile, destFile) {
+  const srcText = fs.readFileSync(srcFile, 'utf8');
+  const destText = fs.readFileSync(destFile, 'utf8');
+  if (/^\s*codex_hooks\s*=.*/m.test(destText)) return [];
+
+  const hookLineMatch = srcText.match(/^\s*codex_hooks\s*=.*$/m);
+  if (!hookLineMatch) return [];
+
+  if (!/^\s*\[features\]\s*$/m.test(destText)) {
+    fs.writeFileSync(destFile, destText.trimEnd() + '\n\n[features]\n' + hookLineMatch[0].trim() + '\n');
+    return ['features.codex_hooks'];
+  }
+
+  const lines = destText.split(/\n/);
+  const sectionStart = lines.findIndex(line => /^\s*\[features\]\s*$/.test(line));
+  let insertAt = lines.length;
+  for (let i = sectionStart + 1; i < lines.length; i++) {
+    if (/^\s*$/.test(lines[i])) {
+      insertAt = i;
+      break;
+    }
+    if (/^\s*\[.+\]\s*$/.test(lines[i])) {
+      insertAt = i;
+      break;
+    }
+  }
+  lines.splice(insertAt, 0, hookLineMatch[0].trim());
+  fs.writeFileSync(destFile, lines.join('\n').replace(/\n*$/, '\n'));
+  return ['features.codex_hooks'];
 }
 
 // --- File operations ---
@@ -497,9 +530,9 @@ function runInit(force, platform) {
   // Process Costrict adapter
   if (platform === 'costrict') {
     installAdapterFile({
-      src: path.join(adaptersDir, 'costrict', 'AGENTS.md'),
-      dest: path.join(cwd, 'AGENTS.md'),
-      label: 'AGENTS.md',
+      src: path.join(adaptersDir, 'costrict', 'CLAUDE.md'),
+      dest: path.join(cwd, 'CLAUDE.md'),
+      label: 'CLAUDE.md',
       mode,
       mergeFn: mergeClaudeMd,
       toolOnUpgrade: false,
@@ -541,8 +574,8 @@ function runInit(force, platform) {
       dest: path.join(cwd, '.codex', 'hooks.json'),
       label: '.codex/hooks.json',
       mode,
-      mergeFn: null,
-      toolOnUpgrade: true,
+      mergeFn: mergeSettingsJson,
+      toolOnUpgrade: false,
       results,
     });
 
@@ -551,8 +584,8 @@ function runInit(force, platform) {
       dest: path.join(cwd, '.codex', 'config.toml'),
       label: '.codex/config.toml',
       mode,
-      mergeFn: null,
-      toolOnUpgrade: true,
+      mergeFn: mergeCodexConfigToml,
+      toolOnUpgrade: false,
       results,
     });
 
@@ -681,7 +714,7 @@ function runInit(force, platform) {
     }
   } else if (platform === 'costrict') {
     if (mode === 'fresh') {
-      process.stdout.write('  1. Edit AGENTS.md — fill in team/project info\n');
+      process.stdout.write('  1. Edit CLAUDE.md — fill in team/project info\n');
       process.stdout.write('  2. Run /cf-init in Costrict to auto-scan and populate specs\n');
       process.stdout.write('     Or manually edit .code-flow/specs/ to fill in your coding standards\n');
     } else {

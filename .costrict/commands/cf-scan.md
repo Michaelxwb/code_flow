@@ -28,7 +28,7 @@ python3 .code-flow/scripts/cf_scan.py [--json] [--only-issues] [--limit=N]
 ```json
 {
   "files": [
-    {"path": "AGENTS.md", "tokens": 650, "percent": "26%", "issues": []},
+    {"path": "CLAUDE.md", "tokens": 650, "percent": "26%", "issues": []},
     {"path": "specs/frontend/component-specs.md", "tokens": 420, "percent": "17%", "issues": ["冗余: '结构化日志' 3处重复"]}
   ],
   "total_tokens": 2150,
@@ -43,7 +43,7 @@ python3 .code-flow/scripts/cf_scan.py [--json] [--only-issues] [--limit=N]
 
 | 文件 | Tokens | 占比 | 问题 |
 |------|--------|------|------|
-| AGENTS.md | ~650 | 26% | - |
+| CLAUDE.md | ~650 | 26% | - |
 | specs/frontend/component-specs.md | ~420 | 17% | - |
 | **合计** | **~2150** | **/ 2500** | |
 

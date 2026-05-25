@@ -28,10 +28,10 @@ description: Manually force-load all specs for a domain. Use when auto-injection
 
 ## 执行步骤
 
-1. 用 Read 读取 `.code-flow/config.yml`，获取指定领域的 `specs` 列表
+1. 读取 `.code-flow/config.yml`，获取指定领域的 `specs` 列表
 2. 提取所有 spec 的 `path` 字段（兼容新旧格式）
 3. 按 tier 排序：tier 0（`_map.md`）在前，tier 1 按列表顺序
-4. 用 Read 逐个读取 `.code-flow/specs/` 下的匹配文件
+4. 逐个读取 `.code-flow/specs/` 下的匹配文件
 5. 将规范内容直接输出到对话中，格式：
 
 ```
@@ -51,6 +51,6 @@ description: Manually force-load all specs for a domain. Use when auto-injection
 以上规范是本次开发的约束条件，生成代码必须遵循。
 ```
 
-6. 用 Write 更新 `.code-flow/.inject-state`，将该域所有 spec 路径标记为已注入，防止 Hook 重复注入
+6. 用 apply_patch 更新 `.code-flow/.inject-state`，将该域所有 spec 路径标记为已注入，防止 Hook 重复注入
 
 > 注：手动 inject 会加载该域的**全部** spec，不做标签过滤。这是与 Hook 自动注入的区别——UserPromptSubmit Hook 按 prompt 中的文件路径推断标签精准匹配，手动注入用于全量预览或强制刷新。

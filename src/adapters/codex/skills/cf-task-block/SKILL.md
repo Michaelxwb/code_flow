@@ -9,16 +9,16 @@ description: Mark a subtask as blocked with a reason. Use when a task cannot pro
 
 其中 `<file>` 可省略日期目录前缀和 `.md` 后缀。
 
-查找逻辑：用 Glob 搜索 `.code-flow/tasks/**/<file>.md`，从结果中排除包含 `archived/` 的路径。如果匹配到多个结果，输出警告列出所有匹配项，让用户指定完整路径；如果只有一个结果，直接使用。
+查找逻辑：用 `rg --files` 或 `find` 搜索 `.code-flow/tasks/**/<file>.md`，从结果中排除包含 `archived/` 的路径。如果匹配到多个结果，输出警告列出所有匹配项，让用户指定完整路径；如果只有一个结果，直接使用。
 
 ## 执行步骤
 
-1. 用 Glob 定位任务文件，Read 读取
+1. 用 `rg --files` 或 `find` 定位任务文件，读取
 2. 定位 `## TASK-001` 段落，检查当前 Status：
    - `done` → 拒绝：`TASK-001 已完成，无法标记阻塞`
    - `blocked` → 提示：`TASK-001 已处于 blocked 状态`，仍追加新的阻塞原因
    - `draft` / `in-progress` → 继续
-3. 用 Edit 更新 Status 为 `blocked`
+3. 用 apply_patch 更新 Status 为 `blocked`
 4. 在 `### Log` 前追加：`> BLOCKED: <阻塞原因>`
 5. 在 `### Log` 追加：`- [<当前日期>] blocked (<阻塞原因>, was <原状态>)`
 6. 更新文件头 `Updated` 日期

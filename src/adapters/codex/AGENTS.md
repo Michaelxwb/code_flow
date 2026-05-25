@@ -17,22 +17,22 @@
 - Network calls inside tight loops
 
 ## Spec Loading
-This project uses the code-flow two-tier spec system.
+本项目使用 code-flow 两层规范体系。
 
-**Two-tier architecture**:
-- **Tier 0 `_map.md` (Navigation Map)**: Project structure, key files, data flow. Read manually when you need to understand where code lives.
-- **Tier 1 Constraint Specs**: Coding rules, patterns, anti-patterns. Auto-injected by the UserPromptSubmit Hook based on files referenced in your prompt.
+**两层架构**：
+- **Tier 0 `_map.md`（导航地图）**：项目结构、关键文件、数据流。你手动读取，帮助理解代码在哪里。
+- **Tier 1 约束规范**：编码规则、模式、反模式。由 UserPromptSubmit Hook 根据 prompt 中引用的文件自动注入，你无需手动加载。
 
-**Your responsibility**:
-1. Determine domain from the question:
-   - **frontend**: components, pages, hooks, styles, UI, .tsx/.jsx/.css
-   - **backend**: services, API, database, models, logging, .py/.go
-2. Read `.code-flow/specs/<domain>/_map.md` for navigation context when needed
-3. Constraint specs are auto-injected by Hook when your prompt references relevant files — do NOT manually load them
-4. If question spans multiple domains, read all matching `_map.md` files
-5. If no domain matches, skip spec loading
+**你的职责**：
+1. 从问题判断领域：
+   - **frontend**：components、pages、hooks、styles、UI、.tsx/.jsx/.css
+   - **backend**：services、API、database、models、logging、.py/.go
+2. 读取 `.code-flow/specs/<domain>/_map.md` 获取导航上下文
+3. 约束规范由 Hook 在 prompt 引用相关文件时自动注入——不要手动加载
+4. 问题跨多个领域时，读取所有匹配的 `_map.md`
+5. 没有匹配领域时，跳过规范加载
 
-Do NOT ask the user which specs to load — the system handles constraint injection automatically.
+不要询问用户加载哪些规范——系统自动处理约束注入。
 
 ## Task Documents (cf-task workflow)
 

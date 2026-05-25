@@ -13,7 +13,7 @@ description: Show token usage statistics for the spec system including per-file 
 
 ### 1. 调用 Python 脚本
 
-用 Bash 执行：
+用 shell 命令执行：
 
 ```bash
 python3 .code-flow/scripts/cf_stats.py [--human] [--domain=frontend]

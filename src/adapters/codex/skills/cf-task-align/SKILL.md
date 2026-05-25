@@ -18,9 +18,9 @@ description: Generate a design brief (.design.md) from a requirement through str
 
 | 参数形态 | 模式 | 行为 |
 |---------|------|------|
-| 已存在的 `.design.md` 文件 | **恢复模式** | Read 读取，展示当前内容，询问调整点，进入 Step 3 |
-| 已存在的 `.prd.md` 文件 | **PRD 派生模式** | Read PRD，执行 Step 2.6 预填充维度，Step 3 只补技术维度 |
-| 已存在的其他 `.md` 文件 | **新建模式（带上下文）** | Read 作为参考材料，进入 Step 2 |
+| 已存在的 `.design.md` 文件 | **恢复模式** | 读取，展示当前内容，询问调整点，进入 Step 3 |
+| 已存在的 `.prd.md` 文件 | **PRD 派生模式** | 读取 PRD，执行 Step 2.6 预填充维度，Step 3 只补技术维度 |
+| 已存在的其他 `.md` 文件 | **新建模式（带上下文）** | 读取作为参考材料，进入 Step 2 |
 | 纯文本字符串 | **新建模式** | 以文本作为初始需求，进入 Step 2 |
 | 无参数 | **交互模式** | 询问"要实现什么功能？"，进入 Step 2 |
 
@@ -28,9 +28,9 @@ description: Generate a design brief (.design.md) from a requirement through str
 
 快速了解项目现状，为后续建议提供依据：
 
-1. 用 Glob 检查 `.code-flow/specs/*/_map.md` 是否存在，若有则 Read 读取（了解项目结构）
-2. 检测技术栈：Read `package.json` / `requirements.txt` / `go.mod` / `pyproject.toml` 等（取存在的）
-3. 用 Glob 扫描与需求相关的现有代码目录，了解已有模式
+1. 用 `rg --files` 或 `find` 检查 `.code-flow/specs/*/_map.md` 是否存在，若有则读取（了解项目结构）
+2. 检测技术栈：读取 `package.json` / `requirements.txt` / `go.mod` / `pyproject.toml` 等（取存在的）
+3. 用 `rg --files` 或 `find` 扫描与需求相关的现有代码目录，了解已有模式
 
 目的：**让后续建议基于实际代码库**，而非泛泛的通用建议。
 
@@ -163,7 +163,7 @@ CLI 场景：
 选中的维度都有实质内容后，基于 Step 2.5 选择的模板文件生成设计简报。
 
 **操作步骤**：
-1. 用 Read 读取选定的模板文件（design-lite.md 或 design-full.md）
+1. 读取选定的模板文件（design-lite.md 或 design-full.md）
 2. 按照模板章节结构，将 Step 3 中收集的内容填入对应位置
 3. **只包含适用的章节**，模板中有但需求不涉及的章节跳过
 4. 用 `{}` 占位符替换为实际内容
@@ -220,7 +220,7 @@ CLI 场景：
 3. 根据选择的模板确定文件后缀：
    - Lite 模板: `<name>-lite.design.md`
    - Full 模板: `<name>.design.md`
-4. 用 Write 写入最终路径
+4. 用 apply_patch 创建或更新最终路径
 
 ### 6. 输出摘要
 

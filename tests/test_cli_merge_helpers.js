@@ -23,7 +23,7 @@ function loadCliInternals() {
   const cut = src.indexOf('// --- CLI argument parsing ---');
   if (cut === -1) throw new Error('cli.js sentinel comment moved');
   const head = src.slice(0, cut);
-  const wrapped = head + '\nmodule.exports = { mergeClaudeMd, mergeSettingsJson, mergeHookEventArray, maskFencedCode, ensurePyYaml, installAdapterFile };\n';
+  const wrapped = head + '\nmodule.exports = { mergeClaudeMd, mergeSettingsJson, mergeCodexConfigToml, mergeHookEventArray, maskFencedCode, ensurePyYaml, installAdapterFile };\n';
   // Write the temp module alongside cli.js so its `require('../package.json')`
   // (and any other relative requires) resolves the same way the real cli.js does.
   const tmp = path.join(path.dirname(CLI_PATH), `.cli-internals-${process.pid}.js`);
@@ -36,7 +36,7 @@ function loadCliInternals() {
   }
 }
 
-const { mergeClaudeMd, mergeSettingsJson, maskFencedCode } = loadCliInternals();
+const { mergeClaudeMd, mergeSettingsJson, mergeCodexConfigToml, maskFencedCode } = loadCliInternals();
 
 function withTmp(fn) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cf-merge-test-'));
@@ -233,6 +233,69 @@ function testMergeIdempotent() {
   console.log('  ✓ mergeSettingsJson is idempotent on identical content');
 }
 
+function testMergeCodexConfigTomlAddsMissingHookFlag() {
+  withTmp(dir => {
+    const src = path.join(dir, 'src.toml');
+    const dest = path.join(dir, 'dest.toml');
+    fs.writeFileSync(src, '# code-flow Codex adapter\n[features]\ncodex_hooks = true\n');
+    fs.writeFileSync(dest, 'model = "user-model"\n\n[features]\ncustom_feature = true\n');
+
+    const added = mergeCodexConfigToml(src, dest);
+    assert.deepStrictEqual(added, ['features.codex_hooks']);
+    const result = fs.readFileSync(dest, 'utf8');
+    assert.ok(result.includes('model = "user-model"'), 'top-level user config preserved');
+    assert.ok(result.includes('custom_feature = true'), 'existing feature preserved');
+    assert.ok(result.includes('codex_hooks = true'), 'missing flag added');
+  });
+  console.log('  ✓ mergeCodexConfigToml adds missing hook flag');
+}
+
+function testMergeCodexConfigTomlCreatesFeaturesSection() {
+  withTmp(dir => {
+    const src = path.join(dir, 'src.toml');
+    const dest = path.join(dir, 'dest.toml');
+    fs.writeFileSync(src, '# code-flow Codex adapter\n[features]\ncodex_hooks = true\n');
+    fs.writeFileSync(dest, 'model = "user-model"\napproval_policy = "on-request"\n');
+
+    const added = mergeCodexConfigToml(src, dest);
+    assert.deepStrictEqual(added, ['features.codex_hooks']);
+    const result = fs.readFileSync(dest, 'utf8');
+    assert.ok(result.includes('model = "user-model"'), 'top-level config preserved');
+    assert.ok(result.includes('[features]\ncodex_hooks = true'), 'features section created');
+  });
+  console.log('  ✓ mergeCodexConfigToml creates [features] section');
+}
+
+function testMergeCodexConfigTomlInsertsBeforeBlankLineAfterFeatures() {
+  withTmp(dir => {
+    const src = path.join(dir, 'src.toml');
+    const dest = path.join(dir, 'dest.toml');
+    fs.writeFileSync(src, '# code-flow Codex adapter\n[features]\ncodex_hooks = true\n');
+    fs.writeFileSync(dest, '[features]\ncustom_feature = true\n\n[profiles.default]\nmodel = "x"\n');
+
+    mergeCodexConfigToml(src, dest);
+    const result = fs.readFileSync(dest, 'utf8');
+    assert.ok(
+      result.includes('[features]\ncustom_feature = true\ncodex_hooks = true\n\n[profiles.default]'),
+      'hook flag should stay visually inside [features]'
+    );
+  });
+  console.log('  ✓ mergeCodexConfigToml inserts before blank section gap');
+}
+
+function testMergeCodexConfigTomlIsIdempotent() {
+  withTmp(dir => {
+    const src = path.join(dir, 'src.toml');
+    const dest = path.join(dir, 'dest.toml');
+    fs.writeFileSync(src, '# code-flow Codex adapter\n[features]\ncodex_hooks = true\n');
+    fs.writeFileSync(dest, '[features]\ncodex_hooks = true\ncustom_feature = true\n');
+
+    const added = mergeCodexConfigToml(src, dest);
+    assert.deepStrictEqual(added, []);
+  });
+  console.log('  ✓ mergeCodexConfigToml is idempotent');
+}
+
 // --- run ---
 
 const tests = [
@@ -244,6 +307,10 @@ const tests = [
   testMergeAddsNewCommandIntoExistingMatcher,
   testMergeNeverOverwritesUserCommand,
   testMergeIdempotent,
+  testMergeCodexConfigTomlAddsMissingHookFlag,
+  testMergeCodexConfigTomlCreatesFeaturesSection,
+  testMergeCodexConfigTomlInsertsBeforeBlankLineAfterFeatures,
+  testMergeCodexConfigTomlIsIdempotent,
 ];
 
 console.log('Running cli.js merge helper tests...');

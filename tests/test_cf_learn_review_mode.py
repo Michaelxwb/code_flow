@@ -21,24 +21,19 @@ def _assert_workspace_review_semantics(text: str) -> None:
     assert "从 git 历史挖掘人工修正模式" not in text
 
 
-def test_codex_cf_learn_review_uses_workspace_changes() -> None:
-    content = _read_text("src/adapters/codex/skills/cf-learn/SKILL.md")
-    _assert_workspace_review_semantics(content)
-
-
-def test_claude_cf_learn_review_uses_workspace_changes() -> None:
-    content = _read_text("src/adapters/claude/commands/cf-learn.md")
-    _assert_workspace_review_semantics(content)
-
-
-def test_project_codex_cf_learn_review_uses_workspace_changes() -> None:
-    content = _read_text(".agents/skills/cf-learn/SKILL.md")
-    _assert_workspace_review_semantics(content)
-
-
-def test_project_claude_cf_learn_review_uses_workspace_changes() -> None:
-    content = _read_text(".claude/commands/cf-learn.md")
-    _assert_workspace_review_semantics(content)
+def test_cf_learn_docs_review_uses_workspace_changes() -> None:
+    paths = [
+        "src/adapters/codex/skills/cf-learn/SKILL.md",
+        "src/adapters/claude/commands/cf-learn.md",
+        "src/adapters/costrict/commands/cf-learn.md",
+        "src/adapters/opencode/commands/cf-learn.md",
+        ".agents/skills/cf-learn/SKILL.md",
+        ".claude/commands/cf-learn.md",
+        ".costrict/commands/cf-learn.md",
+        ".opencode/commands/cf-learn.md",
+    ]
+    for path in paths:
+        _assert_workspace_review_semantics(_read_text(path))
 
 
 def test_usage_cf_learn_review_matches_workspace_flow() -> None:

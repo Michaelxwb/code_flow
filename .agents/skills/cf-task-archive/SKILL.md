@@ -9,13 +9,13 @@ description: Archive a completed task file after three-dimensional validation (c
 
 其中 `<file>` 可省略日期目录前缀和 `.md` 后缀。
 
-查找逻辑：用 Glob 搜索 `.code-flow/tasks/**/<file>.md`，从结果中排除包含 `archived/` 的路径。如果匹配到多个结果，输出警告列出所有匹配项，让用户指定完整路径；如果只有一个结果，直接使用。
+查找逻辑：用 `rg --files` 或 `find` 搜索 `.code-flow/tasks/**/<file>.md`，从结果中排除包含 `archived/` 的路径。如果匹配到多个结果，输出警告列出所有匹配项，让用户指定完整路径；如果只有一个结果，直接使用。
 
 ## 执行步骤
 
 ### 1. 完成度检查
 
-1. 用 Read 读取匹配到的 task 文件
+1. 读取匹配到的 task 文件
 2. 提取所有 `## TASK-xxx` 段落的 Status
 3. 检查是否所有子任务均为 `done`
 
@@ -30,7 +30,7 @@ description: Archive a completed task file after three-dimensional validation (c
 - 全文无残留的 `#NOTES` 标记
 
 **正确性**：
-- 如果 `.code-flow/validation.yml` 存在，Read 读取验证规则，用 Bash 执行其中匹配的 `command`（如 `npx tsc --noEmit`、`python3 -m pytest` 等）
+- 如果 `.code-flow/validation.yml` 存在，读取验证规则，用 shell 命令执行其中匹配的 `command`（如 `npx tsc --noEmit`、`python3 -m pytest` 等）
 - 检查本次变更涉及的文件是否通过 lint/type check
 
 **一致性**：
@@ -43,7 +43,7 @@ description: Archive a completed task file after three-dimensional validation (c
 校验通过后：
 
 1. 提取文件所在的日期目录名（如 `2026-03-15`）
-2. 用 Bash 创建归档目录并移动文件：
+2. 用 shell 命令创建归档目录并移动文件：
    ```bash
    mkdir -p .code-flow/tasks/archived/<日期目录>
    mv .code-flow/tasks/<日期目录>/<file>.md .code-flow/tasks/archived/<日期目录>/

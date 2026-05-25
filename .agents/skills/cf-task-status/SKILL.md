@@ -12,8 +12,8 @@ description: "Show task status overview: subtask states, progress percentages, b
 
 ### 1. 读取任务数据
 
-- 用 Glob 搜索 `.code-flow/tasks/**/*.md`，从结果中排除包含 `archived/` 的路径
-- 逐个 Read，提取每个 `## TASK-xxx` 的：ID、标题、Status、Priority、Depends、Checklist 完成度
+- 用 `rg --files` 或 `find` 搜索 `.code-flow/tasks/**/*.md`，从结果中排除包含 `archived/` 的路径
+- 逐个读取，提取每个 `## TASK-xxx` 的：ID、标题、Status、Priority、Depends、Checklist 完成度
 
 ### 2. 输出总览表格
 
