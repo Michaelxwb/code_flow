@@ -239,35 +239,63 @@ function mergeConfigYml(srcFile, destFile) {
   return missing;
 }
 
+function findTomlSectionBounds(lines, sectionName) {
+  let start = -1;
+  let end = lines.length;
+  const header = new RegExp(`^\\s*\\[${sectionName}\\]\\s*$`);
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^\s*\[.+\]\s*$/.test(lines[i])) continue;
+    if (start !== -1) {
+      end = i;
+      break;
+    }
+    if (header.test(lines[i])) start = i;
+  }
+  return { start, end };
+}
+
+function findTomlKeyLine(lines, start, end, key) {
+  const keyRegex = new RegExp(`^\\s*${key}\\s*=`);
+  for (let i = start + 1; i < end; i++) {
+    if (keyRegex.test(lines[i])) return i;
+  }
+  return -1;
+}
+
+function findFeatureInsertIndex(lines, start, end) {
+  for (let i = start + 1; i < end; i++) {
+    if (/^\s*$/.test(lines[i])) return i;
+  }
+  return end;
+}
+
 function mergeCodexConfigToml(srcFile, destFile) {
   const srcText = fs.readFileSync(srcFile, 'utf8');
   const destText = fs.readFileSync(destFile, 'utf8');
-  if (/^\s*codex_hooks\s*=.*/m.test(destText)) return [];
-
-  const hookLineMatch = srcText.match(/^\s*codex_hooks\s*=.*$/m);
+  const hookLineMatch = srcText.match(/^\s*hooks\s*=.*$/m);
   if (!hookLineMatch) return [];
 
-  if (!/^\s*\[features\]\s*$/m.test(destText)) {
+  const lines = destText.split(/\n/);
+  const { start, end } = findTomlSectionBounds(lines, 'features');
+
+  if (start === -1) {
     fs.writeFileSync(destFile, destText.trimEnd() + '\n\n[features]\n' + hookLineMatch[0].trim() + '\n');
-    return ['features.codex_hooks'];
+    return ['features.hooks'];
   }
 
-  const lines = destText.split(/\n/);
-  const sectionStart = lines.findIndex(line => /^\s*\[features\]\s*$/.test(line));
-  let insertAt = lines.length;
-  for (let i = sectionStart + 1; i < lines.length; i++) {
-    if (/^\s*$/.test(lines[i])) {
-      insertAt = i;
-      break;
-    }
-    if (/^\s*\[.+\]\s*$/.test(lines[i])) {
-      insertAt = i;
-      break;
-    }
+  if (findTomlKeyLine(lines, start, end, 'hooks') !== -1) return [];
+
+  const legacyIdx = findTomlKeyLine(lines, start, end, 'codex_hooks');
+  if (legacyIdx !== -1) {
+    lines[legacyIdx] = lines[legacyIdx].replace(/^(\s*)codex_hooks(\s*=.*)$/, '$1hooks$2');
+    fs.writeFileSync(destFile, lines.join('\n').replace(/\n*$/, '\n'));
+    return ['features.hooks'];
   }
+
+  const insertAt = findFeatureInsertIndex(lines, start, end);
   lines.splice(insertAt, 0, hookLineMatch[0].trim());
   fs.writeFileSync(destFile, lines.join('\n').replace(/\n*$/, '\n'));
-  return ['features.codex_hooks'];
+  return ['features.hooks'];
 }
 
 // --- File operations ---
@@ -706,9 +734,11 @@ function runInit(force, platform) {
   if (platform === 'codex') {
     if (mode === 'fresh') {
       process.stdout.write('  1. Edit AGENTS.md — fill in team/project info\n');
-      process.stdout.write('  2. Run $cf-init in Codex CLI to auto-scan and populate specs\n');
+      process.stdout.write('  2. Run /hooks in Codex CLI and trust the code-flow hooks if prompted\n');
+      process.stdout.write('  3. Run $cf-init in Codex CLI to auto-scan and populate specs\n');
       process.stdout.write('     Or manually edit .code-flow/specs/ to fill in your coding standards\n');
     } else {
+      process.stdout.write('  Run /hooks in Codex CLI and trust changed code-flow hooks if prompted\n');
       process.stdout.write('  Run $cf-learn in Codex CLI to update specs with project conventions\n');
       process.stdout.write('  Run $cf-learn --map to update retrieval maps\n');
     }
