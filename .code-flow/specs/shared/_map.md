@@ -21,6 +21,8 @@
 | `design/design-lite.md` | 轻量设计简报 | 功能开发/CLI/Bug修复/小型重构 |
 | `design/design-full.md` | 完整设计文档 | 跨系统集成/性能优化/架构演进/中大型功能 |
 
+> 两档模板均覆盖：接口设计（API/CLI/函数三形态）、性能与容量设计、可执行验收（场景即 TC）。design-full 额外含方案选型 ADR 决策记录与 §6 需求追溯矩阵。
+
 ## Workflow
 
 ```
@@ -52,3 +54,4 @@
 1. `cf-task:prd` 命令引用 `prd-template.md` 生成 PRD
 2. `cf-task:align` 命令引用 `design/design-lite.md` 或 `design/design-full.md` 生成设计文档
 3. PRD 的 US/FEAT ID 被 design 的功能清单"来源"列引用，形成追溯链
+4. 性能敏感需求：align 在出技术方案时即按最优性能设计，落点 design-lite §3.4 / design-full §3.5，并在 §6 矩阵闭合 US→FEAT→API→TC
