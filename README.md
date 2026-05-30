@@ -86,7 +86,7 @@ code-flow --help
 CLAUDE.md                         # 全局指令
 
 # Codex CLI (--platform=codex)
-.codex/hooks.json                 # UserPromptSubmit Hook 注册
+.codex/hooks.json                 # Hook 注册（SessionStart + UserPromptSubmit）
 .codex/config.toml                # Codex 配置
 .agents/skills/<skill>/SKILL.md   # 项目级 Skills
 AGENTS.md                         # 全局指令

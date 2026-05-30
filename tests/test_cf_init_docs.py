@@ -69,7 +69,9 @@ def test_platform_specific_cf_init_sections_match_adapter_contracts() -> None:
     codex = _read("codex")
     assert ".codex/hooks.json" in codex
     assert ".codex/config.toml" in codex
+    assert "hooks = true" in codex
     assert "codex_hooks = true" in codex
+    assert "/hooks" in codex
     assert "不得整文件覆盖" in codex
 
     opencode = _read("opencode")

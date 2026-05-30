@@ -237,15 +237,15 @@ function testMergeCodexConfigTomlAddsMissingHookFlag() {
   withTmp(dir => {
     const src = path.join(dir, 'src.toml');
     const dest = path.join(dir, 'dest.toml');
-    fs.writeFileSync(src, '# code-flow Codex adapter\n[features]\ncodex_hooks = true\n');
+    fs.writeFileSync(src, '# code-flow Codex adapter\n[features]\nhooks = true\n');
     fs.writeFileSync(dest, 'model = "user-model"\n\n[features]\ncustom_feature = true\n');
 
     const added = mergeCodexConfigToml(src, dest);
-    assert.deepStrictEqual(added, ['features.codex_hooks']);
+    assert.deepStrictEqual(added, ['features.hooks']);
     const result = fs.readFileSync(dest, 'utf8');
     assert.ok(result.includes('model = "user-model"'), 'top-level user config preserved');
     assert.ok(result.includes('custom_feature = true'), 'existing feature preserved');
-    assert.ok(result.includes('codex_hooks = true'), 'missing flag added');
+    assert.ok(result.includes('hooks = true'), 'missing flag added');
   });
   console.log('  ✓ mergeCodexConfigToml adds missing hook flag');
 }
@@ -254,14 +254,14 @@ function testMergeCodexConfigTomlCreatesFeaturesSection() {
   withTmp(dir => {
     const src = path.join(dir, 'src.toml');
     const dest = path.join(dir, 'dest.toml');
-    fs.writeFileSync(src, '# code-flow Codex adapter\n[features]\ncodex_hooks = true\n');
+    fs.writeFileSync(src, '# code-flow Codex adapter\n[features]\nhooks = true\n');
     fs.writeFileSync(dest, 'model = "user-model"\napproval_policy = "on-request"\n');
 
     const added = mergeCodexConfigToml(src, dest);
-    assert.deepStrictEqual(added, ['features.codex_hooks']);
+    assert.deepStrictEqual(added, ['features.hooks']);
     const result = fs.readFileSync(dest, 'utf8');
     assert.ok(result.includes('model = "user-model"'), 'top-level config preserved');
-    assert.ok(result.includes('[features]\ncodex_hooks = true'), 'features section created');
+    assert.ok(result.includes('[features]\nhooks = true'), 'features section created');
   });
   console.log('  ✓ mergeCodexConfigToml creates [features] section');
 }
@@ -270,25 +270,42 @@ function testMergeCodexConfigTomlInsertsBeforeBlankLineAfterFeatures() {
   withTmp(dir => {
     const src = path.join(dir, 'src.toml');
     const dest = path.join(dir, 'dest.toml');
-    fs.writeFileSync(src, '# code-flow Codex adapter\n[features]\ncodex_hooks = true\n');
+    fs.writeFileSync(src, '# code-flow Codex adapter\n[features]\nhooks = true\n');
     fs.writeFileSync(dest, '[features]\ncustom_feature = true\n\n[profiles.default]\nmodel = "x"\n');
 
     mergeCodexConfigToml(src, dest);
     const result = fs.readFileSync(dest, 'utf8');
     assert.ok(
-      result.includes('[features]\ncustom_feature = true\ncodex_hooks = true\n\n[profiles.default]'),
+      result.includes('[features]\ncustom_feature = true\nhooks = true\n\n[profiles.default]'),
       'hook flag should stay visually inside [features]'
     );
   });
   console.log('  ✓ mergeCodexConfigToml inserts before blank section gap');
 }
 
+function testMergeCodexConfigTomlMigratesDeprecatedHookAlias() {
+  withTmp(dir => {
+    const src = path.join(dir, 'src.toml');
+    const dest = path.join(dir, 'dest.toml');
+    fs.writeFileSync(src, '# code-flow Codex adapter\n[features]\nhooks = true\n');
+    fs.writeFileSync(dest, '[features]\ncodex_hooks = true\ncustom_feature = true\n');
+
+    const added = mergeCodexConfigToml(src, dest);
+    assert.deepStrictEqual(added, ['features.hooks']);
+    const result = fs.readFileSync(dest, 'utf8');
+    assert.ok(result.includes('hooks = true'), 'deprecated alias migrated');
+    assert.ok(!result.includes('codex_hooks = true'), 'deprecated alias removed');
+    assert.ok(result.includes('custom_feature = true'), 'existing feature preserved');
+  });
+  console.log('  ✓ mergeCodexConfigToml migrates deprecated hook alias');
+}
+
 function testMergeCodexConfigTomlIsIdempotent() {
   withTmp(dir => {
     const src = path.join(dir, 'src.toml');
     const dest = path.join(dir, 'dest.toml');
-    fs.writeFileSync(src, '# code-flow Codex adapter\n[features]\ncodex_hooks = true\n');
-    fs.writeFileSync(dest, '[features]\ncodex_hooks = true\ncustom_feature = true\n');
+    fs.writeFileSync(src, '# code-flow Codex adapter\n[features]\nhooks = true\n');
+    fs.writeFileSync(dest, '[features]\nhooks = true\ncustom_feature = true\n');
 
     const added = mergeCodexConfigToml(src, dest);
     assert.deepStrictEqual(added, []);
@@ -310,6 +327,7 @@ const tests = [
   testMergeCodexConfigTomlAddsMissingHookFlag,
   testMergeCodexConfigTomlCreatesFeaturesSection,
   testMergeCodexConfigTomlInsertsBeforeBlankLineAfterFeatures,
+  testMergeCodexConfigTomlMigratesDeprecatedHookAlias,
   testMergeCodexConfigTomlIsIdempotent,
 ];
 
