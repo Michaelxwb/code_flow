@@ -1,3 +1,7 @@
+---
+description: 新建/移动后端文件时适用：目录结构与模块组织约束
+---
+
 # Backend Directory Structure
 
 ## Rules

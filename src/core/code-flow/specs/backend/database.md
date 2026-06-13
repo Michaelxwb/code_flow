@@ -1,3 +1,7 @@
+---
+description: 涉及数据库/ORM/迁移/查询时适用：schema 与数据访问约束
+---
+
 # Backend Database
 
 ## Rules

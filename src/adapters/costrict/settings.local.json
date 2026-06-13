@@ -6,7 +6,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.code-flow/scripts/cf_inject_hook.py\"",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_inject_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_post_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
             "timeout": 5
           }
         ]
@@ -17,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.code-flow/scripts/cf_session_hook.py\""
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_session_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi"
           }
         ]
       }
@@ -27,8 +39,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.code-flow/scripts/cf_user_prompt_hook.py\"",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_user_prompt_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
             "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_stop_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
+            "timeout": 35
           }
         ]
       }

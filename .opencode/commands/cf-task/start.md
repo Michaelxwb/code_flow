@@ -61,6 +61,18 @@ description: 激活子任务并开始编码
 4. 结合详设上下文 + Checklist，逐项执行编码工作
 5. 每完成一个 checklist 项 → 用 Edit 将 `- [ ]` 改为 `- [x]`
 
+### 3.5 会话级临时约束（FEAT-08）
+
+激活后，若任务文件头 Source 指向的 design 文档含验收条件章节（如 §2.5 验收条件 / 验收标准）：
+
+1. 提取该章节的场景与 RULE 约束，生成 `.code-flow/specs/_session/task-<name>.md`：
+   - frontmatter：`description: 当前任务 <name> 的验收约束（cf-task:start 生成，archive 清理）`
+   - 正文：验收场景与约束的精简列表（≤300 token）
+2. Spec Catalog 目录扫描自动纳入该文件，无需配置；编辑代码时的自动注入同样生效
+3. design 无验收章节时静默跳过；同名文件已存在则覆盖（同任务重复 start）
+
+> `_session/` 不入库（.gitignore 模板已覆盖）、不参与 cf-scan 审计与预算。
+
 ### 4. 自动完成
 
 当所有 checklist 项都勾选为 `[x]` 后：

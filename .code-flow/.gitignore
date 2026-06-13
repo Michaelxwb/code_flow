@@ -1,0 +1,7 @@
+# code-flow 运行时数据（仅本地，不入库）
+.inject-state
+.debug.log
+.session-log.jsonl
+.check-state.json
+sessions/
+specs/_session/

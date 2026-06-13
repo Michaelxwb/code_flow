@@ -1,4 +1,32 @@
+---
+description: 写后端代码时适用：错误处理、测试、超时重试、缓存等质量与性能约束
+---
+
 # Backend Code Quality & Performance
+
+## Examples
+
+> ✅/❌ 对照示例对 AI 的引导远强于规则条文——新写规范优先用这个格式（cf-learn 候选会自动生成草稿）。
+
+✅ 显式错误处理
+
+```python
+try:
+    result = service.call()
+except ServiceError as exc:
+    logger.warning("call failed: %s", exc)
+    raise
+```
+
+❌ 静默吞异常
+
+```python
+try:
+    result = service.call()
+except Exception:
+    pass
+```
+
 
 ## Rules
 - 所有公开函数 / 方法必须有类型注解（type hints / 类型签名）

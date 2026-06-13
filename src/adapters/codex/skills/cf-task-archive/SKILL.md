@@ -60,6 +60,8 @@ description: Archive a completed task file after three-dimensional validation (c
    ```
 5. 如果原日期目录为空，删除空目录
 
+**临时约束清理（FEAT-08）**：删除 `.code-flow/specs/_session/task-<name>.md`（存在时）。该文件由 cf-task:start 生成，归档后不得残留。
+
 ### 4. Spec 更新提示
 
 归档完成后，检查本次变更是否引入了新的规范约束需要同步到 specs：

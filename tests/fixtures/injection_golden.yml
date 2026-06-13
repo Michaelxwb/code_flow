@@ -1,0 +1,101 @@
+# 注入准确性 golden set —— 来源：2026-06-12 真实场景 A/B 评测
+# 每条：prompt（真实开发语句）→ expected（应可达的约束 spec，null = 不应注入任何完整约束）
+# category 说明：
+#   open-vocab : 开放词汇，旧词表模式系统性漏注的重灾区
+#   path       : 明确文件路径，必须直注完整约束（direct: true）
+#   bare-file  : 裸文件名（无目录），目录可达即可
+#   irrelevant : 无关场景，不得注入任何完整约束
+cases:
+  - prompt: "把重复注入的问题再修一下，同一个会话里规范总是被重复塞进来"
+    expected: scripts/code-standards.md
+    category: open-vocab
+  - prompt: "为什么中文规范注入后被转义成 \\uXXXX 了"
+    expected: scripts/code-standards.md
+    category: open-vocab
+  - prompt: "mtime 缓存好像不生效，改了配置文件还是读到旧值"
+    expected: scripts/code-standards.md
+    category: open-vocab
+  - prompt: "_SAFE_DEPLURALS 白名单里加几个新词"
+    expected: scripts/code-standards.md
+    category: open-vocab
+  - prompt: "debug 日志为什么没写进 .debug.log"
+    expected: scripts/code-standards.md
+    category: open-vocab
+  - prompt: "两个终端窗口同时开会话，状态互相覆盖了"
+    expected: scripts/code-standards.md
+    category: open-vocab
+  - prompt: "压缩逻辑把表格前后的空行也干掉了，排查一下"
+    expected: scripts/code-standards.md
+    category: open-vocab
+  - prompt: "给所有入口脚本补上异常兜底，别让协议输出被破坏"
+    expected: scripts/code-standards.md
+    category: open-vocab
+  - prompt: "升级的时候用户自定义的 commands 目录被覆盖了"
+    expected: cli/code-standards.md
+    category: open-vocab
+  - prompt: "发 npm 包之前检查下 files 字段有没有漏文件"
+    expected: cli/code-standards.md
+    category: open-vocab
+  - prompt: "想支持一个新的 AI 平台 gemini，怎么加"
+    expected: cli/code-standards.md
+    category: open-vocab
+  - prompt: "合并 CLAUDE.md 的时候段落出现重复"
+    expected: cli/code-standards.md
+    category: open-vocab
+  - prompt: "初始化在 Windows 上路径分隔符不对"
+    expected: cli/code-standards.md
+    category: open-vocab
+  - prompt: "改一下 src/cli.js 的 parsePlatform 函数"
+    expected: cli/code-standards.md
+    category: path
+  - prompt: "看看 src/core/code-flow/scripts/cf_core.py 的预算逻辑"
+    expected: scripts/code-standards.md
+    category: path
+  - prompt: "tests/test_cf_core.py 里补几个边界用例"
+    expected: scripts/code-standards.md
+    category: path
+  - prompt: "看看 cf_core.py 里 select_specs_tiered 的实现"
+    expected: scripts/code-standards.md
+    category: bare-file
+  - prompt: "今天的改动帮我写个 commit message"
+    expected: null
+    category: irrelevant
+  - prompt: "帮我测试一下公司 VPN 连不连得通"
+    expected: null
+    category: irrelevant
+  - prompt: "查一下 git log 里最近谁改过配置相关的提交"
+    expected: null
+    category: irrelevant
+
+  # ===== 复杂语句（2026-06-12 二期补充）=====
+  # multi-path  : 多路径跨域，两个域的约束都必须直注（direct 全列）
+  # path-cross  : 路径锁定一个域直注，另一域意图经目录可达（direct 只列路径域）
+  # multi-domain: 无路径跨域开放词汇，多个约束经目录可达
+  - prompt: "同步改 src/cli.js 的 runInit 和 src/core/code-flow/scripts/cf_session_hook.py，保证部署出来的 hook 行为一致"
+    expected: [cli/code-standards.md, scripts/code-standards.md]
+    direct: [cli/code-standards.md, scripts/code-standards.md]
+    category: multi-path
+  - prompt: "更新 src/adapters/codex/hooks.json 之后，把 tests/test_cli_init_codex.py 的断言也对齐"
+    expected: [cli/code-standards.md, scripts/code-standards.md]
+    direct: [cli/code-standards.md, scripts/code-standards.md]
+    category: multi-path
+  - prompt: "改 src/cli.js，让 init 把新的 PostToolUse 钩子脚本也部署进 settings 模板"
+    expected: [cli/code-standards.md, scripts/code-standards.md]
+    direct: [cli/code-standards.md]
+    category: path-cross
+  - prompt: "在 tests/test_cli_init_costrict.py 里验证部署后的 settings 模板会拉起注入脚本"
+    expected: [scripts/code-standards.md, cli/code-standards.md]
+    direct: [scripts/code-standards.md]
+    category: path-cross
+  - prompt: "发版前把 CLI 升级流程和注入协议都过一遍：中文别被转义、用户自定义文件别被覆盖"
+    expected: [scripts/code-standards.md, cli/code-standards.md]
+    category: multi-domain
+  - prompt: "新平台接入要同时加 init 分支、hooks 注册模板和注入脚本，帮我列一下要动的文件"
+    expected: [cli/code-standards.md, scripts/code-standards.md]
+    category: multi-domain
+  - prompt: "用户反馈装完之后每条消息都被塞了几千 token 的规范，从部署到注入整条链路排查一下"
+    expected: [cli/code-standards.md, scripts/code-standards.md]
+    category: multi-domain
+  - prompt: "会话状态文件偶尔损坏成空 JSON，读取的时候要兜底重建而不是崩掉"
+    expected: scripts/code-standards.md
+    category: open-vocab

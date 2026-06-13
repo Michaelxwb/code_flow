@@ -254,3 +254,7 @@ Token 估算: ...
   - 运行 cf-learn --map 更新导航地图
   - 开始开发: cf-task-plan <设计文档>
 ```
+
+## v0.5 质量闭环部署说明
+
+init/upgrade 后新增：PostToolUse / Stop hook 注册（合规反馈与收尾守门）、`.code-flow/.gitignore`（运行时数据不入库）。运行时数据 `.session-log.jsonl` / `.check-state.json` 首次使用自动创建，仅存本地。规范写作建议：frontmatter 加 `description`（Spec Catalog 行）与 `checks`（机检标注），规则优先用 ✅/❌ Examples 段表达（cf-learn 候选自动生成草稿）。

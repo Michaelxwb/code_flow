@@ -1,3 +1,7 @@
+---
+description: 写/改组件时适用：props、hooks、渲染、UI 样式约束
+---
+
 # Component Specs
 
 ## Rules

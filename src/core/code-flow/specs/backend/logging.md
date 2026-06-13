@@ -1,3 +1,7 @@
+---
+description: 涉及日志/调试/监控时适用：日志级别、格式、追踪约束
+---
+
 # Backend Logging
 
 ## Rules

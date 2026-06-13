@@ -62,6 +62,18 @@ export const CodeFlow = async (ctx) => {
         if (sid) sessionContext.delete(sid);
         callHook(projectRoot, "cf_session_hook.py", { session_id: sid });
       }
+      if (input.event?.type === "session.idle") {
+        const sid =
+          input.event?.properties?.sessionID ||
+          input.event?.properties?.info?.id || "";
+        const result = callHook(projectRoot, "cf_stop_hook.py", { session_id: sid });
+        if (result?.reason) {
+          // idle 无法阻断，校验失败排队到下一轮 system prompt
+          const pending = sessionContext.get(sid);
+          sessionContext.set(sid, pending ? pending + "\n\n" + result.reason : result.reason);
+          debugLog(projectRoot, `stop-check feedback queued`);
+        }
+      }
     },
 
     "chat.message": async (input, output) => {
@@ -84,6 +96,27 @@ export const CodeFlow = async (ctx) => {
         );
       } else {
         debugLog(projectRoot, `hook returned no context`);
+      }
+    },
+
+    "tool.execute.after": async (input, output) => {
+      const tool = String(input?.tool || "").toLowerCase();
+      if (!["edit", "write", "multiedit", "patch"].includes(tool)) return;
+      const args = output?.args || input?.args || {};
+      const filePath = args.filePath || args.file_path || args.path;
+      if (!filePath) return;
+      const result = callHook(projectRoot, "cf_post_hook.py", {
+        tool_name: tool === "write" ? "Write" : "Edit",
+        tool_input: { file_path: filePath },
+        session_id: input?.sessionID || "",
+      });
+      const ctx = result?.hookSpecificOutput?.additionalContext;
+      if (ctx) {
+        // 反馈排队，下一轮 system.transform 注入（opencode 无法当轮插话）
+        const sid = input?.sessionID || "";
+        const pending = sessionContext.get(sid);
+        sessionContext.set(sid, pending ? pending + "\n\n" + ctx : ctx);
+        debugLog(projectRoot, `post-check feedback queued ${ctx.length} chars`);
       }
     },
 

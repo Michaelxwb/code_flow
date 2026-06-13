@@ -5,9 +5,21 @@ budget:
     l0_max: 800
     l1_max: 1700
     map_max: 400
+    # catalog 模式下 spec 目录的 token 上限（超出按 Tier1 优先截断并告警）
+    catalog_max: 200
 
 inject:
     auto: true
+    # 注入模式：catalog = 注入极小 spec 目录由模型自取（prompt 含明确路径时仍直注完整约束）；
+    # full = 旧行为（tag 词表匹配注入完整 spec）。仅 literal "catalog" 启用；缺失/其他值一律 full。
+    mode: catalog
+
+# 质量闭环（v0.5）：enabled 仅 literal true 启用；子开关仅 literal false 关闭。
+quality_loop:
+    enabled: true
+    post_check: true
+    stop_check: true
+    correction_capture: true
     # 注入时对 spec 内容做保守无损压缩（去行尾空白、折叠多空行、剥 HTML 注释、去重 bullet）
     # 缺省视为 true；仅显式 false 关闭
     compress: true
@@ -98,8 +110,10 @@ path_mapping:
               tier: 1
     scripts:
         patterns:
-            - "src/core/code-flow/scripts/**/*.py"
-            - "tests/**/*.py"
+            # fnmatch 语义：* 可跨 /，"dir/*.py" 已覆盖任意深度；
+            # "dir/**/*.py" 反而要求至少一层子目录，会漏掉直系文件
+            - "src/core/code-flow/scripts/*.py"
+            - "tests/*.py"
         specs:
             - path: "scripts/_map.md"
               tags: ["*"]
