@@ -15,12 +15,16 @@ import json
 import os
 import re
 import sys
+import cf_log
 from cf_core import (
     _log,
     assemble_context,
     build_effective_mapping,
+    build_spec_catalog,
+    resolve_quality_loop,
     debug_log,
     ensure_utf8_io,
+    estimate_tokens,
     extract_context_tags,
     extract_prompt_tags,
     fallback_domains_for_context,
@@ -31,10 +35,14 @@ from cf_core import (
     normalize_path,
     read_matched_specs,
     resolve_compress,
+    resolve_inject_mode,
     resolve_session_id,
     save_inject_state,
     select_specs_tiered,
 )
+
+# Pseudo spec-path key used in prompt_inject_window to dedup catalog emission.
+_CATALOG_KEY = "__catalog__"
 
 # Match bare paths, @-prefixed paths, and backtick-quoted paths.
 # Right boundary uses an ASCII-only negative lookahead instead of \b. Python's
@@ -60,6 +68,90 @@ def extract_paths_from_prompt(prompt: str) -> list:
             paths.append(candidate)
             seen.add(candidate)
     return paths
+
+
+def _emit_catalog(
+    project_root: str,
+    sid: str,
+    inject_config: dict,
+    budget_cfg: dict,
+    effective_mapping: dict,
+    quality_loop: dict = None,
+) -> None:
+    """Inject the compact spec catalog (inject.mode=catalog, no path evidence).
+
+    The model does the semantic spec selection itself by reading the catalog;
+    dedup reuses prompt_inject_window under the pseudo key _CATALOG_KEY so the
+    catalog re-surfaces after dedup_window prompts (auto-compaction recovery).
+    """
+    try:
+        catalog_max = int(budget_cfg.get("catalog_max", 200))
+    except (ValueError, TypeError):
+        catalog_max = 200
+    catalog = build_spec_catalog(project_root, effective_mapping, catalog_max)
+    if not catalog:
+        debug_log(f"user_prompt_hook catalog_empty session={sid}", project_root)
+        return
+
+    state = load_inject_state(project_root)
+    same_session = state.get("session_id") == sid
+    if same_session:
+        injected_specs = set(state.get("injected_specs") or [])
+        prompt_window = dict(state.get("prompt_inject_window") or {})
+        prompt_count = int(state.get("prompt_count") or 0) + 1
+    else:
+        injected_specs = set()
+        prompt_window = {}
+        prompt_count = 1
+
+    try:
+        dedup_window = int(inject_config.get("dedup_window", 5))
+    except (ValueError, TypeError):
+        dedup_window = 5
+
+    last = prompt_window.get(_CATALOG_KEY)
+    emit = (
+        dedup_window <= 0
+        or last is None
+        or prompt_count - int(last) >= dedup_window
+    )
+    if emit:
+        prompt_window[_CATALOG_KEY] = prompt_count
+    save_inject_state(project_root, {
+        "session_id": sid,
+        "injected_specs": sorted(injected_specs),
+        "last_file": state.get("last_file", "") if same_session else "",
+        "prompt_count": prompt_count,
+        "prompt_inject_window": prompt_window,
+    })
+
+    if not emit:
+        debug_log(
+            f"user_prompt_hook catalog_deduped session={sid} prompt_count={prompt_count}",
+            project_root,
+        )
+        return
+
+    debug_log(
+        f"user_prompt_hook catalog_injected tokens={estimate_tokens(catalog)} "
+        f"prompt_count={prompt_count} session={sid}",
+        project_root,
+    )
+    if quality_loop and quality_loop.get("enabled"):
+        cf_log.append_event(
+            project_root, "inject",
+            {"specs": ["__catalog__"], "mode": "catalog", "source": "catalog"},
+            sid,
+        )
+    payload = {
+        "hookSpecificOutput": {
+            "hookEventName": "UserPromptSubmit",
+            "additionalContext": catalog,
+        }
+    }
+    if os.environ.get("CF_DEBUG") == "1":
+        payload["debug"] = {"mode": "catalog", "prompt_count": prompt_count}
+    sys.stdout.write(json.dumps(payload, ensure_ascii=False))
 
 
 def main() -> None:
@@ -119,6 +211,39 @@ def main() -> None:
         # NEW: Extract prompt_tags from user prompt keywords
         prompt_tags = extract_prompt_tags(prompt)
         debug_log(f"user_prompt_hook paths={candidate_paths} context_tags={sorted(context_tags)} prompt_tags={sorted(prompt_tags)}", project_root)
+
+        # Catalog mode: prompts without explicit path evidence get the compact
+        # spec catalog and the model pulls relevant specs itself — keyword-table
+        # guessing systematically missed open vocabulary. Path-bearing prompts
+        # (matched_domains non-empty here means a prompt path hit a domain
+        # pattern) keep deterministic full injection: paths are strong evidence.
+        mode = resolve_inject_mode(inject_config)
+        quality_loop = resolve_quality_loop(config)
+
+        # FEAT-04 信号①：纠正句式 → correction 事件（仅本地，NFR-SEC-01）。
+        # 配对（信号②）由 cf-learn 离线完成，hook 热路径只记原始事件。
+        if quality_loop["correction_capture"]:
+            from cf_checks import detect_correction
+            correction = detect_correction(prompt)
+            if correction:
+                cf_log.append_event(
+                    project_root, "correction",
+                    {"phrase": correction["phrase"],
+                     "prompt_head": prompt[:200],
+                     "files": candidate_paths},
+                    sid,
+                )
+                debug_log(
+                    f"user_prompt_hook correction phrase={correction['phrase']!r}",
+                    project_root,
+                )
+
+        if mode == "catalog" and not matched_domains:
+            _emit_catalog(
+                project_root, sid, inject_config, budget_cfg,
+                effective_mapping, quality_loop,
+            )
+            return
 
         # Fallback: unresolved domains → prefer domain-name hint in tags, then all domains
         if not matched_domains:
@@ -183,6 +308,29 @@ def main() -> None:
         emitted_paths = {s["path"] for s in emitted}
         skipped = [s["path"] for s in selected if s["path"] not in emitted_paths]
 
+        # Catalog-mode path turns also carry the catalog (same dedup window):
+        # the path pins one domain's full specs, the catalog keeps every other
+        # spec reachable for cross-domain asks ("改 cli.js 部署 hook 脚本"
+        # would otherwise lose the scripts constraints entirely).
+        catalog_text = ""
+        if mode == "catalog":
+            last = prompt_window.get(_CATALOG_KEY)
+            catalog_due = (
+                dedup_window <= 0
+                or last is None
+                or prompt_count - int(last) >= dedup_window
+            )
+            if catalog_due:
+                try:
+                    catalog_max = int(budget_cfg.get("catalog_max", 200))
+                except (ValueError, TypeError):
+                    catalog_max = 200
+                catalog_text = build_spec_catalog(
+                    project_root, effective_mapping, catalog_max
+                )
+                if catalog_text:
+                    prompt_window[_CATALOG_KEY] = prompt_count
+
         # Always persist prompt_count so the dedup window keeps advancing even
         # on fully-deduped turns. Preserve PreToolUse-owned fields verbatim.
         for s in emitted:
@@ -195,7 +343,7 @@ def main() -> None:
             "prompt_inject_window": prompt_window,
         })
 
-        if not emitted:
+        if not emitted and not catalog_text:
             debug_log(
                 f"user_prompt_hook dedup_all_skipped session={sid} "
                 f"prompt_count={prompt_count} skipped={skipped}",
@@ -205,18 +353,34 @@ def main() -> None:
 
         debug_log(
             f"user_prompt_hook injected={[s['path'] for s in emitted]} "
-            f"skipped={skipped} prompt_count={prompt_count} session={sid}",
+            f"skipped={skipped} catalog_appended={bool(catalog_text)} "
+            f"prompt_count={prompt_count} session={sid}",
             project_root,
         )
 
+        if quality_loop["enabled"]:
+            cf_log.append_event(
+                project_root, "inject",
+                {"specs": [s["path"] for s in emitted],
+                 "mode": mode, "source": "prompt",
+                 "catalog_appended": bool(catalog_text)},
+                sid,
+            )
+
+        parts = []
+        if emitted:
+            parts.append(assemble_context(emitted, "## Active Specs (auto-injected)"))
+        if catalog_text:
+            parts.append(catalog_text)
         payload = {
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
-                "additionalContext": assemble_context(emitted, "## Active Specs (auto-injected)"),
+                "additionalContext": "\n\n".join(parts),
             }
         }
         if os.environ.get("CF_DEBUG") == "1":
             payload["debug"] = {
+                "mode": mode,
                 "candidate_paths": candidate_paths,
                 "domains": sorted(matched_domains),
                 "context_tags": sorted(context_tags),

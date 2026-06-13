@@ -4,7 +4,96 @@ import os
 import sys
 from typing import Optional
 
-from cf_core import compress_content, estimate_tokens, load_config
+import cf_log
+from cf_checks import load_check_state
+from cf_core import (
+    build_effective_mapping,
+    build_spec_catalog,
+    compress_content,
+    estimate_tokens,
+    load_config,
+    non_injectable_specs,
+    resolve_inject_mode,
+    resolve_quality_loop,
+)
+
+
+def _violation_fixed(index: int, events: list) -> bool:
+    """修正口径：违规后同会话同文件有后续编辑，且其后无同 check 再违规。
+
+    用日志追加顺序判先后（ts 仅秒级精度，同秒事件无法靠时间戳排序）。
+    """
+    violation = events[index]
+    v_data = violation.get("data") or {}
+    later_edit = False
+    for event in events[index + 1:]:
+        if event.get("sid") != violation.get("sid"):
+            continue
+        data = event.get("data") or {}
+        if event.get("event") == "edit" and data.get("file") == v_data.get("file"):
+            later_edit = True
+        if (
+            later_edit
+            and event.get("event") == "violation"
+            and data.get("check_id") == v_data.get("check_id")
+            and data.get("file") == v_data.get("file")
+        ):
+            return False
+    return later_edit
+
+
+def quality_loop_summary(project_root: str, config: dict) -> dict:
+    """FEAT-05/02 度量聚合：Top 违规榜 / 修正率 / 误报与停用 / 降级组件。"""
+    switches = resolve_quality_loop(config)
+    events = cf_log.read_events(project_root, days=30)
+    summary = {"switches": switches, "window_days": 30}
+    if not events:
+        summary["note"] = "暂无数据"
+        return summary
+
+    violations = [e for e in events if e.get("event") == "violation"]
+    counts: dict = {}
+    for v in violations:
+        data = v.get("data") or {}
+        key = f"{data.get('spec', '?')}#{data.get('check_id', '?')}"
+        counts[key] = counts.get(key, 0) + 1
+    summary["top_violations"] = sorted(
+        ({"rule": k, "count": n} for k, n in counts.items()),
+        key=lambda item: -item["count"],
+    )[:10]
+
+    fixed = sum(
+        1 for i, event in enumerate(events)
+        if event.get("event") == "violation" and _violation_fixed(i, events)
+    )
+    summary["violation_total"] = len(violations)
+    summary["fix_rate"] = (
+        f"{round(fixed * 100 / len(violations))}%" if violations else "n/a"
+    )
+
+    state = load_check_state(project_root)
+    summary["checks"] = {
+        cid: {
+            "hit_count": entry.get("hit_count", 0),
+            "fp_count": entry.get("fp_count", 0),
+            "disabled": bool(entry.get("disabled")),
+            "disabled_reason": entry.get("disabled_reason", ""),
+        }
+        for cid, entry in state.items()
+        if isinstance(entry, dict) and not cid.startswith("_")
+    }
+
+    degraded: dict = {}
+    for event in events:
+        if event.get("event") != "degrade":
+            continue
+        data = event.get("data") or {}
+        component = data.get("component", "?")
+        item = degraded.setdefault(component, {"count": 0, "last_error": ""})
+        item["count"] += 1
+        item["last_error"] = data.get("error", "")
+    summary["degraded"] = degraded
+    return summary
 
 
 def read_text(path: str) -> str:
@@ -156,6 +245,7 @@ def main() -> None:
 
     l1 = {}
     total_tokens = l0_tokens
+    templates_tokens = 0
     specs_root = os.path.join(project_root, ".code-flow", "specs")
     spec_domain_map = {}
     missing_specs = []
@@ -163,6 +253,11 @@ def main() -> None:
     discovered = discover_specs(specs_root)
     domains = resolve_domains(config, discovered, domain_filter)
     config_fallback_mode = not discovered
+
+    effective_mapping = build_effective_mapping(
+        project_root, config.get("path_mapping") or {}
+    )
+    excluded_specs = non_injectable_specs(effective_mapping)
 
     for domain in domains:
         configured = configured_specs(config, domain)
@@ -178,9 +273,12 @@ def main() -> None:
 
         missing_specs.extend(missing)
 
+        for item in items:
+            item["injectable"] = item["path"] not in excluded_specs
         if items:
             l1[domain] = items
-            total_tokens += sum(item["tokens"] for item in items)
+            total_tokens += sum(i["tokens"] for i in items if i["injectable"])
+            templates_tokens += sum(i["tokens"] for i in items if not i["injectable"])
         elif configured and (config_fallback_mode or discovered_paths):
             domains_with_no_loaded_specs.append(domain)
 
@@ -206,11 +304,13 @@ def main() -> None:
         item.get("tokens_raw", item["tokens"])
         for items in l1.values()
         for item in items
+        if item.get("injectable", True)
     )
     total_compressed = sum(
         item.get("tokens_compressed", item["tokens"])
         for items in l1.values()
         for item in items
+        if item.get("injectable", True)
     )
     total_saved_pct = (
         round((total_raw - total_compressed) * 100 / total_raw, 1)
@@ -223,6 +323,21 @@ def main() -> None:
         "total_saved_pct": total_saved_pct,
     }
 
+    inject_mode = resolve_inject_mode(config.get("inject") or {})
+    try:
+        catalog_max = int(budget_cfg.get("catalog_max", 200))
+    except Exception:
+        catalog_max = 200
+    catalog_text = build_spec_catalog(project_root, effective_mapping, catalog_max)
+    catalog_summary = {
+        "mode": inject_mode,
+        "tokens": estimate_tokens(catalog_text),
+        "budget": catalog_max,
+        "entries": catalog_text.count("\n- `"),
+    }
+
+    ql_summary = quality_loop_summary(project_root, config)
+
     output = {
         "l0": {"file": "CLAUDE.md", "tokens": l0_tokens, "budget": l0_budget},
         "l1": l1,
@@ -233,6 +348,13 @@ def main() -> None:
         "spec_domain_map": spec_domain_map,
         "missing_specs": missing_specs,
         "compression_summary": compression_summary,
+        "catalog": catalog_summary,
+        "quality_loop": ql_summary,
+        "templates": {
+            "tokens": templates_tokens,
+            "files": sorted(excluded_specs),
+            "note": "tags:[] 命令专用模板，永不自动注入，不计预算",
+        },
     }
     if json_output:
         print(json.dumps(output, ensure_ascii=False))
@@ -240,13 +362,17 @@ def main() -> None:
 
     print("L0 (CLAUDE.md):", f"{l0_tokens} / {l0_budget}")
     for domain, items in l1.items():
-        total_domain = sum(item["tokens"] for item in items)
+        total_domain = sum(i["tokens"] for i in items if i.get("injectable", True))
         print(f"L1 {domain}:", total_domain)
         for item in items:
             raw = item.get("tokens_raw", item["tokens"])
             compressed = item.get("tokens_compressed", item["tokens"])
             saved = item.get("saved_pct", 0.0)
-            print(" -", item["path"], item["tokens"], f"(raw={raw}→compressed={compressed}, -{saved}%)")
+            suffix = "" if item.get("injectable", True) else "（模板，不计预算）"
+            print(" -", item["path"], item["tokens"],
+                  f"(raw={raw}→compressed={compressed}, -{saved}%)" + suffix)
+    if templates_tokens:
+        print("TEMPLATES (非注入):", f"{templates_tokens} tokens，不计预算")
     if missing_specs:
         print("MISSING SPECS:")
         for item in missing_specs:
@@ -257,6 +383,31 @@ def main() -> None:
         "COMPRESSION:",
         f"{total_raw} → {total_compressed} (-{total_saved_pct}%)",
     )
+    print(
+        "CATALOG:",
+        f"mode={inject_mode},",
+        f"{catalog_summary['tokens']} / {catalog_max} tokens,",
+        f"{catalog_summary['entries']} entries",
+    )
+    switches = ql_summary["switches"]
+    print("QUALITY-LOOP:", "enabled" if switches["enabled"] else "disabled")
+    if ql_summary.get("note"):
+        print(" -", ql_summary["note"])
+    else:
+        print(
+            " - violations:", ql_summary.get("violation_total", 0),
+            "| fix_rate:", ql_summary.get("fix_rate", "n/a"),
+        )
+        for item in ql_summary.get("top_violations", [])[:5]:
+            print("   ·", item["rule"], item["count"])
+        for cid, info in ql_summary.get("checks", {}).items():
+            if info["disabled"] or info["fp_count"]:
+                print(
+                    f"   · {cid}: hits={info['hit_count']} fp={info['fp_count']}"
+                    + (f" DISABLED({info['disabled_reason']})" if info["disabled"] else "")
+                )
+        for component, info in ql_summary.get("degraded", {}).items():
+            print(f"   · degraded {component}: {info['count']} ({info['last_error']})")
     if warnings:
         print("WARNINGS:", "; ".join(warnings))
 

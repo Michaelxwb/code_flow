@@ -475,9 +475,14 @@ def compress_content(text: str) -> str:
         lines = result.split("\n")
         out_lines: list = []
         prev_line: str = ""
+        in_fence = False
         for line in lines:
             stripped = line.lstrip()
-            is_bullet = stripped.startswith(_BULLET_PREFIXES)
+            if stripped.startswith("```"):
+                in_fence = not in_fence
+            # never dedup inside fenced code blocks — ✅/❌ example snippets
+            # may legitimately repeat identical bullet-looking lines (FEAT-07)
+            is_bullet = (not in_fence) and stripped.startswith(_BULLET_PREFIXES)
             if is_bullet and out_lines and line == prev_line:
                 continue
             out_lines.append(line)
@@ -517,6 +522,10 @@ def read_matched_specs(
         try:
             with open(spec_path, "r", encoding="utf-8") as f:
                 raw_content = f.read().strip()
+            # Frontmatter feeds the spec catalog only — never spend injection
+            # budget on it. Specs without frontmatter pass through unchanged.
+            _, raw_content = parse_spec_frontmatter(raw_content)
+            raw_content = raw_content.strip()
             if not raw_content:
                 continue
             raw_tokens = estimate_tokens(raw_content)
@@ -636,6 +645,192 @@ def select_specs_tiered(specs: list, budget: int, map_max: int = 400) -> list:
             selected.append(spec)
             total += tokens
     return selected
+
+
+def resolve_inject_mode(inject_config: dict) -> str:
+    """Resolve inject.mode: only the literal string "catalog" enables catalog mode.
+
+    Missing / None / any other value → "full" (pre-0.5 behavior), so existing
+    user configs keep byte-identical injection after upgrade; new `code-flow
+    init` deployments opt in via the config template. Mirrors the
+    resolve_compress philosophy: only an explicit literal flips behavior.
+    """
+    if not isinstance(inject_config, dict):
+        return "full"
+    mode = inject_config.get("mode")
+    if isinstance(mode, str) and mode.strip().lower() == "catalog":
+        return "catalog"
+    return "full"
+
+
+def non_injectable_specs(effective_mapping: dict) -> set:
+    """tags: [] 的命令专用模板（如 shared 的 PRD/设计模板）——永不自动注入，
+    预算统计（cf-stats/cf-scan）必须排除，避免利用率虚高。"""
+    excluded = set()
+    for domain_cfg in (effective_mapping or {}).values():
+        for entry in (domain_cfg or {}).get("specs") or []:
+            cfg = normalize_spec_entry(entry)
+            if cfg.get("path") and not cfg.get("tags"):
+                excluded.add(cfg["path"])
+    return excluded
+
+
+def resolve_quality_loop(config: dict) -> dict:
+    """Resolve quality_loop feature switches with safe defaults (RULE-06).
+
+    Master `enabled`: only literal True enables — missing/other keeps the
+    pre-0.6 behavior for upgraded users; new inits opt in via the config
+    template. Sub-switches follow the master and only literal False disables
+    them (resolve_compress philosophy).
+    """
+    if not isinstance(config, dict):
+        return {"enabled": False, "post_check": False,
+                "stop_check": False, "correction_capture": False}
+    cfg = config.get("quality_loop")
+    cfg = cfg if isinstance(cfg, dict) else {}
+    enabled = cfg.get("enabled") is True
+
+    def _sub(key: str) -> bool:
+        return enabled and cfg.get(key) is not False
+
+    return {
+        "enabled": enabled,
+        "post_check": _sub("post_check"),
+        "stop_check": _sub("stop_check"),
+        "correction_capture": _sub("correction_capture"),
+    }
+
+
+_FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.*?)\n---[ \t]*\n?", re.DOTALL)
+
+
+def parse_spec_frontmatter(content: str) -> tuple:
+    """Split optional YAML frontmatter from spec content → (meta, body).
+
+    Parses only flat `key: value` string pairs — enough for `description:` —
+    so the hook hot path never needs pyyaml for this. Content without
+    frontmatter returns ({}, content) unchanged.
+    """
+    if not isinstance(content, str):
+        return {}, content
+    match = _FRONTMATTER_RE.match(content)
+    if not match:
+        return {}, content
+    meta: dict = {}
+    for line in match.group(1).splitlines():
+        key, sep, value = line.partition(":")
+        if not sep:
+            continue
+        key = key.strip()
+        if key:
+            meta[key] = value.strip().strip('"').strip("'")
+    return meta, content[match.end():]
+
+
+def spec_description(content: str) -> str:
+    """One-line applicability summary for the spec catalog.
+
+    Priority: frontmatter `description:` → first blockquote line → H1 text.
+    Returns "" when none is found (cf-scan flags those specs).
+    """
+    meta, body = parse_spec_frontmatter(content)
+    desc = (meta.get("description") or "").strip()
+    if desc:
+        return desc
+    h1 = ""
+    for line in body.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(">"):
+            return stripped.lstrip("> ").strip()
+        if not h1 and stripped.startswith("# "):
+            h1 = stripped[2:].strip()
+    return h1
+
+
+_catalog_cache: dict = {}
+
+CATALOG_HEADER = (
+    "## Spec Catalog (code-flow)\n\n"
+    "以下规范文件位于 `.code-flow/specs/`。开始编码或修改文件前，"
+    "必须先 Read 与当前任务场景匹配的 spec 全文；与场景无关的不要读取。"
+)
+
+
+def _catalog_entries(project_root: str, effective_mapping: dict) -> list:
+    """Collect injectable specs as (tier, rel_path, abs_path) sorted tier1-first."""
+    specs_root = os.path.join(project_root, ".code-flow", "specs")
+    entries = []
+    for domain in sorted(effective_mapping.keys()):
+        for entry in (effective_mapping[domain] or {}).get("specs") or []:
+            cfg = normalize_spec_entry(entry)
+            rel = cfg.get("path", "")
+            # tags: [] marks command-only templates — never advertised either
+            if not rel or not cfg.get("tags"):
+                continue
+            entries.append((cfg.get("tier", 1), rel, os.path.join(specs_root, rel)))
+    # Tier 1 constraints first so budget truncation drops navigation maps first
+    entries.sort(key=lambda item: (item[0] != 1, item[1]))
+    return entries
+
+
+def build_spec_catalog(
+    project_root: str, effective_mapping: dict, catalog_max: int = 200
+) -> str:
+    """Build the compact one-line-per-spec catalog for inject.mode=catalog.
+
+    The model performs the semantic matching itself by reading the catalog and
+    pulling relevant specs — replacing keyword-table guessing on prompts with
+    no explicit path evidence. Cached per project_root keyed by the mtimes of
+    config.yml and every listed spec file.
+    """
+    entries = _catalog_entries(project_root, effective_mapping)
+    if not entries:
+        return ""
+    config_path = os.path.join(project_root, ".code-flow", "config.yml")
+    signature = []
+    for path in [config_path] + [abs_path for _, _, abs_path in entries]:
+        try:
+            signature.append((path, os.path.getmtime(path)))
+        except OSError:
+            signature.append((path, 0.0))
+    signature = tuple(signature)
+    cached = _catalog_cache.get(project_root)
+    if cached and cached["signature"] == signature and cached["catalog_max"] == catalog_max:
+        return cached["catalog"]
+
+    lines = []
+    for tier, rel, abs_path in entries:
+        try:
+            with open(abs_path, "r", encoding="utf-8") as f:
+                desc = spec_description(f.read())
+        except Exception:
+            continue
+        suffix = "（导航地图）" if tier == 0 else ""
+        lines.append(f"- `{rel}` — {desc or '(no description)'}{suffix}")
+    if not lines:
+        return ""
+
+    catalog = CATALOG_HEADER
+    included = 0
+    for line in lines:
+        candidate = catalog + "\n" + line
+        if estimate_tokens(candidate) > catalog_max:
+            break
+        catalog = candidate
+        included += 1
+    if included < len(lines):
+        _log(
+            f"WARNING: spec catalog truncated to {included}/{len(lines)} "
+            f"entries (catalog_max={catalog_max} tokens)"
+        )
+    if included == 0:
+        return ""
+    _catalog_cache[project_root] = {
+        "signature": signature,
+        "catalog_max": catalog_max,
+        "catalog": catalog,
+    }
+    return catalog
 
 
 def assemble_context(specs: list, heading: str) -> str:

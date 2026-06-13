@@ -1,3 +1,7 @@
+---
+description: 涉及 API 设计/部署/配置/版本兼容时适用：平台规则
+---
+
 # Backend Platform Rules
 
 ## Rules

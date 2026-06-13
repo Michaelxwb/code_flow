@@ -1,3 +1,7 @@
+---
+description: 写前端代码时适用：类型、lint、错误处理、测试、状态管理质量约束
+---
+
 # Frontend Quality Standards
 
 ## Rules

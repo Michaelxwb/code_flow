@@ -1,3 +1,7 @@
+---
+description: 新建/移动前端文件时适用：目录结构、路由/页面/组件存放约束
+---
+
 # Frontend Directory Structure
 
 ## Rules

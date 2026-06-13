@@ -1,7 +1,28 @@
+---
+description: 改 CLI（src/cli.js）init/upgrade/merge/平台适配时适用：零依赖、文件分类、合并策略约束
+---
+
 # CLI Code Standards
+
+## Examples
+
+✅ 零依赖 + 同步 IO（CLI 场景无需异步）
+
+```js
+const fs = require("fs");
+const content = fs.readFileSync(srcPath, "utf-8");
+```
+
+❌ 引入外部依赖 / 无谓的异步链
+
+```js
+const axios = require("axios");          // 违反零依赖
+await fs.promises.readFile(srcPath);     // CLI 不需要
+```
 
 ## Rules
 - cli.js 零外部依赖，仅使用 Node.js 内置模块（fs/path/child_process/os）
+- hook command 模板必须用守卫写法：`$CLAUDE_PROJECT_DIR` 优先 → git toplevel 回退 → `[ -f ]` 存在性守卫 → `cd` 后执行；禁止依赖运行时 cwd 的裸路径（repo 外触发 exit 2 会阻断用户 prompt）
 - 所有文件操作使用同步 API（fs.readFileSync 等），CLI 场景无需异步
 - 文件分类必须通过 fileCategory() 集中管理，禁止在其他位置硬编码分类逻辑
 - 合并策略（merge 类文件）必须保证用户自定义内容不被覆盖

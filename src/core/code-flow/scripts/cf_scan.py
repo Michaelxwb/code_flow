@@ -4,7 +4,70 @@ import os
 import re
 import sys
 
-from cf_core import estimate_tokens, load_config
+import cf_log
+from cf_checks import load_check_state, parse_spec_checks
+from cf_core import (
+    build_effective_mapping,
+    build_spec_catalog,
+    estimate_tokens,
+    load_config,
+    non_injectable_specs,
+    parse_spec_frontmatter,
+)
+
+REVIEW_MIN_COVERAGE_DAYS = 7
+
+
+def _log_coverage_sufficient(events: list) -> bool:
+    """"未命中"信号需要足够的日志覆盖期——刚部署一天的日志没资格断言
+    "30 天未命中"（实测误伤：单条事件就把全部 spec 标为待复审）。"""
+    from datetime import datetime, timedelta
+    earliest = min((str(e.get("ts", "")) for e in events), default="")
+    try:
+        first = datetime.fromisoformat(earliest)
+    except ValueError:
+        return False
+    return first <= datetime.now() - timedelta(days=REVIEW_MIN_COVERAGE_DAYS)
+
+
+def build_review_list(project_root: str, specs: list) -> list:
+    """待复审清单（FEAT-06）：未命中注入 / 已停用 / 反复误报。
+
+    豁免：check-state `_review_exempt` 列表中的条目不再提示（S-09 处置闭环）。
+    日志覆盖不足 REVIEW_MIN_COVERAGE_DAYS 天时跳过"未命中"信号，
+    避免误伤全新安装与刚部署项目。
+    """
+    state = load_check_state(project_root)
+    exempt = set(state.get("_review_exempt") or [])
+    review: list = []
+
+    events = cf_log.read_events(project_root, days=30)
+    if events and _log_coverage_sufficient(events):
+        engaged: set = set()
+        for event in events:
+            data = event.get("data") or {}
+            if event.get("event") == "inject":
+                engaged.update(data.get("specs") or [])
+            elif event.get("event") == "violation" and data.get("spec"):
+                engaged.add(data["spec"])
+        for spec in specs:
+            rel = spec.get("rel", "")
+            if rel.endswith("_map.md") or rel.startswith("shared/"):
+                continue
+            if rel not in engaged and rel not in exempt:
+                review.append({"item": rel, "reason": "30 天未命中注入/未触发检查"})
+
+    for cid, entry in state.items():
+        if cid.startswith("_") or not isinstance(entry, dict) or cid in exempt:
+            continue
+        if entry.get("disabled"):
+            review.append({
+                "item": cid,
+                "reason": f"已自动停用（{entry.get('disabled_reason', '')}），待改写或删除",
+            })
+        elif int(entry.get("fp_count", 0)) >= 2:
+            review.append({"item": cid, "reason": f"误报 {entry['fp_count']} 次"})
+    return review
 
 
 PATH_PATTERN = re.compile(r"(?:[\w./-]+/)+[\w.-]+\.[A-Za-z0-9]+")
@@ -38,14 +101,22 @@ def find_redundant_lines(specs: list) -> dict:
     return redundant
 
 
-def find_missing_paths(text: str, project_root: str) -> list:
+def find_missing_paths(text: str, project_root: str, base_dir: str = "") -> list:
+    """路径引用检查：项目根解析失败时，再按 spec 自身目录二次解析——
+    _map.md 常用相对本域目录的引用（如 design/design-lite.md）。"""
     missing: list = []
     for token in set(PATH_PATTERN.findall(text)):
         if token.startswith("http://") or token.startswith("https://"):
             continue
-        abs_path = token if os.path.isabs(token) else os.path.join(project_root, token)
-        if not os.path.exists(abs_path):
-            missing.append(token)
+        if os.path.isabs(token):
+            if not os.path.exists(token):
+                missing.append(token)
+            continue
+        if os.path.exists(os.path.join(project_root, token)):
+            continue
+        if base_dir and os.path.exists(os.path.join(base_dir, token)):
+            continue
+        missing.append(token)
     return sorted(missing)
 
 
@@ -84,23 +155,37 @@ def main() -> None:
                 tokens = estimate_tokens(content)
                 total_tokens += tokens
                 rel = os.path.relpath(full_path, specs_root)
+                if rel.replace(os.sep, "/").startswith("_session/"):
+                    continue  # 会话级临时约束（FEAT-08）不参与审计与预算
                 rel_path = os.path.join("specs", rel).replace(os.sep, "/")
                 spec_entry = {
                     "path": rel_path,
+                    "rel": rel.replace(os.sep, "/"),
                     "tokens": tokens,
                     "issues": [],
                     "content": content,
                 }
                 specs.append(spec_entry)
 
-    redundant_map = find_redundant_lines(specs)
+    # 模板标记前置：模板（tags:[]）不参与冗长/冗余审计，也不把
+    # 模板间共享的文档头计入其他文件的冗余计数
+    config = load_config(project_root)
+    effective_mapping = build_effective_mapping(
+        project_root, config.get("path_mapping") or {}
+    )
+    excluded_specs = non_injectable_specs(effective_mapping)
+    for spec in specs:
+        spec["template"] = spec.get("rel", "") in excluded_specs
+
+    redundant_map = find_redundant_lines([s for s in specs if not s["template"]])
 
     for spec in specs:
         issues = []
-        if spec["tokens"] > 500:
+        if not spec["template"] and spec["tokens"] > 500:
             issues.append(f"冗长: {spec['tokens']} tokens")
 
-        missing_paths = find_missing_paths(spec["content"], project_root)
+        spec_dir = os.path.join(specs_root, os.path.dirname(spec.get("rel", "")))
+        missing_paths = find_missing_paths(spec["content"], project_root, spec_dir)
         for path in missing_paths[:3]:
             issues.append(f"过时: 路径不存在 {path}")
 
@@ -108,7 +193,25 @@ def main() -> None:
         for line in redundant_lines[:3]:
             issues.append(f"冗余: '{line}' 出现于 {len(redundant_map[line])} 个文件")
 
-        files.append({"path": spec["path"], "tokens": spec["tokens"], "issues": issues})
+        # Constraint specs feed the catalog one line each — flag missing
+        # frontmatter description (catalog falls back to blockquote/H1).
+        rel = spec.get("rel", "")
+        is_constraint = not rel.endswith("_map.md") and not rel.startswith("shared/")
+        if is_constraint:
+            meta, _ = parse_spec_frontmatter(spec["content"])
+            if not (meta.get("description") or "").strip():
+                issues.append("缺描述: 建议加 frontmatter description（catalog 适用场景一句话）")
+            # checks 标注校验（E-01 / B-04 的离线出口）
+            _, check_errors = parse_spec_checks(spec["content"])
+            for error in check_errors[:3]:
+                issues.append(f"checks: {error}")
+
+        files.append({
+            "path": spec["path"],
+            "tokens": spec["tokens"],
+            "issues": issues,
+            "template": spec["template"],
+        })
 
     for entry in files:
         if total_tokens <= 0:
@@ -116,19 +219,29 @@ def main() -> None:
         else:
             entry["percent"] = f"{round(entry['tokens'] * 100 / total_tokens)}%"
 
-    config = load_config(project_root)
     budget = (config.get("budget") or {}).get("total", 2500)
     try:
         budget = int(budget)
     except Exception:
         budget = 2500
 
-    output = {
-        "files": files,
-        "total_tokens": total_tokens,
-        "budget": budget,
-        "warnings": [],
+    try:
+        catalog_max = int((config.get("budget") or {}).get("catalog_max", 200))
+    except Exception:
+        catalog_max = 200
+    catalog = build_spec_catalog(project_root, effective_mapping, catalog_max)
+    catalog_info = {
+        "tokens": estimate_tokens(catalog),
+        "max": catalog_max,
+        "entries": catalog.count("\n- `"),
     }
+
+    review = build_review_list(project_root, specs)
+
+    # 预算口径与 cf-stats 一致：tags:[] 命令模板不计入注入预算
+    templates_tokens = sum(e["tokens"] for e in files if e.get("template"))
+    injectable_tokens = total_tokens - templates_tokens
+
     if limit is not None:
         files = files[:limit]
 
@@ -138,8 +251,11 @@ def main() -> None:
     if json_output:
         output = {
             "files": files,
-            "total_tokens": total_tokens,
+            "total_tokens": injectable_tokens,
+            "templates_tokens": templates_tokens,
             "budget": budget,
+            "catalog": catalog_info,
+            "review": review,
             "warnings": [],
         }
         print(json.dumps(output, ensure_ascii=False))
@@ -149,8 +265,20 @@ def main() -> None:
     for entry in files:
         issues = entry.get("issues") or []
         issue_text = " / ".join(issues) if issues else "-"
-        print(f"{entry['path']} | {entry['tokens']} | {entry['percent']} | {issue_text}")
-    print("TOTAL:", f"{total_tokens} / {budget}")
+        marker = " [模板]" if entry.get("template") else ""
+        print(f"{entry['path']}{marker} | {entry['tokens']} | {entry['percent']} | {issue_text}")
+    print("TOTAL:", f"{injectable_tokens} / {budget}")
+    if templates_tokens:
+        print("TEMPLATES (非注入):", f"{templates_tokens} tokens，不计预算")
+    print(
+        "CATALOG:",
+        f"{catalog_info['tokens']} / {catalog_info['max']} tokens,",
+        f"{catalog_info['entries']} entries",
+    )
+    if review:
+        print("REVIEW (待复审):")
+        for item in review:
+            print(f" - {item['item']}: {item['reason']}")
 
 
 if __name__ == "__main__":

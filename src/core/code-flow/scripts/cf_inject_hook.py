@@ -3,6 +3,7 @@ import json
 import os
 import sys
 
+import cf_log
 from cf_core import (
     _log,
     assemble_context,
@@ -18,6 +19,7 @@ from cf_core import (
     match_specs_by_tags,
     read_matched_specs,
     resolve_compress,
+    resolve_quality_loop,
     resolve_session_id,
     save_inject_state,
     select_specs_tiered,
@@ -63,6 +65,17 @@ def main() -> None:
         domains = match_domains(rel_path, effective_mapping)
 
         sid = resolve_session_id(data)
+
+        # Quality-loop instrumentation (FEAT-00): every code-file edit is an
+        # event — correction pairing and stop-check need them even when no
+        # spec matches below. append_event never raises (hot path safe).
+        quality_loop = resolve_quality_loop(config)
+        if quality_loop["enabled"]:
+            cf_log.append_event(
+                project_root, "edit",
+                {"file": rel_path.replace(os.sep, "/"), "tool": tool_name},
+                sid,
+            )
 
         # Extract context tags from file path
         context_tags = extract_context_tags(rel_path)
@@ -130,6 +143,14 @@ def main() -> None:
             if "prompt_inject_window" in state:
                 new_state["prompt_inject_window"] = state["prompt_inject_window"]
         save_inject_state(project_root, new_state)
+
+        if quality_loop["enabled"]:
+            cf_log.append_event(
+                project_root, "inject",
+                {"specs": [s["path"] for s in selected],
+                 "mode": "full", "source": "pretooluse"},
+                sid,
+            )
 
         payload = {
             "hookSpecificOutput": {
