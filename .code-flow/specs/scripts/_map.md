@@ -19,9 +19,9 @@
 ## Core Module: `cf_core.py`
 
 - 配置/状态：`load_config` / `load_inject_state` / `save_inject_state`（均 mtime/会话隔离）
-- 匹配：`extract_context_tags` / `extract_prompt_tags`（`_TAG_ALIASES`）/ `match_domains` / `match_specs_by_tags`
+- 匹配：`extract_context_tags`（`_DIR_SEMANTIC_TAGS`）/ `extract_prompt_tags`（`_TAG_ALIASES`）/ `match_domains` / `match_specs_by_tags`
 - 注入：`read_matched_specs` / `select_specs_tiered` / `assemble_context` / `build_spec_catalog`
-- `compress_content`（无损，围栏内不去重）；`resolve_session_id`（hook id 优先）；`debug_log`（CF_DEBUG=1）
+- `compress_content`（无损，围栏内不去重）；`resolve_session_id`（hook id 优先）
 
 ## Quick Navigation
 

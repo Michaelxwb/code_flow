@@ -17,9 +17,9 @@
 - 只改双副本结构的一侧：`src/core/code-flow/` ↔ `.code-flow/`、`src/adapters/<p>/` ↔ `.<platform>/` 必须同步提交（模板源与部署副本分裂 = 测试过但 live 行为不变）
 
 ## Compression & Budget
-- Token 估算公式：`len(text) // 4`（cf_core.py:38-39）
-- `compress_content()` 5 个无损变换：去除 HTML 注释、尾空白、3+ 空行合并、去重 bullet、首尾空行；幂等，异常回退原文（cf_core.py:403-437）
-- `resolve_compress()` 仅 literal `False` 禁用；`None`/缺失/其他值均启用（cf_core.py:637-649）
+- Token 估算公式：`len(text) // 4`（`cf_core.py::estimate_tokens`）
+- `compress_content()` 5 个无损变换：去除 HTML 注释、尾空白、3+ 空行合并、去重 bullet、首尾空行；幂等，异常回退原文（`cf_core.py::compress_content`）
+- `resolve_compress()` 仅 literal `False` 禁用；`None`/缺失/其他值均启用（`cf_core.py::resolve_compress`）
 
 ## Spec Loading
 This project uses the code-flow two-tier spec system.

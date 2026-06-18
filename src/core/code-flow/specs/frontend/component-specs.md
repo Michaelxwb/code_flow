@@ -4,6 +4,20 @@ description: 写/改组件时适用：props、hooks、渲染、UI 样式约束
 
 # Component Specs
 
+## Examples
+
+✅ 稳定唯一 key + 改值经回调上抛
+
+```tsx
+{items.map((it) => <Row key={it.id} item={it} onChange={onChange} />)}
+```
+
+❌ 用数组 index 作 key + 组件内直接改 props
+
+```tsx
+{items.map((it, i) => { it.value = next; return <Row key={i} item={it} />; })}
+```
+
 ## Rules
 - Props 必须类型化（TS interface / PropTypes / defineProps），可选项给默认值
 - 组件文件名与导出组件名一致，使用 PascalCase

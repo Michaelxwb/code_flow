@@ -21,6 +21,10 @@ await fs.promises.readFile(srcPath);     // CLI 不需要
 ```
 
 ## Rules
+- 双副本同步：`src/core/code-flow/`↔`.code-flow/`、`src/adapters/<p>/`↔`.<platform>/` 必须同步提交，只改模板源或部署副本一侧 = 测试通过但 live 行为不变
+- 跨平台能力基线：cf-* 命令/skill 正文只能依赖 4 平台共有能力（读文件、rg/grep、编辑/写文件、向用户确认、`cf_*.py` hooks）；平台差异只允许落在**绑定 token**——命令前缀（`/project:` vs codex 裸名）、`CLAUDE.md`↔`AGENTS.md`、编辑工具措辞（`apply_patch`）、frontmatter。归一化这些 token 后 4 份正文必须逐字相同
+- 善用平台特有能力（子代理、并行工具等）必须**可选 + 优雅降级**：缺该能力的平台回退基线流程且产出质量不变，绝不让任一平台拿到降级版行为；默认优先平台中立写法，仅当收益显著且回退干净时才加平台增强
+- canonical 源 + 适配白名单：claude 版本是 cf-* 命令的内容 canonical 源；各平台只允许这些适配，**不得借适配删内容**——codex（`Glob`/`Read`/`Write`→`rg`/「读取」/「写入」等通用动词、命令 token `/project:cf-x`→`cf-x`、`apply_patch` 措辞、frontmatter）、opencode（`CLAUDE.md`→`AGENTS.md`、`Hook`→`插件`、frontmatter）、costrict（`.claude`→`.costrict`、`--platform`）。示例块、错误信息示例、步骤说明在任何平台都必须保留；发现某平台被砍即视为 bug，从 claude 回填
 - cli.js 零外部依赖，仅使用 Node.js 内置模块（fs/path/child_process/os）
 - hook command 模板必须用守卫写法：`$CLAUDE_PROJECT_DIR` 优先 → git toplevel 回退 → `[ -f ]` 存在性守卫 → `cd` 后执行；禁止依赖运行时 cwd 的裸路径（repo 外触发 exit 2 会阻断用户 prompt）
 - 所有文件操作使用同步 API（fs.readFileSync 等），CLI 场景无需异步
@@ -39,4 +43,4 @@ await fs.promises.readFile(srcPath);     // CLI 不需要
 ## Anti-Patterns
 - 禁止在 CLI 中引入 npm 外部依赖
 - 禁止在合并逻辑中覆盖用户已有内容
-- 禁止在 Claude 和 Codex 适配器分支之间共享局部变量（各分支自包含）
+- 禁止在不同平台适配器分支（claude/codex/costrict/opencode）之间共享局部变量（各分支自包含）

@@ -66,6 +66,20 @@ description: Discuss #NOTES annotations in task files or design briefs, propose 
    - `#NOTES` 后的问题描述
 3. 如果没有找到 `#NOTES`，提示"无待讨论的标记"，结束
 
+输出扫描结果：
+```
+找到 3 个 #NOTES 标记:
+
+TASK-001:
+  1. [Checklist] 密码加密存储  #NOTES 用 bcrypt 还是 argon2？
+  2. [Description] 实现 JWT 认证  #NOTES token 过期时间设多少合适？
+
+TASK-002:
+  3. [Checklist] 调用支付 SDK  #NOTES 用哪个版本的 SDK？
+
+开始逐条讨论...
+```
+
 ### 2. 加载上下文
 
 1. 读取当前子任务的 `Source` 字段，解析章节引用
@@ -105,9 +119,12 @@ description: Discuss #NOTES annotations in task files or design briefs, propose 
 2. 如果结论需要新增步骤 → 用 apply_patch 追加 Checklist 条目或补充 Description
 3. 在 `### Log` 追加：`- [<当前日期>] resolved #NOTES: <结论摘要>`
 
-**编辑边界约束（必须遵守）**：
+**apply_patch 边界约束（必须遵守）**：
 - `old_string` 必须严格限定在当前 TASK 段落内，**绝对禁止**匹配到 `---` 分隔线或下一个 `## TASK-xxx` 标题
 - Log 追加时，`old_string` 只匹配 Log 段落的最后一行内容，不要向下延伸到段落外
+- 如果 Log 是当前 TASK 的最后一个段落，其内容到 `---` 分隔线之前结束；`old_string` 不得包含 `---` 及其后的任何内容
+- 示例（正确）：`old_string = "- [2026-03-23] created (draft)"` → 只匹配 Log 末行
+- 示例（错误）：`old_string = "- [2026-03-23] created (draft)\n\n---\n\n## TASK-003"` → 越界，会删除下一个 TASK 标题
 
 ### 5. 完成检查
 
@@ -165,7 +182,7 @@ description: Discuss #NOTES annotations in task files or design briefs, propose 
 设计简报本身就是设计文档，无需加载外部 Source。上下文来自：
 
 1. 读取 `.design.md` 中该 `#NOTES` 所在章节的完整内容
-2. 扫描代码库中与该问题相关的现有实现（如用 `rg --files` 或 `find` 搜索现有 model/route/middleware）
+2. 扫描代码库中与该问题相关的现有实现（如用 `rg` 搜索现有 model/route/middleware）
 3. 将代码库上下文 + 设计文档上下文作为讨论背景
 
 ### 3. 逐条讨论

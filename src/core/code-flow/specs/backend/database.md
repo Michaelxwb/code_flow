@@ -4,6 +4,20 @@ description: 涉及数据库/ORM/迁移/查询时适用：schema 与数据访问
 
 # Backend Database
 
+## Examples
+
+✅ 参数化查询，明确列出字段
+
+```python
+cur.execute("SELECT id, name FROM users WHERE email = %s", (email,))
+```
+
+❌ 字符串拼接用户输入（SQL 注入）+ `SELECT *`
+
+```python
+cur.execute(f"SELECT * FROM users WHERE email = '{email}'")
+```
+
 ## Rules
 - 所有 SQL 必须参数化，禁止字符串拼接 / 模板插值用户输入
 - 迁移脚本必须可回滚，或写成幂等脚本（`IF NOT EXISTS` / `ON CONFLICT`）

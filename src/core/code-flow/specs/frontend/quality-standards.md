@@ -4,6 +4,28 @@ description: 写前端代码时适用：类型、lint、错误处理、测试、
 
 # Frontend Quality Standards
 
+## Examples
+
+✅ `unknown` 收敛 + 异步三态
+
+```ts
+setState("loading");
+try {
+  const raw: unknown = await api.fetch();
+  setState("success", parse(raw));
+} catch (e) {
+  setState("error", toMessage(e));
+}
+```
+
+❌ `any` + `@ts-ignore` + 只处理成功路径
+
+```ts
+// @ts-ignore
+const data: any = await api.fetch();
+render(data);
+```
+
 ## Rules
 - TypeScript 项目禁止使用 `any`，未知类型用 `unknown` 并显式收敛
 - 组件统一使用函数组件（React）/ 组合式 API（Vue 3），禁止类组件新增

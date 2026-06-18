@@ -22,6 +22,7 @@
 | `src/api/router.*` | 路由注册，统一前缀与版本 |
 | `src/services/` | 业务逻辑实现，禁止跨层调用 ORM |
 | `src/models/` | 数据模型定义（ORM / Schema） |
+| `src/crud/`（或 `repositories/`） | 数据访问层，业务只依赖此抽象 |
 | `src/config/` | 配置加载，环境变量优先 |
 
 ## Module Map
@@ -31,6 +32,9 @@ src/
 ├── api/         # 接口层：路由 + 请求/响应 schema 校验
 ├── services/    # 业务逻辑层：纯函数为主，便于测试
 ├── models/      # 数据模型（ORM 或 ODM）
+├── crud/        # 数据访问层（repositories），业务只调 CRUD 不碰 ORM
+├── migrations/  # DB 迁移脚本（可回滚或幂等）
+├── errors/      # 错误码→message 常量，按业务模块拆分
 ├── schemas/     # DTO / 请求响应类型
 ├── middleware/  # 认证、日志、限流、CORS
 ├── utils/       # 工具函数，无业务依赖

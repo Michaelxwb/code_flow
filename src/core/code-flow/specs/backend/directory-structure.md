@@ -4,6 +4,23 @@ description: 新建/移动后端文件时适用：目录结构与模块组织约
 
 # Backend Directory Structure
 
+## Examples
+
+✅ 魔法值集中到 `constants/`，命名引用
+
+```python
+# constants/order.py
+ORDER_PAID = 1
+# service：if order.status == ORDER_PAID: ...
+```
+
+❌ 业务代码散落硬编码字面量
+
+```python
+if order.status == 1 and role == "admin":   # 魔法数字 / 魔法字符串
+    ...
+```
+
 ## Rules
 - 接口层放 `api/`，业务逻辑放 `services/`，数据模型放 `models/`，禁止跨层倒置依赖
 - 入口文件（`main.*`）只做框架装配，不写业务代码

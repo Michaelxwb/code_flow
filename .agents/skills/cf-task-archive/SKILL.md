@@ -19,7 +19,17 @@ description: Archive a completed task file after three-dimensional validation (c
 2. 提取所有 `## TASK-xxx` 段落的 Status
 3. 检查是否所有子任务均为 `done`
 
-若有未完成子任务，拒绝归档并输出原因。
+若有未完成子任务，拒绝归档并输出：
+
+```
+无法归档: 以下子任务未完成
+
+  - TASK-002: in-progress (进度 1/4)
+  - TASK-004: blocked ([BLOCKED] 等待 SDK)
+
+请先完成所有子任务后再归档。
+当前完成度: 2/4 (50%)
+```
 
 ### 2. 归档前校验（Verify）
 
@@ -36,7 +46,18 @@ description: Archive a completed task file after three-dimensional validation (c
 **一致性**：
 - 读取 task 文件的 `## Proposal`，对照实际代码变更，检查意图是否已实现
 
-校验结果：PASS → 继续。WARN → 提示用户确认。FAIL → 阻塞归档，列出失败原因。
+校验结果输出：
+
+```
+归档前校验:
+  [PASS] 完整性: 所有 Checklist 已完成，无未解决 Notes
+  [PASS] 正确性: cf-validate 通过
+  [WARN] 一致性: Proposal 提到"支持 OAuth 登录"，但未发现相关实现
+
+WARN 不阻塞归档，但建议确认后再继续。继续归档？
+```
+
+PASS → 继续。WARN → 提示用户确认。FAIL → 阻塞归档，列出失败原因。
 
 ### 3. 执行归档
 
@@ -60,7 +81,7 @@ description: Archive a completed task file after three-dimensional validation (c
    ```
 5. 如果原日期目录为空，删除空目录
 
-**临时约束清理（FEAT-08）**：删除 `.code-flow/specs/_session/task-<name>.md`（存在时）。该文件由 cf-task:start 生成，归档后不得残留。
+**临时约束清理（FEAT-08）**：删除 `.code-flow/specs/_session/task-<name>.md`（存在时）。该文件由 cf-task-start 生成，归档后不得残留。
 
 ### 4. Spec 更新提示
 
@@ -68,7 +89,20 @@ description: Archive a completed task file after three-dimensional validation (c
 
 1. 读取 task 文件中所有子任务的 Description 和 Checklist
 2. 对照 `.code-flow/specs/` 下的现有规范
-3. 如果发现新增的模式或约束未被 specs 覆盖，提示用户更新对应 spec 文件
+3. 如果发现新增的模式或约束未被 specs 覆盖，提示用户：
+
+```
+Spec 同步建议:
+  本次变更引入了以下尚未记录的规范:
+  - 所有 API handler 增加了 rate limiting 中间件
+  - 新增 AppError 统一错误处理模式
+
+  建议更新:
+  - .code-flow/specs/backend/platform-rules.md — 补充 rate limiting 规则
+  - .code-flow/specs/backend/code-quality-performance.md — 补充错误处理模式
+
+  运行 cf-learn 可自动扫描并补充。
+```
 
 如果无新规范需同步，跳过此步骤。
 

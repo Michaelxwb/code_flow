@@ -31,7 +31,7 @@ description: Generate a Product Requirements Document (PRD) from a one-liner req
 了解项目背景，为后续建议提供依据：
 
 1. 用 `rg --files` 或 `find` 检查 `.code-flow/specs/shared/_map.md` 是否存在，若有则读取（了解模板位置）
-2. 如有相关设计文档或已有 PRD，用 文件搜索/读取 扫描了解现状
+2. 如有相关设计文档或已有 PRD，用 `rg --files` 或 `find` 扫描了解现状
 
 目的：**让 PRD 基于实际业务背景**，而非泛泛的通用描述。本步只读不提问，所有提问统一放到 Step 3。
 
@@ -115,7 +115,7 @@ description: Generate a Product Requirements Document (PRD) from a one-liner req
 1. 从目标推导文件名（kebab-case），如 `user-login-flow`
 2. 按当前日期创建目录：`.code-flow/tasks/<YYYY-MM-DD>/`
 3. **重名检查**：目标路径已存在且非本次草稿时，追加序号 `<name>-2`、`<name>-3`… 避免覆盖；恢复模式复用原文件名、不改名
-4. 用 apply_patch 创建或更新 `.code-flow/tasks/<YYYY-MM-DD>/<name>.prd.md`
+4. 用 apply_patch 写入 `.code-flow/tasks/<YYYY-MM-DD>/<name>.prd.md`
 
 **文件位置说明**：PRD 文档与其衍生的设计简报（`<name>.design.md`）将放在同一目录，方便 `cf-task-archive` 一并归档。
 

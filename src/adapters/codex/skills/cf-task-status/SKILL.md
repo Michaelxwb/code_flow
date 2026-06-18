@@ -32,6 +32,13 @@ description: "Show task status overview: subtask states, progress percentages, b
 └──────────┴──────────────────┴────────────┴──────┴──────────────┘
 汇总: 4 个子任务 | done: 1 | in-progress: 1 | draft: 1 | blocked: 1
 整体完成度: 25%
+
+📋 payment-api.md (来源: docs/payment-design.md)
+...
+
+═══════════════════════════
+全局汇总: 2 个文件, 8 个子任务
+  done: 3 | in-progress: 2 | draft: 2 | blocked: 1
 ```
 
 ### 3. 阻塞详情
@@ -41,6 +48,7 @@ description: "Show task status overview: subtask states, progress percentages, b
 ```
 ⚠ 阻塞任务:
   - auth-module/TASK-004: [BLOCKED] 等待第三方 SDK 文档
+  - auth-module/TASK-004: [NOTE-2] 接口签名需与前端对齐
 ```
 
 ### 4. 指定文件模式

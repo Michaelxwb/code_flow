@@ -241,7 +241,7 @@ CLI 场景：
    - **恢复模式**：保持原目录
    - **新建/交互模式**：按当前日期创建 `.code-flow/tasks/<YYYY-MM-DD>/`
 3. 文件名统一为 `<name>.design.md`：Lite 与 Full 模板产出同名，不再加 `-lite` 后缀（模板类型已在 Step 2.5 评估时反馈给用户，Step 6 摘要也会标注）
-4. 用 apply_patch 创建或更新最终路径
+4. 用 apply_patch 写入最终路径
 
 ### 6. 输出摘要
 
