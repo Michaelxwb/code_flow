@@ -4,13 +4,16 @@ description: 统计规范体系的 token 使用情况
 
 # cf-stats
 
-统计规范体系的 token 使用情况，包括各文件分布和预算利用率。
+统计规范体系的 token 使用情况（各文件分布、预算利用率、压缩与 quality_loop 健康度）；`--audit` 附带规范质量审计。
+
+> 原 `cf-scan` 已并入本命令：质量审计（冗长/冗余/过时/缺描述 + 待复审清单）改用 `/project:cf-stats --audit`。
 
 ## 输入
 
 - `/project:cf-stats` — 完整统计
 - `/project:cf-stats --human` — 人类可读格式
 - `/project:cf-stats --domain=frontend` — 仅统计指定领域
+- `/project:cf-stats --audit` — 附带规范质量审计（冗长/冗余/过时/缺描述）与待复审清单
 
 ## 执行步骤
 
@@ -19,7 +22,7 @@ description: 统计规范体系的 token 使用情况
 用 Bash 执行：
 
 ```bash
-python3 .code-flow/scripts/cf_stats.py [--human] [--domain=frontend]
+python3 .code-flow/scripts/cf_stats.py [--human] [--domain=frontend] [--audit]
 ```
 
 将用户传入的参数原样透传。
@@ -64,6 +67,22 @@ L1 Backend:
 Total: ~1580 / 2500 tokens (63%)
 COMPRESSION: 1820 → 1580 (-13.2%)
 ```
+
+### 4. 质量审计（仅 `--audit`）
+
+传入 `--audit` 时，JSON 额外含 `audit` 字段，human 模式额外输出 `AUDIT` 段：
+
+```json
+"audit": {
+  "files": [{"path": "specs/backend/database.md", "issues": ["冗长: 620 tokens", "冗余: '...' 出现于 3 个文件"]}],
+  "review": [{"item": "specs/frontend/x.md", "reason": "30 天未命中注入/未触发检查"}]
+}
+```
+
+- `audit.files`：仅列出有质量问题的 spec（冗长 >500 token / 跨文件冗余 / 死链过时 / 缺 frontmatter description / checks 标注错误）
+- `audit.review`：待复审清单（长期未命中注入 / 已自动停用 / 反复误报的规则）
+
+格式化为表格，无问题时输出"无规范质量问题"。不传 `--audit` 时提示用户可加 `--audit` 查看。
 
 ## 异常处理
 

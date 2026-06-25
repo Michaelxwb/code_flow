@@ -18,7 +18,6 @@ CF_TASK = ["align", "archive", "block", "graph", "note", "plan", "prd", "start",
 # 平台中立命令：costrict 必须与 claude 逐字相同（无任何合法平台 token 差异）
 COSTRICT_IDENTICAL = [
     "cf-learn.md",
-    "cf-scan.md",
     "cf-stats.md",
     "cf-validate.md",
     "cf-task/align.md",

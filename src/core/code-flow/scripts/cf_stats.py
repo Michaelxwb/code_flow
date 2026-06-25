@@ -220,6 +220,7 @@ def main() -> None:
 
     human_output = "--human" in sys.argv
     json_output = not human_output
+    audit_mode = "--audit" in sys.argv
     domain_filter = None
     for arg in sys.argv[1:]:
         if arg.startswith("--domain="):
@@ -356,6 +357,14 @@ def main() -> None:
             "note": "tags:[] 命令专用模板，永不自动注入，不计预算",
         },
     }
+    if audit_mode:
+        from cf_scan import build_report
+        scan = build_report(project_root)
+        output["audit"] = {
+            "files": [e for e in scan["files"] if e.get("issues")],
+            "review": scan["review"],
+        }
+
     if json_output:
         print(json.dumps(output, ensure_ascii=False))
         return
@@ -410,6 +419,20 @@ def main() -> None:
             print(f"   · degraded {component}: {info['count']} ({info['last_error']})")
     if warnings:
         print("WARNINGS:", "; ".join(warnings))
+
+    if audit_mode:
+        audit = output["audit"]
+        print("AUDIT (规范质量):")
+        if not audit["files"] and not audit["review"]:
+            print(" - 无问题")
+        for entry in audit["files"]:
+            print(" -", entry["path"], "|", " / ".join(entry["issues"]))
+        if audit["review"]:
+            print(" REVIEW (待复审):")
+            for item in audit["review"]:
+                print(f"   · {item['item']}: {item['reason']}")
+    else:
+        print("AUDIT: 运行 cf-stats --audit 查看规范质量问题与待复审清单")
 
 
 if __name__ == "__main__":

@@ -60,7 +60,6 @@ def test_opencode_init_deploys_agents_md_and_plugin(tmp_path: Path) -> None:
     assert commands_dir.is_dir()
     assert (commands_dir / "cf-init.md").exists()
     assert (commands_dir / "cf-learn.md").exists()
-    assert (commands_dir / "cf-scan.md").exists()
     assert (commands_dir / "cf-stats.md").exists()
     assert (commands_dir / "cf-validate.md").exists()
     assert (commands_dir / "cf-task" / "align.md").exists()

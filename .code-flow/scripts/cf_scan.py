@@ -120,19 +120,12 @@ def find_missing_paths(text: str, project_root: str, base_dir: str = "") -> list
     return sorted(missing)
 
 
-def main() -> None:
-    project_root = os.getcwd()
+def build_report(project_root: str) -> dict:
+    """规范质量审计数据（cf-scan 引擎，亦供 cf-stats --audit 复用）。
+
+    files 含 issues / template 标记，review 为待复审清单；展示层负责过滤与渲染。"""
     files = []
     total_tokens = 0
-    json_output = "--json" in sys.argv
-    only_issues = "--only-issues" in sys.argv
-    limit = None
-    for arg in sys.argv[1:]:
-        if arg.startswith("--limit="):
-            try:
-                limit = int(arg.split("=", 1)[1])
-            except Exception:
-                limit = None
 
     claude_path = os.path.join(project_root, "CLAUDE.md")
     if os.path.exists(claude_path):
@@ -242,42 +235,57 @@ def main() -> None:
     templates_tokens = sum(e["tokens"] for e in files if e.get("template"))
     injectable_tokens = total_tokens - templates_tokens
 
+    return {
+        "files": files,
+        "total_tokens": injectable_tokens,
+        "templates_tokens": templates_tokens,
+        "budget": budget,
+        "catalog": catalog_info,
+        "review": review,
+        "warnings": [],
+    }
+
+
+def main() -> None:
+    json_output = "--json" in sys.argv
+    only_issues = "--only-issues" in sys.argv
+    limit = None
+    for arg in sys.argv[1:]:
+        if arg.startswith("--limit="):
+            try:
+                limit = int(arg.split("=", 1)[1])
+            except Exception:
+                limit = None
+
+    report = build_report(os.getcwd())
+    files = report["files"]
     if limit is not None:
         files = files[:limit]
-
     if only_issues:
         files = [entry for entry in files if entry.get("issues")]
 
     if json_output:
-        output = {
-            "files": files,
-            "total_tokens": injectable_tokens,
-            "templates_tokens": templates_tokens,
-            "budget": budget,
-            "catalog": catalog_info,
-            "review": review,
-            "warnings": [],
-        }
-        print(json.dumps(output, ensure_ascii=False))
+        print(json.dumps(dict(report, files=files), ensure_ascii=False))
         return
 
+    catalog_info = report["catalog"]
     print("FILE | TOKENS | PERCENT | ISSUES")
     for entry in files:
         issues = entry.get("issues") or []
         issue_text = " / ".join(issues) if issues else "-"
         marker = " [模板]" if entry.get("template") else ""
         print(f"{entry['path']}{marker} | {entry['tokens']} | {entry['percent']} | {issue_text}")
-    print("TOTAL:", f"{injectable_tokens} / {budget}")
-    if templates_tokens:
-        print("TEMPLATES (非注入):", f"{templates_tokens} tokens，不计预算")
+    print("TOTAL:", f"{report['total_tokens']} / {report['budget']}")
+    if report["templates_tokens"]:
+        print("TEMPLATES (非注入):", f"{report['templates_tokens']} tokens，不计预算")
     print(
         "CATALOG:",
         f"{catalog_info['tokens']} / {catalog_info['max']} tokens,",
         f"{catalog_info['entries']} entries",
     )
-    if review:
+    if report["review"]:
         print("REVIEW (待复审):")
-        for item in review:
+        for item in report["review"]:
             print(f" - {item['item']}: {item['reason']}")
 
 
