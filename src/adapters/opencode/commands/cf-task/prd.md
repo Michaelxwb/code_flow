@@ -115,17 +115,17 @@ description: 从一句话需求出发产生产品需求文档(PRD)
 
 用户确认后：
 
-1. 从目标推导文件名（kebab-case），如 `user-login-flow`
-2. 按当前日期创建目录：`.code-flow/tasks/<YYYY-MM-DD>/`
-3. **重名检查**：目标路径已存在且非本次草稿时，追加序号 `<name>-2`、`<name>-3`… 避免覆盖；恢复模式复用原文件名、不改名
-4. 用 Write 写入 `.code-flow/tasks/<YYYY-MM-DD>/<name>.prd.md`
+1. 从目标推导需求名（kebab-case），如 `user-login-flow`
+2. 按当前日期创建**需求目录**：`.code-flow/tasks/<YYYY-MM-DD>/<name>/`
+3. **重名检查**：需求目录已存在且非本次草稿时，目录名追加序号 `<name>-2`、`<name>-3`… 避免覆盖；恢复模式复用原目录、不改名
+4. 用 Write 写入 `.code-flow/tasks/<YYYY-MM-DD>/<name>/<name>.prd.md`
 
-**文件位置说明**：PRD 文档与其衍生的设计简报（`<name>.design.md`）将放在同一目录，方便 `cf-task:archive` 一并归档。
+**文件位置说明**：PRD、设计简报（`<name>.frontend.design.md` / `<name>.backend.design.md`）、任务文件（`<name>.md`）同放**需求目录** `.code-flow/tasks/<日期>/<name>/`，`cf-task:archive` 按整个需求目录归档。
 
 ### 6. 输出摘要
 
 ```
-已生成 PRD: .code-flow/tasks/<日期>/<name>.prd.md
+已生成 PRD: .code-flow/tasks/<日期>/<name>/<name>.prd.md
 
 内容:
   - <按实际包含的章节列出>
@@ -136,7 +136,7 @@ description: 从一句话需求出发产生产品需求文档(PRD)
 > 自检发现缺口（FEAT 无来源 US 或 US 无 FEAT 覆盖）时，在摘要显式标注并提示用户补 US 或降级，不要静默放过。
 
 下一步:
-  - 审阅/编辑: 直接打开 .code-flow/tasks/<日期>/<name>.prd.md
-  - 推进设计: /cf-task:align .code-flow/tasks/<日期>/<name>.prd.md
+  - 审阅/编辑: 直接打开 .code-flow/tasks/<日期>/<name>/<name>.prd.md
+  - 推进设计: /cf-task:align .code-flow/tasks/<日期>/<name>/<name>.prd.md
     （align 将从 PRD 派生设计简报，继承目标/用户/功能/范围，只需补技术维度）
 ```

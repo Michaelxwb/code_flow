@@ -600,7 +600,7 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 1. 扫描项目背景（`.code-flow/specs/shared/_map.md`、已有 PRD）
 2. 围绕 PRD 要素交互：背景与目标 → 用户与场景 → 功能需求 → 非功能需求（按需）→ 范围与边界 → 依赖与风险（按需）
 3. 基于 `.code-flow/specs/shared/prd-template.md` 模板生成文档
-4. 写入 `.code-flow/tasks/<YYYY-MM-DD>/<name>.prd.md`（PRD 与后续 design 同目录，便于归档）
+4. 写入 `.code-flow/tasks/<YYYY-MM-DD>/<需求>/<需求>.prd.md`（**需求目录**：PRD / design / tasks 同放一处，`cf-task:archive` 按整目录归档）
 
 产出的 `.prd.md` 可直接作为 `/cf-task:align` 的输入。**适用场景**：需求早期阶段，在设计之前；**不适用**：已有明确技术方案（请直接用 `/cf-task:align`）。
 
@@ -626,11 +626,11 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 
 **执行流程**：
 1. 识别输入模式，扫描代码库上下文（技术栈、现有模式）
-2. 根据需求复杂度选择模板（`design-lite.md` 简单 / `design-full.md` 跨系统/架构演进）
+2. 依代码库扫描自动识别域选模板（前端→`design-frontend.md`；后端/通用→`design-lite.md` 简单 / `design-full.md` 跨系统/架构演进）
 3. 围绕维度交互：目标与边界 → 数据模型（按需）→ 接口设计（按需，API/CLI/函数三形态）→ 技术方案（性能敏感路径按最优性能设计）→ 性能与容量（按需）→ 约束条件 → 验收标准（可转测试断言）→ 妥协与技术债（按需）
 4. **PRD 派生模式**：已从 PRD 覆盖的维度不再提问；FEAT 保留对 US-XX 的来源追溯
 5. 基于模板生成设计简报并展示（功能→接口→验收追溯闭合；Full 模板生成 §6 需求追溯矩阵 US→FEAT→API→TC）
-6. 写入：统一 `<name>.design.md`（Lite/Full 同名，不加 `-lite` 后缀；模板类型在评估时反馈给用户）；PRD 派生时同目录同名继承
+6. 写入需求目录，**按域后缀命名**：前端 `<需求>.frontend.design.md`、后端/通用 `<需求>.backend.design.md` 或 `<需求>.design.md`；全栈需求前后端各产出一份；PRD 派生时复用 PRD 所在需求目录
 
 输出摘要含**追溯自检**与**性能自检**：FEAT 无来源/无验收、或标记性能敏感却无对应设计时，显式提示补全。
 
@@ -646,11 +646,11 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 ```
 
 **执行流程**：
-1. 读取输入文件，判断类型（设计简报 vs 设计文档）
+1. 读取输入文件，判断类型（设计简报 vs 设计文档）；**传需求目录时自动发现其中全部 `*.design.md`（前后端）合并拆解**
 2. 设计文档模式：建立章节索引 → 缺口分析对话（`--quick` 跳过）→ 拆解
-3. 设计简报模式：直接从 Goal/DB/API/Acceptance Criteria 拆解
+3. 设计简报模式：直接从 Goal/DB/API/Acceptance Criteria 拆解；多 design 合并为一份任务，各 TASK 的 Source 指向其来源 design
 4. 展示拆解结果供用户确认/调整
-5. 写入任务文件：`.code-flow/tasks/<YYYY-MM-DD>/<name>.md`
+5. 写入任务文件到需求目录：`.code-flow/tasks/<YYYY-MM-DD>/<需求>/<需求>.md`
 
 **缺口分析**（设计文档模式，`--quick` 跳过）：AI 从文档中识别目标/非目标、范围边界、未确认的技术决策、风险点和验收标准，输出结构化分析并与用户交互讨论。对齐结论写入 Proposal 的 `### Alignment` 子节。
 
@@ -781,7 +781,7 @@ Status 更新为 blocked，阻塞原因记录在 Log 中。
 | 正确性 | validation.yml 中匹配的验证规则通过 |
 | 一致性 | Proposal 中的意图与实际代码变更一致 |
 
-校验通过后移动到 `.code-flow/tasks/archived/` 目录。如果同目录下存在同名的 `.design.md` 文件，会一并归档。归档后提示是否有新规范需同步到 specs。
+校验通过后，**整个需求目录**移动到 `.code-flow/tasks/archived/<日期>/<需求>/`（prd / design / tasks 一并归档）；旧扁平布局回退为逐文件归档（同名 `.design.md` / `.prd.md` 一并移动）。归档后提示是否有新规范需同步到 specs。
 
 ---
 

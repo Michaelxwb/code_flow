@@ -108,6 +108,22 @@ def test_cf_learn_templates_pipeline_coherence() -> None:
         _assert_pipeline_coherence_contract(_read_text(template_path))
 
 
+def _assert_frontend_dimension_contract(text: str) -> None:
+    required = [
+        "注入覆盖漂移",          # 检测前端文件类型未被 frontend.patterns 覆盖
+        "前端专项",              # §2 采集前端维度（分层/复用/样式-接口分离）
+        "样式是否与逻辑/请求分离",
+        "*components*",          # §3 checks 精度护栏：路径作用域避开 services/
+    ]
+    for phrase in required:
+        assert phrase in text
+
+
+def test_cf_learn_templates_frontend_dimensions() -> None:
+    for template_path in TEMPLATE_TO_INSTALLED:
+        _assert_frontend_dimension_contract(_read_text(template_path))
+
+
 def _normalize_binding_tokens(text: str) -> str:
     """跨平台能力基线：剥掉平台绑定 token 后，4 份正文应逐字相同。
 

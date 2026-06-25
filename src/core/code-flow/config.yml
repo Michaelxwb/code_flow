@@ -104,6 +104,9 @@ path_mapping:
             - path: "shared/design/design-full.md"
               tags: []          # 永不自动注入，仅 cf-task:align 命令显式 Read
               tier: 1
+            - path: "shared/design/design-frontend.md"
+              tags: []          # 永不自动注入，仅 cf-task:align 命令显式 Read（前端设计模板）
+              tier: 1
     frontend:
         patterns:
             - "src/components/**"

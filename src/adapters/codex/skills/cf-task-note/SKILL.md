@@ -42,7 +42,7 @@ description: Discuss #NOTES annotations in task files or design briefs, propose 
 
 其中 `<file>` 可省略日期目录前缀和 `.md` 后缀。
 
-查找逻辑：用 `rg --files` 或 `find` 搜索 `.code-flow/tasks/**/<file>.md` 和 `.code-flow/tasks/**/<file>.design.md`，从结果中排除包含 `archived/` 的路径。如果匹配到多个结果，输出警告列出所有匹配项，让用户指定完整路径；如果只有一个结果，直接使用。
+查找逻辑：用 `rg --files` 或 `find` 搜索 `.code-flow/tasks/**/<file>.md` 和 `.code-flow/tasks/**/<file>*.design.md`（`*` 兼容旧 `<file>.design.md` 与域后缀 `<file>.frontend.design.md` / `<file>.backend.design.md`），从结果中排除包含 `archived/` 的路径。如果匹配到多个结果（如全栈需求的前后端 design），输出警告列出所有匹配项，让用户指定要讨论的具体文件；如果只有一个结果，直接使用。
 
 ## 执行步骤
 

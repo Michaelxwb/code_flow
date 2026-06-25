@@ -30,6 +30,8 @@ def test_cf_init_docs_share_core_initialization_quality_rules() -> None:
         "`inject.dedup_window: 5`",
         "`path_mapping.shared`",
         "shared/design/design-lite.md",
+        "shared/design/design-frontend.md",
+        "动态补 `frontend.patterns`",
         "证据优先",
         "禁止编造项目规范",
         'python3 -c "import yaml"',

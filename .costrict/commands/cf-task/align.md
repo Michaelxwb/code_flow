@@ -38,14 +38,19 @@
 根据需求描述和代码库上下文，判断本次工作的性质，选择适用的讨论维度。
 
 **模板选择规则**：
-- **design-lite.md** — 适用于：功能开发(简单) | CLI/脚本 | Bug修复 | 小型重构
-- **design-full.md** — 适用于：跨系统集成 | 性能优化 | 架构演进 | 中大型功能开发
+- **design-lite.md** — 后端/通用，简单：功能开发(简单) | CLI/脚本 | Bug修复 | 小型重构
+- **design-full.md** — 后端/通用，复杂：跨系统集成 | 性能优化 | 架构演进 | 中大型功能开发
+- **design-frontend.md** — 前端：页面/组件/交互/UI 功能开发
 
-AI 应根据需求复杂度主动建议使用哪个模板。默认优先 lite 版本，用户要求完整设计时使用 full 版本。
+**域识别（依 Step 2 代码库扫描自动判断，不需用户指定）**：
+- 涉前端（检测到 frontend 域 / `.tsx`·`.jsx`·`.vue`·`.svelte` 源码 / UI·组件·页面·样式类需求）→ 用 design-frontend.md 产出前端设计
+- 涉后端/通用 → 按复杂度用 design-lite / design-full（默认 lite，复杂或用户要求时 full）
+- **全栈需求** → 前后端各产出一份（见 Step 5 按域后缀命名）
 
 **模板路径**：
 - Lite: `.code-flow/specs/shared/design/design-lite.md`
 - Full: `.code-flow/specs/shared/design/design-full.md`
+- Frontend: `.code-flow/specs/shared/design/design-frontend.md`
 
 先读取对应模板文件作为生成基准。
 
@@ -219,6 +224,19 @@ CLI 场景：
 | 5. 风险与依赖 | Step 3 的依赖与风险（继承自 PRD §7） |
 | 6. 需求追溯矩阵 | 自动生成（US→FEAT→API→TC 关联） |
 
+**章节映射（Frontend 模板，对应 `design-frontend.md` 实际章节）**：
+
+| 模板章节 | 内容来源 |
+|---------|---------|
+| 2.1–2.4 需求概述/功能方案/范围/验收 | Step 3 的目标/功能/范围 + 交互验收场景（S/E/B） |
+| 3.1 技术选型 | 框架 / 状态库 / 路由 / 样式方案 / 数据请求选型 |
+| 3.2 页面与路由结构 | 页面清单与路由层级 |
+| 3.3 组件设计 | 组件树 + 容器/展示分离 + 复用 |
+| 3.4 组件接口契约 | Props / Events |
+| 3.5 状态与数据流 | 状态划分 + 数据流 + services 数据获取层 |
+| 3.6 UI 状态 | loading / empty / error / success |
+| 3.7 样式方案 | 设计 token / 响应式 / 样式与逻辑分离 |
+
 **追溯硬约束（plan 拆解与质量门的基础）**：
 - 功能清单每个 FEAT 保留"来源"列（PRD 派生填 US-XX；无 PRD 填需求描述）
 - 接口（API/CLI/函数）与验收场景标注其实现 / 覆盖的 FEAT-XX
@@ -231,15 +249,18 @@ CLI 场景：
 
 用户确认后：
 
-1. **确定文件名**：
-   - **PRD 派生模式**：继承 PRD 文件名（去 `.prd` 后缀）。例：`user-login-flow.prd.md` → `user-login-flow`
-   - **恢复模式**：保持原文件名
-   - **新建/交互模式**：从目标推导 kebab-case，如 `user-auth`；若目标路径已存在且非本次草稿，追加序号 `<name>-2`、`<name>-3`… 避免覆盖
-2. **确定目录**：
-   - **PRD 派生模式**：使用 PRD 所在目录，保证 PRD 与 design 同目录（便于 `cf-task:archive` 配对归档）
+1. **确定需求名**：
+   - **PRD 派生模式**：继承 PRD 需求名（去 `.prd` 后缀）。例：`user-login-flow.prd.md` → `user-login-flow`
+   - **恢复模式**：保持原需求名
+   - **新建/交互模式**：从目标推导 kebab-case，如 `user-auth`
+2. **确定需求目录**：
+   - **PRD 派生模式**：使用 PRD 所在的需求目录 `.code-flow/tasks/<日期>/<需求>/`（PRD 与 design 同目录，便于 `cf-task:archive` 整目录归档）
    - **恢复模式**：保持原目录
-   - **新建/交互模式**：按当前日期创建 `.code-flow/tasks/<YYYY-MM-DD>/`
-3. 文件名统一为 `<name>.design.md`：Lite 与 Full 模板产出同名，不再加 `-lite` 后缀（模板类型已在 Step 2.5 评估时反馈给用户，Step 6 摘要也会标注）
+   - **新建/交互模式**：按当前日期创建需求目录 `.code-flow/tasks/<YYYY-MM-DD>/<需求>/`；目录已存在且非本次草稿时目录名追加序号 `<需求>-2`…
+3. **按域后缀命名**（同一需求目录内）：
+   - 前端设计（design-frontend）→ `<需求>.frontend.design.md`
+   - 后端/通用设计（design-lite/full）→ 全栈时 `<需求>.backend.design.md`；纯后端/通用单域时 `<需求>.design.md`
+   - **全栈需求**：前后端各写一份到同一需求目录
 4. 用 Write 写入最终路径
 
 ### 6. 输出摘要

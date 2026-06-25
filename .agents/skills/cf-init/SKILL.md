@@ -48,8 +48,9 @@ description: Initialize the code-flow spec system in a project. Use when setting
 - `inject.dedup_window: 5`
 - 完整 `skip_extensions`，包括图片、压缩包、PDF 等非代码文件
 - `skip_paths` 中的平台目录：`.claude/**`、`.codex/**`、`.costrict/**`
-- `path_mapping.shared`，包括 `shared/_map.md`、`shared/prd-template.md`、`shared/design/design-lite.md`、`shared/design/design-full.md`
+- `path_mapping.shared`，包括 `shared/_map.md`、`shared/prd-template.md`、`shared/design/design-lite.md`、`shared/design/design-full.md`、`shared/design/design-frontend.md`
 - backend patterns 中同时包含 `*.py` 与 `**/*.py`
+- 按检测到的前端框架动态补 `frontend.patterns`：Vue→`**/*.vue`、Svelte→`**/*.svelte`、Next→`app/**` 等（保守追加，按检测结果，不预塞所有框架）
 
 根据技术栈只裁剪 `frontend` / `backend` 域：
 - `frontend`：保留 `shared` + `frontend`，删除 `backend`
@@ -85,6 +86,7 @@ shared 模板必须存在：
 - `.code-flow/specs/shared/prd-template.md`
 - `.code-flow/specs/shared/design/design-lite.md`
 - `.code-flow/specs/shared/design/design-full.md`
+- `.code-flow/specs/shared/design/design-frontend.md`
 
 约束规范格式：
 

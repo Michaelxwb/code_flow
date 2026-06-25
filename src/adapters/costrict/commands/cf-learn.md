@@ -59,6 +59,7 @@
 把 `config.yml` 中的内建域（`frontend`/`backend`）与检测结果对比：
 - 域有 specs 但检测类型不含它（如存在 `frontend/` 但项目判为 `backend`）→ 标记为**裁剪候选**
 - 检测到某类型却缺对应域 specs（如检测到 `frontend` 但无 `frontend/` 目录）→ 标记为**补全建议**，提示运行 `cf-init <type>`；cf-learn 不自行 scaffold
+- **注入覆盖漂移**：检测到的前端源码类型（如 `.vue`/`.svelte`/`.tsx`）若未被 `config.yml` 的 `frontend.patterns` 覆盖 → 标记为**补全建议**，提示在 patterns 追加对应类型（走确认门，不自行改写）；否则编辑这些文件时拿不到注入
 - 检测为 `fullstack` / `generic`：不产生裁剪候选
 
 只有当**整个域无任何代码证据**才建议裁剪；单文件缺失不触发。宁可漏报不可误删。
@@ -113,6 +114,7 @@
 - 命名与组织：文件/目录/符号命名的实际惯例
 - 依赖与配置：真实依赖清单、lint/type/格式化配置的实际严格度
 - 数据流：读通一条真实请求/调用链路
+- 前端专项（检测到前端域时）：组件分层（容器/展示是否分离）、数据获取是否收口在 `services/`、复用是否提取为 hook/composable、样式是否与逻辑/请求分离（CSS Modules/token vs 内联魔法值）
 
 纪律：每个维度至少读 2 个真实文件再下结论，单文件样例只算低置信度；读取量按项目规模自适应（小项目读全、大项目每层抽样），但每条写入/改写/删减候选都必须能指向具体文件证据。
 
@@ -137,6 +139,8 @@
 - 不把框架默认行为写成团队规范，除非项目配置显式覆盖或代码中反复体现
 
 机检草稿（checks）：可机检的新规则（能用正则 / 简单模式判定，如禁 `print`、禁裸 `except`、禁 `any`）一律附 `checks` 草稿（`id`/`type`/`pattern`/`files`/`message`）写入目标 spec 的 frontmatter；不可机检的只写正文。
+
+前端规则同样生成 checks 草稿（如组件内裸 `fetch`/`axios`、列表 `key={index}`、`: any`）。**精度护栏**：`checks.files` 用 `fnmatch` 匹配相对路径且 `*` 跨 `/`，组件类检查须按路径作用域（`*components*`/`*pages*`）避免误伤允许 fetch 的 `services/` 层；框架语法差异（JSX `key={index}` vs Vue `:key="index"`）用多条 check + 不同 `files` 分别覆盖。
 
 ## 3.5 模板条目对账（reconcile）
 
