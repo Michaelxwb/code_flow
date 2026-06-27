@@ -9,7 +9,7 @@ Node.js CLI，负责四个 AI 平台适配器的初始化与版本升级。`code
 ## Architecture
 
 - Runtime: Node.js (CommonJS)，零外部依赖（仅 fs/path/child_process/os）
-- 分发: npm 包 `@jahanxu/code-flow`
+- 分发: npm 包 `@michaelxwb/code-flow`
 - 唯一入口: `src/cli.js`
 - 模板源: `src/core/code-flow/`（核心）、`src/adapters/<platform>/`（平台适配）
 

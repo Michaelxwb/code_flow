@@ -7,13 +7,13 @@
 npm：
 
 ```bash
-npm i -g @jahanxu/code-flow
+npm i -g @michaelxwb/code-flow
 ```
 
 pnpm：
 
 ```bash
-pnpm add -g @jahanxu/code-flow
+pnpm add -g @michaelxwb/code-flow
 ```
 
 ## 升级
@@ -21,13 +21,13 @@ pnpm add -g @jahanxu/code-flow
 npm：
 
 ```bash
-npm i -g @jahanxu/code-flow@latest
+npm i -g @michaelxwb/code-flow@latest
 ```
 
 pnpm：
 
 ```bash
-pnpm add -g @jahanxu/code-flow@latest
+pnpm add -g @michaelxwb/code-flow@latest
 ```
 
 ## 卸载
@@ -35,13 +35,13 @@ pnpm add -g @jahanxu/code-flow@latest
 npm：
 
 ```bash
-npm rm -g @jahanxu/code-flow
+npm rm -g @michaelxwb/code-flow
 ```
 
 pnpm：
 
 ```bash
-pnpm remove -g @jahanxu/code-flow
+pnpm remove -g @michaelxwb/code-flow
 ```
 
 ## 基本用法

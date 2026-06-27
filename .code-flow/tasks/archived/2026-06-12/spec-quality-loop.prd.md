@@ -72,7 +72,7 @@
 
 | 维度 | 内容 |
 |------|------|
-| **用户画像** | ① **公开 npm 用户**（`@jahanxu/code-flow` 安装者）：使用 Claude Code / Codex / Costrict / OpenCode 之一的开发者，不假设了解 code-flow 内部机制，期望零配置可用；② **规范维护者**：团队中负责维护 `.code-flow/specs/` 的人，懂 YAML/Markdown，关心规范质量与演进 |
+| **用户画像** | ① **公开 npm 用户**（`@michaelxwb/code-flow` 安装者）：使用 Claude Code / Codex / Costrict / OpenCode 之一的开发者，不假设了解 code-flow 内部机制，期望零配置可用；② **规范维护者**：团队中负责维护 `.code-flow/specs/` 的人，懂 YAML/Markdown，关心规范质量与演进 |
 | **使用场景** | ① 日常 AI 结对编码：agent 编辑文件后即刻收到违规反馈并修正；② 会话收尾：变更文件关联的校验自动执行；③ 用户在 prompt 中纠正 agent（"不要用 print 调试"），下次会话该约定已在候选规范里等确认；④ 维护者定期查看 cf-stats 的违规 Top 榜与待复审清单，修剪规范库 |
 
 ---
