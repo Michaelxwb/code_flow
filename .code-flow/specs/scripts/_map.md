@@ -5,7 +5,7 @@
 ## Entrypoints
 
 - PreToolUse：`cf_inject_hook.py`（注入 + edit/inject 事件）；PostToolUse：`cf_post_hook.py`（checks 合规反馈）
-- Stop / session.idle：`cf_stop_hook.py`（validation.yml 收尾守门，decision=block 协议）
+- Stop/session.idle：`cf_stop_hook.py`（validation/task 验收，decision=block）
 - UserPromptSubmit：`cf_user_prompt_hook.py`（catalog/直注 + 纠正句式采集）；OpenCode 经插件 index.js 转发
 - SessionStart：`cf_session_hook.py`；审计 `cf_scan.py`；统计 `cf_stats.py`；误报 `cf_feedback.py ignore <id>`
 - Hook stdout 必须 `json.dumps(payload, ensure_ascii=False)`
@@ -27,6 +27,6 @@
 
 - 改 tag/匹配/预算 → cf_core 对应函数；改 catalog → `build_spec_catalog|spec_description|resolve_inject_mode`
 - 改合规检查 → `cf_checks.run_checks` / 反馈文案 `cf_post_hook._feedback_text`
-- 改收尾校验 → `cf_stop_hook.run_validators|trigger_matches`（brace glob 展开）
+- 收尾 → `cf_stop_hook.run_validators|task_acceptance_failures|trigger_matches`
 - 改度量 → `cf_stats.quality_loop_summary`；复审 → `cf_scan.build_review_list`
 - 调试：`CF_DEBUG=1` → `.debug.log`（.code-flow 目录）

@@ -115,3 +115,80 @@ def test_unmatched_trigger_skipped():
         _make_project(root, [dict(FAIL_V, trigger="**/*.go")])
         cf_log.append_event(root, "edit", {"file": "src/a.py", "tool": "Edit"}, "s1")
         assert _run(root) == {}
+
+
+def _write_task(root: str, body: str) -> str:
+    rel_path = ".code-flow/tasks/2026-07-14/demo/demo.md"
+    path = os.path.join(root, rel_path)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(body)
+    return rel_path
+
+
+def _acceptance_task(status: str, acceptance_status: str) -> str:
+    return f"""# Tasks: demo
+
+## Acceptance Coverage
+
+| 场景ID | 状态 |
+| S-01 | {acceptance_status} |
+
+## TASK-001: demo
+
+- **Status**: {status}
+- **Acceptance-Refs**: S-01, RULE-01
+
+### Acceptance Contract
+
+| 场景ID | 测试 | 状态 |
+| S-01 | tests/test_demo.py::test_s01 | {acceptance_status} |
+
+### Acceptance Evidence
+
+| 场景ID | GREEN | 状态 |
+| S-01 | pass | {acceptance_status} |
+"""
+
+
+def test_done_task_with_pending_acceptance_blocks_without_validators() -> None:
+    with tempfile.TemporaryDirectory() as root:
+        _make_project(root, None)
+        rel_path = _write_task(root, _acceptance_task("done", "pending"))
+        cf_log.append_event(root, "edit", {"file": rel_path, "tool": "Edit"}, "s1")
+
+        result = _run(root)
+
+        assert result["decision"] == "block"
+        assert "任务验收契约" in result["reason"]
+        assert "planned/pending/TBD" in result["reason"]
+
+
+def test_done_task_with_verified_acceptance_is_silent() -> None:
+    with tempfile.TemporaryDirectory() as root:
+        _make_project(root, None)
+        rel_path = _write_task(root, _acceptance_task("done", "verified"))
+        cf_log.append_event(root, "edit", {"file": rel_path, "tool": "Edit"}, "s1")
+
+        assert _run(root) == {}
+
+
+def test_in_progress_task_may_pause_with_pending_acceptance() -> None:
+    with tempfile.TemporaryDirectory() as root:
+        _make_project(root, None)
+        rel_path = _write_task(root, _acceptance_task("in-progress", "pending"))
+        cf_log.append_event(root, "edit", {"file": rel_path, "tool": "Edit"}, "s1")
+
+        assert _run(root) == {}
+
+
+def test_legacy_task_without_acceptance_coverage_is_silent() -> None:
+    with tempfile.TemporaryDirectory() as root:
+        _make_project(root, None)
+        rel_path = _write_task(
+            root,
+            "# Tasks: legacy\n\n## TASK-001: demo\n\n- **Status**: done\n",
+        )
+        cf_log.append_event(root, "edit", {"file": rel_path, "tool": "Edit"}, "s1")
+
+        assert _run(root) == {}

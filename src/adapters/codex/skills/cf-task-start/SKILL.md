@@ -24,7 +24,7 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 
 **状态检查**：Status 必须为 `draft`。若为其他状态：
 - `in-progress` → 提示"任务已在进行中，继续编码"（不阻塞，直接跳到步骤 2）
-- `done` → 提示"任务已完成"，结束
+- `done` → 先执行验收契约检查；全部 verified 才提示"任务已完成"并结束，否则恢复为 `in-progress`，列出缺口并继续补齐测试与证据
 - `blocked` → 提示"任务被阻塞"，列出 Notes 中的阻塞原因，结束
 
 **#NOTES 检查**：扫描该子任务段落全文（Description、Checklist 等）
@@ -36,6 +36,12 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 - 所有依赖必须为 `done`
 - 未满足 → 输出：`前置检查失败：以下依赖未完成\n- TASK-001: in-progress\n- TASK-003: draft`
 
+**验收契约检查**：
+- 如果 task 含 `## Acceptance Coverage`，当前子任务必须有 `Acceptance-Refs`、`Acceptance Contract` 和 `Acceptance Evidence`
+- `Acceptance-Refs` 中每个 S-/E-/B- 都必须出现在全局覆盖表和当前契约中，测试层级与关键真实边界必须和 design 一致
+- 旧 task 没有覆盖表但来源 design 含结构化验收场景时，先从 design 回填覆盖表与契约；回填完成前不得修改生产代码
+- 非行为类任务可显式写 `Acceptance-Refs: N/A`；不得用 N/A 跳过已有设计场景
+
 ### 2. 加载详设上下文
 
 前置检查通过后，**编码前先加载关联的详设文档章节**：
@@ -45,26 +51,50 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
    - 提取：文件路径 + 行号范围
 2. 按行号范围读取详设文档的对应章节（使用 offset/limit 参数）
 3. 将读取的章节内容作为编码上下文，与 Checklist 一起指导实现
+4. 按 `Acceptance-Refs` 精确读取验收场景及其关联 RULE/RISK；不得只依赖摘要，也不得遗漏场景的测试层级、关键真实边界和预期结果
 
 示例：Source 为 `docs/auth.md#§3.2 API 接口(L111-L155), docs/auth.md#§3.5 错误码(L201-L220)`
 → 读取 `docs/auth.md` offset=111 limit=45
 → 读取 `docs/auth.md` offset=201 limit=20
 
-### 3. 激活并编码
+### 3. 激活并准备验收测试
 
 1. 用 apply_patch 更新子任务 Status 为 `in-progress`
 2. 在 `### Log` 追加：`- [<当前日期>] started (in-progress)`
 3. 更新文件头 `Updated` 日期
-4. 结合详设上下文 + Checklist，逐项执行编码工作
-5. 每完成一个 checklist 项 → 用 apply_patch 将 `- [ ]` 改为 `- [x]`
+4. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令
+5. 先编写验收测试。E2E 测试必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
+6. 新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因。纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败
+
+RED 证据写入 `Acceptance Evidence`：
+
+```markdown
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-01 | FAIL: generation 未递增 | pending | pending | real Store + Renderer fixture | test-written |
+```
+
+### 3.1 实现与逐项更新
+
+1. RED 证据就绪后，结合详设上下文、Acceptance Contract 与 Checklist 修改生产代码
+2. 每完成一个 checklist 项，用 apply_patch 将 `- [ ]` 改为 `- [x]`
+3. 如果实现中发现必须改变测试层级或真实边界，停止编码并记录 `#NOTES`，经用户确认并同步 design 后才能继续；agent 不得自行降级
+
+### 3.2 GREEN 与验收证据
+
+1. 执行每个契约中的验收命令，再执行受影响范围的回归测试
+2. 对每个预期结果记录对应的测试断言位置，并指出 fixture/构造路径如何证明关键边界使用真实组件
+3. 将 `Acceptance Contract` 行状态改为 `verified`，将 `Acceptance Evidence` 补齐 GREEN、断言位置和边界证据
+4. 负责该场景的任务验证完成后，将全局 `Acceptance Coverage` 对应行改为 `verified`
+5. 测试文件存在但未被测试框架收集、命令未实际执行、只有场景 ID 没有关键断言，都视为未验证
 
 ### 3.5 会话级临时约束（FEAT-08）
 
 激活后，若任务文件头 Source 指向的 design 文档含验收条件章节（如 §2.5 验收条件 / 验收标准）：
 
-1. 提取该章节的场景与 RULE 约束，生成 `.code-flow/specs/_session/task-<name>.md`：
+1. 只提取当前任务 `Acceptance-Refs` 对应的场景、测试层级、关键真实边界与 RULE/RISK，生成 `.code-flow/specs/_session/task-<name>.md`：
    - frontmatter：`description: 当前任务 <name> 的验收约束（cf-task:start 生成，archive 清理）`
-   - 正文：验收场景与约束的精简列表（≤300 token）
+   - 正文：验收场景与约束的精简列表（≤300 token）；必须保留全部引用 ID、层级、边界和预期结果，不能为压缩而删除场景
 2. Spec Catalog 目录扫描自动纳入该文件，无需配置；编辑代码时的自动注入同样生效
 3. design 无验收章节时静默跳过；同名文件已存在则覆盖（同任务重复 start）
 
@@ -72,11 +102,20 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 
 ### 4. 自动完成
 
-当所有 checklist 项都勾选为 `[x]` 后：
+只有同时满足以下条件才能自动完成：
+- 所有 checklist 项均为 `[x]`
+- 每个 Acceptance-Ref 在契约、证据和全局覆盖表中均为 `verified`，不存在 `planned` / `pending` / `TBD`
+- 测试层级未低于 design，关键真实边界没有被 mock 绕过
+- 每个预期结果都有具体断言位置，验收命令和回归测试均已实际通过
+- `manual` 场景已有用户确认和可复核记录
+
+满足后：
 1. 用 apply_patch 更新 Status 为 `done`
 2. 在 `### Log` 追加：`- [<当前日期>] completed (done)`
 3. 更新文件头 `Updated` 日期
 4. 输出：`TASK-xxx 已完成`
+
+任一验收条件不满足时保持 `in-progress`，明确列出缺口，不能标记为 `done`。
 
 ### 5. 文档同步检查
 
@@ -145,7 +184,7 @@ Spec 同步提示:
 
 ### 4. 按序执行
 
-对每个可激活的子任务，执行单任务模式的步骤 3-4（详设已在步骤 2 加载，无需重复读取）。
+对每个可激活的子任务，执行单任务模式的步骤 3-4，包括先写验收测试、RED、实现、GREEN 和证据核对（详设已在步骤 2 加载，无需重复读取）。
 
 完成一个子任务后，检查是否解锁了新的子任务（依赖已满足），如果是则继续执行。
 

@@ -1,6 +1,6 @@
 ---
 name: cf-task-archive
-description: Archive a completed task file after three-dimensional validation (completeness, correctness, consistency). Use when all subtasks are done and you want to archive the task file and check for spec updates.
+description: Archive a completed task file after completeness, correctness, traceability, and consistency validation. Use when all subtasks are done and you want to archive the task file and check for spec updates.
 ---
 
 ## 输入
@@ -33,7 +33,7 @@ description: Archive a completed task file after three-dimensional validation (c
 
 ### 2. 归档前校验（Verify）
 
-所有子任务 done 后，执行三维校验：
+所有子任务 done 后，执行四维校验：
 
 **完整性**：
 - 所有 Checklist 项已勾选
@@ -42,6 +42,13 @@ description: Archive a completed task file after three-dimensional validation (c
 **正确性**：
 - 如果 `.code-flow/validation.yml` 存在，读取验证规则，用 shell 命令执行其中匹配的 `command`（如 `npx tsc --noEmit`、`python3 -m pytest` 等）
 - 检查本次变更涉及的文件是否通过 lint/type check
+
+**验收追溯**：
+- 来源 design 含结构化 S-/E-/B- 场景时，逐项对照 `## Acceptance Coverage`，P0/P1 场景以及 RULE/高影响 RISK 映射场景必须全部存在且状态为 `verified`
+- 每个负责任务的 `Acceptance-Refs`、`Acceptance Contract`、`Acceptance Evidence` 必须闭合，不得残留 `planned` / `pending` / `TBD`
+- 测试层级不得低于 design；E2E 的真实边界和关键断言必须有文件/用例位置与 fixture/构造证据
+- 汇总并重新执行契约中所有唯一验收命令；测试未收集、未执行或失败均为 FAIL
+- `manual` 场景必须有用户确认和可复核记录。旧 design 没有结构化场景时注明“不适用”，不得伪造覆盖
 
 **一致性**：
 - 读取 task 文件的 `## Proposal`，对照实际代码变更，检查意图是否已实现
@@ -52,6 +59,7 @@ description: Archive a completed task file after three-dimensional validation (c
 归档前校验:
   [PASS] 完整性: 所有 Checklist 已完成，无未解决 Notes
   [PASS] 正确性: cf-validate 通过
+  [PASS] 验收追溯: 6/6 场景 verified，2 条 E2E 命令通过
   [WARN] 一致性: Proposal 提到"支持 OAuth 登录"，但未发现相关实现
 
 WARN 不阻塞归档，但建议确认后再继续。继续归档？
@@ -79,7 +87,19 @@ mv .code-flow/tasks/<日期>/<需求>/ .code-flow/tasks/archived/<日期>/<需�
    ```
 3. 同名 `.design.md` 存在则一并移动：`mv .code-flow/tasks/<日期目录>/<file>.design.md .code-flow/tasks/archived/<日期目录>/`
 4. 同名 `.prd.md` 存在则一并移动：`mv .code-flow/tasks/<日期目录>/<file>.prd.md .code-flow/tasks/archived/<日期目录>/`
-5. 如果原日期目录为空，删除空目录
+
+**归档后统一收尾（布局 A/B 都必须执行）**：
+
+1. 保存源日期目录为 `.code-flow/tasks/<日期>/`，完成移动后检查该目录是否还有其他需求或任务。
+2. 如果目录为空，必须执行安全删除；非空则保留并在摘要中列出剩余条目：
+   ```bash
+   source_date_dir=".code-flow/tasks/<日期>"
+   if [ -d "$source_date_dir" ] && [ -z "$(find "$source_date_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+     rmdir "$source_date_dir"
+   fi
+   ```
+3. 复查归档目标存在、原任务/需求路径不存在；如果源日期目录仍存在但为空，视为归档未完成，立即删除后再继续。
+4. 源日期目录包含其他条目时不得删除，摘要明确写“保留（仍有 N 个条目）”。
 
 **临时约束清理（FEAT-08）**：删除 `.code-flow/specs/_session/task-<name>.md`（存在时）。该文件由 cf-task-start 生成，归档后不得残留。
 
@@ -128,5 +148,6 @@ Spec 同步建议:
   - 创建日期: 2026-03-15
   - 归档日期: 2026-03-20
   - 历时: 5 天
-  - 校验: 3/3 PASS
+  - 校验: 4/4 PASS
+  - 源日期目录: 已删除（为空）/ 已保留（仍有 N 个条目）
 ```
