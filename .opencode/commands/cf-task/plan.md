@@ -2,6 +2,7 @@
 description: 从设计文档拆解需求，生成结构化任务文件
 ---
 
+
 # cf-task:plan
 
 从设计文档或设计简报拆解需求，生成结构化任务文件。
@@ -166,6 +167,13 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 5. Checklist 禁止使用泛化的“编写测试”。必须写成 `[场景ID][测试层级] + 真实边界 + 关键断言`，并为新功能/缺陷修复安排先写测试和 RED 记录。
 6. 如果场景缺测试层级、真实边界或 RULE/高影响 RISK 没有验证场景，先以 `#NOTES` 列为设计缺口；未解决前不得开始编码。
 
+**Spec 责任拆解（硬约束）**：
+
+1. 先执行 Context `refresh`，读取 Design `Spec Compliance Matrix` 与每个 design-stage/plan-stage Rule 的 `verifier_ref`，继承已有 applied refs，禁止重新选择或降级。
+2. 每条 plan-stage required Rule 必须有且仅有一个责任 TASK；该 TASK 的 `Spec-Refs` 写完整 `{spec-id}#{rule-ref}`，Checklist 写具体 verifier 命令/输入，Acceptance Contract 写测试层级、不得 Mock 的真实边界和关键断言。
+3. Rule 可被其他 TASK 引用为依赖，但 Acceptance Coverage 只能有一个最终负责人。E2E 层级**不得降级**；manual 仍仅限经用户确认的外部边界。
+4. 缺 `verifier_ref`、责任 TASK 为 0/多个、Checklist/Contract 不含 Rule-specific 验证责任时，任务文件只能保留为缺口草稿，不能启动。
+
 ### 4. 生成任务文件方案
 
 将拆解结果按以下格式组织，展示给用户确认：
@@ -213,6 +221,7 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 - **Priority**: P0
 - **Depends**:
 - **Source**: docs/xxx.md#§3.1 数据模型(L83-L110)
+- **Spec-Refs**: product-rules#RULE-product-001
 - **Acceptance-Refs**: S-01, E-01, RULE-01
 
 ### Description
@@ -287,6 +296,14 @@ TASK-002: <标题> [P1]
 2. 如果输入为需求目录或其中的 .design.md → 写入**该需求目录** `.code-flow/tasks/<日期>/<需求>/<需求>.md`
 3. 如果输入为 docs/ 设计文档（无需求目录）→ 按当前日期创建需求目录 `.code-flow/tasks/<YYYY-MM-DD>/<需求>/` 并写入其中
 4. 用 Write 写入
+
+写入后用 `bind --stage plan` 的 `applications` 将每条 required Rule 指向任务文件内唯一 TASK item，并执行：
+
+```bash
+python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage plan --artifact <任务文件> --json
+```
+
+只有 Context Plan 状态与任务结构校验都 `decision=pass` 才输出 Start 下一步；缺唯一 owner、`verifier_ref`、测试层级或真实边界时必须回到拆解修复。
 
 ### 6. 输出摘要
 

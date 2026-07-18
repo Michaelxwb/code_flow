@@ -2,6 +2,7 @@
 description: 从一句话需求出发产生产品需求文档(PRD)
 ---
 
+
 # cf-task:prd
 
 从一句话需求出发，通过结构化对话产出产品需求文档（PRD），为 `cf-task:align` 提供足够丰富的输入。
@@ -37,6 +38,22 @@ description: 从一句话需求出发产生产品需求文档(PRD)
 2. 如有相关设计文档或已有 PRD，用 Glob/Read 扫描了解现状
 
 目的：**让 PRD 基于实际业务背景**，而非泛泛的通用描述。本步只读不提问，所有提问统一放到 Step 3。
+
+### 2.1 先解析并绑定 Existing Specs（硬门禁）
+
+在开始写需求内容前，先确定 Step 5 的需求目录和预计涉及路径，再执行：
+
+```bash
+python3 .code-flow/scripts/cf_spec_context.py catalog --stage prd --root "$PWD" --paths <预计路径...> --json
+```
+
+1. 必须检查完整 `candidates`，不得按展示条数截断；只消费 resolver 返回的 `stages` 含 `prd` 的产品、安全、兼容、业务约束，`code-only` Spec 不得进入 PRD。
+2. 对每个适用候选记录 `selected_by` 和具体 `reason`，立即用 `bind --stage prd` 写入需求目录的 `spec-context.yml`（首次 `applications` 为空），然后再进入需求细化。
+3. required Rule 必须进入 PRD 的 `Existing Spec Constraints`，并明确影响哪个范围项、FEAT 验收或 NFR；只复制一句“遵循规范”不算承接。
+4. 不适用的 required Rule 必须逐 Rule 说明具体理由并请求用户确认，再调用 `decision` 保存 `not_applicable`；禁止批量 N/A，**Agent 不得代确认**。
+5. Catalog/Context 失败、同级 required 冲突或 required Rule 尚未决定时 fail-closed：保留草稿并修复，不得绕过后继续产出可批准 PRD。
+
+> 预计路径尚不明确时仍须以空 `--paths` 运行，确保 global/task-stage 规则先进入 Context；后续范围明确时重新 catalog，并补充绑定新增候选。
 
 ### 3. 交互式细化
 
@@ -98,6 +115,7 @@ description: 从一句话需求出发产生产品需求文档(PRD)
 | 5. 非功能需求 | Step 3 的"非功能需求"（按需，分配 NFR 编号） |
 | 6. 范围与边界 | Step 3 的"范围与边界" |
 | 7. 依赖与风险 | Step 3 的"依赖与风险"（按需） |
+| 8. Existing Spec Constraints | Step 2.1 的 prd-stage Rule；逐条关联范围/FEAT 验收/NFR |
 
 **编号与追溯（硬约束，`cf-task:align` 派生的基础）**：
 - 用户故事按出现顺序分配 `US-01`、`US-02`…，写入 §3.2 用户故事表
@@ -120,6 +138,12 @@ description: 从一句话需求出发产生产品需求文档(PRD)
 3. **重名检查**：需求目录已存在且非本次草稿时，目录名追加序号 `<name>-2`、`<name>-3`… 避免覆盖；恢复模式复用原目录、不改名
 4. 用 Write 写入 `.code-flow/tasks/<YYYY-MM-DD>/<name>/<name>.prd.md`
 
+写入后必须完成 Context 回填和 PRD Gate：
+
+1. 再次调用 `bind --stage prd`，`selections` 可为空，`applications` 为每条已承接 Rule 写入 `artifact`、`section_id`、`item_id`；artifact 必须指向本需求目录内 PRD，由脚本计算 `artifact_sha256`。
+2. 执行 `python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage prd --json`。
+3. 只有 `decision=pass` 才能把 PRD 标为可评审并输出下一步；pending/conflict/stale、缺少范围/验收落点或无有效用户确认的 N/A 均保持阻断。
+
 **文件位置说明**：PRD、设计简报（`<name>.frontend.design.md` / `<name>.backend.design.md`）、任务文件（`<name>.md`）同放**需求目录** `.code-flow/tasks/<日期>/<name>/`，`cf-task:archive` 按整个需求目录归档。
 
 ### 6. 输出摘要
@@ -132,6 +156,7 @@ description: 从一句话需求出发产生产品需求文档(PRD)
   - 用户故事: N 个
   - 功能: N 个（P0: X, P1: Y）
   - 追溯自检: FEAT↔US 全部关联 ✓ ｜ 有缺口则列出「未关联 FEAT-XX / 未覆盖 US-XX」
+  - Existing Specs: N 个 / required Rules: N 条 / PRD Gate: pass
 
 > 自检发现缺口（FEAT 无来源 US 或 US 无 FEAT 覆盖）时，在摘要显式标注并提示用户补 US 或降级，不要静默放过。
 

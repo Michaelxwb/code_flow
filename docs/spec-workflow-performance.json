@@ -1,0 +1,13 @@
+{
+  "captured_at": "2026-07-18T00:00:00+08:00",
+  "environment": "macOS, system Python 3.9, warm filesystem cache",
+  "fixture": "one required Spec, one active TASK, one changed path",
+  "iterations": 100,
+  "results_ms": {
+    "resolver": {"median": 0.154, "p95": 0.234, "release_threshold_median": 25},
+    "refresh": {"median": 0.509, "p95": 0.692, "release_threshold_median": 50},
+    "active_router": {"median": 2.777, "p95": 3.436, "release_threshold_median": 50}
+  },
+  "command": "python3 tests/test_spec_workflow_repository_e2e.py benchmark fixture (100 iterations)",
+  "note": "Thresholds are regression guards, not latency guarantees across machines."
+}

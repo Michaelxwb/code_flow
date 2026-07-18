@@ -1,5 +1,14 @@
 ---
+id: backend-directory-structure
 description: 新建/移动后端文件时适用：目录结构与模块组织约束
+stages: [design, plan, code, review]
+enforcement: required
+verifiers:
+  - rule: RULE-backend-directory-001
+    type: manual
+    config:
+      checklist: Confirm all Guidance and Avoid items for this Spec.
+      owner: project-owner
 ---
 
 # Backend Directory Structure
@@ -22,6 +31,9 @@ if order.status == 1 and role == "admin":   # 魔法数字 / 魔法字符串
 ```
 
 ## Rules
+- [RULE-backend-directory-001] The implementation must satisfy every applicable item in Guidance and avoid every item in Avoid.
+
+## Guidance
 - 接口层放 `api/`，业务逻辑放 `services/`，数据模型放 `models/`，禁止跨层倒置依赖
 - 入口文件（`main.*`）只做框架装配，不写业务代码
 - 配置统一放 `config/`，禁止在业务代码中直接读 `os.environ` / `process.env`
@@ -35,7 +47,7 @@ if order.status == 1 and role == "admin":   # 魔法数字 / 魔法字符串
 - 常量命名用 UPPER_SNAKE_CASE，枚举优先使用语言原生 `Enum`
 - 测试目录与源码同构（`tests/services/order/test_*`）
 
-## Anti-Patterns
+## Avoid
 - 禁止在根目录堆放脚本与临时代码，临时脚本放 `scripts/` 并命名清晰
 - 禁止在 `models/` 里写业务逻辑，模型仅定义结构与简单关联
 - 禁止把常量直接写在业务代码里（如 `if status == 1` / `role == "admin"`），必须引用 `constants/` 中的命名常量

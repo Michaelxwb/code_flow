@@ -7,9 +7,11 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const pkg = require('../package.json');
+const specWorkflowMigration = require('./migrate/spec-workflow');
 
 const usage = [
   'Usage: code-flow init [--force] [--platform=<claude|codex|costrict|opencode>]',
+  '       code-flow migrate --spec-workflow <--dry-run|--prepare|--apply --plan <path>|--rollback <id>>',
   '       code-flow -v | --version',
   '       code-flow -h | --help'
 ].join('\n');
@@ -469,15 +471,19 @@ function parsePlatform(args) {
 // --- Main init ---
 
 function runInit(force, platform) {
+  const cwd = process.cwd();
+  const installedVersion = readInstalledVersion(cwd);
+  if (installedVersion && compareVersions(installedVersion, '0.4.2') >= 0 && compareVersions(installedVersion, '0.6.0') < 0) {
+    process.stdout.write(`${JSON.stringify({ status: 'migration_required', version: installedVersion, command: 'code-flow migrate --spec-workflow --dry-run' })}\n`);
+    process.exit(3);
+  }
   ensurePython3();
 
-  const cwd = process.cwd();
   const baseDir = __dirname;
   const coreDir = path.join(baseDir, 'core');
   const adaptersDir = path.join(baseDir, 'adapters');
 
   // Determine mode
-  const installedVersion = readInstalledVersion(cwd);
   let mode;
   if (force) {
     mode = 'force';
@@ -778,6 +784,45 @@ function runInit(force, platform) {
 
 const args = process.argv.slice(2);
 
+function argumentValue(values, name) {
+  const index = values.indexOf(name);
+  return index >= 0 ? values[index + 1] || '' : '';
+}
+
+function migrationExitCode(result) {
+  if (result.status === 'rolled_back') return 4;
+  if (result.status === 'recovery_required') return 5;
+  if (result.status === 'prepared_blocked') return 3;
+  return 0;
+}
+
+function runMigrate(values) {
+  if (!values.includes('--spec-workflow')) fail('Error: migrate requires --spec-workflow.');
+  const actions = ['--dry-run', '--prepare', '--apply', '--rollback'].filter(action => values.includes(action));
+  if (actions.length !== 1) fail('Error: choose exactly one migrate action.');
+  let result;
+  try {
+    if (actions[0] === '--dry-run') result = specWorkflowMigration.preview(process.cwd());
+    if (actions[0] === '--prepare') result = specWorkflowMigration.prepare(process.cwd());
+    if (actions[0] === '--apply') {
+      const plan = argumentValue(values, '--plan');
+      if (!plan) fail('Error: --apply requires --plan <path>.');
+      result = specWorkflowMigration.apply(path.resolve(plan));
+    }
+    if (actions[0] === '--rollback') {
+      const id = argumentValue(values, '--rollback');
+      if (!id) fail('Error: --rollback requires a migration id.');
+      const plan = path.join(process.cwd(), '.code-flow', 'migrations', id, 'migration-plan.json');
+      result = specWorkflowMigration.rollback(plan);
+    }
+    process.stdout.write(`${JSON.stringify(result)}\n`);
+    process.exit(migrationExitCode(result));
+  } catch (error) {
+    process.stdout.write(`${JSON.stringify({ status: 'unresolved', error: String(error.message || error) })}\n`);
+    process.exit(3);
+  }
+}
+
 if (args.includes('-v') || args.includes('--version')) {
   process.stdout.write(`${pkg.version}\n`);
   process.exit(0);
@@ -797,6 +842,10 @@ if (args[0] === 'init') {
     fail(`Error: --platform must be "claude", "codex", "costrict", or "opencode", got "${platform}".`);
   }
   runInit(force, platform);
+}
+
+if (args[0] === 'migrate') {
+  runMigrate(args.slice(1));
 }
 
 if (args.length === 0) {

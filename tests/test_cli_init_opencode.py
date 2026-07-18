@@ -42,7 +42,7 @@ def test_opencode_init_deploys_agents_md_and_plugin(tmp_path: Path) -> None:
     assert agents_md.exists()
     content = agents_md.read_text(encoding="utf-8")
     assert "code-flow" in content
-    assert "Spec Loading" in content
+    assert "Spec Workflow (schema 1)" in content
 
     opencode_json = tmp_path / "opencode.json"
     assert opencode_json.exists()

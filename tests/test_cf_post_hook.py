@@ -44,8 +44,7 @@ def _make_project(root: str, spec_content: str = SPEC_WITH_CHECKS, ql: bool = Tr
     with open(os.path.join(specs, "code-standards.md"), "w", encoding="utf-8") as f:
         f.write(spec_content)
     config = {
-        "inject": {"auto": True, "code_extensions": [".py"]},
-        "quality_loop": {"enabled": ql},
+        "quality_loop": {"enabled": ql, "code_extensions": [".py"]},
         "path_mapping": {"scripts": {"patterns": ["src/*.py"], "specs": [
             {"path": "scripts/code-standards.md", "tags": ["core"], "tier": 1},
         ]}},

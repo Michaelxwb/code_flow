@@ -146,10 +146,15 @@ def _make_hook_project(root: str, ql_enabled: bool) -> None:
     with open(os.path.join(specs, "_map.md"), "w", encoding="utf-8") as f:
         f.write("# Map\n\n> scripts 导航\n")
     with open(os.path.join(specs, "code-standards.md"), "w", encoding="utf-8") as f:
-        f.write("---\ndescription: d\n---\n# S\n- 规则\n")
+        f.write(
+            "---\nid: scripts-rules\ndescription: d\nstages: [code]\n"
+            "enforcement: required\nverifiers:\n  - rule: RULE-scripts-001\n"
+            "    type: regex\n    config:\n      pattern: SAFE\n---\n"
+            "# S\n## Rules\n- [RULE-scripts-001] Keep SAFE.\n"
+        )
     config = {
-        "inject": {"auto": True, "code_extensions": [".py"], "mode": "catalog"},
-        "quality_loop": {"enabled": ql_enabled},
+        "spec_workflow": {"schema_version": 1, "enforcement": "required", "catalog": {"dedup_window": 5}},
+        "quality_loop": {"enabled": ql_enabled, "code_extensions": [".py"]},
         "path_mapping": {"scripts": {"patterns": ["**/*.py"], "specs": [
             {"path": "scripts/_map.md", "tags": ["*"], "tier": 0},
             {"path": "scripts/code-standards.md", "tags": ["core"], "tier": 1},
@@ -159,39 +164,37 @@ def _make_hook_project(root: str, ql_enabled: bool) -> None:
         yaml.dump(config, f)
 
 
-def _run_inject_hook(root: str, payload: dict) -> None:
-    import cf_inject_hook
+def _run_pre_tool_hook(root: str, payload: dict) -> None:
+    import cf_pre_tool_hook
     stdin_data = json.dumps(payload)
     with mock.patch("sys.stdin", io.StringIO(stdin_data)), \
             mock.patch("sys.stdout", io.StringIO()), \
             mock.patch("os.getcwd", return_value=root):
-        cf_inject_hook.main()
+        cf_pre_tool_hook.main()
 
 
-def test_inject_hook_records_edit_and_inject_events():
+def test_pre_tool_hook_records_edit_intent():
     with tempfile.TemporaryDirectory() as root:
         _make_hook_project(root, ql_enabled=True)
-        _run_inject_hook(root, {
+        _run_pre_tool_hook(root, {
             "tool_name": "Edit",
             "tool_input": {"file_path": "src/core/cf_core.py"},
             "session_id": "s-evt",
         })
-        edits = cf_log.read_events(root, events=("edit",))
-        injects = cf_log.read_events(root, events=("inject",))
+        edits = cf_log.read_events(root, events=("edit_intent",))
         assert edits and edits[0]["data"]["tool"] == "Edit"
         assert edits[0]["sid"] == "s-evt"
-        assert injects and injects[0]["data"]["source"] == "pretooluse"
 
 
-def test_inject_hook_disabled_writes_no_log():
+def test_pre_tool_hook_is_required_even_when_quality_metrics_disabled():
     with tempfile.TemporaryDirectory() as root:
         _make_hook_project(root, ql_enabled=False)
-        _run_inject_hook(root, {
+        _run_pre_tool_hook(root, {
             "tool_name": "Edit",
             "tool_input": {"file_path": "src/core/cf_core.py"},
             "session_id": "s-off",
         })
-        assert not os.path.exists(cf_log.log_path(root))
+        assert cf_log.read_events(root, events=("edit_intent",))
 
 
 # --- 纠正句式检测 (TASK-011) ---
@@ -263,4 +266,4 @@ def test_user_prompt_hook_records_catalog_inject_event():
             cf_user_prompt_hook.main()
         injects = cf_log.read_events(root, events=("inject",))
         assert injects and injects[0]["data"]["source"] == "catalog"
-        assert injects[0]["data"]["specs"] == ["__catalog__"]
+        assert injects[0]["data"]["specs"] == []

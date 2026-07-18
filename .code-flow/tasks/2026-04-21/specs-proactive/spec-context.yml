@@ -1,0 +1,8 @@
+version: 1
+task: specs-proactive
+enforcement: required
+updated_at: migration-staging
+sources:
+- type: migration
+  ref: prepared-plan
+bindings: []

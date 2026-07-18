@@ -2,6 +2,7 @@
 description: 从需求出发通过结构化对话产出设计简报(.design.md)
 ---
 
+
 # cf-task:align
 
 从需求出发，通过结构化对话产出设计简报（`.design.md`），为 `cf-task:plan` 提供足够丰富的输入。支持三种输入：纯文本需求、`.prd.md` 产品需求文档、`.design.md` 草稿。
@@ -114,6 +115,18 @@ PRD 已覆盖的维度如无需调整，将直接使用。
 - Step 3 中已从 PRD 获得充分信息的维度**不重复提问**，除非用户主动修改
 - design 中 FEAT 的"来源"列必须引用 PRD 中对应的 US-XX
 
+### 2.7. 继承并刷新 Spec Context（硬门禁）
+
+进入技术讨论前先定位需求目录中的 `spec-context.yml`：
+
+1. PRD 派生/恢复模式必须执行 `python3 .code-flow/scripts/cf_spec_context.py refresh --task-dir <需求目录> --root "$PWD" --json`；missing/stale/conflict 必须先处理。
+2. 已有 binding 必须从 PRD Context 原样继承，**不得重新选择**、降级 enforcement 或清空 PRD 阶段 refs/decision/evidence。根据预计实现路径运行 `catalog --stage design`，只对新增 design-stage 候选做增量 bind，并记录 reason。
+3. 为每条 design-stage required Rule 预建 `Spec Compliance Matrix` 行：`Spec/Rule`、enforcement、设计影响、具体设计落点、验证场景/verifier、状态或 N/A 理由。
+4. required Rule 没有具体 heading/item 和验证方式时不得进入可评审状态；只写“遵循规范”无效。
+5. N/A/waiver 必须逐 Rule 请求用户确认并调用 `decision`；`batch` 必须为 false，Agent 不得代确认。无有效确认来源时 fail-closed。
+
+> 无 PRD 的新建模式也必须先 catalog/bind 并创建 Context，再写 Design；不能因为缺 PRD 跳过 Specs。
+
 ### 3. 交互式细化
 
 围绕选中的维度逐步推进，**每轮提 2-3 个问题**（不要一次性抛 10 个问题）：
@@ -194,7 +207,8 @@ CLI 场景：
 3. **只包含适用的章节**，模板中有但需求不涉及的章节跳过
 4. 用 `{}` 占位符替换为实际内容
 5. PRD 派生模式：功能清单的"来源"列填 PRD 中对应的 US-XX
-6. 展示生成的设计简报
+6. 生成 `Spec Compliance Matrix`，每条 required Rule 的验证场景必须引用 S-/E-/B- 或说明仅可人工验证的外部边界
+7. 展示生成的设计简报
 
 **章节映射**（Lite 模板，对应 `design-lite.md` 实际章节）：
 
@@ -271,6 +285,14 @@ CLI 场景：
    - **全栈需求**：前后端各写一份到同一需求目录
 4. 用 Write 写入最终路径
 
+写入后，对 Matrix 每一行调用 `bind --stage design` 的 `applications` 回填 design artifact、`section_id`、稳定 `item_id` 和脚本计算的 hash；随后执行：
+
+```bash
+python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage design --json
+```
+
+只有 Design Gate `decision=pass` 才能输出 Plan 下一步。缺 Matrix 行、artifact ref、验证方式、用户确认或发生 drift 时保留草稿并修复，不得推迟到 Coding/Done 才发现。
+
 ### 6. 输出摘要
 
 ```
@@ -282,6 +304,7 @@ CLI 场景：
   - <按实际包含的章节列出>
   - 验收标准: N 项
   - 追溯自检: 每个 FEAT 有来源(US/需求)✓、有验收场景✓；每个场景有测试层级和关键真实边界✓；RULE/高影响 RISK 有验证场景✓；Full 模板 §6 矩阵闭合
+  - Spec Compliance: required Rules N/N 已落点；Design Gate: pass
   - 性能自检: 标记性能敏感则方案须体现最优性能设计依据（§3.1/§3.5 或 lite §3.4），否则提示补全或显式声明"无性能敏感点"
 
 下一步:

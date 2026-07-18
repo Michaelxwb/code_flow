@@ -1,5 +1,14 @@
 ---
+id: backend-platform-rules
 description: 涉及 API 设计/部署/配置/版本兼容时适用：平台规则
+stages: [design, plan, code, review]
+enforcement: required
+verifiers:
+  - rule: RULE-backend-platform-001
+    type: manual
+    config:
+      checklist: Confirm all Guidance and Avoid items for this Spec.
+      owner: project-owner
 ---
 
 # Backend Platform Rules
@@ -20,6 +29,9 @@ return {"code": 1, "message": "order not found", "data": None}
 ```
 
 ## Rules
+- [RULE-backend-platform-001] The implementation must satisfy every applicable item in Guidance and avoid every item in Avoid.
+
+## Guidance
 - API 变更必须保持向后兼容；破坏性变更走新版本路径（`/v2/...`）并保留旧版本至少一个发布周期
 - 配置项分环境管理（dev / staging / prod），敏感值走密钥管理服务，禁止入库
 - 新增外部依赖必须更新部署文档与 `requirements` / `package.json` 锁文件
@@ -35,7 +47,7 @@ return {"code": 1, "message": "order not found", "data": None}
 - 健康检查端点（`/healthz`、`/readyz`）必须独立于业务认证
 - 部署前跑 smoke test，覆盖核心路径
 
-## Anti-Patterns
+## Avoid
 - 禁止在生产环境开启 `DEBUG` / 详细堆栈输出
 - 禁止把 secret 写进代码库或 dev 配置文件
 - 禁止破坏性 API 变更不通知调用方直接发布

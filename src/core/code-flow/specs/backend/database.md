@@ -1,5 +1,14 @@
 ---
+id: backend-database
 description: 涉及数据库/ORM/迁移/查询时适用：schema 与数据访问约束
+stages: [design, plan, code, review]
+enforcement: required
+verifiers:
+  - rule: RULE-backend-database-001
+    type: manual
+    config:
+      checklist: Confirm all Guidance and Avoid items for this Spec.
+      owner: project-owner
 ---
 
 # Backend Database
@@ -19,6 +28,9 @@ cur.execute(f"SELECT * FROM users WHERE email = '{email}'")
 ```
 
 ## Rules
+- [RULE-backend-database-001] The implementation must satisfy every applicable item in Guidance and avoid every item in Avoid.
+
+## Guidance
 - 所有 SQL 必须参数化，禁止字符串拼接 / 模板插值用户输入
 - 迁移脚本必须可回滚，或写成幂等脚本（`IF NOT EXISTS` / `ON CONFLICT`）
 - 事务边界明确：跨表写入必须在同一事务内，禁止"半提交"状态
@@ -32,7 +44,7 @@ cur.execute(f"SELECT * FROM users WHERE email = '{email}'")
 - 缓存与数据库一致性：先写库再失效缓存（`cache-aside`）
 - CRUD 基类统一实现 `get / list / create / update / delete / bulk_*`，子类只扩展模型特有查询
 
-## Anti-Patterns
+## Avoid
 - 禁止在事务内发起外部 HTTP / RPC 调用，超时会导致连接池耗尽
 - 禁止在循环中执行单条 `INSERT` / `UPDATE`，必须批量化
 - 禁止在 ORM 之外手写 SQL 时绕过参数绑定

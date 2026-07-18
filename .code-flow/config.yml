@@ -1,126 +1,135 @@
 version: 1
-
-budget:
-    total: 2500
-    l0_max: 800
-    l1_max: 1700
-    map_max: 400
-    # catalog 模式下 spec 目录的 token 上限（超出按 Tier1 优先截断并告警）
-    catalog_max: 200
-
-inject:
-    auto: true
-    # 注入模式：catalog = 注入极小 spec 目录由模型自取（prompt 含明确路径时仍直注完整约束）；
-    # full = 旧行为（tag 词表匹配注入完整 spec）。仅 literal "catalog" 启用；缺失/其他值一律 full。
-    mode: catalog
-
-# 质量闭环（v0.5）：enabled 仅 literal true 启用；子开关仅 literal false 关闭。
-quality_loop:
-    enabled: true
-    post_check: true
-    stop_check: true
-    correction_capture: true
-    # 注入时对 spec 内容做保守无损压缩（去行尾空白、折叠多空行、剥 HTML 注释、去重 bullet）
-    # 缺省视为 true；仅显式 false 关闭
-    compress: true
-    # UserPromptSubmit 去重窗口：同一 spec 在最近 N 个 prompt 内不重复注入。
-    # 0 或负数 关闭去重（每次都注入，等同旧行为）；缺省 5。
-    # 窗口"限速"而非"永久跳过"，超过 N 个 prompt 后会再次注入，保证 auto-compaction
-    # 丢掉早期上下文后仍能恢复 spec。
+spec_workflow:
+  schema_version: 1
+  enforcement: required
+  drift_check: true
+  scope_expansion_check: true
+  metrics: true
+  catalog:
     dedup_window: 5
-    code_extensions:
-        - ".py"
-        - ".ts"
-        - ".tsx"
-        - ".js"
-        - ".jsx"
-        - ".go"
-        - ".java"
-        - ".rs"
-        - ".rb"
-        - ".vue"
-        - ".svelte"
-    skip_extensions:
-        - ".md"
-        - ".txt"
-        - ".json"
-        - ".yml"
-        - ".yaml"
-        - ".toml"
-        - ".lock"
-        - ".csv"
-        - ".xml"
-        - ".svg"
-        - ".png"
-        - ".jpg"
-        - ".jpeg"
-        - ".gif"
-        - ".ico"
-        - ".pdf"
-        - ".zip"
-        - ".gz"
-        - ".tar"
-    skip_paths:
-        - "docs/**"
-        - "*.config.*"
-        - ".code-flow/**"
-        - ".claude/**"
-        - ".costrict/**"
-        - "node_modules/**"
-        - "dist/**"
-        - "build/**"
-        - "out/**"
-        - "coverage/**"
-        - ".next/**"
-        - ".cache/**"
-        - ".venv/**"
-        - "venv/**"
-        - "__pycache__/**"
-        - ".git/**"
-
+budget:
+  total: 2500
+  l0_max: 800
+  l1_max: 1700
+  map_max: 400
+  catalog_max: 200
+quality_loop:
+  enabled: true
+  post_check: true
+  stop_check: true
+  correction_capture: true
+  compress: true
+  code_extensions:
+  - .py
+  - .ts
+  - .tsx
+  - .js
+  - .jsx
+  - .go
+  - .java
+  - .rs
+  - .rb
+  - .vue
+  - .svelte
+  skip_extensions:
+  - .md
+  - .txt
+  - .json
+  - .yml
+  - .yaml
+  - .toml
+  - .lock
+  - .csv
+  - .xml
+  - .svg
+  - .png
+  - .jpg
+  - .jpeg
+  - .gif
+  - .ico
+  - .pdf
+  - .zip
+  - .gz
+  - .tar
+  skip_paths:
+  - docs/**
+  - '*.config.*'
+  - .code-flow/**
+  - .claude/**
+  - .codex/**
+  - .costrict/**
+  - .opencode/**
+  - node_modules/**
+  - dist/**
+  - build/**
+  - out/**
+  - coverage/**
+  - .next/**
+  - .cache/**
+  - .venv/**
+  - venv/**
+  - __pycache__/**
+  - .git/**
 path_mapping:
-    shared:
-        # 共享模板供 cf-task:align / cf-task:prd 命令显式 Read 使用，
-        # 不是约束规范，禁止通配符自动注入。
-        # 仅 _map.md 保持 "*" 作为 Tier 0 导航。
-        specs:
-            - path: "shared/_map.md"
-              tags: ["*"]
-              tier: 0
-            - path: "shared/prd-template.md"
-              tags: []          # 永不自动注入，仅 cf-task:prd 命令显式 Read
-              tier: 1
-            - path: "shared/design/design-lite.md"
-              tags: []          # 永不自动注入，仅 cf-task:align 命令显式 Read
-              tier: 1
-            - path: "shared/design/design-full.md"
-              tags: []          # 永不自动注入，仅 cf-task:align 命令显式 Read
-              tier: 1
-            - path: "shared/design/design-frontend.md"
-              tags: []          # 永不自动注入，仅 cf-task:align 命令显式 Read（前端设计模板）
-              tier: 1
-    cli:
-        patterns:
-            - "src/cli.js"
-            - "src/adapters/**/*.json"
-            - "src/adapters/**/*.toml"
-        specs:
-            - path: "cli/_map.md"
-              tags: ["*"]
-              tier: 0
-            - path: "cli/code-standards.md"
-              tags: ["cli", "init", "upgrade", "merge", "platform", "version", "adapter"]
-              tier: 1
-    scripts:
-        patterns:
-            # fnmatch 语义：* 可跨 /，"dir/*.py" 已覆盖任意深度；
-            # "dir/**/*.py" 反而要求至少一层子目录，会漏掉直系文件
-            - "src/core/code-flow/scripts/*.py"
-            - "tests/*.py"
-        specs:
-            - path: "scripts/_map.md"
-              tags: ["*"]
-              tier: 0
-            - path: "scripts/code-standards.md"
-              tags: ["hook", "inject", "config", "spec", "tag", "scan", "stats", "session", "log", "performance", "quality", "test"]
-              tier: 1
+  shared:
+    specs:
+    - path: shared/_map.md
+      tags:
+      - '*'
+      tier: 0
+    - path: shared/prd-template.md
+      tags: []
+      tier: 1
+    - path: shared/design/design-lite.md
+      tags: []
+      tier: 1
+    - path: shared/design/design-full.md
+      tags: []
+      tier: 1
+    - path: shared/design/design-frontend.md
+      tags: []
+      tier: 1
+  cli:
+    patterns:
+    - src/cli.js
+    - src/adapters/**/*.json
+    - src/adapters/**/*.toml
+    specs:
+    - path: cli/_map.md
+      tags:
+      - '*'
+      tier: 0
+    - path: cli/code-standards.md
+      tags:
+      - cli
+      - init
+      - upgrade
+      - merge
+      - platform
+      - version
+      - adapter
+      tier: 1
+  scripts:
+    patterns:
+    - src/core/code-flow/scripts/*.py
+    - tests/*.py
+    specs:
+    - path: scripts/_map.md
+      tags:
+      - '*'
+      tier: 0
+    - path: scripts/code-standards.md
+      tags:
+      - hook
+      - inject
+      - config
+      - spec
+      - tag
+      - scan
+      - stats
+      - session
+      - log
+      - performance
+      - quality
+      - test
+      tier: 1

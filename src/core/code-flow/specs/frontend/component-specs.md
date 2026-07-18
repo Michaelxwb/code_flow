@@ -1,5 +1,14 @@
 ---
+id: frontend-component-specs
 description: 写/改组件时适用：props、hooks、渲染、UI 样式约束
+stages: [design, plan, code, review]
+enforcement: required
+verifiers:
+  - rule: RULE-frontend-component-001
+    type: manual
+    config:
+      checklist: Confirm all Guidance and Avoid items for this Spec.
+      owner: project-owner
 ---
 
 # Component Specs
@@ -36,6 +45,9 @@ const OrderRow = ({ id }) => {
 ```
 
 ## Rules
+- [RULE-frontend-component-001] The implementation must satisfy every applicable item in Guidance and avoid every item in Avoid.
+
+## Guidance
 - Props 必须类型化（TS interface / PropTypes / defineProps），可选项给默认值
 - 组件文件名与导出组件名一致，使用 PascalCase
 - 单组件文件 ≤ 300 行，超出拆成子组件或提取 hook
@@ -49,7 +61,7 @@ const OrderRow = ({ id }) => {
 - 受控表单优先；非受控仅用于不需要回读值的场景
 - 样式遵循设计系统：间距用 4 的倍数，强调色 ≤ 2 种
 
-## Anti-Patterns
+## Avoid
 - 禁止在组件内直接修改 props 或 store 内部状态
 - 禁止把大量逻辑塞进 JSX 表达式，复杂条件提取变量或子组件
 - 禁止用 `index` 作为列表 `key`（顺序变更会触发错误复用）

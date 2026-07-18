@@ -39,10 +39,11 @@
 `code-flow init` 已从 `src/core/code-flow/config.yml` 复制当前核心模板。cf-init 不要复制或手写旧版 YAML；应该读取现有 `.code-flow/config.yml`，只做保守修补。
 
 必须保持或补齐这些核心能力：
-- `inject.compress: true`
-- `inject.dedup_window: 5`
+- `spec_workflow.schema_version: 1`
+- `spec_workflow.catalog.dedup_window: 5`
+- `quality_loop.compress: true`
 - 完整 `skip_extensions`，包括图片、压缩包、PDF 等非代码文件
-- `skip_paths` 中的平台目录：`.claude/**`、`.codex/**`、`.costrict/**`
+- `skip_paths` 中的平台目录：`.claude/**`、`.codex/**`、`.costrict/**`、`.opencode/**`
 - `path_mapping.shared`，包括 `shared/_map.md`、`shared/prd-template.md`、`shared/design/design-lite.md`、`shared/design/design-full.md`、`shared/design/design-frontend.md`
 - backend patterns 中同时包含 `*.py` 与 `**/*.py`
 - 按检测到的前端框架动态补 `frontend.patterns`：Vue→`**/*.vue`、Svelte→`**/*.svelte`、Next→`app/**` 等（保守追加，按检测结果，不预塞所有框架）
@@ -151,7 +152,7 @@ CLAUDE.md 的完整内容由适配器模板统一定义，`code-flow init` 已�
 
 ### 6. 生成 .costrict/settings.local.json Hook 配置
 
-检查 `.costrict/settings.local.json` 是否存在。如果不存在，按当前适配器模板创建，必须包含 `PreToolUse`、`SessionStart`、`UserPromptSubmit` 三类 hook，并使用 git root 定位脚本路径。
+检查 `.costrict/settings.local.json` 是否存在。如果不存在，按当前适配器模板创建，必须包含 `PreToolUse`、`PostToolUse`、`UserPromptSubmit`、`Stop` 四类 hook，并使用 guarded project root 定位脚本路径。
 
 如果文件已存在，只合并缺失的 hook 事件、matcher 或 command，保留用户已有 permissions、settings 和自定义 hooks，不得整文件覆盖。
 

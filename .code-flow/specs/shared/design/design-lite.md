@@ -282,6 +282,16 @@ flowchart TD
 
 ---
 
+## Spec Compliance Matrix
+
+> 从需求目录 `spec-context.yml` 继承并逐 Rule 回填。required Rule 必须有具体设计落点和 verifier/验收场景；N/A 只接受逐项用户确认。
+
+| Spec/Rule | enforcement | 设计影响 | 设计落点 | 验证场景 | 状态/N/A 理由 |
+|-----------|-------------|---------|---------|---------|----------------|
+| `{spec-id}#RULE-{domain}-001` | required / advisory | <对方案的影响> | §<heading> / <item-id> | S-/E-/B- + verifier | applied / confirmed N/A |
+
+---
+
 ## 附录：术语表
 
 | 术语 | 定义 |

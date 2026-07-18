@@ -1,5 +1,14 @@
 ---
+id: backend-code-quality-performance
 description: 写后端代码时适用：错误处理、测试、超时重试、缓存等质量与性能约束
+stages: [design, plan, code, review]
+enforcement: required
+verifiers:
+  - rule: RULE-backend-quality-001
+    type: manual
+    config:
+      checklist: Confirm all Guidance and Avoid items for this Spec.
+      owner: project-owner
 ---
 
 # Backend Code Quality & Performance
@@ -29,6 +38,9 @@ except Exception:
 
 
 ## Rules
+- [RULE-backend-quality-001] The implementation must satisfy every applicable item in Guidance and avoid every item in Avoid.
+
+## Guidance
 - 所有公开函数 / 方法必须有类型注解（type hints / 类型签名）
 - 异常必须显式处理或显式上抛，禁止 `except Exception: pass` / `catch (e) {}` 静默吞掉
 - 外部依赖调用（HTTP / RPC / DB）必须设置超时，关键调用补重试 + 指数退避
@@ -40,7 +52,7 @@ except Exception:
 - 资源（连接、文件、锁）使用 `with` / `using` / `defer` 确保释放
 - 性能敏感路径加监控指标（QPS / P95 延迟 / 错误率）
 
-## Anti-Patterns
+## Avoid
 - 禁止在请求链路中吞掉异常导致客户端拿到错误结果却无日志
 - 禁止无超时的外部调用（容易导致线程 / 协程泄漏）
 - 禁止用循环模拟批量操作（DB 批量 / 网络批量必须用原生批量 API）

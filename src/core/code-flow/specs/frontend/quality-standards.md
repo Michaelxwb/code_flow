@@ -1,5 +1,14 @@
 ---
+id: frontend-quality-standards
 description: 写前端代码时适用：类型、lint、错误处理、测试、状态管理质量约束
+stages: [design, plan, code, review]
+enforcement: required
+verifiers:
+  - rule: RULE-frontend-quality-001
+    type: manual
+    config:
+      checklist: Confirm all Guidance and Avoid items for this Spec.
+      owner: project-owner
 ---
 
 # Frontend Quality Standards
@@ -27,6 +36,9 @@ render(data);
 ```
 
 ## Rules
+- [RULE-frontend-quality-001] The implementation must satisfy every applicable item in Guidance and avoid every item in Avoid.
+
+## Guidance
 - TypeScript 项目禁止使用 `any`，未知类型用 `unknown` 并显式收敛
 - 组件统一使用函数组件（React）/ 组合式 API（Vue 3），禁止类组件新增
 - 关键交互（提交 / 删除 / 支付）必须有错误提示与 loading 状态
@@ -39,7 +51,7 @@ render(data);
 - 网络请求统一处理 401 / 403 / 5xx，避免每个调用方重复
 - 关键路径补端到端测试或组件交互测试
 
-## Anti-Patterns
+## Avoid
 - 禁止在 render / setup 中发起未受控的副作用（用 `useEffect` / `onMounted`）
 - 禁止把后端错误直接抛给用户（如 SQL / stack trace）
 - 禁止用 `// @ts-ignore` 绕过类型错误，必须修复或改为 `@ts-expect-error` 加注释

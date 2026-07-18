@@ -13,7 +13,6 @@ from cf_core import (
     estimate_tokens,
     load_config,
     non_injectable_specs,
-    resolve_inject_mode,
     resolve_quality_loop,
 )
 
@@ -94,6 +93,41 @@ def quality_loop_summary(project_root: str, config: dict) -> dict:
         item["last_error"] = data.get("error", "")
     summary["degraded"] = degraded
     return summary
+
+
+def _percent(numerator: int, denominator: int) -> str:
+    return f"{round(numerator * 100 / denominator)}%" if denominator else "n/a"
+
+
+def spec_workflow_summary(project_root: str) -> dict:
+    events = cf_log.read_events(project_root, days=30)
+    candidates = {
+        (str((event.get("data") or {}).get("task")), str((event.get("data") or {}).get("rule")))
+        for event in events if event.get("event") == "spec_candidate"
+    }
+    bound = {
+        (str((event.get("data") or {}).get("task")), str((event.get("data") or {}).get("rule")))
+        for event in events if event.get("event") == "spec_bound"
+    }
+    gates = [event for event in events if event.get("event") == "spec_gate"]
+    first_pass = sum((event.get("data") or {}).get("first_pass") is True for event in gates)
+    late = sum(event.get("event") == "late_violation" for event in events)
+    statuses = {"stale": 0, "conflict": 0, "not_applicable": 0}
+    for event in events:
+        status = (event.get("data") or {}).get("status")
+        if status in statuses:
+            statuses[status] += 1
+    degraded = sum(event.get("event") == "metrics_degraded" for event in events)
+    return {
+        "window_days": 30,
+        "coverage": _percent(len(bound & candidates), len(candidates)),
+        "first_compliance_rate": _percent(first_pass, len(gates)),
+        "late_violation_rate": _percent(late, len(bound)),
+        "statuses": statuses,
+        "data_complete": degraded == 0,
+        "degraded_events": degraded,
+        "read_note": "read 仅表示读取，不代表理解",
+    }
 
 
 def read_text(path: str) -> str:
@@ -324,20 +358,20 @@ def main() -> None:
         "total_saved_pct": total_saved_pct,
     }
 
-    inject_mode = resolve_inject_mode(config.get("inject") or {})
     try:
         catalog_max = int(budget_cfg.get("catalog_max", 200))
-    except Exception:
+    except (TypeError, ValueError):
         catalog_max = 200
     catalog_text = build_spec_catalog(project_root, effective_mapping, catalog_max)
     catalog_summary = {
-        "mode": inject_mode,
+        "mode": "context_first",
         "tokens": estimate_tokens(catalog_text),
         "budget": catalog_max,
         "entries": catalog_text.count("\n- `"),
     }
 
     ql_summary = quality_loop_summary(project_root, config)
+    workflow_summary = spec_workflow_summary(project_root)
 
     output = {
         "l0": {"file": "CLAUDE.md", "tokens": l0_tokens, "budget": l0_budget},
@@ -351,6 +385,7 @@ def main() -> None:
         "compression_summary": compression_summary,
         "catalog": catalog_summary,
         "quality_loop": ql_summary,
+        "spec_workflow": workflow_summary,
         "templates": {
             "tokens": templates_tokens,
             "files": sorted(excluded_specs),
@@ -394,7 +429,7 @@ def main() -> None:
     )
     print(
         "CATALOG:",
-        f"mode={inject_mode},",
+        "mode=context_first,",
         f"{catalog_summary['tokens']} / {catalog_max} tokens,",
         f"{catalog_summary['entries']} entries",
     )

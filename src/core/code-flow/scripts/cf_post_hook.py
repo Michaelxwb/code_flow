@@ -21,6 +21,8 @@ import os
 import sys
 
 import cf_log
+from cf_spec_context import ContextError, load_active_task
+from cf_task_runtime import evaluate_scope, run_done_gate
 from cf_checks import (
     load_check_state,
     load_spec_checks,
@@ -32,8 +34,6 @@ from cf_core import (
     _log,
     build_effective_mapping,
     ensure_utf8_io,
-    extract_context_tags,
-    fallback_domains_for_context,
     is_code_file,
     load_config,
     match_domains,
@@ -93,6 +93,23 @@ def _feedback_text(violations: list) -> str:
     return "\n".join(lines)
 
 
+def _active_feedback(project_root: str) -> str:
+    marker = os.path.join(project_root, ".code-flow", ".active-task.json")
+    if not os.path.exists(marker):
+        return ""
+    active = load_active_task(project_root)
+    task_dir = os.path.join(project_root, active.task_dir)
+    scope = evaluate_scope(project_root, task_dir)
+    if scope.decision == "pause":
+        return scope.message
+    result = run_done_gate(project_root, task_dir)
+    failed = [item for item in result.evidence if item.get("status") != "verified"]
+    if not failed:
+        return ""
+    refs = ", ".join(str(item.get("verifier_ref")) for item in failed)
+    return f"当前 TASK required verifier 未通过：{refs}。修复后再继续。"
+
+
 def main() -> None:
     try:
         ensure_utf8_io()
@@ -108,6 +125,17 @@ def main() -> None:
             return
 
         project_root = os.getcwd()
+        try:
+            active_feedback = _active_feedback(project_root)
+        except (ContextError, OSError, ValueError) as exc:
+            message = f"SPEC_WORKFLOW_BLOCKED: active task is invalid: {exc}"
+            payload = {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": message}}
+            sys.stdout.write(json.dumps(payload, ensure_ascii=False))
+            return
+        if active_feedback:
+            payload = {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": active_feedback}}
+            sys.stdout.write(json.dumps(payload, ensure_ascii=False))
+            return
         config = load_config(project_root)
         if not config:
             return
@@ -119,18 +147,14 @@ def main() -> None:
         if not os.path.isabs(abs_path):
             abs_path = os.path.join(project_root, file_path)
         rel_path = normalize_path(os.path.relpath(abs_path, project_root))
-        if not is_code_file(rel_path, config.get("inject") or {}):
-            return
-
         sid = resolve_session_id(data)
+        cf_log.append_event(project_root, "edit", {"file": rel_path, "tool": tool_name}, sid)
+        if not is_code_file(rel_path, config.get("quality_loop") or {}):
+            return
         mapping = build_effective_mapping(
             project_root, config.get("path_mapping") or {}
         )
         domains = match_domains(rel_path, mapping)
-        if not domains:
-            domains = sorted(fallback_domains_for_context(
-                mapping, extract_context_tags(rel_path)
-            ))
         if not domains:
             return
 

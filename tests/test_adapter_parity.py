@@ -19,6 +19,7 @@ CF_TASK = ["align", "archive", "block", "graph", "note", "plan", "prd", "start",
 COSTRICT_IDENTICAL = [
     "cf-learn.md",
     "cf-stats.md",
+    "cf-spec.md",
     "cf-validate.md",
     "cf-task/align.md",
     "cf-task/archive.md",
@@ -81,3 +82,32 @@ def test_codex_cf_task_not_content_degraded() -> None:
         codex = _nonblank(_strip_frontmatter(_read(f"src/adapters/codex/skills/cf-task-{c}/SKILL.md")))
         ratio = codex / claude
         assert ratio >= 0.85, f"cf-task-{c}: codex 正文仅为 claude 的 {ratio:.0%}，疑似平台降级"
+
+
+def test_four_platform_spec_workflow_entrypoints_and_deploy_copies() -> None:
+    source_deploy = (
+        ("src/adapters/claude/commands/cf-spec.md", ".claude/commands/cf-spec.md"),
+        ("src/adapters/costrict/commands/cf-spec.md", ".costrict/commands/cf-spec.md"),
+        ("src/adapters/opencode/commands/cf-spec.md", ".opencode/commands/cf-spec.md"),
+        ("src/adapters/codex/skills/cf-spec/SKILL.md", ".agents/skills/cf-spec/SKILL.md"),
+    )
+    required = ("migrate --plan", "spec-context.yml", "refresh", "doctor", "prepared")
+    for source, deployed in source_deploy:
+        source_text = _read(source)
+        assert source_text == _read(deployed)
+        assert all(item in source_text for item in required)
+    for root in ("src/adapters", ".claude", ".costrict", ".opencode", ".agents"):
+        assert not [path for path in (ROOT / root).rglob("*cf-inject*") if path.is_file()]
+
+
+def test_opencode_core_task_workflow_has_all_context_gates() -> None:
+    phrases = {
+        "prd": ("catalog --stage prd", "PRD Gate"),
+        "align": ("refresh --task-dir", "Design Gate"),
+        "plan": ("--stage plan --artifact", "Context Plan"),
+        "start": ("active start", "cf_spec_session.py"),
+        "archive": ("cf_spec_gate.py", "spec-context.yml"),
+    }
+    for command, required in phrases.items():
+        text = _read(f"src/adapters/opencode/commands/cf-task/{command}.md")
+        assert all(item in text for item in required), f"opencode {command} 缺 Context/Gate 步骤"

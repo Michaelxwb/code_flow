@@ -21,23 +21,17 @@
 - `compress_content()` 5 个无损变换：去除 HTML 注释、尾空白、3+ 空行合并、去重 bullet、首尾空行；幂等，异常回退原文（`cf_core.py::compress_content`）
 - `resolve_compress()` 仅 literal `False` 禁用；`None`/缺失/其他值均启用（`cf_core.py::resolve_compress`）
 
-## Spec Loading
-This project uses the code-flow two-tier spec system.
+<!-- code-flow:spec-loading schema=1 start -->
+## Spec Workflow (schema 1)
 
-**Two-tier architecture**:
-- **Tier 0 `_map.md`（导航地图）**：项目结构、关键文件、数据流。你手动读取，帮助理解代码在哪里。
-- **Tier 1 约束规范**：编码规则、模式、反模式。编辑代码时（PreToolUse）自动注入；prompt 无明确路径时注入 **Spec Catalog**，由你按场景自行读取（`inject.mode: catalog`，`cf_core.py::build_spec_catalog`）。
+- If `.code-flow/.active-task.json` exists, validate it and `spec-context.yml`, then use only the active TASK's `Spec-Refs`, Design refs, and Acceptance Contract. Never reselect Specs from Catalog.
+- Without an active TASK, explicit file paths use deterministic `path_mapping` constraints; prompts without paths receive the Spec Catalog for exploration or creation of the next Context.
+- PRD, Design, Plan, Start, Coding, and Done inherit one persisted Context. Required rules must be applied and verified before their stage gate passes.
+- A corrupt marker, Context hash drift, or required scope expansion is `SPEC_WORKFLOW_BLOCKED`; run `cf-spec refresh/doctor` instead of falling back.
+- Tier 0 `_map.md` files are navigation only. Rule constraints live in metadata-bearing Tier 1 Specs.
 
-**Your responsibility**:
-1. Determine domain from the question:
-   - **cli**: mentions CLI, init, upgrade, merge, version, or references src/cli.js
-   - **scripts**: mentions hook, inject, config, spec, tag, scan, stats, or references .py files
-2. Read `.code-flow/specs/<domain>/_map.md` for navigation context
-3. Constraint specs are auto-injected by PreToolUse Hook when you edit code. On prompts without explicit file paths you receive a **Spec Catalog** instead — Read the matching spec(s) listed there before coding
-4. If question spans multiple domains, read all matching `_map.md` files
-5. If no domain matches, skip spec loading
-
-Do NOT ask the user which specs to load — the system handles constraint injection automatically.
+Do NOT ask the user which Specs to load—the Context-first router is authoritative.
+<!-- code-flow:spec-loading schema=1 end -->
 
 ## 合规反馈协议（quality_loop）
 

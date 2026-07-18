@@ -16,23 +16,17 @@
 - Unparameterized SQL
 - Network calls inside tight loops
 
-## Spec Loading
-本项目使用 code-flow 两层规范体系。
+<!-- code-flow:spec-loading schema=1 start -->
+## Spec Workflow (schema 1)
 
-**两层架构**：
-- **Tier 0 `_map.md`（导航地图）**：项目结构、关键文件、数据流。你手动读取，帮助理解代码在哪里。
-- **Tier 1 约束规范**：编码规则、模式、反模式。prompt 引用相关文件时自动注入完整约束；其他场景注入 **Spec Catalog**（spec 目录），由你按场景自行读取。
+- If `.code-flow/.active-task.json` exists, validate it and `spec-context.yml`, then use only the active TASK's `Spec-Refs`, Design refs, and Acceptance Contract. Never reselect Specs from Catalog.
+- Without an active TASK, explicit file paths use deterministic `path_mapping` constraints; prompts without paths receive the Spec Catalog for exploration or creation of the next Context.
+- PRD, Design, Plan, Start, Coding, and Done inherit one persisted Context. Required rules must be applied and verified before their stage gate passes.
+- A corrupt marker, Context hash drift, or required scope expansion is `SPEC_WORKFLOW_BLOCKED`; run `cf-spec refresh/doctor` instead of falling back.
+- Tier 0 `_map.md` files are navigation only. Rule constraints live in metadata-bearing Tier 1 Specs.
 
-**你的职责**：
-1. 从问题判断领域：
-   - **frontend**：components、pages、hooks、styles、UI、.tsx/.jsx/.css
-   - **backend**：services、API、database、models、logging、.py/.go
-2. 读取 `.code-flow/specs/<domain>/_map.md` 获取导航上下文
-3. 收到 **Spec Catalog** 时，编码前先 Read 其中与当前任务匹配的 spec 全文（路径相对 `.code-flow/specs/`）；prompt 引用明确文件路径时完整约束自动注入，无需手动读取
-4. 问题跨多个领域时，读取所有匹配的 `_map.md`
-5. 没有匹配领域时，跳过规范加载
-
-不要询问用户加载哪些规范——按 Catalog 自取或等待自动注入即可。
+Do NOT ask the user which Specs to load—the Context-first router is authoritative.
+<!-- code-flow:spec-loading schema=1 end -->
 
 ## 合规反馈协议（quality_loop）
 

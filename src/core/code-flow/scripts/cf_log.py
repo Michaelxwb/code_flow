@@ -27,6 +27,14 @@ KNOWN_EVENTS = (
     "false_positive",
     "degrade",
     "stop_check",
+    "spec_candidate",
+    "spec_bound",
+    "spec_applied",
+    "spec_read",
+    "spec_drift",
+    "spec_gate",
+    "late_violation",
+    "metrics_degraded",
 )
 
 

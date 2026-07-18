@@ -1,14 +1,16 @@
 {
   "name": "@michaelxwb/code-flow",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "license": "UNLICENSED",
   "bin": {
     "code-flow": "src/cli.js"
   },
   "files": [
     "src/cli.js",
+    "src/migrate/**",
     "src/core/**",
-    "src/adapters/**"
+    "src/adapters/**",
+    "docs/migrations/spec-workflow-0.6.0.md"
   ],
   "dependencies": {
     "@ccusage/codex": "^18.0.10"

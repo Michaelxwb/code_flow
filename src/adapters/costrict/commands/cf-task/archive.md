@@ -32,6 +32,13 @@
 
 ### 2. 归档前校验（Verify）
 
+**Spec Context / Code Gate（先于四维校验）**：
+
+- 需求目录必须存在 `spec-context.yml`；执行 `python3 .code-flow/scripts/cf_spec_context.py refresh --task-dir <需求目录> --root "$PWD" --json`
+- 执行 `python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage code --json`；required Rule 的 stale/pending/conflict/unverified 任一存在即 FAIL
+- 若 `.code-flow/.active-task.json` 仍指向本需求，必须先完成对应 TASK 的 Done Gate，并以 `{"gate_passed": true}` 调用 `active complete`；不得通过归档绕过 active 状态
+- Context 与 Evidence 随需求目录一并归档，`_session` 仅是可重建投影，不是事实源
+
 所有子任务 done 后，执行四维校验：
 
 **完整性**：

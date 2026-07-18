@@ -15,23 +15,17 @@
 - Hook 脚本 stdout 输出非 JSON（破坏 Claude Code / Codex 协议）
 - CLI 引入 npm 外部依赖
 
-## Spec Loading
-This project uses the code-flow two-tier spec system.
+<!-- code-flow:spec-loading schema=1 start -->
+## Spec Workflow (schema 1)
 
-**Two-tier architecture**:
-- **Tier 0 `_map.md` (Navigation Map)**: Project structure, key files, data flow. Read manually when you need to understand where code lives.
-- **Tier 1 Constraint Specs**: Coding rules, patterns, anti-patterns. Auto-injected by the UserPromptSubmit Hook based on files referenced in your prompt.
+- If `.code-flow/.active-task.json` exists, validate it and `spec-context.yml`, then use only the active TASK's `Spec-Refs`, Design refs, and Acceptance Contract. Never reselect Specs from Catalog.
+- Without an active TASK, explicit file paths use deterministic `path_mapping` constraints; prompts without paths receive the Spec Catalog for exploration or creation of the next Context.
+- PRD, Design, Plan, Start, Coding, and Done inherit one persisted Context. Required rules must be applied and verified before their stage gate passes.
+- A corrupt marker, Context hash drift, or required scope expansion is `SPEC_WORKFLOW_BLOCKED`; run `cf-spec refresh/doctor` instead of falling back.
+- Tier 0 `_map.md` files are navigation only. Rule constraints live in metadata-bearing Tier 1 Specs.
 
-**Your responsibility**:
-1. Determine domain from the question:
-   - **cli**: mentions CLI, init, upgrade, merge, version, or references `src/cli.js`
-   - **scripts**: mentions hook, inject, config, spec, tag, scan, stats, or references `.py` files
-2. Read `.code-flow/specs/<domain>/_map.md` for navigation context when needed
-3. Constraint specs are auto-injected by Hook when your prompt references relevant files — do NOT manually load them
-4. If question spans multiple domains, read all matching `_map.md` files
-5. If no domain matches, skip spec loading
-
-Do NOT ask the user which specs to load — the system handles constraint injection automatically.
+Do NOT ask the user which Specs to load—the Context-first router is authoritative.
+<!-- code-flow:spec-loading schema=1 end -->
 
 ## Task Documents (cf-task workflow)
 

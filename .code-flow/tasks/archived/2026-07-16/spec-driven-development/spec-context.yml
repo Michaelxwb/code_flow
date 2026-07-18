@@ -1,0 +1,1465 @@
+version: 1
+task: spec-driven-development
+enforcement: required
+updated_at: '2026-07-18T08:36:14.685058+00:00'
+sources:
+- type: migration
+  ref: prepared-plan
+bindings:
+- spec_id: cli-code-standards
+  path: cli/code-standards.md
+  status: active
+  hashes:
+    file_sha256: 0db5ea7d07561cc4295fb336be830e8ef7e997df208bcedbcdfd6360505785de
+    metadata_sha256: cb4cdbaa0fee8d031dbb46a4a41a962456b3bf7c73b9e8133f44bbf6d9c1e2dc
+    rules_sha256: b7532dc34e18aba4616a4161fd77ae7127f1e1b01d4086a4c4e5f6bdd51654d6
+  selected_by: dogfood:migration
+  reason: TASK Spec-Refs
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-cli-dependency-allowlist-001
+    summary: CLI runtime dependencies must stay within the reviewed package allowlist;
+      migration work must not add an undeclared dependency.
+    text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
+    enforcement: required
+    verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
+          executed_at: '2026-07-18T08:24:46.716123+00:00'
+          status: verified
+          rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
+          artifact_sha256: null
+          diff_sha256: 701dd44d0f93f32ad428bd4e2f8e5531ecf19be287ebb5a45d8f3acfd7f2a692
+          result_sha256: c01093d088d6ccd921332263d895ffecdfd56ed4efe7bcae777c908c407dbb12
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cli_spec_workflow.py::test_package_manifest_includes_migrator_without_new_dependency
+            exit_code: 0
+            stdout_sha256: 4bcefcc9f6c645923b9993ccf73ad92e6b400ca25458ea14e095857fc2131342
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
+          executed_at: '2026-07-18T08:25:18.829798+00:00'
+          status: verified
+          rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
+          artifact_sha256: null
+          diff_sha256: 5686392fd45781795222c32e8cc2aa190ebd269d6b1cef2362428485f1d6c160
+          result_sha256: c01093d088d6ccd921332263d895ffecdfd56ed4efe7bcae777c908c407dbb12
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cli_spec_workflow.py::test_package_manifest_includes_migrator_without_new_dependency
+            exit_code: 0
+            stdout_sha256: 4bcefcc9f6c645923b9993ccf73ad92e6b400ca25458ea14e095857fc2131342
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
+          executed_at: '2026-07-18T08:26:33.029405+00:00'
+          status: verified
+          rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
+          artifact_sha256: null
+          diff_sha256: 4f9cd5991d20f6b2ef16c180008c0ef234100545509e145a2937b62049b651a5
+          result_sha256: c01093d088d6ccd921332263d895ffecdfd56ed4efe7bcae777c908c407dbb12
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cli_spec_workflow.py::test_package_manifest_includes_migrator_without_new_dependency
+            exit_code: 0
+            stdout_sha256: 4bcefcc9f6c645923b9993ccf73ad92e6b400ca25458ea14e095857fc2131342
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
+          executed_at: '2026-07-18T08:30:01.472899+00:00'
+          status: verified
+          rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
+          artifact_sha256: null
+          diff_sha256: 640981c40cd9325f27e08ba48e72f74a8c78d63761a3ba789ed26d352ca9f158
+          result_sha256: c01093d088d6ccd921332263d895ffecdfd56ed4efe7bcae777c908c407dbb12
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cli_spec_workflow.py::test_package_manifest_includes_migrator_without_new_dependency
+            exit_code: 0
+            stdout_sha256: 4bcefcc9f6c645923b9993ccf73ad92e6b400ca25458ea14e095857fc2131342
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-cli-user-content-preservation-001
+    summary: Init, merge, and migration helpers must preserve user-owned configuration
+      and content.
+    text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
+    enforcement: required
+    verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
+          executed_at: '2026-07-18T08:24:46.757402+00:00'
+          status: verified
+          rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
+          artifact_sha256: null
+          diff_sha256: 701dd44d0f93f32ad428bd4e2f8e5531ecf19be287ebb5a45d8f3acfd7f2a692
+          result_sha256: 7007cae8d3a4a293e61c1b6d0a62c666e53fda7426b6cfb608dc25a0a51c1ae4
+          error_code: null
+          details:
+            argv:
+            - node
+            - tests/test_cli_merge_helpers.js
+            exit_code: 0
+            stdout_sha256: 9b14e808fa655c4f4ae3336ee9c09fb192ec7a2c7a997d47de9d66da5aff33b3
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
+          executed_at: '2026-07-18T08:25:18.875216+00:00'
+          status: verified
+          rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
+          artifact_sha256: null
+          diff_sha256: 5686392fd45781795222c32e8cc2aa190ebd269d6b1cef2362428485f1d6c160
+          result_sha256: 7007cae8d3a4a293e61c1b6d0a62c666e53fda7426b6cfb608dc25a0a51c1ae4
+          error_code: null
+          details:
+            argv:
+            - node
+            - tests/test_cli_merge_helpers.js
+            exit_code: 0
+            stdout_sha256: 9b14e808fa655c4f4ae3336ee9c09fb192ec7a2c7a997d47de9d66da5aff33b3
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
+          executed_at: '2026-07-18T08:26:33.062843+00:00'
+          status: verified
+          rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
+          artifact_sha256: null
+          diff_sha256: 4f9cd5991d20f6b2ef16c180008c0ef234100545509e145a2937b62049b651a5
+          result_sha256: 7007cae8d3a4a293e61c1b6d0a62c666e53fda7426b6cfb608dc25a0a51c1ae4
+          error_code: null
+          details:
+            argv:
+            - node
+            - tests/test_cli_merge_helpers.js
+            exit_code: 0
+            stdout_sha256: 9b14e808fa655c4f4ae3336ee9c09fb192ec7a2c7a997d47de9d66da5aff33b3
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
+          executed_at: '2026-07-18T08:30:01.517299+00:00'
+          status: verified
+          rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
+          artifact_sha256: null
+          diff_sha256: 640981c40cd9325f27e08ba48e72f74a8c78d63761a3ba789ed26d352ca9f158
+          result_sha256: 7007cae8d3a4a293e61c1b6d0a62c666e53fda7426b6cfb608dc25a0a51c1ae4
+          error_code: null
+          details:
+            argv:
+            - node
+            - tests/test_cli_merge_helpers.js
+            exit_code: 0
+            stdout_sha256: 9b14e808fa655c4f4ae3336ee9c09fb192ec7a2c7a997d47de9d66da5aff33b3
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-cli-platform-parity-001
+    summary: Claude, Codex, Costrict, and OpenCode adapters must retain normalized
+      command content and canonical/deployed parity.
+    text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
+    enforcement: required
+    verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
+          executed_at: '2026-07-18T08:24:46.884167+00:00'
+          status: verified
+          rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
+          artifact_sha256: null
+          diff_sha256: 701dd44d0f93f32ad428bd4e2f8e5531ecf19be287ebb5a45d8f3acfd7f2a692
+          result_sha256: f4bae56d2f4cb5779d7d7942372f0fd6a9cc14fe871929be49ee355e11a7efdb
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_adapter_parity.py
+            exit_code: 0
+            stdout_sha256: d5be81bbe49b412357ba177be7fae47b32ba70b563d2a01ec6ee15df362cc215
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
+          executed_at: '2026-07-18T08:25:18.999361+00:00'
+          status: verified
+          rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
+          artifact_sha256: null
+          diff_sha256: 5686392fd45781795222c32e8cc2aa190ebd269d6b1cef2362428485f1d6c160
+          result_sha256: f4bae56d2f4cb5779d7d7942372f0fd6a9cc14fe871929be49ee355e11a7efdb
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_adapter_parity.py
+            exit_code: 0
+            stdout_sha256: d5be81bbe49b412357ba177be7fae47b32ba70b563d2a01ec6ee15df362cc215
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
+          executed_at: '2026-07-18T08:26:33.165063+00:00'
+          status: verified
+          rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
+          artifact_sha256: null
+          diff_sha256: 4f9cd5991d20f6b2ef16c180008c0ef234100545509e145a2937b62049b651a5
+          result_sha256: 920daf43d6469c33daffd13cc1c2c4b1f9ad2c1cad6558b4bab32e7b713ef2c1
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_adapter_parity.py
+            exit_code: 0
+            stdout_sha256: 3ab69c44c0781c70d7a226d92c2a74efdd9fbb158b6a5cd1669d62cace44568c
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
+          executed_at: '2026-07-18T08:30:01.644424+00:00'
+          status: verified
+          rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
+          artifact_sha256: null
+          diff_sha256: 640981c40cd9325f27e08ba48e72f74a8c78d63761a3ba789ed26d352ca9f158
+          result_sha256: f4bae56d2f4cb5779d7d7942372f0fd6a9cc14fe871929be49ee355e11a7efdb
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_adapter_parity.py
+            exit_code: 0
+            stdout_sha256: d5be81bbe49b412357ba177be7fae47b32ba70b563d2a01ec6ee15df362cc215
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-cli-hook-guard-001
+    summary: Installed hook commands must resolve the project safely and remain no-op
+      outside a code-flow project.
+    text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
+    enforcement: required
+    verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
+          executed_at: '2026-07-18T08:24:47.266776+00:00'
+          status: verified
+          rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
+          artifact_sha256: null
+          diff_sha256: 701dd44d0f93f32ad428bd4e2f8e5531ecf19be287ebb5a45d8f3acfd7f2a692
+          result_sha256: 24d6784b84c281630fa028dee8075995407b1399cb26fcec239a55c5364444ad
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            exit_code: 0
+            stdout_sha256: a86fbc1eaf8fe3346837ab279229e9eb1b6170e862c47dae08b324a37c72100c
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
+          executed_at: '2026-07-18T08:25:19.407739+00:00'
+          status: verified
+          rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
+          artifact_sha256: null
+          diff_sha256: 5686392fd45781795222c32e8cc2aa190ebd269d6b1cef2362428485f1d6c160
+          result_sha256: 54059288f628dc3e09ddc7aaa39f8b3dbb0c31a3c241bef12706d2cfe631e718
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            exit_code: 0
+            stdout_sha256: d750c6b5c659a924d0d725e172c3aa31d18a3378e9696a5ccd110b8e346a1587
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
+          executed_at: '2026-07-18T08:26:33.478964+00:00'
+          status: verified
+          rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
+          artifact_sha256: null
+          diff_sha256: 4f9cd5991d20f6b2ef16c180008c0ef234100545509e145a2937b62049b651a5
+          result_sha256: d48584877ebb15e8ac407a6a8a450f216af51a4cdc089282c136308d2017e4d9
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            exit_code: 0
+            stdout_sha256: 1966890ba6efc09f86dd998039477f6271ab6aa52cc7ff72888f7d6b6a9bc479
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
+          executed_at: '2026-07-18T08:30:02.091063+00:00'
+          status: verified
+          rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
+          artifact_sha256: null
+          diff_sha256: 640981c40cd9325f27e08ba48e72f74a8c78d63761a3ba789ed26d352ca9f158
+          result_sha256: 5a80374fc205e2776bb2b17165f023b6cd64e11c0ff1debdbcb897e187e302c9
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            exit_code: 0
+            stdout_sha256: 9a31bde2c0b10cf89a43c45a74a4f18dab6597730ab65377b6325c2cc7291834
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-cli-migration-transaction-001
+    summary: The breaking migration must provide dry-run, backup, journaled apply,
+      rollback, idempotence, and version-last commit semantics.
+    text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
+    enforcement: required
+    verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
+          executed_at: '2026-07-18T08:24:48.141907+00:00'
+          status: verified
+          rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
+          artifact_sha256: null
+          diff_sha256: 701dd44d0f93f32ad428bd4e2f8e5531ecf19be287ebb5a45d8f3acfd7f2a692
+          result_sha256: c8461d6b97c74bdeaf77033b5689bccace26c8e90ab28e46b72e9a80bdcc6c89
+          error_code: null
+          details:
+            argv:
+            - node
+            - tests/test_spec_workflow_migrate.js
+            exit_code: 0
+            stdout_sha256: 1b8fbab94a85f105f7c503c57a6a4d38c696a627111081528f02395fa0076e69
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
+          executed_at: '2026-07-18T08:25:20.421391+00:00'
+          status: verified
+          rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
+          artifact_sha256: null
+          diff_sha256: 5686392fd45781795222c32e8cc2aa190ebd269d6b1cef2362428485f1d6c160
+          result_sha256: ec843f21a3633d4a70cfeec8499efb7a9e4fa0ad75d4095beebcb1030315a25a
+          error_code: null
+          details:
+            argv:
+            - node
+            - tests/test_spec_workflow_migrate.js
+            exit_code: 0
+            stdout_sha256: 5f24a6f030d743f3c3492b224e3945f21c70638db6cd85a8e1d92c5c63bc7b30
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
+          executed_at: '2026-07-18T08:26:34.346178+00:00'
+          status: verified
+          rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
+          artifact_sha256: null
+          diff_sha256: 4f9cd5991d20f6b2ef16c180008c0ef234100545509e145a2937b62049b651a5
+          result_sha256: f90667fde4fdbd1eb674d4338b6c2b9d3592fe1a59acf76347a3383ce3ea43ae
+          error_code: null
+          details:
+            argv:
+            - node
+            - tests/test_spec_workflow_migrate.js
+            exit_code: 0
+            stdout_sha256: 26a0a2c351c48e8814354d0b806a7188e3a80ae113d9038fceabb2208925c52a
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
+          executed_at: '2026-07-18T08:30:03.130338+00:00'
+          status: verified
+          rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
+          artifact_sha256: null
+          diff_sha256: 640981c40cd9325f27e08ba48e72f74a8c78d63761a3ba789ed26d352ca9f158
+          result_sha256: 92725c38c9124b7739e109df8d2c906eec651b0d375871916fbb841dd4213e99
+          error_code: null
+          details:
+            argv:
+            - node
+            - tests/test_spec_workflow_migrate.js
+            exit_code: 0
+            stdout_sha256: 744b2552b0301d497f885d4173c244551cb74ff5f403a179800a42bbb43db1a0
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-cli-001
+    summary: 新增模板文件：放在 src/core/ 或 src/adapters/ 下，fileCategory() 自动分类
+    text_sha256: b435afeca91e187e9f9b74de3b2d48705ca8d019c929796ba7fc7301c370ad48
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-cli-002
+    summary: 新增平台适配器：在 runInit() 中添加独立的 `if (platform === '...')` 分支，不与其他平台逻辑交叉
+    text_sha256: eef38f8e967d85d1a27bc239820e39a710e40c93aa3bada7f319ee8ad3adecdd
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-cli-003
+    summary: 版本对比使用 compareVersions()，支持语义版本号
+    text_sha256: 21110b77fa87ae77bc31c462ace4dd3e6a851e8ef2b72f614897a32217d0d997
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-cli-004
+    summary: 输出摘要按 Updated/Merged/Created/Skipped/Removed 分组
+    text_sha256: bf64061b8c98ee2e0debc94acaf3e521032913a025260b1a62b1536e6e29fda1
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-cli-005
+    summary: 清理 deprecated 目录时使用独立函数封装删除逻辑，配置 `recursive + force + retry` 以兼容 Windows
+      文件锁场景
+    text_sha256: abae9e2989b2c638b9208d275bb92b290a887b9b585a59cbca35f662686f6919
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-cli-006
+    summary: breaking 变更必须由 `src/migrate/` feature module 持有 backup/staging/journal，`.version`
+      永远最后写；`src/cli.js` 只做参数解析与委托
+    text_sha256: 51a23b91dd51ca62a8649e31ee44d1599857313e6eade9ea2c0f0c381bf242ef
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-cli-standards-001
+    summary: The implementation must satisfy every applicable item in Guidance and
+      avoid every item in Avoid.
+    text_sha256: 05196ce1956d168f15169fc3ddce8185d8c726957db2c9cad0e4b13026caab22
+    enforcement: required
+    verifier_ref: cli-code-standards#RULE-cli-standards-001
+    stage_status:
+      design:
+        status: stale
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: stale
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: not_applicable
+        refs: []
+        decision:
+          kind: not_applicable
+          reason: User approved replacing the catch-all manual rule with five atomic
+            automated CLI rules.
+          confirmed_by: user:jahan
+          confirmed_at: '2026-07-18T16:30:00+08:00'
+          source: codex:conversation:按照你的建议进行优化
+          expires_at: null
+        evidence: []
+      review:
+        status: stale
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: scripts-code-standards
+  path: scripts/code-standards.md
+  status: active
+  hashes:
+    file_sha256: f1b5d62051014e4a19780d67054557a7547665c905d6adf9b0ef6f72fa569b24
+    metadata_sha256: dd324131cd9bde615340b4ab2863c94070585d4b038127e571fcade3e9d4dad2
+    rules_sha256: a78a60d13e2473c23756d62aa501f494500270cd62e66e3c72a334c4c69b634d
+  selected_by: dogfood:migration
+  reason: TASK Spec-Refs
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-scripts-no-print-debug-001
+    summary: Hook modules must not write debug output with print(), preserving the
+      stdout JSON protocol.
+    text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-07-18T08:24:48.144293+00:00'
+          status: unverified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: 701dd44d0f93f32ad428bd4e2f8e5531ecf19be287ebb5a45d8f3acfd7f2a692
+          result_sha256: 24d5db6ef31843d4d6f00d57461ad168d43745a11be5d0ce189ea814d8da38f9
+          error_code: file_read_error
+          details:
+            file: .agents/skills/cf-inject/SKILL.md
+            error: '[Errno 2] No such file or directory: ''.agents/skills/cf-inject/SKILL.md'''
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-07-18T08:25:20.425805+00:00'
+          status: verified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: 5686392fd45781795222c32e8cc2aa190ebd269d6b1cef2362428485f1d6c160
+          result_sha256: cfda529fb85f69f40f8e67b899508e6e093a442fb7837281364178d87b92adaf
+          error_code: null
+          details:
+            checked_files: 10
+            violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-07-18T08:26:34.350144+00:00'
+          status: verified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: 4f9cd5991d20f6b2ef16c180008c0ef234100545509e145a2937b62049b651a5
+          result_sha256: cfda529fb85f69f40f8e67b899508e6e093a442fb7837281364178d87b92adaf
+          error_code: null
+          details:
+            checked_files: 10
+            violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-07-18T08:30:03.135193+00:00'
+          status: verified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: 640981c40cd9325f27e08ba48e72f74a8c78d63761a3ba789ed26d352ca9f158
+          result_sha256: cfda529fb85f69f40f8e67b899508e6e093a442fb7837281364178d87b92adaf
+          error_code: null
+          details:
+            checked_files: 10
+            violations: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-no-bare-except-001
+    summary: Python modules must not use a bare except clause that silently erases
+      failure context.
+    text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-07-18T08:24:48.144312+00:00'
+          status: unverified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: 701dd44d0f93f32ad428bd4e2f8e5531ecf19be287ebb5a45d8f3acfd7f2a692
+          result_sha256: 24d5db6ef31843d4d6f00d57461ad168d43745a11be5d0ce189ea814d8da38f9
+          error_code: file_read_error
+          details:
+            file: .agents/skills/cf-inject/SKILL.md
+            error: '[Errno 2] No such file or directory: ''.agents/skills/cf-inject/SKILL.md'''
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-07-18T08:25:20.433456+00:00'
+          status: verified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: 5686392fd45781795222c32e8cc2aa190ebd269d6b1cef2362428485f1d6c160
+          result_sha256: 9069419371e4a6e359249110012fc8bb5ac16d35f9fe5d8a81a8a9d9caef7d7f
+          error_code: null
+          details:
+            checked_files: 59
+            violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-07-18T08:26:34.357635+00:00'
+          status: verified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: 4f9cd5991d20f6b2ef16c180008c0ef234100545509e145a2937b62049b651a5
+          result_sha256: 9069419371e4a6e359249110012fc8bb5ac16d35f9fe5d8a81a8a9d9caef7d7f
+          error_code: null
+          details:
+            checked_files: 59
+            violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-07-18T08:30:03.144795+00:00'
+          status: verified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: 640981c40cd9325f27e08ba48e72f74a8c78d63761a3ba789ed26d352ca9f158
+          result_sha256: 9069419371e4a6e359249110012fc8bb5ac16d35f9fe5d8a81a8a9d9caef7d7f
+          error_code: null
+          details:
+            checked_files: 59
+            violations: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-hook-protocol-001
+    summary: Installed hooks must keep guarded project resolution, valid JSON output,
+      silent no-op behavior, and explicit stderr diagnostics.
+    text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-07-18T08:24:48.775147+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: 701dd44d0f93f32ad428bd4e2f8e5531ecf19be287ebb5a45d8f3acfd7f2a692
+          result_sha256: af665da60fa1016cc774363fa5a6a3e6794920face86008ee473a948b0773f1e
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            exit_code: 0
+            stdout_sha256: b327f075efdbb6fed4625a31d0794723851a13d0ff55c440c94fe2d97de93c18
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-07-18T08:25:20.855696+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: 5686392fd45781795222c32e8cc2aa190ebd269d6b1cef2362428485f1d6c160
+          result_sha256: 19923fe10ca4abdbc9231e3d6e840580ccf7ce984d905d1ea764ab3b0c6c71a3
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            exit_code: 0
+            stdout_sha256: 408093f06ea4ae7097cc84b8612de462ff0b91c8867a24307c55c4430a4a098f
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-07-18T08:26:34.829575+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: 4f9cd5991d20f6b2ef16c180008c0ef234100545509e145a2937b62049b651a5
+          result_sha256: 4bd4d260fbe7bdd610d78ee592e28320ba67492c54c362e32a4e8f20ca5ec131
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            exit_code: 0
+            stdout_sha256: 558fc69d463ccc3db39c0b59fdc43b63f769fb03855ce338fcf20fcef4a47467
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-07-18T08:30:03.674158+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: 640981c40cd9325f27e08ba48e72f74a8c78d63761a3ba789ed26d352ca9f158
+          result_sha256: 17b324537576c18f23718542f4a79b77f63b8b4c477418dee26a96d896b70b15
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            exit_code: 0
+            stdout_sha256: 83b3a3219722d4f3fbf39e2092647e2613e9992af43a54ad1d1886e003beac44
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-context-gate-001
+    summary: Spec Context refresh, scope expansion, verifier Evidence, and required
+      Stage Gates must remain deterministic and fail-closed.
+    text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-07-18T08:24:49.367247+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: 701dd44d0f93f32ad428bd4e2f8e5531ecf19be287ebb5a45d8f3acfd7f2a692
+          result_sha256: 449d2a0f83f9bb6c063e5297bd5ef7c5134410011c97f33f7a10fd0c2d96a6ea
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            stdout_sha256: d99b420c918c2babec21f6fb8fed5a0f2e519ce3ef8933602755e9bbf7501afa
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-07-18T08:25:21.446528+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: 5686392fd45781795222c32e8cc2aa190ebd269d6b1cef2362428485f1d6c160
+          result_sha256: 449d2a0f83f9bb6c063e5297bd5ef7c5134410011c97f33f7a10fd0c2d96a6ea
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            stdout_sha256: d99b420c918c2babec21f6fb8fed5a0f2e519ce3ef8933602755e9bbf7501afa
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-07-18T08:26:35.471172+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: 4f9cd5991d20f6b2ef16c180008c0ef234100545509e145a2937b62049b651a5
+          result_sha256: d71428dc4af727953d3244b2e7b8690574934d03097b8cb456fb40e93d9dc164
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            stdout_sha256: 1d792962d3905376d2c4a0da1706f50a4df249173b96d0709971875f035e6b9d
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-07-18T08:30:04.407739+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: 640981c40cd9325f27e08ba48e72f74a8c78d63761a3ba789ed26d352ca9f158
+          result_sha256: 2d80f7042fd11448736714c247f649de7e351821835106e1e79d883a893a5fcf
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            stdout_sha256: 3746fa288b1cbe554bdcec6f18b5ee0a3b221b65ece48e46e3f3beb768ae37df
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-canonical-parity-001
+    summary: Canonical Python runtime, live deployment, templates, and platform adapters
+      must remain synchronized without legacy runtime residue.
+    text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-07-18T08:24:49.790710+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: 701dd44d0f93f32ad428bd4e2f8e5531ecf19be287ebb5a45d8f3acfd7f2a692
+          result_sha256: a4e439812de95152c6ebeeab643ff51069b40b394ced9aefc9a5c159c6073288
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            stdout_sha256: 5c6e3ab22fd8f18f42a0b2079e07ce466aca8a9c44f75b8b4ba44ee8be07eaa5
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-07-18T08:25:21.879884+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: 5686392fd45781795222c32e8cc2aa190ebd269d6b1cef2362428485f1d6c160
+          result_sha256: fd667c6eb53472cd44716e00775d2162d7c2e941826f140e0bf3b725bdeae1d0
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            stdout_sha256: c98c6aa926cffcd9b85d2e9ece50ab0f8a5d7eadb1f160aa451da8f9207b51a0
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-07-18T08:26:36.057801+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: 4f9cd5991d20f6b2ef16c180008c0ef234100545509e145a2937b62049b651a5
+          result_sha256: 2fadce95602f653060b00133cee32756a635915369d5360718516b959bccea77
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            stdout_sha256: 74d422abff089f247c3b6c332325df27ca6c964db6f58fb8835b8d90c6f6693f
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-07-18T08:30:05.167362+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: 640981c40cd9325f27e08ba48e72f74a8c78d63761a3ba789ed26d352ca9f158
+          result_sha256: 05b79488cf2f675b33d39018177cae15193fdf0efbc6ebec0ee9285615b5d930
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            stdout_sha256: 83822c73fd9e7ba0671d9a66c24db635b4bda28a733fa419c5017cb7c4676bb3
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-001
+    summary: 单一功能的 schema、resolver、gate、migration 可放在 `cf_<feature>.py` **feature-scoped
+      core module**；跨功能稳定原语才进入 `cf_core.py`
+    text_sha256: e0ed9e9790ba0be96dbccbec1e293b5c10e89f622cc2ed557cbfd6b8bd657805
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-002
+    summary: 新增 Context/router 能力 → 保持 feature module 单一职责，公开数据结构完整 type hints，函数
+      ≤50 行
+    text_sha256: 0a0bdac02a0cdd3a5765702728a4cfd133f928bc04b21254b22535aff5baf883
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-003
+    summary: 新增 Claude Hook → 在 settings.local.json 模板中注册，脚本放在 scripts/ 目录
+    text_sha256: f71099b4a11c6810461d2523898e31689c202c857189d28a430ac0a9db0d6347
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-004
+    summary: 新增 Codex Hook → 在 hooks.json 模板中注册（3 层结构：event → [{hooks:[{type,command}]}]），脚本放在
+      scripts/ 目录
+    text_sha256: 6e5cc1e4c754904e5e4d3a5deb70a3bc2b1f0ac660464bb33b9b4a8df7a41373
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-005
+    summary: Codex prompt 路径提取同时支持裸路径、`@path`、反引号路径，并在注入前做去重与噪音过滤（需至少一个斜杠或有效代码扩展名）
+    text_sha256: 448907a472ddb048d8542219617f22f70a91099bfc0e9cf21597edb2ac22ea15
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-006
+    summary: 测试 → tests/ 目录，使用 pytest，覆盖 happy path / fail-closed / 空输入
+    text_sha256: 6a16a49993f19e203b0565d1859ee5d21d83c3e40604743429b8e448a4839594
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-007
+    summary: PreToolUse Hook 仅 `Edit/Write/MultiEdit` 工具触发 Context/scope 检查，`Read/Bash`
+      等不触发（`cf_pre_tool_hook.py`）
+    text_sha256: c6cc98ec99f162c4dc00cb3f651149e49d6d64c119612e77c128b6c56c4abce1
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-008
+    summary: 路径提取正则 `_PATH_RE` 支持裸路径/`@path`/反引号路径，需至少一个斜杠或代码扩展名（`cf_user_prompt_hook.py`）
+    text_sha256: 84810934be480fce3f7a9758618ca2d5e3448b51349513d9798e448d6e4915a3
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-009
+    summary: 测试 fixture 模式：`_make_project() + tempfile.TemporaryDirectory() + mock
+      stdin/stdout`（tests/test_cf_*.py）
+    text_sha256: 6edab46112eb211ee3ca46805091abff5f0c46a3b5eaca2b77fc4ab5538cf472
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-010
+    summary: 测试取 fixture 数据按名称选择而非列表索引，结构扩展不连带断（test_hook_command_robustness::_command_for）
+    text_sha256: 6db937b1e84c2278c3dc3d9feef51c5644f4af6c315eeeb0c6c4cfbdc734400a
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-standards-001
+    summary: The implementation must satisfy every applicable item in Guidance and
+      avoid every item in Avoid.
+    text_sha256: 05196ce1956d168f15169fc3ddce8185d8c726957db2c9cad0e4b13026caab22
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-standards-001
+    stage_status:
+      design:
+        status: stale
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: stale
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: not_applicable
+        refs: []
+        decision:
+          kind: not_applicable
+          reason: User approved replacing the catch-all manual rule with five atomic
+            automated Python rules.
+          confirmed_by: user:jahan
+          confirmed_at: '2026-07-18T16:30:00+08:00'
+          source: codex:conversation:按照你的建议进行优化
+          expires_at: null
+        evidence: []
+      review:
+        status: stale
+        refs: []
+        decision: null
+        evidence: []

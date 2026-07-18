@@ -26,8 +26,9 @@ def test_cf_init_docs_share_core_initialization_quality_rules() -> None:
     required = [
         "不要只因为 `package.json` 存在就判定为前端",
         "不要复制或手写旧版 YAML",
-        "`inject.compress: true`",
-        "`inject.dedup_window: 5`",
+        "`spec_workflow.schema_version: 1`",
+        "`spec_workflow.catalog.dedup_window: 5`",
+        "`quality_loop.compress: true`",
         "`path_mapping.shared`",
         "shared/design/design-lite.md",
         "shared/design/design-frontend.md",
@@ -51,6 +52,9 @@ def test_cf_init_docs_do_not_contain_old_or_inconsistent_guidance() -> None:
         "只因为 `package.json` 存在 → 前端",
         "python3 -m pip install pyyaml\n```\n\n成功 → 继续",
         "|| stack",
+        "`inject.compress: true`",
+        "`inject.dedup_window: 5`",
+        "SessionStart",
     ]
 
     for platform in CF_INIT_DOCS:
@@ -62,10 +66,16 @@ def test_cf_init_docs_do_not_contain_old_or_inconsistent_guidance() -> None:
 def test_platform_specific_cf_init_sections_match_adapter_contracts() -> None:
     assert ".claude/settings.local.json" in _read("claude")
     assert "UserPromptSubmit" in _read("claude")
+    assert "PreToolUse" in _read("claude")
+    assert "PostToolUse" in _read("claude")
+    assert "Stop" in _read("claude")
     assert "不得整文件覆盖" in _read("claude")
 
     assert ".costrict/settings.local.json" in _read("costrict")
     assert "UserPromptSubmit" in _read("costrict")
+    assert "PreToolUse" in _read("costrict")
+    assert "PostToolUse" in _read("costrict")
+    assert "Stop" in _read("costrict")
     assert "不得整文件覆盖" in _read("costrict")
 
     codex = _read("codex")
@@ -74,6 +84,10 @@ def test_platform_specific_cf_init_sections_match_adapter_contracts() -> None:
     assert "hooks = true" in codex
     assert "codex_hooks = true" in codex
     assert "/hooks" in codex
+    assert "PreToolUse" in codex
+    assert "PostToolUse" in codex
+    assert "UserPromptSubmit" in codex
+    assert "Stop" in codex
     assert "不得整文件覆盖" in codex
 
     opencode = _read("opencode")

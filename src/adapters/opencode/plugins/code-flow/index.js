@@ -60,7 +60,6 @@ export const CodeFlow = async (ctx) => {
         const sid = input.event?.properties?.info?.id || "";
         debugLog(projectRoot, `session.created sid=${sid}`);
         if (sid) sessionContext.delete(sid);
-        callHook(projectRoot, "cf_session_hook.py", { session_id: sid });
       }
       if (input.event?.type === "session.idle") {
         const sid =

@@ -54,7 +54,7 @@ def _make_project(root: Path) -> Path:
     scripts = root / ".code-flow" / "scripts"
     scripts.mkdir(parents=True)
     for name in (
-        "cf_inject_hook.py", "cf_session_hook.py", "cf_user_prompt_hook.py",
+        "cf_pre_tool_hook.py", "cf_user_prompt_hook.py",
         "cf_post_hook.py", "cf_stop_hook.py",
     ):
         (scripts / name).write_text(STUB, encoding="utf-8")
@@ -104,7 +104,7 @@ def test_resolves_via_claude_project_dir_from_foreign_cwd() -> None:
     with tempfile.TemporaryDirectory() as proj, tempfile.TemporaryDirectory() as elsewhere:
         project = _make_project(Path(proj))
         env["CLAUDE_PROJECT_DIR"] = str(project)
-        cmd = _command_for(TEMPLATES["claude"], "cf_inject_hook.py")
+        cmd = _command_for(TEMPLATES["claude"], "cf_pre_tool_hook.py")
         result = _run(cmd, elsewhere, env)
         assert result.returncode == 0, result.stderr
         payload = json.loads(result.stdout)
@@ -121,7 +121,7 @@ def test_resolves_via_git_toplevel_without_env() -> None:
         )
         subdir = project / "src" / "deep"
         subdir.mkdir(parents=True)
-        cmd = _command_for(TEMPLATES["codex"], "cf_session_hook.py")
+        cmd = _command_for(TEMPLATES["codex"], "cf_user_prompt_hook.py")
         result = _run(cmd, str(subdir), env)
         assert result.returncode == 0, result.stderr
         payload = json.loads(result.stdout)

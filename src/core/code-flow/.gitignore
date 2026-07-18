@@ -1,7 +1,11 @@
-# code-flow 运行时数据（仅本地，不入库）
-.inject-state
+# >>> code-flow:runtime schema=1
+.active-task.json
+.active-task.lock
+.catalog-state.json
+migrations/
 .debug.log
 .session-log.jsonl
 .check-state.json
 sessions/
 specs/_session/
+# <<< code-flow:runtime schema=1

@@ -111,9 +111,9 @@ def test_costrict_settings_has_hooks(tmp_path: Path) -> None:
     settings = tmp_path / ".costrict" / "settings.local.json"
     content = settings.read_text(encoding="utf-8")
     assert "PreToolUse" in content
-    assert "SessionStart" in content
-    assert "cf_inject_hook.py" in content
-    assert "cf_session_hook.py" in content
+    assert "SessionStart" not in content
+    assert "cf_pre_tool_hook.py" in content
+    assert "cf_session_hook.py" not in content
 
 
 def test_costrict_invalid_platform_fails(tmp_path: Path) -> None:

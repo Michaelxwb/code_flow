@@ -16,6 +16,7 @@ import fnmatch
 import os
 import re
 import sys
+from typing import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 
@@ -303,4 +304,33 @@ def run_checks(
                     "message": check["message"],
                     "severity": check["severity"],
                 })
+    return violations, skipped
+
+
+def run_regex_verifier(
+    pattern: str,
+    files: str,
+    contents: Mapping[str, str],
+    timeout: float = CHECK_TIMEOUT_SECONDS,
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    """Execute one verifier regex over explicit file contents."""
+    try:
+        compiled = re.compile(pattern)
+    except re.error as exc:
+        return [], [{"check_id": "verifier", "reason": f"invalid_regex:{exc}"}]
+    check = {
+        "id": "verifier",
+        "type": "regex",
+        "pattern": pattern,
+        "regex": compiled,
+        "files": files,
+        "message": "Rule verifier matched forbidden content",
+        "severity": "warn",
+    }
+    violations: list[dict[str, object]] = []
+    skipped: list[dict[str, object]] = []
+    for relative, content in contents.items():
+        file_violations, file_skipped = run_checks([check], relative, content, timeout=timeout)
+        violations.extend(file_violations)
+        skipped.extend(file_skipped)
     return violations, skipped

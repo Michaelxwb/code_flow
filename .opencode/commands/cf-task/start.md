@@ -2,6 +2,7 @@
 description: 激活子任务并开始编码
 ---
 
+
 # cf-task:start
 
 激活子任务并开始编码。支持单任务模式和整文件模式。
@@ -62,12 +63,15 @@ description: 激活子任务并开始编码
 
 ### 3. 激活并准备验收测试
 
-1. 用 Edit 更新子任务 Status 为 `in-progress`
-2. 在 `### Log` 追加：`- [<当前日期>] started (in-progress)`
-3. 更新文件头 `Updated` 日期
-4. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令
-5. 先编写验收测试。E2E 测试必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
-6. 新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因。纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败
+在改状态或生产代码前，顺序固定且不得跳步：
+
+1. 调用 `cf_spec_context.py refresh --task-dir ...`，执行 Start Gate；stale/pending/conflict 或依赖未闭合均不得继续。
+2. 重新读取 refresh 后的 Context hash，再调用 `cf_spec_context.py active start`，传 task/context hash 和逐路径确认的 pre-existing ownership；已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。
+3. 调用 `cf_spec_session.py`，只根据当前 TASK 的 `Spec-Refs`、Source 与 Acceptance Contract 覆盖写入 `_session/task-<name>.md`。禁止重新 catalog 或猜测规则。
+4. 只有前三步全部成功，才用 Edit 更新子任务 Status 为 `in-progress`、追加 started log 并更新文件头日期。
+5. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令
+6. 先编写验收测试。E2E 测试必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
+7. 新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因。纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败
 
 RED 证据写入 `Acceptance Evidence`：
 
@@ -91,15 +95,15 @@ RED 证据写入 `Acceptance Evidence`：
 4. 负责该场景的任务验证完成后，将全局 `Acceptance Coverage` 对应行改为 `verified`
 5. 测试文件存在但未被测试框架收集、命令未实际执行、只有场景 ID 没有关键断言，都视为未验证
 
-### 3.5 会话级临时约束（FEAT-08）
+### 3.5 TASK-bound Spec Session
 
 激活后，若任务文件头 Source 指向的 design 文档含验收条件章节（如 §2.5 验收条件 / 验收标准）：
 
-1. 只提取当前任务 `Acceptance-Refs` 对应的场景、测试层级、关键真实边界与 RULE/RISK，生成 `.code-flow/specs/_session/task-<name>.md`：
+1. 只提取当前任务 `Spec-Refs` 与 `Acceptance-Refs` 对应的 Rule hash、verifier、artifact refs、场景、测试层级和真实边界，生成 `.code-flow/specs/_session/task-<name>.md`：
    - frontmatter：`description: 当前任务 <name> 的验收约束（cf-task:start 生成，archive 清理）`
    - 正文：验收场景与约束的精简列表（≤300 token）；必须保留全部引用 ID、层级、边界和预期结果，不能为压缩而删除场景
-2. Spec Catalog 目录扫描自动纳入该文件，无需配置；编辑代码时的自动注入同样生效
-3. design 无验收章节时静默跳过；同名文件已存在则覆盖（同任务重复 start）
+2. 任务模式直接读取这个投影，禁止经 Spec Catalog 二次选择；同名文件已存在则原子覆盖。
+3. 50 Rule 等超预算任务按 required/当前阶段优先输出受控摘要，完整 Context 保留不丢失，并明确提示拆 TASK；不得用截断隐藏 required 缺口。
 
 > `_session/` 不入库（.gitignore 模板已覆盖）、不参与规范审计与预算。
 

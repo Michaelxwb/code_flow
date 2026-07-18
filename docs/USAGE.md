@@ -71,11 +71,15 @@ your-project/
 │   ├── validation.yml          # 验证规则（lint、type check、test）
 │   ├── scripts/                # Python 运行时脚本
 │   │   ├── cf_core.py                    # 核心工具库
-│   │   ├── cf_inject_hook.py             # PreToolUse Hook（Claude/Costrict）
+│   │   ├── cf_pre_tool_hook.py           # PreToolUse Hook：Context/scope 检查（替代旧 cf_inject_hook）
 │   │   ├── cf_user_prompt_hook.py        # UserPromptSubmit Hook（Claude/Codex/Costrict/OpenCode 四端通用）
-│   │   ├── cf_session_hook.py            # SessionStart Hook：重置会话状态
+│   │   ├── cf_spec_session.py            # 会话状态管理（替代旧 cf_session_hook）
 │   │   ├── cf_post_hook.py               # PostToolUse Hook：合规反馈（v0.5）
 │   │   ├── cf_stop_hook.py               # Stop Hook：收尾守门（v0.5）
+	│   │   ├── cf_spec_context.py            # Spec Context 刷新/校验
+	│   │   ├── cf_spec_gate.py               # Stage Gate 判定
+	│   │   ├── cf_spec_router.py             # Context-first 路由
+	│   │   ├── cf_task_runtime.py            # active-task 运行时
 │   │   ├── cf_log.py / cf_checks.py      # 会话日志 / checks 引擎（v0.5）
 │   │   ├── cf_feedback.py                # 误报标记 CLI（v0.5）
 │   │   ├── cf_scan.py                    # Token 审计脚本
@@ -458,20 +462,27 @@ JSON 输出（默认模式）会包含 `missing_specs` 字段，可用于自动�
 
 并附 `REVIEW (待复审)` 清单——长期未命中注入、已自动停用、反复误报的规范条目（处置后加入 `.check-state.json` 的 `_review_exempt` 不再提示）。
 
-### `/cf-inject` — 手动注入规范
+### `/cf-spec` — Spec Context 管理与迁移
 
-正常情况下规范注入是全自动的，无需手动调用。以下场景可能需要：
+管理 schema v1 Spec Context（绑定、Rule 阶段状态、漂移检测）与一次性迁移计划确认。替代旧版 `/cf-inject`。
 
-- spec 文件刚修改，需要强制刷新
-- 预览某个域的完整规范内容
-- 自动注入未生效时的排查手段
+**子命令**：
+
+| 子命令 | 用途 |
+|--------|------|
+| `context [需求目录]` | 展示 `spec-context.yml` 的 bindings、Rule 状态、Evidence 与 drift |
+| `refresh [需求目录]` | 刷新 Context：changed Rule 标 stale，missing/conflict 不自动降级 |
+| `doctor [需求目录]` | 全量诊断：config schema、active marker、lock、hash、journal、legacy residue |
+| `migrate --plan <plan>` | 确认 prepared migration plan 中的 unresolved 项（需用户逐项选择） |
 
 ```
-/cf-inject frontend    # 强制加载前端全部 specs
-/cf-inject backend     # 强制加载后端全部 specs
+/cf-spec context                      # 从 active-task 定位，展示当前 Context
+/cf-spec refresh .code-flow/tasks/2026-04-21/specs-proactive  # 刷新指定需求 Context
+/cf-spec doctor                       # 全量诊断当前 Spec Workflow 状态
+/cf-spec migrate --plan .code-flow/migrations/v0.6.0/plan.yml # 确认迁移计划
 ```
 
-> 手动 inject 会加载该域的**全部** spec，不做标签过滤。这是与 Hook 自动注入的区别。
+> **硬门禁**：`spec_workflow.schema_version` 非 `1` 时只有 `migrate --plan` 可用；Context 缺失/损坏时 fail-closed，不回退 Catalog。
 
 ### `/cf-validate` — 验证变更
 
@@ -593,7 +604,7 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 ```
 /cf-task:prd "给项目加上用户认证"                              # 从需求描述新建
 /cf-task:prd                                                   # 交互式
-/cf-task:prd .code-flow/tasks/2026-04-06/user-auth.prd.md      # 恢复草稿继续讨论
+/cf-task:prd .code-flow/tasks/2026-04-06/user-auth/user-auth.prd.md      # 恢复草稿继续讨论
 ```
 
 **执行流程**：
@@ -610,8 +621,8 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 
 ```
 /cf-task:align "给项目加上用户认证"                              # 纯文本需求，新建
-/cf-task:align .code-flow/tasks/2026-04-06/user-auth.prd.md    # 从 PRD 派生（推荐路径）
-/cf-task:align .code-flow/tasks/2026-04-06/user-auth.design.md # 恢复草稿继续讨论
+/cf-task:align .code-flow/tasks/2026-04-06/user-auth/user-auth.prd.md    # 从 PRD 派生（推荐路径）
+/cf-task:align .code-flow/tasks/2026-04-06/user-auth/user-auth.design.md # 恢复草稿继续讨论
 /cf-task:align                                                 # 交互式
 ```
 
@@ -642,7 +653,7 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 /cf-task:plan docs/auth-design.md                                    # 设计文档（含缺口分析）
 /cf-task:plan docs/auth-design.md --quick                             # 跳过缺口分析
 /cf-task:plan docs/auth-design.md --explore                           # 仅输出分析报告
-/cf-task:plan .code-flow/tasks/2026-04-06/user-auth.design.md         # 从 align 产出的设计简报拆解
+/cf-task:plan .code-flow/tasks/2026-04-06/user-auth                    # 从 align 产出的设计简报拆解（传目录，自动发现 *.design.md）
 ```
 
 **执行流程**：

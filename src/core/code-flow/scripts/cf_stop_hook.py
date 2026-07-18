@@ -18,6 +18,8 @@ import subprocess
 import sys
 
 import cf_log
+from cf_spec_context import load_active_task
+from cf_task_runtime import run_done_gate
 from cf_core import (
     _log,
     ensure_utf8_io,
@@ -243,13 +245,31 @@ def main() -> None:
         if data.get("stop_hook_active"):
             return  # 已因本 hook 续跑过一轮，避免循环
         project_root = os.getcwd()
+        sid = resolve_session_id(data)
+        marker = os.path.join(project_root, ".code-flow", ".active-task.json")
+        has_active = os.path.exists(marker)
+        files = []
+        if has_active:
+            try:
+                active = load_active_task(project_root)
+                task_dir = os.path.join(project_root, active.task_dir)
+                done = run_done_gate(project_root, task_dir)
+            except (OSError, ValueError) as exc:
+                payload = {"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: active task is invalid: {exc}"}
+                sys.stdout.write(json.dumps(payload, ensure_ascii=False))
+                return
+            if done.decision != "pass":
+                payload = {"decision": "block", "reason": "当前 TASK required Spec verifier/Evidence 未通过；修复或重新对齐后再 Done。"}
+                sys.stdout.write(json.dumps(payload, ensure_ascii=False))
+                return
+            files = list(done.files)
         config = load_config(project_root)
         if not config:
             return
         if not resolve_quality_loop(config)["stop_check"]:
             return
-        sid = resolve_session_id(data)
-        files = session_edited_files(project_root, sid)
+        if not has_active:
+            files = session_edited_files(project_root, sid)
         if not files:
             return
         acceptance_failures = task_acceptance_failures(project_root, files)
