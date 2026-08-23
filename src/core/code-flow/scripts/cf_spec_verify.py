@@ -11,6 +11,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import time
 from typing import Mapping, Optional, Sequence
 
 from cf_checks import run_regex_verifier
@@ -160,13 +161,15 @@ def _argv(config: Mapping[str, object]) -> Optional[list[str]]:
     return list(value)
 
 
-def _command(config: Mapping[str, object], scope: VerificationScope) -> _Outcome:
+def _command(config: Mapping[str, object], scope: VerificationScope, timeout_cap: Optional[float] = None) -> _Outcome:
     argv = _argv(config)
     if argv is None:
         return _Outcome(False, "invalid_verifier_config", None, {"required": ["argv"]})
     cwd = _config_string(config, "cwd") or "."
     timeout_value = config.get("timeout", 30)
     timeout = float(timeout_value) if isinstance(timeout_value, (int, float)) else 30.0
+    if timeout_cap is not None:
+        timeout = min(timeout, timeout_cap)
     allowed_value = config.get("allowed_exit_codes", [0])
     allowed = tuple(item for item in allowed_value if isinstance(item, int)) if isinstance(allowed_value, list) else (0,)
     try:
@@ -209,6 +212,7 @@ def _run(
     metadata: SpecMetadata,
     scope: VerificationScope,
     confirmation: Optional[Mapping[str, object]],
+    timeout_cap: Optional[float] = None,
 ) -> _Outcome:
     if verifier.type == "document":
         return _document(verifier.config, scope)
@@ -217,7 +221,7 @@ def _run(
     if verifier.type == "ast":
         return _ast(verifier.config, scope)
     if verifier.type in ("command", "test"):
-        return _command(verifier.config, scope)
+        return _command(verifier.config, scope, timeout_cap)
     if verifier.type == "manual":
         return _manual(verifier.config, confirmation)
     return _Outcome(False, "verifier_type_unimplemented", None, {"type": verifier.type})
@@ -229,8 +233,9 @@ def _evidence(
     verifier: SpecVerifier,
     scope: VerificationScope,
     confirmation: Optional[Mapping[str, object]],
+    timeout_cap: Optional[float] = None,
 ) -> VerificationEvidence:
-    outcome = _run(verifier, metadata, scope, confirmation)
+    outcome = _run(verifier, metadata, scope, confirmation, timeout_cap)
     status = "verified" if outcome.passed else "unverified"
     diff_hash = None if verifier.type == "document" else scope.diff_sha256
     return VerificationEvidence(
@@ -246,17 +251,55 @@ def _evidence(
     )
 
 
+def _skipped_evidence(metadata: SpecMetadata, rule: SpecRule, scope: VerificationScope) -> VerificationEvidence:
+    details = {"skipped": True}
+    return VerificationEvidence(
+        f"{metadata.id}#{rule.ref}",
+        datetime.now(timezone.utc).isoformat(),
+        "unverified",
+        rule.text_sha256,
+        None,
+        scope.diff_sha256,
+        _result_hash("unverified", "skipped_in_cheap_gate", details),
+        "skipped_in_cheap_gate",
+        details,
+    )
+
+
+def _budget_evidence(metadata: SpecMetadata, rule: SpecRule, scope: VerificationScope, budget: float) -> VerificationEvidence:
+    details = {"budget": budget}
+    return VerificationEvidence(
+        f"{metadata.id}#{rule.ref}",
+        datetime.now(timezone.utc).isoformat(),
+        "unverified",
+        rule.text_sha256,
+        None,
+        scope.diff_sha256,
+        _result_hash("unverified", "verifier_budget_exhausted", details),
+        "verifier_budget_exhausted",
+        details,
+    )
+
+
 def run_all_verifiers(
     metadata: SpecMetadata,
     scope: VerificationScope,
     confirmations: Optional[Mapping[str, Mapping[str, object]]] = None,
+    skip_command: bool = False,
+    timeout_budget: Optional[float] = None,
 ) -> VerificationResult:
     verifier_by_rule = {item.rule: item for item in metadata.verifiers}
     confirmation_by_rule = confirmations or {}
     evidence: list[VerificationEvidence] = []
+    started = time.monotonic()
     for rule in metadata.rules:
         if rule.enforcement != "required":
             continue
+        if timeout_budget is not None:
+            remaining = timeout_budget - (time.monotonic() - started)
+            if remaining <= 0:
+                evidence.append(_budget_evidence(metadata, rule, scope, timeout_budget))
+                continue
         verifier = verifier_by_rule.get(rule.ref)
         if verifier is None:
             details = {"rule": rule.ref}
@@ -274,7 +317,11 @@ def run_all_verifiers(
                 )
             )
             continue
-        evidence.append(_evidence(metadata, rule, verifier, scope, confirmation_by_rule.get(rule.ref)))
+        if skip_command and verifier.type in ("command", "test"):
+            evidence.append(_skipped_evidence(metadata, rule, scope))
+            continue
+        cap = None if timeout_budget is None else max(0.1, timeout_budget - (time.monotonic() - started))
+        evidence.append(_evidence(metadata, rule, verifier, scope, confirmation_by_rule.get(rule.ref), cap))
     result = tuple(evidence)
     return VerificationResult(result, bool(result) and all(item.status == "verified" for item in result))
 

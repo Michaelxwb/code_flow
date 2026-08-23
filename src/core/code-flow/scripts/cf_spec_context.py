@@ -249,10 +249,17 @@ def _git_changes(root: str) -> Mapping[str, str]:
         if len(record) < 4:
             raise ContextError("invalid_git_status", "git.status", record, root)
         code, path = record[:2], record[3:]
-        if "R" in code or "C" in code:
-            raise ContextError("unsupported_git_status", "git.status", code, path)
-        changes[path] = _status_name(code)
         index += 1
+        if "R" in code or "C" in code:
+            # porcelain -z rename/copy emits two records: "XY <new>" then "<old>"
+            if index >= len(records) or not records[index]:
+                raise ContextError("invalid_git_status", "git.status", f"{code} {path}", root)
+            old_path = records[index]
+            index += 1
+            changes[path] = _status_name(code)
+            changes[old_path] = "deleted"
+            continue
+        changes[path] = _status_name(code)
     return changes
 
 
@@ -348,13 +355,76 @@ def load_active_task(root: str) -> ActiveTask:
         raise ContextError("invalid_active_marker", "active", str(exc), str(marker)) from exc
 
 
+def resync_active_hash(root: str, task_dir: str, current_sha256: str) -> bool:
+    """Re-sync the active marker's context hash after toolchain-initiated
+    context edits (bind/decision/refresh) so they never surface as
+    unrecoverable active_context_drift. No-op without an active marker or when
+    the hash already matches; never raises on a missing marker."""
+    marker = Path(root) / ".code-flow" / ".active-task.json"
+    if not marker.exists():
+        return False
+    active = load_active_task(root)
+    if active.context_sha256 == current_sha256:
+        return False
+    save_active_task(root, replace(active, context_sha256=current_sha256))
+    return True
+
+
+def _find_root(task_dir: str) -> Optional[str]:
+    """Walk up from a task dir to the project root that owns its marker."""
+    current = Path(task_dir).resolve()
+    for candidate in (current, *current.parents):
+        if (candidate / ".code-flow" / ".active-task.json").exists():
+            return str(candidate)
+    return None
+
+
+def _resync_after_save(args: argparse.Namespace, context_path: Path) -> bool:
+    """Post-save marker re-sync used by CLI commands that persist the context."""
+    root = getattr(args, "root", "") or _find_root(str(context_path.parent)) or ""
+    if not root:
+        return False
+    current = context_sha256(load_context(str(context_path)))
+    return resync_active_hash(root, str(context_path.parent), current)
+
+
+def _lock_stale(lock: Path) -> bool:
+    """A lock is stale when its file is unreadable, carries no valid PID, or the
+    owning process is gone. A lock we cannot prove dead is never deleted (PID
+    reuse is accepted as a rare race)."""
+    try:
+        data = json.loads(lock.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return True
+    pid = data.get("pid")
+    if not isinstance(pid, int) or pid <= 0:
+        return True
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    except (PermissionError, OSError):
+        return False
+    return False
+
+
 def _acquire_active_lock(root: str) -> Path:
     marker, lock = _active_paths(root)
     lock.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        descriptor = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-    except FileExistsError as exc:
-        raise ContextError("active_lock_exists", "active.lock", "运行 doctor 检查残留 lock", str(lock)) from exc
+    descriptor = -1
+    for _attempt in range(2):
+        try:
+            descriptor = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            break
+        except FileExistsError:
+            if not _lock_stale(lock):
+                raise ContextError("active_lock_exists", "active.lock", "运行 doctor 检查残留 lock", str(lock)) from None
+            try:
+                lock.unlink()
+            except OSError as exc:
+                raise ContextError("active_lock_exists", "active.lock", f"残留 lock 清理失败: {exc}", str(lock)) from exc
+    else:
+        raise ContextError("active_lock_exists", "active.lock", "残留 lock 无法清理", str(lock))
     with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
         handle.write(json.dumps({"pid": os.getpid(), "marker": str(marker)}))
     return lock
@@ -427,8 +497,11 @@ def _transition_active(root: str, expected: Sequence[str], target: str) -> Activ
         active = load_active_task(root)
         if active.status not in expected:
             raise ContextError("invalid_active_transition", "status", f"{active.status} -> {target}", root)
-        if active.baseline.head != _git_head(root):
-            raise ContextError("baseline_head_changed", "baseline.head", "Git HEAD 已变化，请运行 doctor", root)
+        current_head = _git_head(root)
+        if active.baseline.head != current_head:
+            # Mid-task commits are a normal workflow; re-baseline instead of
+            # bricking pause/resume/complete on any unrelated commit.
+            active = replace(active, baseline=replace(active.baseline, head=current_head))
         updated = replace(active, status=target)
         save_active_task(root, updated)
         return updated
@@ -466,7 +539,9 @@ def complete_active_task(root: str, gate_passed: bool) -> ActiveTask:
     return completed
 
 
-def doctor_active_task(root: str, expected_context_sha256: str, abandon: bool = False) -> DoctorResult:
+def doctor_active_task(
+    root: str, expected_context_sha256: str, abandon: bool = False, resync: bool = False
+) -> DoctorResult:
     marker, lock = _active_paths(root)
     try:
         active = load_active_task(root)
@@ -476,6 +551,15 @@ def doctor_active_task(root: str, expected_context_sha256: str, abandon: bool = 
         marker.unlink()
         _release_active_lock(lock)
         return DoctorResult("abandoned", replace(active, status="completed"))
+    if resync:
+        # Self-heal: the context file is authoritative and the marker hash is a
+        # cache. Accept the current context when the marker is the only
+        # inconsistency; bind/decision/refresh already re-sync automatically,
+        # so this covers legacy markers and manual context edits.
+        repaired = replace(active, status="active", context_sha256=expected_context_sha256)
+        save_active_task(root, repaired)
+        _release_active_lock(lock)
+        return DoctorResult("resynced", repaired)
     proven = active.context_sha256 == expected_context_sha256
     proven = proven and active.baseline.head == _git_head(root)
     if active.status != "activating" or not proven:
@@ -690,6 +774,58 @@ def context_to_data(context: SpecContext) -> dict[str, object]:
     }
 
 
+def context_to_identity(context: SpecContext) -> dict[str, object]:
+    """Stable identity projection for marker drift detection.
+
+    Excludes volatile runtime state (`updated_at`, `stage_status` including
+    evidence timestamps) so the active marker only invalidates when the bound
+    rules themselves change (rule/spec text, bindings, sources).
+    """
+    return {
+        "version": context.version,
+        "task": context.task,
+        "enforcement": context.enforcement,
+        "sources": [{"type": item.type, "ref": item.ref} for item in context.sources],
+        "bindings": [
+            {
+                "spec_id": binding.spec_id,
+                "path": binding.path,
+                "status": binding.status,
+                "hashes": {
+                    "file_sha256": binding.hashes.file_sha256,
+                    "metadata_sha256": binding.hashes.metadata_sha256,
+                    "rules_sha256": binding.hashes.rules_sha256,
+                },
+                "selected_by": binding.selected_by,
+                "reason": binding.reason,
+                "enforcement": binding.enforcement,
+                "stages": list(binding.stages),
+                "rules": [
+                    {
+                        "ref": rule.ref,
+                        "summary": rule.summary,
+                        "text_sha256": rule.text_sha256,
+                        "enforcement": rule.enforcement,
+                        "verifier_ref": rule.verifier_ref,
+                    }
+                    for rule in binding.rules
+                ],
+            }
+            for binding in context.bindings
+        ],
+    }
+
+
+def context_sha256(context: SpecContext) -> str:
+    """Deterministic identity hash binding the active marker to the bound rules.
+
+    Computed from the stable identity projection (never volatile runtime state),
+    so evidence timestamps and stage statuses cannot drift the marker.
+    """
+    data = yaml.safe_dump(context_to_identity(context), sort_keys=True, allow_unicode=True).encode()
+    return hashlib.sha256(data).hexdigest()
+
+
 def new_context(task: str, sources: Sequence[tuple[str, str]]) -> SpecContext:
     if not task.strip():
         raise ContextError("invalid_context", "task", "必须是非空字符串")
@@ -792,6 +928,8 @@ def bind_specs(context: SpecContext, selections: Sequence[BindingInput]) -> Spec
             )
         bindings[incoming.spec_id] = incoming
     ordered = tuple(bindings[key] for key in sorted(bindings))
+    if ordered == context.bindings:
+        return context
     return replace(context, updated_at=_now(), bindings=ordered)
 
 
@@ -843,7 +981,16 @@ def _refresh_artifacts(
             current = _file_sha256(path) if path.is_file() else "missing"
             if current == reference.artifact_sha256:
                 continue
-            statuses[stage] = replace(status, status="stale")
+            if status.status == "applied" and current != "missing":
+                statuses[stage] = replace(
+                    status,
+                    refs=tuple(
+                        replace(item, artifact_sha256=current) if item is reference else item
+                        for item in status.refs
+                    ),
+                )
+            else:
+                statuses[stage] = replace(status, status="stale")
             changes.append(
                 DriftChange("artifact_changed", spec_id, rule.ref, reference.artifact_sha256, current, (stage,))
             )
@@ -919,6 +1066,8 @@ def refresh_context(context: SpecContext, root: str, artifact_root: Optional[str
         bindings.append(updated)
         changes.extend(binding_changes)
     refreshed = replace(context, updated_at=_now(), bindings=tuple(bindings))
+    if refreshed.bindings == context.bindings:
+        return DriftResult(context, tuple(changes))
     return DriftResult(refreshed, tuple(changes))
 
 
@@ -993,7 +1142,10 @@ def apply_artifact_ref(
                 statuses = dict(rule.stage_status)
                 current = statuses[stage]
                 refs = _upsert_artifact_ref(current.refs, reference)
-                statuses[stage] = replace(current, status="applied", refs=refs)
+                if current.decision is not None:
+                    statuses[stage] = replace(current, refs=refs)
+                else:
+                    statuses[stage] = replace(current, status="applied", refs=refs)
                 rule = replace(rule, stage_status=statuses)
                 found = True
             rules.append(rule)
@@ -1089,6 +1241,7 @@ def _decision_command(args: argparse.Namespace, payload: Mapping[str, object]) -
         payload.get("batch") is True,
     )
     save_context(str(context_path), context)
+    _resync_after_save(args, context_path)
     return {"ok": True, "status": context.bindings[0].rules[0].stage_status[_string(payload.get("stage"), "stage", "")].status}
 
 
@@ -1117,6 +1270,7 @@ def _bind_command(args: argparse.Namespace, payload: Mapping[str, object]) -> di
     context = bind_specs(context, selections)
     context = _apply_payload(context, args.task_dir, payload)
     save_context(str(context_path), context)
+    _resync_after_save(args, context_path)
     applied = sum(
         status.status == "applied"
         for binding in context.bindings
@@ -1146,10 +1300,80 @@ def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> 
         active = complete_active_task(args.root, payload.get("gate_passed") is True)
     else:
         result = doctor_active_task(
-            args.root, args.context_sha256, payload.get("abandon") is True
+            args.root,
+            args.context_sha256,
+            payload.get("abandon") is True,
+            payload.get("resync") is True,
         )
         return {"ok": True, "action": result.action, "active": _active_data(result.active)}
     return {"ok": True, "active": _active_data(active)}
+
+
+def _status_command(args: argparse.Namespace) -> dict[str, object]:
+    """Human-readable Spec Context status: task, marker health, gate, rules."""
+    from cf_spec_gate import result_to_data, validate_stage  # local import avoids module cycle
+
+    context_path = Path(args.task_dir) / "spec-context.yml"
+    context = load_context(str(context_path))
+    gate = validate_stage(context, "code")
+    root = getattr(args, "root", "") or _find_root(args.task_dir) or ""
+    marker: dict[str, object] = {"exists": False}
+    if root:
+        marker_path = Path(root) / ".code-flow" / ".active-task.json"
+        if marker_path.exists():
+            active = load_active_task(root)
+            marker = {
+                "exists": True,
+                "task_id": active.task_id,
+                "status": active.status,
+                "hash_match": active.context_sha256 == context_sha256(context),
+                "baseline_head": active.baseline.head,
+            }
+    bindings = []
+    for binding in context.bindings:
+        rules = []
+        for rule in binding.rules:
+            status = rule.stage_status.get("code")
+            rules.append(
+                {
+                    "ref": f"{binding.spec_id}#{rule.ref}",
+                    "enforcement": rule.enforcement,
+                    "status": status.status if status else "missing",
+                    "verifier": rule.verifier_ref,
+                }
+            )
+        bindings.append({"spec_id": binding.spec_id, "path": binding.path, "status": binding.status, "rules": rules})
+    return {
+        "task": context.task,
+        "context_sha256": context_sha256(context),
+        "gate": result_to_data(gate),
+        "marker": marker,
+        "bindings": bindings,
+    }
+
+
+def _status_text(data: dict[str, object]) -> str:
+    lines = [f"# {data['task']} — Spec Context 状态"]
+    marker = data["marker"]
+    if marker["exists"]:
+        match = "✓ 一致" if marker["hash_match"] else "✗ 漂移"
+        lines.append(f"- TASK {marker['task_id']}（{marker['status']}），marker hash {match}")
+        if not marker["hash_match"]:
+            lines.append("  下一步: 运行 cf-spec doctor（resync 可自动重同步）")
+    else:
+        lines.append("- 无 active TASK（path/catalog 路由模式）")
+    gate = data["gate"]
+    if gate["decision"] == "pass":
+        lines.append("- code Gate: ✓ pass")
+    else:
+        lines.append(f"- code Gate: ✗ block（{len(gate['errors'])} 项）")
+        for issue in gate["errors"]:
+            lines.append(f"  ✗ {issue['message']}")
+    for binding in data["bindings"]:
+        lines.append(f"- {binding['spec_id']}（{binding['path']}）— {binding['status']}")
+        for rule in binding["rules"]:
+            lines.append(f"  {rule['status']:<12} {rule['ref']}（{rule['verifier']}）")
+    return "\n".join(lines)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -1171,6 +1395,10 @@ def _parser() -> argparse.ArgumentParser:
     validate = commands.add_parser("validate")
     validate.add_argument("--task-dir", required=True)
     validate.add_argument("--json", action="store_true")
+    status = commands.add_parser("status")
+    status.add_argument("--task-dir", required=True)
+    status.add_argument("--root", default="")
+    status.add_argument("--json", action="store_true")
     for name in ("refresh", "refresh-missing"):
         refresh = commands.add_parser(name)
         refresh.add_argument("--task-dir", required=True)
@@ -1208,6 +1436,7 @@ def _execute(args: argparse.Namespace, stdin: IO[str]) -> dict[str, object]:
         result = refresh_context(load_context(str(context_path)), args.root, artifact_root=args.task_dir)
         context, changes = result.context, result.changes
     save_context(str(context_path), context)
+    _resync_after_save(args, context_path)
     return {
         "ok": True,
         "missing": sum(item.status == "missing" for item in context.bindings),
@@ -1217,7 +1446,15 @@ def _execute(args: argparse.Namespace, stdin: IO[str]) -> dict[str, object]:
 
 def main(argv: Optional[Sequence[str]] = None, stdin: IO[str] = sys.stdin, stdout: IO[str] = sys.stdout) -> int:
     try:
-        result = _execute(_parser().parse_args(argv), stdin)
+        args = _parser().parse_args(argv)
+        if args.command == "status":
+            data = _status_command(args)
+            if args.json:
+                stdout.write(json.dumps(data, ensure_ascii=False))
+            else:
+                stdout.write(_status_text(data) + "\n")
+            return 0
+        result = _execute(args, stdin)
         stdout.write(json.dumps(result, ensure_ascii=False))
         return 0
     except ContextError as exc:

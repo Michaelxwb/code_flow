@@ -21,6 +21,7 @@ class RouteResult:
     mode: str
     text: str
     specs: tuple[str, ...]
+    context_sha256: Optional[str] = None
 
 
 class RouterError(ValueError):
@@ -52,12 +53,15 @@ def _active_route(root: str) -> RouteResult:
         raise RouterError("invalid_active_task", str(exc)) from exc
     current_hash = context_sha256(context)
     if current_hash != active.context_sha256:
-        raise RouterError("active_context_drift", "active marker Context hash does not match")
+        raise RouterError(
+            "active_context_drift",
+            "active marker Context hash does not match; run `cf-spec doctor` (resync) to re-sync the marker before continuing",
+        )
     projection = project_task_session(context, str(_task_file(task_dir, active.task_id)), active.task_id)
     if projection.truncated:
         raise RouterError("task_projection_truncated", "split the TASK before coding")
     refs = tuple(binding.spec_id for binding in context.bindings)
-    return RouteResult("task", projection.text, refs)
+    return RouteResult("task", projection.text, refs, current_hash)
 
 
 def _read_candidates(root: str, paths: Sequence[str]) -> RouteResult:

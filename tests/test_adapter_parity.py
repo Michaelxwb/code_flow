@@ -20,6 +20,7 @@ COSTRICT_IDENTICAL = [
     "cf-learn.md",
     "cf-stats.md",
     "cf-spec.md",
+    "cf-sync.md",
     "cf-validate.md",
     "cf-task/align.md",
     "cf-task/archive.md",

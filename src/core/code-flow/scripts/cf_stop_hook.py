@@ -25,11 +25,13 @@ from cf_core import (
     ensure_utf8_io,
     load_config,
     normalize_path,
+    resolve_enforcement,
     resolve_quality_loop,
     resolve_session_id,
 )
 
 TOTAL_BUDGET_SECONDS = 30.0
+GATE_BUDGET_SECONDS = 25.0
 _BRACE_RE = re.compile(r"\{([^{}]+)\}")
 _TASK_SECTION_RE = re.compile(
     r"(?ms)^## (TASK-\d+):.*?(?=^## TASK-\d+:|\Z)"
@@ -246,6 +248,12 @@ def main() -> None:
             return  # 已因本 hook 续跑过一轮，避免循环
         project_root = os.getcwd()
         sid = resolve_session_id(data)
+        config = load_config(project_root)
+        if not config:
+            return
+        enforcement = resolve_enforcement(config)
+        if enforcement == "inject":
+            return  # 轻量模式：只注入不门禁，停止会话不受限
         marker = os.path.join(project_root, ".code-flow", ".active-task.json")
         has_active = os.path.exists(marker)
         files = []
@@ -253,19 +261,25 @@ def main() -> None:
             try:
                 active = load_active_task(project_root)
                 task_dir = os.path.join(project_root, active.task_dir)
-                done = run_done_gate(project_root, task_dir)
+                done = run_done_gate(project_root, task_dir, budget=GATE_BUDGET_SECONDS)
             except (OSError, ValueError) as exc:
-                payload = {"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: active task is invalid: {exc}"}
-                sys.stdout.write(json.dumps(payload, ensure_ascii=False))
-                return
-            if done.decision != "pass":
-                payload = {"decision": "block", "reason": "当前 TASK required Spec verifier/Evidence 未通过；修复或重新对齐后再 Done。"}
-                sys.stdout.write(json.dumps(payload, ensure_ascii=False))
-                return
-            files = list(done.files)
-        config = load_config(project_root)
-        if not config:
-            return
+                if enforcement == "required":
+                    payload = {"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: active task is invalid: {exc}"}
+                    sys.stdout.write(json.dumps(payload, ensure_ascii=False))
+                    return
+                cf_log.append_event(project_root, "stop_check", {"gate": "invalid_active_nonfatal", "error": str(exc)}, sid)
+                files = []
+            else:
+                if done.decision != "pass":
+                    reason = done.message or "当前 TASK required Spec verifier/Evidence 未通过；修复或重新对齐后再 Done。"
+                    if any(item.get("error_code") == "verifier_budget_exhausted" for item in done.evidence):
+                        reason += "（验证预算不足，部分 verifier 未运行，请拆分 TASK 或减少验证命令）"
+                    if enforcement == "required":
+                        payload = {"decision": "block", "reason": reason}
+                        sys.stdout.write(json.dumps(payload, ensure_ascii=False))
+                        return
+                    cf_log.append_event(project_root, "stop_check", {"gate": "blocked_nonfatal", "reason": reason}, sid)
+                files = list(done.files)
         if not resolve_quality_loop(config)["stop_check"]:
             return
         if not has_active:
@@ -280,6 +294,13 @@ def main() -> None:
         failures = acceptance_failures + failures
         if not failures:
             return  # 全过或无 validation.yml 且无验收缺口时静默
+        if enforcement == "warn":
+            cf_log.append_event(
+                project_root, "stop_check",
+                {"failures": [item["name"] for item in failures], "nonfatal": True},
+                sid,
+            )
+            return
         payload = {"decision": "block", "reason": _reason_text(failures, truncated)}
         sys.stdout.write(json.dumps(payload, ensure_ascii=False))
     except Exception as exc:

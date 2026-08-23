@@ -467,7 +467,8 @@ def resolve_quality_loop(config: dict) -> dict:
     """
     if not isinstance(config, dict):
         return {"enabled": False, "post_check": False,
-                "stop_check": False, "correction_capture": False}
+                "stop_check": False, "correction_capture": False,
+                "compress_reminder": False}
     cfg = config.get("quality_loop")
     cfg = cfg if isinstance(cfg, dict) else {}
     enabled = cfg.get("enabled") is True
@@ -480,7 +481,29 @@ def resolve_quality_loop(config: dict) -> dict:
         "post_check": _sub("post_check"),
         "stop_check": _sub("stop_check"),
         "correction_capture": _sub("correction_capture"),
+        "compress_reminder": _sub("compress_reminder"),
     }
+
+
+ENFORCEMENT_MODES = frozenset(("required", "warn", "inject"))
+
+
+def resolve_enforcement(config: dict) -> str:
+    """Project-wide Spec Workflow enforcement tier (light-mode ladder).
+
+    required — full fail-closed gates (default; upgraded projects keep it);
+    warn    — gates run but only log/report, never block the session;
+    inject  — routing/injection only; gates and blocks are disabled.
+    Missing or invalid values fail closed to "required".
+    """
+    if not isinstance(config, dict):
+        return "required"
+    workflow = config.get("spec_workflow")
+    workflow = workflow if isinstance(workflow, dict) else {}
+    value = workflow.get("enforcement")
+    if isinstance(value, str) and value in ENFORCEMENT_MODES:
+        return value
+    return "required"
 
 
 _FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.*?)\n---[ \t]*\n?", re.DOTALL)

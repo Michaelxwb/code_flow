@@ -6,7 +6,8 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 import hashlib
 from pathlib import Path
-from typing import Mapping
+import time
+from typing import Mapping, Optional
 
 from cf_spec_context import (
     BindingInput,
@@ -19,11 +20,13 @@ from cf_spec_context import (
     load_active_task,
     load_context,
     pause_active_task,
+    resync_active_hash,
     save_context,
 )
 from cf_spec_gate import validate_stage
 from cf_spec_metadata import load_spec_metadata
 from cf_spec_resolver import resolve_candidates, SpecCandidate
+from cf_spec_session import context_sha256
 from cf_spec_verify import VerificationEvidence, VerificationScope, run_all_verifiers
 
 
@@ -40,6 +43,7 @@ class DoneResult:
     decision: str
     files: tuple[str, ...]
     evidence: tuple[Mapping[str, object], ...]
+    message: str = ""
 
 
 def _context_path(task_dir: str) -> str:
@@ -71,6 +75,9 @@ def evaluate_scope(root: str, task_dir: str) -> ScopeResult:
         for candidate in new
     )
     save_context(_context_path(task_dir), bind_specs(context, selections))
+    # The toolchain expanded the context itself; re-sync the marker so this
+    # automatic change does not surface as active_context_drift with no recovery.
+    resync_active_hash(root, task_dir, context_sha256(load_context(_context_path(task_dir))))
     required = tuple(candidate.spec_id for candidate in new if _required_candidate(candidate))
     if required:
         pause_active_task(root)
@@ -107,8 +114,20 @@ def _update_rule(rule: RuleBinding, evidence: Mapping[str, object]) -> RuleBindi
         return rule
     statuses = dict(rule.stage_status)
     current = statuses["code"]
+    if current.status in ("not_applicable", "waived"):
+        return rule
     status = "verified" if evidence.get("status") == "verified" else "unverified"
-    statuses["code"] = replace(current, status=status, evidence=(*current.evidence, evidence))
+    if evidence.get("error_code") == "skipped_in_cheap_gate":
+        signature = (evidence.get("verifier_ref"), evidence.get("result_sha256"), None)
+    else:
+        signature = (evidence.get("verifier_ref"), evidence.get("result_sha256"), evidence.get("diff_sha256"))
+    if any(
+        (item.get("verifier_ref"), item.get("result_sha256"), item.get("diff_sha256")) == signature
+        for item in current.evidence
+    ):
+        statuses["code"] = replace(current, status=status)
+    else:
+        statuses["code"] = replace(current, status=status, evidence=(*current.evidence, evidence))
     return replace(rule, stage_status=statuses)
 
 
@@ -125,18 +144,41 @@ def _apply_evidence(context: SpecContext, evidence: tuple[Mapping[str, object], 
     return replace(context, bindings=tuple(bindings))
 
 
-def run_done_gate(root: str, task_dir: str) -> DoneResult:
+def _rule_manual_confirmation(rule: RuleBinding) -> Optional[Mapping[str, object]]:
+    status = rule.stage_status.get("code")
+    if status is None or status.decision is None or status.decision.kind != "manual_verification":
+        return None
+    decision = status.decision
+    return {
+        "reason": decision.reason,
+        "confirmed_by": decision.confirmed_by,
+        "confirmed_at": decision.confirmed_at,
+        "source": decision.source,
+    }
+
+
+def run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optional[float] = None) -> DoneResult:
     scope_result = evaluate_scope(root, task_dir)
     if scope_result.decision == "pause":
-        return DoneResult("block", scope_result.files, ())
+        return DoneResult("block", scope_result.files, (), scope_result.message)
     context = load_context(_context_path(task_dir))
     diff_hash = _diff_hash(root, scope_result.files)
     all_evidence: list[Mapping[str, object]] = []
+    started = time.monotonic()
     for binding in context.bindings:
         metadata = load_spec_metadata(str(Path(root) / ".code-flow/specs" / binding.path))
-        result = run_all_verifiers(metadata, VerificationScope(root, scope_result.files, diff_hash))
+        confirmations: dict[str, Mapping[str, object]] = {}
+        for rule in binding.rules:
+            confirmation = _rule_manual_confirmation(rule)
+            if confirmation is not None:
+                confirmations[rule.ref] = confirmation
+        remaining = None if budget is None else budget - (time.monotonic() - started)
+        result = run_all_verifiers(
+            metadata, VerificationScope(root, scope_result.files, diff_hash), confirmations, cheap, remaining
+        )
         all_evidence.extend(_evidence_data(item) for item in result.evidence)
     updated = _apply_evidence(context, tuple(all_evidence))
-    save_context(_context_path(task_dir), updated)
-    gate = validate_stage(updated, "code")
+    if updated != context:
+        save_context(_context_path(task_dir), updated)
+    gate = validate_stage(updated, "code", diff_sha256=diff_hash)
     return DoneResult(gate.decision, scope_result.files, tuple(all_evidence))

@@ -9,6 +9,7 @@ description: 管理 Spec Context、漂移恢复与一次性迁移
 - `cf-spec migrate --plan <migration-plan.yml>`
 - `cf-spec context [需求目录]`
 - `cf-spec refresh [需求目录]`
+- `cf-spec status [需求目录]`
 - `cf-spec doctor [需求目录]`
 
 ## 通用硬门禁

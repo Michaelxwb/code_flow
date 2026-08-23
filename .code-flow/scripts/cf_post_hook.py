@@ -21,8 +21,6 @@ import os
 import sys
 
 import cf_log
-from cf_spec_context import ContextError, load_active_task
-from cf_task_runtime import evaluate_scope, run_done_gate
 from cf_checks import (
     load_check_state,
     load_spec_checks,
@@ -39,6 +37,7 @@ from cf_core import (
     match_domains,
     normalize_path,
     normalize_spec_entry,
+    resolve_enforcement,
     resolve_quality_loop,
     resolve_session_id,
 )
@@ -93,23 +92,6 @@ def _feedback_text(violations: list) -> str:
     return "\n".join(lines)
 
 
-def _active_feedback(project_root: str) -> str:
-    marker = os.path.join(project_root, ".code-flow", ".active-task.json")
-    if not os.path.exists(marker):
-        return ""
-    active = load_active_task(project_root)
-    task_dir = os.path.join(project_root, active.task_dir)
-    scope = evaluate_scope(project_root, task_dir)
-    if scope.decision == "pause":
-        return scope.message
-    result = run_done_gate(project_root, task_dir)
-    failed = [item for item in result.evidence if item.get("status") != "verified"]
-    if not failed:
-        return ""
-    refs = ", ".join(str(item.get("verifier_ref")) for item in failed)
-    return f"当前 TASK required verifier 未通过：{refs}。修复后再继续。"
-
-
 def main() -> None:
     try:
         ensure_utf8_io()
@@ -125,19 +107,10 @@ def main() -> None:
             return
 
         project_root = os.getcwd()
-        try:
-            active_feedback = _active_feedback(project_root)
-        except (ContextError, OSError, ValueError) as exc:
-            message = f"SPEC_WORKFLOW_BLOCKED: active task is invalid: {exc}"
-            payload = {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": message}}
-            sys.stdout.write(json.dumps(payload, ensure_ascii=False))
-            return
-        if active_feedback:
-            payload = {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": active_feedback}}
-            sys.stdout.write(json.dumps(payload, ensure_ascii=False))
-            return
         config = load_config(project_root)
         if not config:
+            return
+        if resolve_enforcement(config) == "inject":
             return
         quality_loop = resolve_quality_loop(config)
         if not quality_loop["post_check"]:

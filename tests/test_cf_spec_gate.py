@@ -129,3 +129,44 @@ def test_b_07_expired_waiver_blocks_and_future_waiver_passes() -> None:
     assert expired_result.decision == "block"
     assert [issue.code for issue in expired_result.errors] == ["waiver_expired"]
     assert future_result.decision == "pass"
+
+
+def test_stale_diff_evidence_fails_gate_when_diff_provided() -> None:
+    context = _context(
+        "verified",
+        evidence=(
+            {
+                "status": "verified",
+                "rule_text_sha256": "r" * 64,
+                "diff_sha256": "old-diff",
+                "result_sha256": "result-1",
+            },
+        ),
+    )
+
+    stale = validate_stage(context, "design", diff_sha256="current-diff")
+    fresh = validate_stage(context, "design", diff_sha256="old-diff")
+    legacy = validate_stage(context, "design")
+
+    assert stale.decision == "block"
+    assert [issue.code for issue in stale.errors] == ["stale_evidence"]
+    assert fresh.decision == "pass"
+    assert legacy.decision == "pass", "without a diff the caller opts out of freshness"
+
+
+def test_document_evidence_without_diff_still_passes_freshness() -> None:
+    context = _context(
+        "verified",
+        evidence=(
+            {
+                "status": "verified",
+                "rule_text_sha256": "r" * 64,
+                "diff_sha256": None,
+                "result_sha256": "result-1",
+            },
+        ),
+    )
+
+    result = validate_stage(context, "design", diff_sha256="anything")
+
+    assert result.decision == "pass"

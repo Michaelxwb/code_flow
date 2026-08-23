@@ -2,7 +2,7 @@ version: 1
 
 spec_workflow:
     schema_version: 1
-    enforcement: required
+    enforcement: required  # required=全门禁 | warn=门禁仅记录不阻断 | inject=只注入不门禁
     drift_check: true
     scope_expansion_check: true
     metrics: true
@@ -29,6 +29,7 @@ quality_loop:
     # 注入时对 spec 内容做保守无损压缩（去行尾空白、折叠多空行、剥 HTML 注释、去重 bullet）
     # 缺省视为 true；仅显式 false 关闭
     compress: true
+    compress_reminder: true     # 会话过长每 N 轮提醒 /compact（per-session 计数，缺省 true）
     code_extensions:
         - ".py"
         - ".ts"

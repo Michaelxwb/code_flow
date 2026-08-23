@@ -21,13 +21,13 @@ function pythonPath(projectRoot, script) {
   return join(projectRoot, SCRIPT_DIR, script);
 }
 
-function callHook(projectRoot, script, input) {
+function callHook(projectRoot, script, input, timeout = 5000) {
   try {
     const proc = spawnSync("python3", [pythonPath(projectRoot, script)], {
       cwd: projectRoot,
       input: JSON.stringify(input),
       encoding: "utf-8",
-      timeout: 5000,
+      timeout,
       maxBuffer: 1024 * 1024,
     });
     if (proc.error || proc.status !== 0) {
@@ -65,7 +65,7 @@ export const CodeFlow = async (ctx) => {
         const sid =
           input.event?.properties?.sessionID ||
           input.event?.properties?.info?.id || "";
-        const result = callHook(projectRoot, "cf_stop_hook.py", { session_id: sid });
+        const result = callHook(projectRoot, "cf_stop_hook.py", { session_id: sid }, 35000);
         if (result?.reason) {
           // idle 无法阻断，校验失败排队到下一轮 system prompt
           const pending = sessionContext.get(sid);

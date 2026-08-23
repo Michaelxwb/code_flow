@@ -85,6 +85,52 @@ def test_b_02_large_task_is_bounded_without_mutating_context(tmp_path: Path) -> 
     assert (task_dir / "spec-context.yml").read_bytes() == before
 
 
+def test_default_budget_does_not_truncate_many_required_rules(tmp_path: Path) -> None:
+    """A realistic 10-rule TASK with a wide contract must not hit task_projection_truncated."""
+    count = 10
+    long_rules = "\n".join(
+        f"- [RULE-session-{i:03d}] Required session rule {i} must keep deterministic routing and fail-closed stage gates without silently dropping required constraints under budget pressure."
+        for i in range(1, count + 1)
+    )
+    long_verifiers = "\n".join(
+        f"  - rule: RULE-session-{i:03d}\n    type: test\n    config:\n      command: pytest -q"
+        for i in range(1, count + 1)
+    )
+    spec_path = tmp_path / ".code-flow/specs/app/rules.md"
+    spec_path.parent.mkdir(parents=True)
+    spec_path.write_text(
+        "---\nid: session-rules\ndescription: Session rules\nstages: [code]\n"
+        f"enforcement: required\nverifiers:\n{long_verifiers}\n---\n\n# Rules\n\n## Rules\n{long_rules}\n",
+        encoding="utf-8",
+    )
+    config = {"path_mapping": {"app": {"patterns": ["src/*"], "specs": [{"path": "app/rules.md"}]}}}
+    (tmp_path / ".code-flow/config.yml").write_text(yaml.safe_dump(config), encoding="utf-8")
+    task_dir = tmp_path / ".code-flow/tasks/demo"
+    task_dir.mkdir(parents=True)
+    candidate = resolve_candidates(str(tmp_path), "code", ["src/app.py"])[0]
+    context = bind_specs(new_context("demo", (("test", "budget"),)), (BindingInput(candidate, "plan", "task refs"),))
+    save_context(str(task_dir / "spec-context.yml"), context)
+    refs = ", ".join(f"session-rules#RULE-session-{i:03d}" for i in range(1, count + 1))
+    contract = "\n".join(
+        f"| S-{i:02d} | integration | service, store, real fixture | assert observable {i} | tests/test_{i:02d}.py | pytest -q | planned |"
+        for i in range(1, 9)
+    )
+    task_file = task_dir / "demo.md"
+    task_file.write_text(
+        f"# Tasks\n\n## TASK-001: Big\n- **Source**: demo.design.md#3\n- **Spec-Refs**: {refs}\n"
+        f"### Acceptance Contract\n{contract}\n",
+        encoding="utf-8",
+    )
+    context = load_context(str(task_dir / "spec-context.yml"))
+
+    tight = project_task_session(context, str(task_file), "TASK-001", 4000)
+    result = project_task_session(context, str(task_file), "TASK-001")
+
+    assert tight.truncated is True, "scenario must exceed the old 4000 budget"
+    assert result.truncated is False
+    assert result.included_rules == result.total_rules == count
+
+
 def test_start_workflow_refreshes_before_hash_bound_activation() -> None:
     for path in (
         ROOT / "src/adapters/claude/commands/cf-task/start.md",

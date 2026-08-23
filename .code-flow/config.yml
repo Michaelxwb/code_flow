@@ -1,7 +1,7 @@
 version: 1
 spec_workflow:
   schema_version: 1
-  enforcement: required
+  enforcement: required  # required=全门禁 | warn=门禁仅记录不阻断 | inject=只注入不门禁
   drift_check: true
   scope_expansion_check: true
   metrics: true
@@ -19,6 +19,7 @@ quality_loop:
   stop_check: true
   correction_capture: true
   compress: true
+  compress_reminder: true
   code_extensions:
   - .py
   - .ts

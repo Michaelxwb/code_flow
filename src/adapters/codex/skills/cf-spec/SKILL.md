@@ -10,6 +10,7 @@ description: Manage schema-v1 Spec Context, drift recovery, and prepared one-sho
 - `cf-spec migrate --plan <migration-plan.yml>`
 - `cf-spec context [需求目录]`
 - `cf-spec refresh [需求目录]`
+- `cf-spec status [需求目录]`
 - `cf-spec doctor [需求目录]`
 
 ## 通用硬门禁

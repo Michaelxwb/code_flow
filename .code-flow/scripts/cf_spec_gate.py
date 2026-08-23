@@ -55,7 +55,7 @@ def _waiver_issue(decision: Optional[Decision], now: datetime) -> Optional[str]:
     return "waiver_expired" if expires <= now else None
 
 
-def _evidence_issue(rule: RuleBinding, status: RuleStageStatus) -> Optional[str]:
+def _evidence_issue(rule: RuleBinding, status: RuleStageStatus, diff_sha256: Optional[str]) -> Optional[str]:
     if not status.evidence:
         return "evidence_missing"
     for evidence in status.evidence:
@@ -63,17 +63,20 @@ def _evidence_issue(rule: RuleBinding, status: RuleStageStatus) -> Optional[str]
             continue
         if evidence.get("rule_text_sha256") != rule.text_sha256:
             continue
+        evidence_diff = evidence.get("diff_sha256")
+        if evidence_diff is not None and diff_sha256 is not None and evidence_diff != diff_sha256:
+            continue
         result_hash = evidence.get("result_sha256")
         if isinstance(result_hash, str) and result_hash:
             return None
     return "stale_evidence"
 
 
-def _status_issue(rule: RuleBinding, status: RuleStageStatus, now: datetime) -> Optional[str]:
+def _status_issue(rule: RuleBinding, status: RuleStageStatus, now: datetime, diff_sha256: Optional[str]) -> Optional[str]:
     if status.status == "applied":
         return None
     if status.status == "verified":
-        return _evidence_issue(rule, status)
+        return _evidence_issue(rule, status, diff_sha256)
     if status.status == "not_applicable":
         return None if _decision_valid(status.decision) else "decision_invalid"
     if status.status == "waived":
@@ -81,7 +84,9 @@ def _status_issue(rule: RuleBinding, status: RuleStageStatus, now: datetime) -> 
     return status.status
 
 
-def _binding_issues(binding: SpecBinding, stage: str, now: datetime) -> tuple[list[GateIssue], list[GateIssue]]:
+def _binding_issues(
+    binding: SpecBinding, stage: str, now: datetime, diff_sha256: Optional[str]
+) -> tuple[list[GateIssue], list[GateIssue]]:
     errors: list[GateIssue] = []
     warnings: list[GateIssue] = []
     for rule in binding.rules:
@@ -90,7 +95,7 @@ def _binding_issues(binding: SpecBinding, stage: str, now: datetime) -> tuple[li
             continue
         if rule.enforcement == "advisory" and status.status == "pending":
             continue
-        code = "missing_spec" if binding.status == "missing" else _status_issue(rule, status, now)
+        code = "missing_spec" if binding.status == "missing" else _status_issue(rule, status, now, diff_sha256)
         if code is None:
             continue
         issue = GateIssue(code, binding.spec_id, rule.ref, stage, f"{binding.spec_id}#{rule.ref}: {code}")
@@ -105,13 +110,14 @@ def validate_stage(
     artifact: str = "",
     task_id: str = "",
     now: Optional[datetime] = None,
+    diff_sha256: Optional[str] = None,
 ) -> GateResult:
     del artifact, task_id
     current = now or datetime.now(timezone.utc)
     errors: list[GateIssue] = []
     warnings: list[GateIssue] = []
     for binding in context.bindings:
-        binding_errors, binding_warnings = _binding_issues(binding, stage, current)
+        binding_errors, binding_warnings = _binding_issues(binding, stage, current, diff_sha256)
         errors.extend(binding_errors)
         warnings.extend(binding_warnings)
     refs = tuple(sorted({f"{item.spec_id}#{item.rule_ref}" for item in (*errors, *warnings)}))

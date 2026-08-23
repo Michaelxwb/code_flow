@@ -2,6 +2,7 @@
 .active-task.json
 .active-task.lock
 .catalog-state.json
+.session-state.json
 migrations/
 .debug.log
 .session-log.jsonl

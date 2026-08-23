@@ -107,3 +107,15 @@ def test_ensure_utf8_io_reconfigures_and_tolerates_unsupported_stream() -> None:
     finally:
         sys.stdin, sys.stdout, sys.stderr = saved
     assert all(stream.calls == [{"encoding": "utf-8"}] for stream in streams)
+
+
+def test_resolve_enforcement_modes_and_defaults() -> None:
+    from cf_core import resolve_enforcement
+
+    assert resolve_enforcement({"spec_workflow": {"enforcement": "required"}}) == "required"
+    assert resolve_enforcement({"spec_workflow": {"enforcement": "warn"}}) == "warn"
+    assert resolve_enforcement({"spec_workflow": {"enforcement": "inject"}}) == "inject"
+    assert resolve_enforcement({"spec_workflow": {"enforcement": "bogus"}}) == "required"
+    assert resolve_enforcement({"spec_workflow": {}}) == "required"
+    assert resolve_enforcement({}) == "required"
+    assert resolve_enforcement(None) == "required"

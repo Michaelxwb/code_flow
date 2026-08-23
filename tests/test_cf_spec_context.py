@@ -4,6 +4,7 @@
 import json
 from dataclasses import replace
 import hashlib
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -16,6 +17,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "core" / "code-flow" / "
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_spec_context import (
+    _git_changes,
     apply_artifact_ref,
     apply_decision,
     ArtifactRef,
@@ -23,14 +25,19 @@ from cf_spec_context import (
     ContextError,
     Decision,
     bind_specs,
+    complete_active_task,
+    context_sha256,
+    load_active_task,
     load_context,
     new_context,
     refresh_missing_specs,
     refresh_context,
     RuleStageStatus,
     save_context,
+    start_active_task,
 )
 from cf_spec_resolver import resolve_candidates
+from cf_spec_router import RouterError, route_prompt
 
 
 SPEC = """---
@@ -341,3 +348,240 @@ def test_e_12_rule_and_artifact_drift_preserve_unrelated_evidence(tmp_path: Path
     assert refreshed_second.stage_status["design"].evidence == (
         {"result_sha256": "second-evidence"},
     )
+
+
+def test_applied_workflow_artifact_edit_recaptures_hash_without_stale(tmp_path: Path) -> None:
+    root, unused_spec, context_path = _bound_context(tmp_path)
+    del unused_spec
+    task_dir = Path(context_path).parent
+    artifact = task_dir / "demo.md"
+    artifact.write_text("plan v1\n", encoding="utf-8")
+    context = load_context(str(context_path))
+    binding = context.bindings[0]
+    rule = binding.rules[0]
+    stages = dict(rule.stage_status)
+    stages["plan"] = replace(
+        stages["plan"],
+        status="applied",
+        refs=(
+            ArtifactRef(
+                "demo.md", "TASK-001", rule.ref,
+                hashlib.sha256(artifact.read_bytes()).hexdigest(),
+            ),
+        ),
+    )
+    context = replace(context, bindings=(replace(binding, rules=(replace(rule, stage_status=stages),)),))
+    save_context(str(context_path), context)
+
+    artifact.write_text("plan v2 checklist\n", encoding="utf-8")
+    result = refresh_context(load_context(str(context_path)), str(root), artifact_root=str(task_dir))
+    refreshed_rule = result.context.bindings[0].rules[0]
+
+    assert [change.kind for change in result.changes] == ["artifact_changed"]
+    assert refreshed_rule.stage_status["plan"].status == "applied"
+    assert refreshed_rule.stage_status["plan"].refs[0].artifact_sha256 == hashlib.sha256(
+        artifact.read_bytes()
+    ).hexdigest()
+
+
+def test_apply_artifact_ref_preserves_human_decision(tmp_path: Path) -> None:
+    root, unused_spec, context_path = _bound_context(tmp_path)
+    del unused_spec
+    artifact = root / "plan.md"
+    artifact.write_text("plan", encoding="utf-8")
+    context = load_context(str(context_path))
+    decision = Decision(
+        "not_applicable",
+        "Not applicable to this change.",
+        "user:jahan",
+        "2026-08-04T10:00:00+08:00",
+        "conversation:na",
+        None,
+    )
+    context = apply_decision(context, "scripts-rules", "RULE-scripts-001", "code", decision)
+    reference = ArtifactRef(
+        "plan.md", "TASK-001", "RULE-scripts-001",
+        hashlib.sha256(artifact.read_bytes()).hexdigest(),
+    )
+    context = apply_artifact_ref(context, "scripts-rules", "RULE-scripts-001", "code", reference)
+    status = context.bindings[0].rules[0].stage_status["code"]
+    assert status.status == "not_applicable", "re-applying an artifact must not clobber a human decision"
+    assert status.decision == decision
+
+
+def _git(root: Path, *args: str) -> None:
+    subprocess.run(("git", *args), cwd=root, check=True, capture_output=True)
+
+
+def _active_repo(tmp_path: Path) -> tuple[Path, Path]:
+    """Bound context + committed git repo + task file + started active TASK."""
+    root, unused_spec, context_path = _bound_context(tmp_path)
+    del unused_spec
+    task_dir = context_path.parent
+    (task_dir / "demo.md").write_text(
+        "# Tasks\n\n## TASK-001: Demo\n- **Spec-Refs**: scripts-rules#RULE-scripts-001\n"
+        "### Acceptance Contract\n| S-01 | unit | real | assert |\n",
+        encoding="utf-8",
+    )
+    _git(root, "init", "-q")
+    _git(root, "config", "user.email", "test@example.com")
+    _git(root, "config", "user.name", "Test")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "initial")
+    start_active_task(str(root), str(task_dir), "TASK-001", context_sha256(load_context(str(context_path))))
+    return root, context_path
+
+
+def test_git_rename_parses_as_delete_plus_change(tmp_path: Path) -> None:
+    root = tmp_path
+    (root / ".code-flow").mkdir(parents=True)
+    _git(root, "init", "-q")
+    _git(root, "config", "user.email", "test@example.com")
+    _git(root, "config", "user.name", "Test")
+    src = root / "src"
+    src.mkdir()
+    (src / "a.py").write_text("A = 1\n", encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "init")
+    _git(root, "mv", "src/a.py", "src/b.py")
+
+    changes = _git_changes(str(root))
+
+    assert changes == {"src/b.py": "changed", "src/a.py": "deleted"}
+
+
+def test_dead_pid_lock_is_auto_cleaned(tmp_path: Path) -> None:
+    root, context_path = _active_repo(tmp_path)
+    complete_active_task(str(root), True)
+    lock = root / ".code-flow" / ".active-task.lock"
+    lock.write_text(json.dumps({"pid": 99999999, "marker": str(lock)}), encoding="utf-8")
+
+    start_active_task(str(root), str(context_path.parent), "TASK-001", context_sha256(load_context(str(context_path))))
+
+    assert not lock.exists()
+    assert (root / ".code-flow" / ".active-task.json").exists()
+
+
+def test_corrupt_lock_is_auto_cleaned(tmp_path: Path) -> None:
+    root, context_path = _active_repo(tmp_path)
+    complete_active_task(str(root), True)
+    (root / ".code-flow" / ".active-task.lock").write_text("not-json", encoding="utf-8")
+
+    start_active_task(str(root), str(context_path.parent), "TASK-001", context_sha256(load_context(str(context_path))))
+
+    assert not (root / ".code-flow" / ".active-task.lock").exists()
+
+
+def test_live_pid_lock_still_blocks_start(tmp_path: Path) -> None:
+    root, context_path = _active_repo(tmp_path)
+    complete_active_task(str(root), True)
+    lock = root / ".code-flow" / ".active-task.lock"
+    lock.write_text(json.dumps({"pid": os.getpid(), "marker": str(lock)}), encoding="utf-8")
+
+    with pytest.raises(ContextError) as exc:
+        start_active_task(str(root), str(context_path.parent), "TASK-001", "whatever")
+
+    assert exc.value.code == "active_lock_exists"
+    assert lock.exists()
+
+
+def test_cli_bind_resyncs_active_marker(tmp_path: Path) -> None:
+    root, context_path = _active_repo(tmp_path)
+    payload = {
+        "paths": ["src/hook.py"],
+        "selections": [{"spec_id": "scripts-rules", "selected_by": "cli", "reason": "re-bind"}],
+    }
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "cf_spec_context.py"),
+            "bind", "--task-dir", str(context_path.parent),
+            "--root", str(root), "--stage", "design", "--json",
+        ],
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert load_active_task(str(root)).context_sha256 == context_sha256(load_context(str(context_path)))
+    assert route_prompt(str(root), ("src/hook.py",), "s1").mode == "task"
+
+
+def test_cli_decision_resyncs_active_marker(tmp_path: Path) -> None:
+    root, context_path = _active_repo(tmp_path)
+    payload = _decision(confirmed_by="user:jahan")
+    payload["stage"] = "design"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "cf_spec_context.py"),
+            "decision", "--task-dir", str(context_path.parent), "--json",
+        ],
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert load_active_task(str(root)).context_sha256 == context_sha256(load_context(str(context_path)))
+    assert route_prompt(str(root), ("src/hook.py",), "s1").mode == "task"
+
+
+def test_doctor_resync_recovers_drifted_marker(tmp_path: Path) -> None:
+    root, context_path = _active_repo(tmp_path)
+    candidate = resolve_candidates(str(root), "design", ["src/hook.py"])[0]
+    context = bind_specs(load_context(str(context_path)), (BindingInput(candidate, "cli", "changed reason"),))
+    save_context(str(context_path), context)
+    with pytest.raises(RouterError) as exc:
+        route_prompt(str(root), ("src/hook.py",), "s1")
+    assert exc.value.code == "active_context_drift"
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "cf_spec_context.py"),
+            "active", "doctor",
+            "--root", str(root), "--task-dir", str(context_path.parent),
+            "--task", "TASK-001",
+            "--context-sha256", context_sha256(load_context(str(context_path))),
+            "--json",
+        ],
+        input=json.dumps({"resync": True}),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert json.loads(proc.stdout)["action"] == "resynced"
+    assert route_prompt(str(root), ("src/hook.py",), "s1").mode == "task"
+
+
+def test_status_cli_human_and_json(tmp_path: Path) -> None:
+    root, context_path = _active_repo(tmp_path)
+    human = subprocess.run(
+        [
+            sys.executable, str(SCRIPTS / "cf_spec_context.py"),
+            "status", "--task-dir", str(context_path.parent), "--root", str(root),
+        ],
+        text=True, capture_output=True, check=False,
+    )
+    assert human.returncode == 0, human.stderr
+    assert "Spec Context 状态" in human.stdout
+    assert "TASK-001" in human.stdout
+
+    data = subprocess.run(
+        [
+            sys.executable, str(SCRIPTS / "cf_spec_context.py"),
+            "status", "--task-dir", str(context_path.parent), "--root", str(root), "--json",
+        ],
+        text=True, capture_output=True, check=False,
+    )
+    parsed = json.loads(data.stdout)
+    assert parsed["marker"]["exists"] is True
+    assert parsed["marker"]["hash_match"] is True
+    assert parsed["gate"]["decision"] in ("pass", "block")
+    assert parsed["bindings"][0]["spec_id"] == "scripts-rules"

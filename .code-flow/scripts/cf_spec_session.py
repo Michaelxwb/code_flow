@@ -5,16 +5,13 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
-import hashlib
 import json
 from pathlib import Path
 import re
 import sys
 from typing import IO, Mapping, Optional, Sequence
 
-import yaml
-
-from cf_spec_context import RuleBinding, SpecContext, context_to_data, load_context
+from cf_spec_context import RuleBinding, SpecContext, context_sha256, load_context
 
 
 @dataclass(frozen=True)
@@ -25,9 +22,8 @@ class SessionProjection:
     truncated: bool
 
 
-def context_sha256(context: SpecContext) -> str:
-    data = yaml.safe_dump(context_to_data(context), sort_keys=True, allow_unicode=True).encode()
-    return hashlib.sha256(data).hexdigest()
+# context_sha256 is defined next to the identity projection in cf_spec_context
+# and re-exported here for callers that import the session module.
 
 
 def _task_section(text: str, task_id: str) -> str:
@@ -70,7 +66,7 @@ def _rule_line(ref: str, rule: RuleBinding, compact: bool = False) -> str:
 
 
 def project_task_session(
-    context: SpecContext, task_file: str, task_id: str, max_chars: int = 4000
+    context: SpecContext, task_file: str, task_id: str, max_chars: int = 12000
 ) -> SessionProjection:
     section = _task_section(Path(task_file).read_text(encoding="utf-8"), task_id)
     refs = _refs(section)
@@ -100,7 +96,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--task-file", required=True)
     parser.add_argument("--task", required=True)
     parser.add_argument("--output", required=True)
-    parser.add_argument("--budget", type=int, default=4000)
+    parser.add_argument("--budget", type=int, default=12000)
     parser.add_argument("--json", action="store_true")
     return parser
 

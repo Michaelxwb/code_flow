@@ -27,6 +27,7 @@ def test_missing_section_all_off():
     assert resolve_quality_loop({}) == {
         "enabled": False, "post_check": False,
         "stop_check": False, "correction_capture": False,
+        "compress_reminder": False,
     }
     assert resolve_quality_loop(None)["enabled"] is False
 
@@ -36,6 +37,7 @@ def test_enabled_true_turns_subswitches_on():
     assert out == {
         "enabled": True, "post_check": True,
         "stop_check": True, "correction_capture": True,
+        "compress_reminder": True,
     }
 
 

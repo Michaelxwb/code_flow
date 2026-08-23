@@ -5,6 +5,7 @@
 - `cf-spec migrate --plan <migration-plan.yml>`
 - `cf-spec context [需求目录]`
 - `cf-spec refresh [需求目录]`
+- `cf-spec status [需求目录]`
 - `cf-spec doctor [需求目录]`
 
 ## 通用硬门禁
@@ -32,6 +33,18 @@
 2. 执行：
    `python3 .code-flow/scripts/cf_spec_context.py validate --task-dir <目录> --json`
 3. Context 缺失、schema/hash 无效时 fail-closed，不回退 Catalog。
+
+
+## status
+
+展示人话版 Context 状态：任务、marker hash 是否一致、code Gate 结果、各绑定 Rule 状态。
+
+执行：
+
+`python3 .code-flow/scripts/cf_spec_context.py status --task-dir <目录> --root "$PWD"`
+
+- marker 漂移时输出下一步（cf-spec doctor resync）。
+- 需要机器可读输出时加 `--json`。
 
 ## refresh
 

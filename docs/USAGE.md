@@ -472,17 +472,32 @@ JSON 输出（默认模式）会包含 `missing_specs` 字段，可用于自动�
 |--------|------|
 | `context [需求目录]` | 展示 `spec-context.yml` 的 bindings、Rule 状态、Evidence 与 drift |
 | `refresh [需求目录]` | 刷新 Context：changed Rule 标 stale，missing/conflict 不自动降级 |
+| `status [需求目录]` | 人话版 Context 状态：任务、marker 一致性、code Gate、Rule 状态与下一步 |
 | `doctor [需求目录]` | 全量诊断：config schema、active marker、lock、hash、journal、legacy residue |
 | `migrate --plan <plan>` | 确认 prepared migration plan 中的 unresolved 项（需用户逐项选择） |
 
 ```
 /cf-spec context                      # 从 active-task 定位，展示当前 Context
 /cf-spec refresh .code-flow/tasks/2026-04-21/specs-proactive  # 刷新指定需求 Context
-/cf-spec doctor                       # 全量诊断当前 Spec Workflow 状态
+/cf-spec doctor                       # 全量诊断当前 Spec Workflow 状态（hash 漂移可用 resync 自愈）
+/cf-spec status                       # 人话版 Context 状态与下一步
 /cf-spec migrate --plan .code-flow/migrations/v0.6.0/plan.yml # 确认迁移计划
 ```
 
 > **硬门禁**：`spec_workflow.schema_version` 非 `1` 时只有 `migrate --plan` 可用；Context 缺失/损坏时 fail-closed，不回退 Catalog。
+>
+> **轻量模式**：`spec_workflow.enforcement` 支持 `required`（全门禁，默认）/ `warn`（门禁仅记录不阻断）/ `inject`（只注入不门禁），solo 项目可渐进采纳。
+
+### `/cf-sync` — 双副本同步
+
+一键检查/同步 canonical 源与部署副本（`src/core/code-flow` ↔ `.code-flow`、四平台适配器 ↔ 运行目录），防止"测试通过但 live 行为不变"。
+
+```
+python3 .code-flow/scripts/cf_sync.py check   # 检查漂移（默认）
+python3 .code-flow/scripts/cf_sync.py sync    # canonical → 部署副本
+```
+
+项目自有内容（`specs/`、`tasks/`、`config.yml`、`settings.local.json`）不在同步范围；部署侧独有文件不会被删除。
 
 ### `/cf-validate` — 验证变更
 

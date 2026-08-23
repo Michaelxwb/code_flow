@@ -192,3 +192,42 @@ def test_legacy_task_without_acceptance_coverage_is_silent() -> None:
         cf_log.append_event(root, "edit", {"file": rel_path, "tool": "Edit"}, "s1")
 
         assert _run(root) == {}
+
+
+def _make_project_enforcement(root: str, validators: list, enforcement: str) -> None:
+    os.makedirs(os.path.join(root, ".code-flow"), exist_ok=True)
+    config = {
+        "spec_workflow": {"schema_version": 1, "enforcement": enforcement},
+        "quality_loop": {"enabled": True},
+        "path_mapping": {},
+    }
+    with open(os.path.join(root, ".code-flow", "config.yml"), "w") as f:
+        yaml.dump(config, f)
+    with open(os.path.join(root, ".code-flow", "validation.yml"), "w") as f:
+        yaml.dump({"validators": validators}, f)
+
+
+def test_inject_mode_never_blocks_stop():
+    with tempfile.TemporaryDirectory() as root:
+        _make_project_enforcement(root, [FAIL_V], "inject")
+        cf_log.append_event(root, "edit", {"file": "src/a.py", "tool": "Edit"}, "s1")
+        assert _run(root) == {}
+
+
+def test_warn_mode_logs_failures_without_blocking():
+    with tempfile.TemporaryDirectory() as root:
+        _make_project_enforcement(root, [FAIL_V], "warn")
+        cf_log.append_event(root, "edit", {"file": "src/a.py", "tool": "Edit"}, "s1")
+        result = _run(root)
+        assert result == {}
+        checks = cf_log.read_events(root, events=("stop_check",))
+        assert checks and checks[-1]["data"].get("nonfatal") is True
+        assert "总是失败" in checks[-1]["data"]["failures"]
+
+
+def test_required_mode_still_blocks_stop():
+    with tempfile.TemporaryDirectory() as root:
+        _make_project_enforcement(root, [FAIL_V], "required")
+        cf_log.append_event(root, "edit", {"file": "src/a.py", "tool": "Edit"}, "s1")
+        result = _run(root)
+        assert result["decision"] == "block"
