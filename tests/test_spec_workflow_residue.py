@@ -100,6 +100,33 @@ def test_s_11_no_task_uses_path_then_catalog(tmp_path: Path) -> None:
     assert "Always emit SAFE code" not in catalog_text
 
 
+def test_path_injection_applies_lossless_compression(tmp_path: Path) -> None:
+    _project(tmp_path)
+    spec = tmp_path / ".code-flow/specs/app/rules.md"
+    spec.write_text(
+        SPEC.replace(
+            "# Runtime",
+            "# Runtime\n\n<!-- injection-only note -->\n\n## Notes\n- repeated\n- repeated",
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / ".code-flow/.active-task.json").unlink()
+
+    text = _prompt(tmp_path, "edit src/app.py")["hookSpecificOutput"]["additionalContext"]
+
+    assert "injection-only note" not in text
+    assert text.count("- repeated") == 1
+
+    config_path = tmp_path / ".code-flow/config.yml"
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    config["quality_loop"] = {"compress": False}
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    uncompressed = _prompt(tmp_path, "edit src/app.py")["hookSpecificOutput"]["additionalContext"]
+
+    assert "injection-only note" in uncompressed
+    assert uncompressed.count("- repeated") == 2
+
+
 def test_s_11_corrupt_active_marker_fails_closed(tmp_path: Path) -> None:
     _project(tmp_path)
     (tmp_path / ".code-flow/.active-task.json").write_text("{broken", encoding="utf-8")

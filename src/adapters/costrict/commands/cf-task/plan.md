@@ -8,6 +8,8 @@
 - `/cf-task:plan` — 交互式选择（从 `docs/` 目录列出候选）
 - `/cf-task:plan <设计文档路径> --explore` — 仅输出分析报告，不生成文件
 - `/cf-task:plan <设计文档路径> --quick` — 跳过缺口分析，直接拆解（保持原有行为）
+- `/cf-task:plan <设计文档路径> --draft` — 仅生成任务草案，必须经过 `--verify-plan` 后才能启动
+- `/cf-task:plan <任务文件> --verify-plan` — 执行完整 Acceptance Coverage 与 Spec Rule 门禁
 - `/cf-task:plan <.design.md 路径>` — 从 cf-task:align 产出的设计简报拆解（自动跳过缺口分析）
 
 ## 执行步骤
@@ -56,6 +58,17 @@ Read 设计文档后，**先扫描文档结构**，建立章节索引表：
 ```
 
 此索引用于后续步骤中精确记录每个子任务的来源章节。
+
+### 2.4.1. Draft / Verify Plan 模式
+
+`--draft` 只生成任务结构、依赖、Source 和初步验收映射，产物状态必须保持 `draft`，不得直接进入 `start`。用户确认拆分后执行 `--verify-plan`，完成全部场景覆盖、唯一 Rule owner、verifier、测试层级和真实边界校验；默认模式仍执行完整校验。
+
+`--verify-plan` 的执行命令为：
+
+```bash
+python3 .code-flow/scripts/cf_acceptance_manifest.py \
+  --verify-plan --task-dir <需求目录> --task-file <任务文件>
+```
 
 ### 2.5. Explore 模式（--explore）
 
@@ -297,6 +310,33 @@ TASK-002: <标题> [P1]
 ```bash
 python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage plan --artifact <任务文件> --json
 ```
+
+通过 Plan Gate 后，锁定验收基线：
+
+```bash
+python3 .code-flow/scripts/cf_acceptance_manifest.py \
+  --task-file <任务文件> \
+  --output <需求目录>/.acceptance-manifest.json
+```
+
+Manifest 锁定场景 ID、来源、测试层级、真实边界和责任 TASK。编码阶段不得静默修改这些字段；如发生范围变化，必须重新执行 plan 验证。
+
+验收类型按测试层级归类：
+- `unit/integration` → `functional`（Done Gate 自动执行）
+- `E2E` → `e2e`（延迟至所有任务完成后，需 `--include-e2e` 显式执行）
+- `manual` → `manual`（用户手动验证，永不自动执行）
+
+E2E 场景依赖外部环境（数据库、API、浏览器），在编码阶段默认跳过（状态 `e2e_deferred`），不阻断 Done Gate。所有子任务完成后，执行：
+
+```bash
+python3 .code-flow/scripts/cf_acceptance_runner.py \
+  --manifest <需求目录>/.acceptance-manifest.json \
+  --root . \
+  --include-e2e \
+  --write-evidence
+```
+
+不得为了提速降低 design 指定的 E2E 层级。
 
 只有 Context Plan 状态与任务结构校验都 `decision=pass` 才输出 Start 下一步；缺唯一 owner、`verifier_ref`、测试层级或真实边界时必须回到拆解修复。
 

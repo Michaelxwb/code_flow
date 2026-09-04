@@ -2,6 +2,7 @@
 """E-01 integration coverage for schema-v1 Spec metadata parsing."""
 
 from pathlib import Path
+import subprocess
 import sys
 import textwrap
 
@@ -11,7 +12,7 @@ import pytest
 SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "core" / "code-flow" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from cf_spec_metadata import SpecMetadataError, load_spec_metadata
+from cf_spec_metadata import SpecMetadataError, load_spec_header, load_spec_metadata
 
 
 VALID_SPEC = """\
@@ -85,6 +86,37 @@ def test_e_01_valid_metadata_produces_stable_ids_and_hashes(tmp_path: Path) -> N
     ]
     assert all(len(value) == 64 for value in first.hashes.values())
     assert all(len(rule.text_sha256) == 64 for rule in first.rules)
+
+
+def test_routing_header_reader_stops_before_spec_body(tmp_path: Path) -> None:
+    path = tmp_path / "scripts" / "routing-only.md"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(
+        b"---\nid: routing-only\nstages: [code]\nenforcement: required\n---\n"
+        b"# body is not decoded\n\xff"
+    )
+
+    header = load_spec_header(str(path))
+
+    assert header.id == "routing-only"
+    assert header.stages == ("code",)
+    assert header.enforcement == "required"
+    with pytest.raises(SpecMetadataError) as caught:
+        load_spec_metadata(str(path))
+    assert caught.value.field == "encoding"
+
+
+def test_routing_modules_defer_yaml_import_until_parse() -> None:
+    script = """
+import sys
+sys.path.insert(0, 'src/core/code-flow/scripts')
+import cf_spec_context
+import cf_spec_metadata
+import cf_spec_resolver
+print('yaml' in sys.modules)
+"""
+    result = subprocess.run((sys.executable, "-c", script), capture_output=True, text=True, check=True)
+    assert result.stdout.strip() == "False"
 
 
 def test_e_01_metadata_only_change_preserves_rule_hashes(tmp_path: Path) -> None:

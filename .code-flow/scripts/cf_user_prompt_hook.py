@@ -16,6 +16,7 @@ from cf_core import (
     resolve_enforcement,
     resolve_quality_loop,
     resolve_session_id,
+    timing_log,
 )
 from cf_session_state import load_session_state, save_session_state
 from cf_spec_router import RouterError, route_prompt
@@ -170,3 +171,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    timing_log("cf_user_prompt_hook")

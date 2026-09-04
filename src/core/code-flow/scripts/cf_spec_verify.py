@@ -11,11 +11,21 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+from threading import Lock
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Mapping, Optional, Sequence
 
 from cf_checks import run_regex_verifier
 from cf_spec_metadata import SpecMetadata, SpecRule, SpecVerifier
+
+
+_RESULT_CACHE: dict[str, dict[str, object]] = {}
+_RESULT_CACHE_ROOT: Optional[str] = None
+_RESULT_CACHE_DIRTY = False
+_RESULT_CACHE_LOCK = Lock()
+_MAX_RESULT_CACHE_ENTRIES = 2048
+_PURE_VERIFIER_TYPES = frozenset(("document", "regex", "ast"))
 
 
 @dataclass(frozen=True)
@@ -42,6 +52,94 @@ class VerificationEvidence:
 class VerificationResult:
     evidence: tuple[VerificationEvidence, ...]
     passed: bool
+
+
+def _cache_file(root: str) -> Path:
+    return Path(root) / ".code-flow" / ".verifier-cache.json"
+
+
+def _cache_key(metadata: SpecMetadata, rule: SpecRule, verifier: SpecVerifier, scope: VerificationScope, confirmation: Optional[Mapping[str, object]]) -> str:
+    payload = {
+        "spec": metadata.hashes.file_sha256,
+        "rule": rule.text_sha256,
+        "verifier": {"type": verifier.type, "config": verifier.config},
+        "files": scope.files,
+        "diff": scope.diff_sha256,
+        "confirmation": confirmation or {},
+    }
+    return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str).encode()).hexdigest()
+
+
+def _load_result_cache(root: str) -> None:
+    global _RESULT_CACHE_ROOT, _RESULT_CACHE, _RESULT_CACHE_DIRTY
+    if _RESULT_CACHE_ROOT == root:
+        return
+    _RESULT_CACHE_ROOT = root
+    _RESULT_CACHE = {}
+    _RESULT_CACHE_DIRTY = False
+    path = _cache_file(root)
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(loaded, dict):
+            _RESULT_CACHE.update({str(key): value for key, value in loaded.items() if isinstance(value, dict)})
+    except (OSError, ValueError):
+        pass
+
+
+def _cached_evidence(key: str) -> Optional[VerificationEvidence]:
+    item = _RESULT_CACHE.get(key)
+    if not isinstance(item, dict) or item.get("status") != "verified":
+        return None
+    try:
+        return VerificationEvidence(**item)
+    except (TypeError, ValueError):
+        return None
+
+
+def _save_result_cache(key: str, evidence: VerificationEvidence) -> None:
+    global _RESULT_CACHE_DIRTY
+    with _RESULT_CACHE_LOCK:
+        _RESULT_CACHE[key] = evidence.__dict__
+        _RESULT_CACHE_DIRTY = True
+        while len(_RESULT_CACHE) > _MAX_RESULT_CACHE_ENTRIES:
+            _RESULT_CACHE.pop(next(iter(_RESULT_CACHE)))
+
+
+def _flush_result_cache(root: str) -> None:
+    global _RESULT_CACHE_DIRTY
+    with _RESULT_CACHE_LOCK:
+        if not _RESULT_CACHE_DIRTY:
+            return
+        path = _cache_file(root)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = path.with_suffix(".json.tmp")
+            temporary.write_text(
+                json.dumps(_RESULT_CACHE, ensure_ascii=False, sort_keys=True, default=str), encoding="utf-8"
+            )
+            temporary.replace(path)
+            _RESULT_CACHE_DIRTY = False
+        except OSError:
+            pass
+
+
+def _cached_or_run(
+    metadata: SpecMetadata,
+    rule: SpecRule,
+    verifier: SpecVerifier,
+    scope: VerificationScope,
+    confirmation: Optional[Mapping[str, object]],
+) -> VerificationEvidence:
+    cacheable = verifier.type in _PURE_VERIFIER_TYPES
+    key = _cache_key(metadata, rule, verifier, scope, confirmation) if cacheable else ""
+    if cacheable:
+        cached = _cached_evidence(key)
+        if cached is not None:
+            return cached
+    current = _evidence(metadata, rule, verifier, scope, confirmation)
+    if cacheable and current.status == "verified":
+        _save_result_cache(key, current)
+    return current
 
 
 @dataclass(frozen=True)
@@ -290,7 +388,9 @@ def run_all_verifiers(
 ) -> VerificationResult:
     verifier_by_rule = {item.rule: item for item in metadata.verifiers}
     confirmation_by_rule = confirmations or {}
-    evidence: list[VerificationEvidence] = []
+    _load_result_cache(scope.root)
+    evidence_by_ref: dict[str, VerificationEvidence] = {}
+    parallel: list[tuple[SpecRule, SpecVerifier, Optional[Mapping[str, object]]]] = []
     started = time.monotonic()
     for rule in metadata.rules:
         if rule.enforcement != "required":
@@ -298,13 +398,12 @@ def run_all_verifiers(
         if timeout_budget is not None:
             remaining = timeout_budget - (time.monotonic() - started)
             if remaining <= 0:
-                evidence.append(_budget_evidence(metadata, rule, scope, timeout_budget))
+                evidence_by_ref[rule.ref] = _budget_evidence(metadata, rule, scope, timeout_budget)
                 continue
         verifier = verifier_by_rule.get(rule.ref)
         if verifier is None:
             details = {"rule": rule.ref}
-            evidence.append(
-                VerificationEvidence(
+            evidence_by_ref[rule.ref] = VerificationEvidence(
                     f"{metadata.id}#{rule.ref}",
                     datetime.now(timezone.utc).isoformat(),
                     "unverified",
@@ -315,14 +414,25 @@ def run_all_verifiers(
                     "verifier_missing",
                     details,
                 )
-            )
             continue
         if skip_command and verifier.type in ("command", "test"):
-            evidence.append(_skipped_evidence(metadata, rule, scope))
+            evidence_by_ref[rule.ref] = _skipped_evidence(metadata, rule, scope)
+            continue
+        confirmation = confirmation_by_rule.get(rule.ref)
+        if timeout_budget is None and verifier.type in ("document", "regex", "ast"):
+            parallel.append((rule, verifier, confirmation))
             continue
         cap = None if timeout_budget is None else max(0.1, timeout_budget - (time.monotonic() - started))
-        evidence.append(_evidence(metadata, rule, verifier, scope, confirmation_by_rule.get(rule.ref), cap))
-    result = tuple(evidence)
+        evidence_by_ref[rule.ref] = _cached_or_run(metadata, rule, verifier, scope, confirmation) if cap is None else _evidence(metadata, rule, verifier, scope, confirmation, cap)
+    if parallel:
+        with ThreadPoolExecutor(max_workers=min(8, len(parallel))) as pool:
+            futures = {
+                rule.ref: pool.submit(_cached_or_run, metadata, rule, verifier, scope, confirmation)
+                for rule, verifier, confirmation in parallel
+            }
+            evidence_by_ref.update({ref: future.result() for ref, future in futures.items()})
+    result = tuple(evidence_by_ref[rule.ref] for rule in metadata.rules if rule.ref in evidence_by_ref)
+    _flush_result_cache(scope.root)
     return VerificationResult(result, bool(result) and all(item.status == "verified" for item in result))
 
 

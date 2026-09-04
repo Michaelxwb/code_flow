@@ -21,6 +21,8 @@ from cf_core import (
     match_domains,
     normalize_spec_entry,
     resolve_session_id,
+    phase_timing,
+    timing_log,
 )
 
 
@@ -71,6 +73,40 @@ def test_debug_log_respects_environment() -> None:
             os.environ["CF_DEBUG"] = "1"
             debug_log("visible", root)
             assert "visible" in (Path(root) / ".code-flow/.debug.log").read_text(encoding="utf-8")
+    finally:
+        if original is None:
+            os.environ.pop("CF_DEBUG", None)
+        else:
+            os.environ["CF_DEBUG"] = original
+
+
+def test_timing_log_gated_by_cf_debug(capsys) -> None:
+    original = os.environ.get("CF_DEBUG")
+    try:
+        os.environ.pop("CF_DEBUG", None)
+        timing_log("cf_test_hook")
+        assert capsys.readouterr().err == ""
+        os.environ["CF_DEBUG"] = "1"
+        timing_log("cf_test_hook")
+        assert "cf_test_hook:" in capsys.readouterr().err
+    finally:
+        if original is None:
+            os.environ.pop("CF_DEBUG", None)
+        else:
+            os.environ["CF_DEBUG"] = original
+
+
+def test_phase_timing_is_debug_only_and_stderr(capsys) -> None:
+    original = os.environ.get("CF_DEBUG")
+    try:
+        os.environ.pop("CF_DEBUG", None)
+        phase_timing("phase.hidden", 0.0)
+        assert capsys.readouterr().err == ""
+        os.environ["CF_DEBUG"] = "1"
+        phase_timing("phase.visible", 0.0)
+        captured = capsys.readouterr()
+        assert "cf_phase phase.visible:" in captured.err
+        assert captured.out == ""
     finally:
         if original is None:
             os.environ.pop("CF_DEBUG", None)

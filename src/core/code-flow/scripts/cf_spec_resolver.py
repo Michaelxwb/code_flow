@@ -8,9 +8,14 @@ import fnmatch
 from pathlib import Path
 from typing import Mapping, Optional, Sequence
 
-import yaml
-
-from cf_spec_metadata import ALLOWED_STAGES, SpecMetadata, SpecRule, load_spec_metadata
+from cf_spec_metadata import (
+    ALLOWED_STAGES,
+    SpecHeader,
+    SpecMetadata,
+    SpecRule,
+    load_spec_header,
+    load_spec_metadata,
+)
 
 
 SCOPE_PRIORITY = {"global": 1, "path": 2, "task": 3}
@@ -42,6 +47,16 @@ class SpecCandidate:
         if self.metadata.enforcement == "advisory":
             return 0
         return sum(rule.enforcement == "required" for rule in self.metadata.rules)
+
+
+@dataclass(frozen=True)
+class SpecCandidateHeader:
+    spec_id: str
+    path: str
+    scope: str
+    priority: int
+    matched_paths: tuple[str, ...]
+    enforcement: str
 
 
 @dataclass(frozen=True)
@@ -93,6 +108,7 @@ def _fingerprint(path: Path, field: str) -> tuple[int, int]:
 
 
 def _load_config(root: str) -> Mapping[str, object]:
+    import yaml
     path = Path(root) / ".code-flow" / "config.yml"
     if not path.is_file():
         raise SpecResolutionError(str(path), "config", "缺失 config.yml")
@@ -180,6 +196,36 @@ def _candidate_for(
     return SpecCandidate(metadata.id, relative, scope, SCOPE_PRIORITY[scope], matched, metadata)
 
 
+def _candidate_header_for(
+    path: Path,
+    spec_root: Path,
+    mapping: Mapping[str, object],
+    config_path: str,
+    stage: str,
+    paths: Sequence[str],
+) -> Optional[SpecCandidateHeader]:
+    relative = path.relative_to(spec_root).as_posix()
+    header: SpecHeader = load_spec_header(str(path))
+    if stage not in header.stages:
+        return None
+    domain = relative.split("/", 1)[0]
+    config = _domain_config(mapping, domain, config_path)
+    patterns = _patterns(config, f"path_mapping.{domain}.patterns", config_path)
+    scope, matched = _candidate_scope(relative, patterns, paths)
+    return SpecCandidateHeader(
+        header.id, relative, scope, SCOPE_PRIORITY[scope], matched, header.enforcement
+    )
+
+
+def _spec_paths(spec_root: Path, excluded: set[str]) -> tuple[Path, ...]:
+    result: list[Path] = []
+    for path in sorted(spec_root.rglob("*.md")):
+        relative = path.relative_to(spec_root).as_posix()
+        if path.name != "_map.md" and not relative.startswith("_session/") and relative not in excluded:
+            result.append(path)
+    return tuple(result)
+
+
 def resolve_candidates(root: str, stage: str, paths: Sequence[str]) -> tuple[SpecCandidate, ...]:
     if stage not in ALLOWED_STAGES:
         raise SpecResolutionError(root, "stage", f"不支持 stage: {stage!r}")
@@ -193,11 +239,36 @@ def resolve_candidates(root: str, stage: str, paths: Sequence[str]) -> tuple[Spe
         raise SpecResolutionError(str(spec_root), "specs", "缺失 specs 目录")
     candidates: list[SpecCandidate] = []
     ids: dict[str, str] = {}
-    for path in sorted(spec_root.rglob("*.md")):
-        relative = path.relative_to(spec_root).as_posix()
-        if path.name == "_map.md" or relative.startswith("_session/") or relative in excluded:
-            continue
+    for path in _spec_paths(spec_root, excluded):
         candidate = _candidate_for(path, spec_root, mapping, config_path, stage, normalized_paths)
+        if candidate is None:
+            continue
+        if candidate.spec_id in ids:
+            detail = f"重复 id {candidate.spec_id}: {ids[candidate.spec_id]}, {candidate.path}"
+            raise SpecResolutionError(str(spec_root), "spec_id", detail)
+        ids[candidate.spec_id] = candidate.path
+        candidates.append(candidate)
+    return tuple(sorted(candidates, key=lambda item: (-item.priority, item.path)))
+
+
+def resolve_candidate_headers(
+    root: str, stage: str, paths: Sequence[str]
+) -> tuple[SpecCandidateHeader, ...]:
+    """Resolve candidates from routing frontmatter without parsing bodies or hashes."""
+    if stage not in ALLOWED_STAGES:
+        raise SpecResolutionError(root, "stage", f"不支持 stage: {stage!r}")
+    normalized_paths = tuple(path.replace("\\", "/") for path in paths)
+    config = _load_config(root)
+    config_path = str(Path(root) / ".code-flow" / "config.yml")
+    mapping = _path_mapping(config, config_path)
+    excluded = _non_injectable(mapping, config_path)
+    spec_root = Path(root) / ".code-flow" / "specs"
+    if not spec_root.is_dir():
+        raise SpecResolutionError(str(spec_root), "specs", "缺失 specs 目录")
+    candidates: list[SpecCandidateHeader] = []
+    ids: dict[str, str] = {}
+    for path in _spec_paths(spec_root, excluded):
+        candidate = _candidate_header_for(path, spec_root, mapping, config_path, stage, normalized_paths)
         if candidate is None:
             continue
         if candidate.spec_id in ids:

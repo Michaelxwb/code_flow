@@ -1,5 +1,7 @@
 .code-flow/.inject-state
 .code-flow/.debug.log
+.code-flow/.artifact-hash-cache*
+.code-flow/.verifier-cache*
 .idea/
 .DS_Store
 node_modules/

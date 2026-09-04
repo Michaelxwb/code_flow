@@ -3,6 +3,7 @@ import fnmatch
 import os
 import re
 import sys
+import time
 
 # --- Config cache (fix #3: avoid re-parsing YAML on every hook call) ---
 
@@ -663,6 +664,25 @@ def assemble_context(specs: list, heading: str) -> str:
 def _log(msg: str) -> None:
     """Log to stderr (fix #9: don't pollute stdout which is hook output)."""
     print(msg, file=sys.stderr)
+
+
+_PROCESS_START = time.monotonic()
+
+
+def timing_log(name: str) -> None:
+    """Emit process-elapsed ms to stderr only when CF_DEBUG=1 (diagnostics).
+
+    Never touches stdout, so the hook JSON protocol is unaffected; a default
+    run pays one env lookup and no IO.
+    """
+    if os.environ.get("CF_DEBUG") == "1":
+        _log(f"{name}: {int((time.monotonic() - _PROCESS_START) * 1000)}ms")
+
+
+def phase_timing(name: str, started: float) -> None:
+    """Emit a named phase duration to stderr when CF_DEBUG=1."""
+    if os.environ.get("CF_DEBUG") == "1":
+        _log(f"cf_phase {name}: {int((time.monotonic() - started) * 1000)}ms")
 
 
 def ensure_utf8_io() -> None:

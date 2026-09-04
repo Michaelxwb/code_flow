@@ -28,6 +28,7 @@ from cf_spec_metadata import load_spec_metadata
 from cf_spec_resolver import resolve_candidates, SpecCandidate
 from cf_spec_session import context_sha256
 from cf_spec_verify import VerificationEvidence, VerificationScope, run_all_verifiers
+from cf_core import phase_timing
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,24 @@ class DoneResult:
 
 def _context_path(task_dir: str) -> str:
     return str(Path(task_dir) / "spec-context.yml")
+
+
+def _manual_manifest_issue(task_dir: str) -> str:
+    path = Path(task_dir) / ".acceptance-manifest.json"
+    if not path.is_file():
+        return ""
+    try:
+        import json
+
+        data = json.loads(path.read_text(encoding="utf-8"))
+        pending = [
+            item.get("id", "unknown")
+            for item in data.get("scenarios", [])
+            if isinstance(item, dict) and item.get("kind") == "manual" and item.get("status") != "verified"
+        ]
+        return f"manual 场景未完成: {', '.join(pending)}" if pending else ""
+    except (OSError, ValueError, TypeError):
+        return "acceptance manifest invalid"
 
 
 def _required_candidate(candidate: SpecCandidate) -> bool:
@@ -157,15 +176,40 @@ def _rule_manual_confirmation(rule: RuleBinding) -> Optional[Mapping[str, object
     }
 
 
-def run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optional[float] = None) -> DoneResult:
+def run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optional[float] = None, include_e2e: bool = False) -> DoneResult:
+    started = time.monotonic()
+    phase_started = time.monotonic()
     scope_result = evaluate_scope(root, task_dir)
+    phase_timing("done.evaluate_scope", phase_started)
     if scope_result.decision == "pause":
         return DoneResult("block", scope_result.files, (), scope_result.message)
+    manual_issue = _manual_manifest_issue(task_dir)
+    if manual_issue:
+        return DoneResult("block", scope_result.files, (), manual_issue)
+    manifest_path = Path(task_dir) / ".acceptance-manifest.json"
+    if manifest_path.is_file():
+        try:
+            import json
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            has_commands = any(
+                isinstance(item, dict) and isinstance(item.get("command"), list)
+                for item in manifest.get("scenarios", [])
+            )
+        except (OSError, ValueError, TypeError):
+            return DoneResult("block", scope_result.files, (), "acceptance manifest invalid")
+        if has_commands:
+            from cf_acceptance_runner import run_manifest
+
+            scenario_result = run_manifest(str(manifest_path), root, write_evidence=True, include_e2e=include_e2e)
+            if scenario_result["decision"] == "block":
+                return DoneResult("block", scope_result.files, (), "acceptance scenario failed")
+    phase_started = time.monotonic()
     context = load_context(_context_path(task_dir))
     diff_hash = _diff_hash(root, scope_result.files)
+    phase_timing("done.load_context_and_diff", phase_started)
     all_evidence: list[Mapping[str, object]] = []
-    started = time.monotonic()
     for binding in context.bindings:
+        phase_started = time.monotonic()
         metadata = load_spec_metadata(str(Path(root) / ".code-flow/specs" / binding.path))
         confirmations: dict[str, Mapping[str, object]] = {}
         for rule in binding.rules:
@@ -176,9 +220,11 @@ def run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optiona
         result = run_all_verifiers(
             metadata, VerificationScope(root, scope_result.files, diff_hash), confirmations, cheap, remaining
         )
+        phase_timing(f"done.verify.{binding.spec_id}", phase_started)
         all_evidence.extend(_evidence_data(item) for item in result.evidence)
     updated = _apply_evidence(context, tuple(all_evidence))
     if updated != context:
         save_context(_context_path(task_dir), updated)
     gate = validate_stage(updated, "code", diff_sha256=diff_hash)
+    phase_timing("done.total", started)
     return DoneResult(gate.decision, scope_result.files, tuple(all_evidence))

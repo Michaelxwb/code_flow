@@ -2,6 +2,7 @@
 """S-04/B-02 coverage for exact TASK session projection."""
 
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -135,12 +136,16 @@ def test_start_workflow_refreshes_before_hash_bound_activation() -> None:
     for path in (
         ROOT / "src/adapters/claude/commands/cf-task/start.md",
         ROOT / "src/adapters/codex/skills/cf-task-start/SKILL.md",
+        ROOT / "src/adapters/costrict/commands/cf-task/start.md",
+        ROOT / "src/adapters/opencode/commands/cf-task/start.md",
     ):
         text = path.read_text(encoding="utf-8")
-        refresh = text.index("refresh --task-dir")
+        refresh = text.index("cf_spec_context.py start")
         active = text.index("active start", refresh)
-        session = text.index("cf_spec_session.py", active)
+        session = text.index("session 输出路径", active)
         progress = text.index("in-progress", session)
         assert refresh < active < session < progress
         assert "禁止先 start 再 refresh" in text
         assert "禁止重新 catalog" in text
+        section = text.split("### 3. 激活并准备验收测试", 1)[1].split("RED 证据写入", 1)[0]
+        assert [int(value) for value in re.findall(r"(?m)^(\d+)\. ", section)] == list(range(1, 7))

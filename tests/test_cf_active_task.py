@@ -63,7 +63,8 @@ def test_s_15_dirty_baseline_requires_ownership_and_tracks_delta(tmp_path: Path)
     )
     assert active.baseline.head == _git(root, "rev-parse", "HEAD")
     assert active.baseline.preexisting_changes["src/app.py"].status == "modified"
-    assert active.baseline.preexisting_changes["src/app.py"].content_sha256
+    # content_sha256 是历史字段、无 Gate 消费，start 不再逐文件哈希，保持空串
+    assert active.baseline.preexisting_changes["src/app.py"].content_sha256 == ""
 
     (root / "src" / "new.py").write_text("NEW = True\n", encoding="utf-8")
     assert current_owned_paths(str(root), active) == ("src/app.py", "src/new.py")

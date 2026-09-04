@@ -60,13 +60,12 @@
 
 在改状态或生产代码前，顺序固定且不得跳步：
 
-1. 调用 `cf_spec_context.py refresh --task-dir ...`，执行 Start Gate；stale/pending/conflict 或依赖未闭合均不得继续。
-2. 重新读取 refresh 后的 Context hash，再调用 `cf_spec_context.py active start`，传 task/context hash 和逐路径确认的 pre-existing ownership；已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。
-3. 调用 `cf_spec_session.py`，只根据当前 TASK 的 `Spec-Refs`、Source 与 Acceptance Contract 覆盖写入 `_session/task-<name>.md`。禁止重新 catalog 或猜测规则。
-4. 只有前三步全部成功，才用 Edit 更新子任务 Status 为 `in-progress`、追加 started log 并更新文件头日期。
-5. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令
-6. 先编写验收测试。E2E 测试必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
-7. 新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因。纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败
+1. 调用 `cf_spec_context.py start --task-dir ... --root ... --task ... --task-file ... --json`，由单个进程按 refresh → active start → session 顺序执行 Start Gate；stdin JSON 传入逐路径确认的 `owned_paths`。stale/pending/conflict、依赖未闭合、已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。
+2. 从命令返回值读取 refresh 后的 Context hash、active 状态和 session 输出路径；该命令只根据当前 TASK 的 `Spec-Refs`、Source 与 Acceptance Contract 覆盖写入 `.code-flow/specs/_session/task-<name>.md`，禁止重新 catalog 或猜测规则。
+3. 只有前两步全部成功，才用 Edit 更新子任务 Status 为 `in-progress`、追加 started log 并更新文件头日期。
+4. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令
+5. 先编写验收测试。E2E 测试必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
+6. 新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因。纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败
 
 RED 证据写入 `Acceptance Evidence`：
 

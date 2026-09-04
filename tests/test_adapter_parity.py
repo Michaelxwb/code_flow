@@ -106,7 +106,7 @@ def test_opencode_core_task_workflow_has_all_context_gates() -> None:
         "prd": ("catalog --stage prd", "PRD Gate"),
         "align": ("refresh --task-dir", "Design Gate"),
         "plan": ("--stage plan --artifact", "Context Plan"),
-        "start": ("active start", "cf_spec_session.py"),
+        "start": ("cf_spec_context.py start", "Context hash"),
         "archive": ("cf_spec_gate.py", "spec-context.yml"),
     }
     for command, required in phrases.items():

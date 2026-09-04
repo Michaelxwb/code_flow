@@ -40,6 +40,7 @@ from cf_core import (
     resolve_enforcement,
     resolve_quality_loop,
     resolve_session_id,
+    timing_log,
 )
 
 FEEDBACK_HINT = '如认为误报，直接告诉我"这是误报"，我会标记忽略。'
@@ -191,3 +192,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    timing_log("cf_post_hook")

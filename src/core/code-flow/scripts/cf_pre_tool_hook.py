@@ -11,10 +11,10 @@ from pathlib import Path
 import sys
 
 import cf_log
-from cf_core import _log, ensure_utf8_io, load_config, normalize_path, resolve_enforcement, resolve_session_id
+from cf_core import _log, ensure_utf8_io, load_config, normalize_path, resolve_enforcement, resolve_session_id, timing_log
 from cf_session_state import load_session_state, save_session_state
 from cf_spec_context import load_active_task, load_context
-from cf_spec_resolver import resolve_candidates
+from cf_spec_resolver import resolve_candidate_headers
 from cf_spec_router import RouterError, route_prompt
 
 _WARN_TEXT = "⚠ Spec Workflow 校验未通过（warn 模式）：{message} — 建议运行 cf-spec doctor 检查。"
@@ -28,8 +28,8 @@ def _active_expansion(root: str, relative: str) -> tuple[str, ...]:
     context = load_context(str(Path(root) / active.task_dir / "spec-context.yml"))
     bound = {item.spec_id for item in context.bindings}
     return tuple(
-        item.spec_id for item in resolve_candidates(root, "code", (relative,))
-        if item.spec_id not in bound and item.metadata.enforcement == "required"
+        item.spec_id for item in resolve_candidate_headers(root, "code", (relative,))
+        if item.spec_id not in bound and item.enforcement == "required"
     )
 
 
@@ -86,3 +86,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    timing_log("cf_pre_tool_hook")

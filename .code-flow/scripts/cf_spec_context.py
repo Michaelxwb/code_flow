@@ -14,12 +14,12 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 from typing import IO, Mapping, Optional, Sequence
-
-import yaml
 
 from cf_spec_metadata import SpecHashes, SpecMetadata, SpecRule, load_spec_metadata
 from cf_spec_resolver import SpecCandidate, resolve_candidates
+from cf_core import phase_timing
 
 
 CONTEXT_VERSION = 1
@@ -28,12 +28,17 @@ STAGE_STATUSES = frozenset(
 )
 DECISION_KINDS = frozenset(("not_applicable", "waived", "manual_verification"))
 _AGENT_IDENTITIES = frozenset(("agent", "assistant", "codex", "claude", "opencode", "costrict"))
+_FILE_HASH_CACHE: dict[str, tuple[int, int, int, str]] = {}
+_PERSISTENT_HASH_CACHE: dict[str, dict[str, object]] = {}
+_PERSISTENT_HASH_PATHS: set[str] = set()
+_MAX_HASH_CACHE_ENTRIES = 4096
 ACTIVE_STATUSES = frozenset(("activating", "active", "paused", "blocked", "completed"))
 DEFAULT_ACTIVE_EXCLUDES = (
     ".code-flow/tasks/*",
     ".code-flow/specs/_session/*",
     ".code-flow/migrations/*",
     ".code-flow/.*state*",
+    ".code-flow/.*cache*",
     ".code-flow/.session-log.jsonl",
     ".code-flow/.active-task.json",
     ".code-flow/.active-task.lock",
@@ -208,7 +213,7 @@ def _active_paths(root: str) -> tuple[Path, Path]:
 def _run_git(root: str, arguments: Sequence[str]) -> str:
     try:
         result = subprocess.run(
-            ("git", *arguments), cwd=root, text=True, capture_output=True, check=False
+            ("git", *arguments), cwd=root, text=True, encoding="utf-8", capture_output=True, check=False
         )
     except OSError as exc:
         raise ContextError("git_unavailable", "git", str(exc), root) from exc
@@ -267,16 +272,6 @@ def _is_excluded(path: str, patterns: Sequence[str]) -> bool:
     return any(fnmatchcase(path, pattern) for pattern in patterns)
 
 
-def _path_hash(root: str, path: str) -> str:
-    target = Path(root) / path
-    digest = hashlib.sha256()
-    if target.is_file():
-        with target.open("rb") as handle:
-            for chunk in iter(lambda: handle.read(65536), b""):
-                digest.update(chunk)
-    return digest.hexdigest()
-
-
 def _active_data(active: ActiveTask) -> dict[str, object]:
     changes = {
         path: {"status": item.status, "content_sha256": item.content_sha256}
@@ -300,9 +295,10 @@ def _active_data(active: ActiveTask) -> dict[str, object]:
 
 def _snapshot_from_data(value: object, path: str) -> PathSnapshot:
     data = _mapping(value, "preexisting_changes[]", path)
+    content_hash = data.get("content_sha256")
     return PathSnapshot(
         _string(data.get("status"), "status", path),
-        _string(data.get("content_sha256"), "content_sha256", path),
+        content_hash if isinstance(content_hash, str) else "",
     )
 
 
@@ -460,8 +456,11 @@ def _new_active(
         raise ContextError("unknown_owned_path", "owned_paths", ", ".join(unknown), root)
     if unowned:
         raise ContextError("unowned_changes", "owned_paths", ", ".join(unowned), root)
+    # content_sha256 was a per-file hash but is never consumed by any gate (only
+    # baseline.head is compared); keep the schema field empty so start never hashes
+    # every uncommitted file.
     snapshots = {
-        path: PathSnapshot(status, _path_hash(root, path)) for path, status in changes.items()
+        path: PathSnapshot(status, "") for path, status in changes.items()
     }
     baseline = ActiveBaseline(_git_head(root), _now(), snapshots)
     return ActiveTask(
@@ -822,6 +821,7 @@ def context_sha256(context: SpecContext) -> str:
     Computed from the stable identity projection (never volatile runtime state),
     so evidence timestamps and stage statuses cannot drift the marker.
     """
+    import yaml
     data = yaml.safe_dump(context_to_identity(context), sort_keys=True, allow_unicode=True).encode()
     return hashlib.sha256(data).hexdigest()
 
@@ -834,6 +834,7 @@ def new_context(task: str, sources: Sequence[tuple[str, str]]) -> SpecContext:
 
 
 def load_context(path: str) -> SpecContext:
+    import yaml
     try:
         loaded = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
     except (OSError, UnicodeError, yaml.YAMLError) as exc:
@@ -862,6 +863,7 @@ def load_context(path: str) -> SpecContext:
 
 
 def save_context(path: str, context: SpecContext) -> None:
+    import yaml
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     text = yaml.safe_dump(context_to_data(context), sort_keys=False, allow_unicode=True)
@@ -965,7 +967,57 @@ def _removed_rule(rule: RuleBinding) -> RuleBinding:
 
 def _file_sha256(path: Path) -> str:
     try:
-        return hashlib.sha256(path.read_bytes()).hexdigest()
+        stat = path.stat()
+        key = str(path)
+        cached = _FILE_HASH_CACHE.get(key)
+        signature = (stat.st_mtime_ns, stat.st_size, stat.st_ino)
+        if cached is not None and cached[:3] == signature:
+            return cached[3]
+        cache_path = next(
+            (parent / ".artifact-hash-cache.json" for parent in path.parents if parent.name == ".code-flow"),
+            None,
+        )
+        cache_key = str(cache_path) if cache_path is not None else ""
+        if cache_key and cache_key not in _PERSISTENT_HASH_PATHS:
+            try:
+                loaded = json.loads(cache_path.read_text(encoding="utf-8"))
+                if isinstance(loaded, dict):
+                    _PERSISTENT_HASH_CACHE.update({str(k): v for k, v in loaded.items() if isinstance(v, dict)})
+            except (OSError, ValueError):
+                pass
+            _PERSISTENT_HASH_PATHS.add(cache_key)
+        persistent = _PERSISTENT_HASH_CACHE.get(key)
+        if (
+            isinstance(persistent, dict)
+            and persistent.get("mtime_ns") == stat.st_mtime_ns
+            and persistent.get("size") == stat.st_size
+            and persistent.get("ino") == stat.st_ino
+        ):
+            digest = persistent.get("sha256")
+            if isinstance(digest, str) and digest:
+                _FILE_HASH_CACHE[key] = (signature[0], signature[1], signature[2], digest)
+                return digest
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        _FILE_HASH_CACHE[key] = (signature[0], signature[1], signature[2], digest)
+        if cache_key:
+            _PERSISTENT_HASH_CACHE[key] = {
+                "mtime_ns": stat.st_mtime_ns,
+                "size": stat.st_size,
+                "ino": stat.st_ino,
+                "sha256": digest,
+            }
+            while len(_PERSISTENT_HASH_CACHE) > _MAX_HASH_CACHE_ENTRIES:
+                _PERSISTENT_HASH_CACHE.pop(next(iter(_PERSISTENT_HASH_CACHE)))
+            try:
+                temporary = cache_path.with_suffix(".json.tmp")
+                temporary.write_text(
+                    json.dumps(_PERSISTENT_HASH_CACHE, ensure_ascii=False, sort_keys=True),
+                    encoding="utf-8",
+                )
+                temporary.replace(cache_path)
+            except OSError:
+                pass
+        return digest
     except OSError as exc:
         raise ContextError("artifact_read_error", "artifact", str(exc), str(path)) from exc
 
@@ -1057,15 +1109,19 @@ def _refresh_binding(
 
 
 def refresh_context(context: SpecContext, root: str, artifact_root: Optional[str] = None) -> DriftResult:
+    started = time.monotonic()
     specs = Path(root) / ".code-flow" / "specs"
     artifacts = Path(artifact_root) if artifact_root is not None else Path(root)
     bindings: list[SpecBinding] = []
     changes: list[DriftChange] = []
     for binding in context.bindings:
+        phase_started = time.monotonic()
         updated, binding_changes = _refresh_binding(binding, specs, artifacts)
+        phase_timing(f"context.refresh.{binding.spec_id}", phase_started)
         bindings.append(updated)
         changes.extend(binding_changes)
     refreshed = replace(context, updated_at=_now(), bindings=tuple(bindings))
+    phase_timing("context.refresh.total", started)
     if refreshed.bindings == context.bindings:
         return DriftResult(context, tuple(changes))
     return DriftResult(refreshed, tuple(changes))
@@ -1309,6 +1365,56 @@ def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> 
     return {"ok": True, "active": _active_data(active)}
 
 
+def _start_command(args: argparse.Namespace, payload: Mapping[str, object]) -> dict[str, object]:
+    """Run refresh, activation and TASK projection in one guarded process."""
+    context_path = Path(args.task_dir) / "spec-context.yml"
+    refreshed = refresh_context(load_context(str(context_path)), args.root, artifact_root=args.task_dir)
+    save_context(str(context_path), refreshed.context)
+    _resync_after_save(args, context_path)
+    current_hash = context_sha256(refreshed.context)
+    owned = tuple(
+        _string(item, "owned_paths[]", "")
+        for item in _sequence(payload.get("owned_paths", []), "owned_paths", "")
+    )
+    task_file = Path(args.task_file).resolve()
+    task_dir = Path(args.task_dir).resolve()
+    if task_file.parent != task_dir or not task_file.is_file():
+        raise ContextError("invalid_task_file", "task_file", str(task_file), args.task_dir)
+    manifest_file = task_dir / ".acceptance-manifest.json"
+    if "## Acceptance Coverage" in task_file.read_text(encoding="utf-8") and not manifest_file.is_file():
+        raise ContextError(
+            "acceptance_manifest_missing",
+            "acceptance_manifest",
+            "run plan verification and lock the manifest",
+            str(manifest_file),
+        )
+    if manifest_file.is_file():
+        from cf_acceptance_manifest import validate_manifest
+
+        valid, reason = validate_manifest(str(task_file), str(manifest_file))
+        if not valid:
+            raise ContextError(reason, "acceptance_manifest", "run plan verification before coding", str(manifest_file))
+    from cf_spec_session import project_task_session
+
+    projection = project_task_session(refreshed.context, str(task_file), args.task)
+    if projection.truncated:
+        raise ContextError("task_projection_truncated", "task_file", "split the TASK before coding")
+    output = Path(args.session_output) if args.session_output else (
+        Path(args.root) / ".code-flow/specs/_session" / f"task-{task_file.stem}.md"
+    )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_text(output, projection.text)
+    active = start_active_task(args.root, args.task_dir, args.task, current_hash, owned)
+    return {
+        "ok": True,
+        "context_sha256": current_hash,
+        "refresh_changes": [item.__dict__ for item in refreshed.changes],
+        "active": _active_data(active),
+        "session_output": str(output),
+        "acceptance_manifest": str(manifest_file) if manifest_file.is_file() else None,
+    }
+
+
 def _status_command(args: argparse.Namespace) -> dict[str, object]:
     """Human-readable Spec Context status: task, marker health, gate, rules."""
     from cf_spec_gate import result_to_data, validate_stage  # local import avoids module cycle
@@ -1413,6 +1519,13 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("--task", required=True)
         command.add_argument("--context-sha256", required=True)
         command.add_argument("--json", action="store_true")
+    start = commands.add_parser("start")
+    start.add_argument("--task-dir", required=True)
+    start.add_argument("--root", required=True)
+    start.add_argument("--task", required=True)
+    start.add_argument("--task-file", required=True)
+    start.add_argument("--session-output", default="")
+    start.add_argument("--json", action="store_true")
     return parser
 
 
@@ -1421,6 +1534,8 @@ def _execute(args: argparse.Namespace, stdin: IO[str]) -> dict[str, object]:
         return _catalog_command(args)
     if args.command == "active":
         return _active_command(args, _json_payload(stdin))
+    if args.command == "start":
+        return _start_command(args, _json_payload(stdin))
     context_path = Path(args.task_dir) / "spec-context.yml"
     if args.command == "decision":
         return _decision_command(args, _json_payload(stdin))

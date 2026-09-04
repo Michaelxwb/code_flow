@@ -2,6 +2,7 @@
 """E-02/B-06 integration coverage for persisted Spec Context."""
 
 import json
+import argparse
 from dataclasses import replace
 import hashlib
 import os
@@ -17,7 +18,10 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "core" / "code-flow" / "
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_spec_context import (
+    DEFAULT_ACTIVE_EXCLUDES,
+    _business_changes,
     _git_changes,
+    _start_command,
     apply_artifact_ref,
     apply_decision,
     ArtifactRef,
@@ -29,6 +33,8 @@ from cf_spec_context import (
     context_sha256,
     load_active_task,
     load_context,
+    _FILE_HASH_CACHE,
+    _file_sha256,
     new_context,
     refresh_missing_specs,
     refresh_context,
@@ -36,8 +42,53 @@ from cf_spec_context import (
     save_context,
     start_active_task,
 )
+import cf_spec_router
 from cf_spec_resolver import resolve_candidates
 from cf_spec_router import RouterError, route_prompt
+
+
+def test_artifact_hash_cache_reuses_unchanged_file(tmp_path: Path, monkeypatch) -> None:
+    artifact = tmp_path / "artifact.md"
+    artifact.write_text("stable\n", encoding="utf-8")
+    _FILE_HASH_CACHE.clear()
+    first = _file_sha256(artifact)
+    original = Path.read_bytes
+
+    def fail_read(path: Path) -> bytes:
+        raise AssertionError("unchanged artifact should use cached hash")
+
+    monkeypatch.setattr(Path, "read_bytes", fail_read)
+    assert _file_sha256(artifact) == first
+    monkeypatch.setattr(Path, "read_bytes", original)
+
+
+def test_artifact_hash_cache_invalidates_on_inode_change(tmp_path: Path) -> None:
+    artifact = tmp_path / "artifact.md"
+    artifact.write_text("one\n", encoding="utf-8")
+    _FILE_HASH_CACHE.clear()
+    first = _file_sha256(artifact)
+    stat = artifact.stat()
+    replaced = tmp_path / "replacement.md"
+    replaced.write_text("two\n", encoding="utf-8")
+    replaced.replace(artifact)
+    os.utime(artifact, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    # same size + mtime_ns but a new inode: the inode guard must force a re-hash
+    assert _file_sha256(artifact) != first
+
+
+def test_runtime_cache_files_are_excluded_from_business_changes(tmp_path: Path) -> None:
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "config", "user.email", "test@example.com")
+    _git(tmp_path, "config", "user.name", "Test")
+    (tmp_path / ".code-flow").mkdir()
+    (tmp_path / ".code-flow" / "keep.txt").write_text("x", encoding="utf-8")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "init")
+    (tmp_path / ".code-flow" / ".artifact-hash-cache.json").write_text("{}", encoding="utf-8")
+    (tmp_path / ".code-flow" / ".verifier-cache.json").write_text("{}", encoding="utf-8")
+    changes = _business_changes(str(tmp_path), DEFAULT_ACTIVE_EXCLUDES)
+    assert ".code-flow/.artifact-hash-cache.json" not in changes
+    assert ".code-flow/.verifier-cache.json" not in changes
 
 
 SPEC = """---
@@ -448,6 +499,108 @@ def test_git_rename_parses_as_delete_plus_change(tmp_path: Path) -> None:
     changes = _git_changes(str(root))
 
     assert changes == {"src/b.py": "changed", "src/a.py": "deleted"}
+
+
+def test_active_route_reuses_projection_until_task_mtime_changes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, unused_context = _active_repo(tmp_path)
+    del unused_context
+    calls = 0
+    original = cf_spec_router.project_task_session
+
+    def project(context: object, task_file: str, task_id: str) -> object:
+        nonlocal calls
+        calls += 1
+        return original(context, task_file, task_id)
+
+    monkeypatch.setattr(cf_spec_router, "project_task_session", project)
+    route_prompt(str(root), ("src/hook.py",), "s1")
+    route_prompt(str(root), ("src/hook.py",), "s1")
+    assert calls == 1
+    assert (root / ".code-flow/.task-projection-state.json").is_file()
+    assert ".code-flow/.task-projection-state.json" not in _business_changes(
+        str(root), DEFAULT_ACTIVE_EXCLUDES
+    )
+
+    task_file = root / ".code-flow/tasks/2026-07-16/context-test/demo.md"
+    task_file.write_text(task_file.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    route_prompt(str(root), ("src/hook.py",), "s1")
+    assert calls == 2
+
+
+def test_start_command_runs_refresh_activation_and_session_once(tmp_path: Path) -> None:
+    root, unused_spec, context_path = _bound_context(tmp_path)
+    task_dir = context_path.parent
+    task_file = task_dir / "demo.md"
+    task_file.write_text(
+        "# Tasks\n\n## TASK-001: Demo\n"
+        "- **Spec-Refs**: scripts-rules#RULE-scripts-001\n"
+        "### Acceptance Contract\n| S-01 | unit | real | assert |\n",
+        encoding="utf-8",
+    )
+    del unused_spec
+    _git(root, "init", "-q")
+    _git(root, "config", "user.email", "test@example.com")
+    _git(root, "config", "user.name", "Test")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "initial")
+
+    args = argparse.Namespace(
+        root=str(root),
+        task_dir=str(task_dir),
+        task="TASK-001",
+        task_file=str(task_file),
+        session_output="",
+    )
+    result = _start_command(args, {"owned_paths": []})
+
+    session = root / ".code-flow/specs/_session/task-demo.md"
+    assert result["ok"] is True
+    assert result["context_sha256"]
+    assert result["active"]["task_id"] == "TASK-001"
+    assert session.is_file()
+    assert "RULE-scripts-001" in session.read_text(encoding="utf-8")
+
+
+def test_start_manifest_failure_does_not_activate_task(tmp_path: Path) -> None:
+    root, unused_spec, context_path = _bound_context(tmp_path)
+    task_dir = context_path.parent
+    task_file = task_dir / "demo.md"
+    task_file.write_text(
+        "# Tasks\n\n## Acceptance Coverage\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 |\n"
+        "|--------|---------|---------|-------------|---------|------|\n"
+        "| S-01 | design#1 | unit | real | TASK-001 | planned |\n\n"
+        "## TASK-001: Demo\n",
+        encoding="utf-8",
+    )
+    from cf_acceptance_manifest import write_manifest
+
+    write_manifest(str(task_file), str(task_dir / ".acceptance-manifest.json"))
+    task_file.write_text(task_file.read_text(encoding="utf-8").replace("real", "changed"), encoding="utf-8")
+    args = argparse.Namespace(root=str(root), task_dir=str(task_dir), task="TASK-001", task_file=str(task_file), session_output="")
+    with pytest.raises(ContextError, match="acceptance_manifest_drift"):
+        _start_command(args, {"owned_paths": []})
+    assert not (root / ".code-flow/.active-task.json").exists()
+    del unused_spec
+
+
+def test_run_git_forces_utf8_decoding(monkeypatch: pytest.MonkeyPatch) -> None:
+    """git 输出 UTF-8 文件名；_run_git 必须显式 encoding="utf-8" 才能正确解码 CJK。"""
+    import cf_spec_context
+
+    captured: dict = {}
+
+    def fake_run(args, **kwargs):
+        captured.update(kwargs)
+        return subprocess.CompletedProcess(args, 0, stdout="?? 中文.py", stderr="")
+
+    monkeypatch.setattr(cf_spec_context.subprocess, "run", fake_run)
+    output = cf_spec_context._run_git(".", ("status", "--porcelain"))
+
+    assert captured.get("encoding") == "utf-8"
+    assert output == "?? 中文.py"
 
 
 def test_dead_pid_lock_is_auto_cleaned(tmp_path: Path) -> None:

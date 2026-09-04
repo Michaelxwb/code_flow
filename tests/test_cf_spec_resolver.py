@@ -11,9 +11,11 @@ import yaml
 SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "core" / "code-flow" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
+import cf_spec_resolver
 from cf_spec_resolver import (
     SpecResolutionError,
     build_candidate_page,
+    resolve_candidate_headers,
     resolve_candidates,
     resolve_precedence,
 )
@@ -139,6 +141,41 @@ def test_b_01_machine_candidates_remain_complete_when_page_is_trimmed(tmp_path: 
     assert len(first) == 500
     assert all(left.metadata is right.metadata for left, right in zip(first, second))
     assert sum(candidate.required_rule_count for candidate in first) == 500
+
+
+def test_header_resolution_matches_routing_without_full_metadata_parse(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    specs = {
+        "global/base.md": _spec(
+            "global-base", "RULE-shared-001", "Global.", enforcement="advisory"
+        ),
+        "backend/path.md": _spec(
+            "backend-path", "RULE-backend-001", "Path.", stages=("code",)
+        ),
+        "backend/design.md": _spec("backend-design", "RULE-backend-002", "Design."),
+    }
+    mapping = {
+        "global": {"patterns": [], "specs": [{"path": "global/base.md"}]},
+        "backend": {
+            "patterns": ["src/*.py"],
+            "specs": [
+                {"path": "backend/path.md"},
+                {"path": "backend/design.md"},
+            ],
+        },
+    }
+    root = _write_project(tmp_path, specs, mapping)
+
+    def fail_full_parse(path: str) -> None:
+        raise AssertionError(f"full metadata parser called for {path}")
+
+    monkeypatch.setattr(cf_spec_resolver, "load_spec_metadata", fail_full_parse)
+    candidates = resolve_candidate_headers(str(root), "code", ["src/app.py"])
+
+    assert [(item.spec_id, item.scope, item.enforcement) for item in candidates] == [
+        ("backend-path", "path", "required"),
+    ]
 
 
 def test_resolver_missing_config_is_explicit_error(tmp_path: Path) -> None:

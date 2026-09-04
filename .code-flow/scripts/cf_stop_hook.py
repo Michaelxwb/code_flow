@@ -28,6 +28,7 @@ from cf_core import (
     resolve_enforcement,
     resolve_quality_loop,
     resolve_session_id,
+    timing_log,
 )
 
 TOTAL_BUDGET_SECONDS = 30.0
@@ -310,3 +311,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    timing_log("cf_stop_hook")

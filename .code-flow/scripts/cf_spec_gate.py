@@ -10,9 +10,11 @@ import json
 from pathlib import Path
 import re
 import sys
+import time
 from typing import IO, Mapping, Optional, Sequence
 
 from cf_spec_context import Decision, RuleBinding, RuleStageStatus, SpecBinding, SpecContext, load_context
+from cf_core import phase_timing
 
 
 @dataclass(frozen=True)
@@ -212,13 +214,21 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
+    started = time.monotonic()
     try:
         args = _parser().parse_args(argv)
+        phase_started = time.monotonic()
         context = load_context(str(Path(args.task_dir) / "spec-context.yml"))
+        phase_timing("gate.load_context", phase_started)
+        phase_started = time.monotonic()
         result = validate_stage(context, args.stage, task_id=args.task)
+        phase_timing("gate.validate_stage", phase_started)
         if args.stage == "plan" and args.artifact:
+            phase_started = time.monotonic()
             result = _merge_results(result, validate_plan_coverage(context, args.artifact))
+            phase_timing("gate.validate_plan", phase_started)
         stdout.write(json.dumps(result_to_data(result), ensure_ascii=False))
+        phase_timing("gate.total", started)
         return 0 if result.decision == "pass" else 3
     except Exception as exc:
         sys.stderr.write(f"cf_spec_gate error: {exc}\n")

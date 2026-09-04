@@ -8,12 +8,23 @@ import json
 import os
 from pathlib import Path
 import tempfile
-from typing import Mapping, Sequence
+from typing import Mapping, Optional, Sequence
 
-from cf_core import assemble_context, build_effective_mapping, build_spec_catalog, load_config, parse_spec_frontmatter
+from cf_core import (
+    assemble_context,
+    build_effective_mapping,
+    build_spec_catalog,
+    compress_content,
+    load_config,
+    parse_spec_frontmatter,
+    resolve_compress,
+)
 from cf_spec_context import ContextError, load_active_task, load_context
 from cf_spec_resolver import resolve_candidates
 from cf_spec_session import context_sha256, project_task_session
+
+
+_PROJECTION_CACHE_PATH = ".code-flow/.task-projection-state.json"
 
 
 @dataclass(frozen=True)
@@ -44,6 +55,77 @@ def _task_file(task_dir: Path, task_id: str) -> Path:
     return matches[0]
 
 
+def _projection_cache_path(root: str) -> Path:
+    return Path(root) / _PROJECTION_CACHE_PATH
+
+
+def _load_projection_cache(root: str) -> Mapping[str, object]:
+    try:
+        value = json.loads(_projection_cache_path(root).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _cached_projection(
+    root: str, task_dir: Path, task_id: str, current_hash: str
+) -> Optional[tuple[str, bool]]:
+    cache = _load_projection_cache(root)
+    if (
+        cache.get("version") != 1
+        or cache.get("task_id") != task_id
+        or cache.get("context_sha256") != current_hash
+        or not isinstance(cache.get("task_file"), str)
+        or not isinstance(cache.get("text"), str)
+        or not isinstance(cache.get("truncated"), bool)
+    ):
+        return None
+    task_file = Path(str(cache["task_file"]))
+    if task_file.parent != task_dir or not task_file.is_file():
+        return None
+    try:
+        directory_mtime = task_dir.stat().st_mtime_ns
+        task_mtime = task_file.stat().st_mtime_ns
+    except OSError:
+        return None
+    if cache.get("task_dir_mtime_ns") != directory_mtime or cache.get("task_mtime_ns") != task_mtime:
+        return None
+    return str(cache["text"]), bool(cache["truncated"])
+
+
+def _save_projection_cache(
+    root: str,
+    task_dir: Path,
+    task_file: Path,
+    task_id: str,
+    current_hash: str,
+    text: str,
+    truncated: bool,
+) -> None:
+    try:
+        payload = {
+            "version": 1,
+            "task_id": task_id,
+            "context_sha256": current_hash,
+            "task_file": str(task_file),
+            "task_dir_mtime_ns": task_dir.stat().st_mtime_ns,
+            "task_mtime_ns": task_file.stat().st_mtime_ns,
+            "text": text,
+            "truncated": truncated,
+        }
+        path = _projection_cache_path(root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+        temporary.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        os.replace(temporary, path)
+    except (OSError, TypeError, UnicodeError):
+        if "temporary" in locals() and temporary.exists():
+            try:
+                temporary.unlink()
+            except OSError:
+                pass
+
+
 def _active_route(root: str) -> RouteResult:
     try:
         active = load_active_task(root)
@@ -57,14 +139,23 @@ def _active_route(root: str) -> RouteResult:
             "active_context_drift",
             "active marker Context hash does not match; run `cf-spec doctor` (resync) to re-sync the marker before continuing",
         )
-    projection = project_task_session(context, str(_task_file(task_dir, active.task_id)), active.task_id)
-    if projection.truncated:
+    cached = _cached_projection(root, task_dir, active.task_id, current_hash)
+    if cached is None:
+        task_file = _task_file(task_dir, active.task_id)
+        projection = project_task_session(context, str(task_file), active.task_id)
+        _save_projection_cache(
+            root, task_dir, task_file, active.task_id, current_hash, projection.text, projection.truncated
+        )
+        text, truncated = projection.text, projection.truncated
+    else:
+        text, truncated = cached
+    if truncated:
         raise RouterError("task_projection_truncated", "split the TASK before coding")
     refs = tuple(binding.spec_id for binding in context.bindings)
-    return RouteResult("task", projection.text, refs, current_hash)
+    return RouteResult("task", text, refs, current_hash)
 
 
-def _read_candidates(root: str, paths: Sequence[str]) -> RouteResult:
+def _read_candidates(root: str, paths: Sequence[str], compress: bool = True) -> RouteResult:
     try:
         candidates = resolve_candidates(root, "code", tuple(paths))
     except ValueError as exc:
@@ -78,7 +169,8 @@ def _read_candidates(root: str, paths: Sequence[str]) -> RouteResult:
             raise RouterError("spec_read_failed", f"{candidate.path}: {exc}") from exc
         unused_frontmatter, content = parse_spec_frontmatter(raw)
         del unused_frontmatter
-        specs.append({"path": candidate.path, "content": content.strip(), "tier": 1})
+        final_content = compress_content(content.strip()) if compress else content.strip()
+        specs.append({"path": candidate.path, "content": final_content, "tier": 1})
     text = assemble_context(specs, "## Active Specs (path-mapped)") if specs else ""
     return RouteResult("path", text, tuple(item.path for item in candidates))
 
@@ -145,5 +237,6 @@ def route_prompt(root: str, paths: Sequence[str], session_id: str) -> RouteResul
     if not config:
         return RouteResult("none", "", ())
     if paths:
-        return _read_candidates(root, paths)
+        quality = config.get("quality_loop")
+        return _read_candidates(root, paths, resolve_compress(quality if isinstance(quality, dict) else {}))
     return _catalog_route(root, session_id, config)

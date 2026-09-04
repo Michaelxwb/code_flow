@@ -15,6 +15,44 @@ from cf_spec_metadata import load_spec_metadata
 from cf_spec_verify import VerificationScope, evidence_is_fresh, run_all_verifiers
 
 
+def test_verified_pure_result_is_persisted_and_reused(tmp_path: Path, monkeypatch) -> None:
+    metadata = _metadata(
+        tmp_path,
+        [{"rule": "RULE-verify-001", "type": "regex", "config": {"pattern": "print\\(", "files": "src/*.py"}}],
+        [("RULE-verify-001", "No print calls")],
+    )
+    scope = VerificationScope(str(tmp_path), (), "a" * 64)
+    import cf_spec_verify
+
+    calls = 0
+    original = cf_spec_verify._evidence
+
+    def counting(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(cf_spec_verify, "_evidence", counting)
+    assert run_all_verifiers(metadata, scope).passed
+    assert run_all_verifiers(metadata, scope).passed
+    assert calls == 1
+    assert (tmp_path / ".code-flow" / ".verifier-cache.json").is_file()
+
+
+def test_command_result_is_not_cached(tmp_path: Path) -> None:
+    marker = tmp_path / "runs.txt"
+    code = f"from pathlib import Path; p=Path({str(marker)!r}); p.write_text(p.read_text()+'x' if p.exists() else 'x')"
+    metadata = _metadata(
+        tmp_path,
+        [{"rule": "RULE-verify-001", "type": "test", "config": {"argv": [sys.executable, "-c", code]}}],
+        [("RULE-verify-001", "Rule 1")],
+    )
+    scope = VerificationScope(str(tmp_path), (), "a" * 64)
+    assert run_all_verifiers(metadata, scope).passed
+    assert run_all_verifiers(metadata, scope).passed
+    assert marker.read_text(encoding="utf-8") == "xx"
+
+
 def _metadata(tmp_path: Path, verifiers: list[dict[str, object]], rules: list[tuple[str, str]]):
     frontmatter = {
         "id": "verify-rules",
