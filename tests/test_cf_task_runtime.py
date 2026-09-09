@@ -283,7 +283,8 @@ def test_mid_task_commit_allows_complete(tmp_path: Path) -> None:
 
     completed = complete_active_task(str(root), True)
 
-    assert completed.baseline.head == head
+    assert completed.baseline.head != head, "TASK-002: baseline head 必须冻结，不得 rebase"
+    assert completed.baseline.last_seen_head == head
     assert not (root / ".code-flow" / ".active-task.json").exists()
 
 

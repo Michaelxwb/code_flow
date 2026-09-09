@@ -61,7 +61,7 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 
 在改状态或生产代码前，顺序固定且不得跳步：
 
-1. 调用 `cf_spec_context.py start --task-dir ... --root ... --task ... --task-file ... --json`，由单个进程按 refresh → active start → session 顺序执行 Start Gate；stdin JSON 传入逐路径确认的 `owned_paths`。stale/pending/conflict、依赖未闭合、已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。
+1. 调用 `cf_spec_context.py start --task-dir ... --root ... --task ... --task-file ... --json`，由单个进程按 refresh → active start → session 顺序执行 Start Gate；stdin JSON 传入逐路径确认的 `owned_paths`。stale/pending/conflict、依赖未闭合、已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。前置硬门禁（blocked / #NOTES / 依赖）由 workflow service 在改状态前强制执行，不依赖 AI 自觉检查。
 2. 从命令返回值读取 refresh 后的 Context hash、active 状态和 session 输出路径；该命令只根据当前 TASK 的 `Spec-Refs`、Source 与 Acceptance Contract 覆盖写入 `.code-flow/specs/_session/task-<name>.md`，禁止重新 catalog 或猜测规则。
 3. 只有前两步全部成功，才用 apply_patch 更新子任务 Status 为 `in-progress`、追加 started log 并更新文件头日期。
 4. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令

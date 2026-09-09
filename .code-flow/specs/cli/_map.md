@@ -18,6 +18,10 @@ Node.js CLI，负责四个 AI 平台适配器的初始化与版本升级。`code
 | 函数 | 职责 |
 |------|------|
 | `fileCategory(path)` | 三级分类：`tool`（覆盖）/ `merge`（增量合并）/ `user`（保留） |
+| `modeFor / platformFilesExist` | 全局 mode 与平台独立 mode 判定（平台升级互不遮蔽） |
+| `readAdapterVersions / writeAdapterVersions` | `.adapter-versions.json` 按平台版本记录 |
+| `migrateLegacyClaudeSkills` | 仅受管旧 skill 名可删（先备份），他平台不触碰 `.claude/skills` |
+| `ensurePyYaml` | 探测优先；fallback 单次 60s/总 120s 有界等待 + 进度 |
 | `mergeClaudeMd` | CLAUDE.md / AGENTS.md 段落级合并 |
 | `mergeSettingsJson` | settings.json / opencode.json 顶层 key + hooks 合并 |
 | `mergeConfigYml` | config.yml 顶层 key 合并 |

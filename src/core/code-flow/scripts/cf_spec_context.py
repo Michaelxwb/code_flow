@@ -159,6 +159,10 @@ class ActiveBaseline:
     head: Optional[str]
     captured_at: str
     preexisting_changes: Mapping[str, PathSnapshot]
+    # head is frozen at start and never rewritten: task scope is the union of
+    # everything committed since head plus all working-tree changes.
+    # last_seen_head is observation-only (diagnostics), never scope input.
+    last_seen_head: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -285,6 +289,7 @@ def _active_data(active: ActiveTask) -> dict[str, object]:
         "context_sha256": active.context_sha256,
         "baseline": {
             "head": active.baseline.head,
+            "last_seen_head": active.baseline.last_seen_head,
             "captured_at": active.baseline.captured_at,
             "preexisting_changes": changes,
         },
@@ -319,6 +324,7 @@ def _active_from_data(value: object, path: str) -> ActiveTask:
         head,
         _string(baseline_data.get("captured_at"), "captured_at", path),
         {key: _snapshot_from_data(item, path) for key, item in raw_changes.items()},
+        baseline_data.get("last_seen_head") if isinstance(baseline_data.get("last_seen_head"), str) else None,
     )
     return ActiveTask(
         1,
@@ -349,6 +355,54 @@ def load_active_task(root: str) -> ActiveTask:
         raise
     except (OSError, json.JSONDecodeError) as exc:
         raise ContextError("invalid_active_marker", "active", str(exc), str(marker)) from exc
+
+
+def task_contract_digest(root: str, task_dir: str, task_id: str) -> str:
+    """Digest of the active TASK's acceptance contract (Refs + Contract + Evidence).
+
+    Two TASKs may share one Context hash while owning different scenarios; the
+    digest separates their injection versions so switching TASKs re-injects.
+    Returns "" when the TASK section cannot be located (fail-open to the
+    legacy context-hash-only key rather than crashing the hook hot path).
+    """
+    try:
+        files = sorted((Path(root) / task_dir).glob("*.md"))
+    except OSError:
+        return ""
+    for path in files:
+        if path.name.endswith((".prd.md", ".design.md")):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            continue
+        start = text.find(f"## {task_id}:")
+        if start == -1:
+            continue
+        end = text.find("\n## TASK-", start)
+        section = text[start:] if end == -1 else text[start:end]
+        chunks: list[str] = []
+        for heading in ("Acceptance-Refs", "Acceptance Contract", "Acceptance Evidence"):
+            index = section.find(heading)
+            chunks.append(section[index:index + 2000] if index != -1 else f"{heading}:missing")
+        return hashlib.sha256("\n".join(chunks).encode("utf-8")).hexdigest()
+    return ""
+
+
+def injection_version(root: str, session_id: str, context_sha: str) -> str:
+    """Version key for hook injection dedup.
+
+    Covers session + task_dir + task_id + context hash + TASK contract digest,
+    so a TASK switch (or an in-place contract edit) always re-injects while a
+    repeated prompt on the same contract stays suppressed.
+    """
+    try:
+        active = load_active_task(root)
+    except (ContextError, OSError, ValueError):
+        return f"none:{session_id}:{context_sha}"
+    digest = task_contract_digest(root, active.task_dir, active.task_id)
+    raw = "\n".join((session_id, active.task_dir, active.task_id, context_sha, digest))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 def resync_active_hash(root: str, task_dir: str, current_sha256: str) -> bool:
@@ -433,6 +487,42 @@ def _release_active_lock(lock: Path) -> None:
         return
 
 
+def _committed_since(root: str, base_head: Optional[str]) -> Mapping[str, str]:
+    """Paths committed between the frozen baseline head and current HEAD.
+
+    Returns {} when there is no baseline (pre-commit repo) or the range is
+    unresolvable (rewritten/pruned history) — working-tree changes still
+    flow through _business_changes, so scope never goes fully blind.
+    """
+    if not base_head:
+        return {}
+    try:
+        output = _run_git(root, ("diff", "--name-status", "-z", base_head, "HEAD", "--"))
+    except ContextError:
+        return {}
+    names: dict[str, str] = {}
+    tokens = output.split("\0")
+    index = 0
+    while index < len(tokens) and tokens[index]:
+        status, index = tokens[index], index + 1
+        code = status[:1]
+        if code in ("R", "C"):
+            if index + 1 >= len(tokens):
+                break
+            new_path, old_path = tokens[index], tokens[index + 1]
+            index += 2
+            if new_path:
+                names[new_path] = "renamed"
+            if old_path:
+                names[old_path] = "deleted"
+            continue
+        if index >= len(tokens) or not tokens[index]:
+            break
+        names[tokens[index]] = {"M": "modified", "A": "added", "D": "deleted"}.get(code, "changed")
+        index += 1
+    return names
+
+
 def _business_changes(root: str, excludes: Sequence[str]) -> Mapping[str, str]:
     return {
         path: status
@@ -462,7 +552,8 @@ def _new_active(
     snapshots = {
         path: PathSnapshot(status, "") for path, status in changes.items()
     }
-    baseline = ActiveBaseline(_git_head(root), _now(), snapshots)
+    head = _git_head(root)
+    baseline = ActiveBaseline(head, _now(), snapshots, head)
     return ActiveTask(
         1, task_dir, task_id, "activating", context_sha256, baseline, owned, DEFAULT_ACTIVE_EXCLUDES
     )
@@ -498,9 +589,10 @@ def _transition_active(root: str, expected: Sequence[str], target: str) -> Activ
             raise ContextError("invalid_active_transition", "status", f"{active.status} -> {target}", root)
         current_head = _git_head(root)
         if active.baseline.head != current_head:
-            # Mid-task commits are a normal workflow; re-baseline instead of
-            # bricking pause/resume/complete on any unrelated commit.
-            active = replace(active, baseline=replace(active.baseline, head=current_head))
+            # Mid-task commits are a normal workflow. The baseline head stays
+            # frozen so committed work never drops out of scope; only the
+            # observation field advances for diagnostics.
+            active = replace(active, baseline=replace(active.baseline, last_seen_head=current_head))
         updated = replace(active, status=target)
         save_active_task(root, updated)
         return updated
@@ -522,7 +614,12 @@ def resume_active_task(root: str) -> ActiveTask:
 
 def current_owned_paths(root: str, active: ActiveTask) -> tuple[str, ...]:
     changes = _business_changes(root, active.excluded_paths)
-    return tuple(sorted(set(active.owned_paths).union(changes)))
+    committed = {
+        path: status
+        for path, status in _committed_since(root, active.baseline.head).items()
+        if not _is_excluded(path, active.excluded_paths)
+    }
+    return tuple(sorted(set(active.owned_paths).union(changes).union(committed)))
 
 
 def complete_active_task(root: str, gate_passed: bool) -> ActiveTask:
@@ -1337,23 +1434,65 @@ def _bind_command(args: argparse.Namespace, payload: Mapping[str, object]) -> di
 
 
 def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> dict[str, object]:
+    from cf_workflow_service import WorkflowError, locate_task_file
+
+    def _directory() -> str:
+        return args.task_dir if Path(args.task_dir).is_absolute() else str(Path(args.root) / args.task_dir)
+
+    def _reraise(exc: WorkflowError) -> ContextError:
+        return ContextError(exc.code, "workflow", str(exc), args.task_dir)
+
+    task_file = locate_task_file(_directory(), args.task)
     if args.active_action == "start":
         owned = tuple(
             _string(item, "owned_paths[]", "")
             for item in _sequence(payload.get("owned_paths", []), "owned_paths", "")
         )
-        active = start_active_task(
-            args.root, args.task_dir, args.task, args.context_sha256, owned
-        )
-        return {"ok": True, "active": _active_data(active)}
+        if task_file is None:
+            active = start_active_task(
+                args.root, args.task_dir, args.task, args.context_sha256, owned
+            )
+            return {"ok": True, "active": _active_data(active)}
+        from cf_workflow_service import start_task
+
+        try:
+            return start_task(args.root, args.task_dir, str(task_file), args.task, owned)
+        except WorkflowError as exc:
+            raise _reraise(exc) from exc
     if args.active_action == "pause":
         active = pause_active_task(args.root)
     elif args.active_action == "resume":
-        active = resume_active_task(args.root)
+        if task_file is None:
+            active = resume_active_task(args.root)
+        else:
+            from cf_workflow_service import resume_task
+
+            try:
+                return resume_task(args.root, _directory(), str(task_file), args.task)
+            except WorkflowError as exc:
+                raise _reraise(exc) from exc
     elif args.active_action == "block":
-        active = block_active_task(args.root)
+        if task_file is None:
+            active = block_active_task(args.root)
+        else:
+            from cf_workflow_service import block_task
+
+            reason = payload.get("reason", "")
+            try:
+                return block_task(args.root, _directory(), str(task_file), args.task, reason if isinstance(reason, str) else "")
+            except WorkflowError as exc:
+                raise _reraise(exc) from exc
     elif args.active_action == "complete":
-        active = complete_active_task(args.root, payload.get("gate_passed") is True)
+        gate = payload.get("gate_passed") is True
+        if task_file is None:
+            active = complete_active_task(args.root, gate)
+        else:
+            from cf_workflow_service import complete_task
+
+            try:
+                return complete_task(args.root, _directory(), str(task_file), args.task, gate)
+            except WorkflowError as exc:
+                raise _reraise(exc) from exc
     else:
         result = doctor_active_task(
             args.root,
@@ -1366,53 +1505,24 @@ def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> 
 
 
 def _start_command(args: argparse.Namespace, payload: Mapping[str, object]) -> dict[str, object]:
-    """Run refresh, activation and TASK projection in one guarded process."""
-    context_path = Path(args.task_dir) / "spec-context.yml"
-    refreshed = refresh_context(load_context(str(context_path)), args.root, artifact_root=args.task_dir)
-    save_context(str(context_path), refreshed.context)
-    _resync_after_save(args, context_path)
-    current_hash = context_sha256(refreshed.context)
+    """Run refresh, activation and TASK projection in one guarded process.
+
+    Delegates to the unified workflow service: hard preconditions (status,
+    NOTES, depends, marker) are enforced before any state changes, and the
+    Markdown view flips to in-progress in the same call.
+    """
+    from cf_workflow_service import WorkflowError, start_task
+
     owned = tuple(
         _string(item, "owned_paths[]", "")
         for item in _sequence(payload.get("owned_paths", []), "owned_paths", "")
     )
-    task_file = Path(args.task_file).resolve()
-    task_dir = Path(args.task_dir).resolve()
-    if task_file.parent != task_dir or not task_file.is_file():
-        raise ContextError("invalid_task_file", "task_file", str(task_file), args.task_dir)
-    manifest_file = task_dir / ".acceptance-manifest.json"
-    if "## Acceptance Coverage" in task_file.read_text(encoding="utf-8") and not manifest_file.is_file():
-        raise ContextError(
-            "acceptance_manifest_missing",
-            "acceptance_manifest",
-            "run plan verification and lock the manifest",
-            str(manifest_file),
+    try:
+        return start_task(
+            args.root, args.task_dir, args.task_file, args.task, owned, args.session_output
         )
-    if manifest_file.is_file():
-        from cf_acceptance_manifest import validate_manifest
-
-        valid, reason = validate_manifest(str(task_file), str(manifest_file))
-        if not valid:
-            raise ContextError(reason, "acceptance_manifest", "run plan verification before coding", str(manifest_file))
-    from cf_spec_session import project_task_session
-
-    projection = project_task_session(refreshed.context, str(task_file), args.task)
-    if projection.truncated:
-        raise ContextError("task_projection_truncated", "task_file", "split the TASK before coding")
-    output = Path(args.session_output) if args.session_output else (
-        Path(args.root) / ".code-flow/specs/_session" / f"task-{task_file.stem}.md"
-    )
-    output.parent.mkdir(parents=True, exist_ok=True)
-    _atomic_text(output, projection.text)
-    active = start_active_task(args.root, args.task_dir, args.task, current_hash, owned)
-    return {
-        "ok": True,
-        "context_sha256": current_hash,
-        "refresh_changes": [item.__dict__ for item in refreshed.changes],
-        "active": _active_data(active),
-        "session_output": str(output),
-        "acceptance_manifest": str(manifest_file) if manifest_file.is_file() else None,
-    }
+    except WorkflowError as exc:
+        raise ContextError(exc.code, "workflow", str(exc), args.task_dir) from exc
 
 
 def _status_command(args: argparse.Namespace) -> dict[str, object]:

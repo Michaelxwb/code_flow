@@ -21,10 +21,10 @@ E2E 测试依赖外部环境（数据库、API、浏览器等），在编码阶�
 
 ### 1. 检查前置条件
 
-确认需求目录下所有子任务状态为 `done` 或 `verified`：
+确认需求目录下所有子任务状态为 `done`（实现完成）或 `verified`（终验已闭环）：
 
 ```bash
-rg "^Status:" <需求目录>/*.md
+rg "^- \*\*Status\*\*:" <需求目录>/*.md
 ```
 
 如有 `in-progress` 或 `blocked` 任务，提示用户先完成。
@@ -56,7 +56,7 @@ E2E 场景需要以下环境：
 python3 .code-flow/scripts/cf_acceptance_runner.py \
   --manifest <需求目录>/.acceptance-manifest.json \
   --root . \
-  --include-e2e \
+  --only-e2e \
   --write-evidence
 ```
 

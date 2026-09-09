@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 import hashlib
+import json
 from pathlib import Path
 import time
 from typing import Mapping, Optional
@@ -51,7 +52,7 @@ def _context_path(task_dir: str) -> str:
     return str(Path(task_dir) / "spec-context.yml")
 
 
-def _manual_manifest_issue(task_dir: str) -> str:
+def _manual_manifest_issue(task_dir: str, owner: str = "") -> str:
     path = Path(task_dir) / ".acceptance-manifest.json"
     if not path.is_file():
         return ""
@@ -63,6 +64,7 @@ def _manual_manifest_issue(task_dir: str) -> str:
             item.get("id", "unknown")
             for item in data.get("scenarios", [])
             if isinstance(item, dict) and item.get("kind") == "manual" and item.get("status") != "verified"
+            and (not owner or not isinstance(item.get("owner"), str) or not item.get("owner") or item.get("owner") == owner)
         ]
         return f"manual 场景未完成: {', '.join(pending)}" if pending else ""
     except (OSError, ValueError, TypeError):
@@ -176,33 +178,32 @@ def _rule_manual_confirmation(rule: RuleBinding) -> Optional[Mapping[str, object
     }
 
 
-def run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optional[float] = None, include_e2e: bool = False) -> DoneResult:
+def run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optional[float] = None, include_e2e: bool = False, task_id: str = "") -> DoneResult:
     started = time.monotonic()
     phase_started = time.monotonic()
     scope_result = evaluate_scope(root, task_dir)
     phase_timing("done.evaluate_scope", phase_started)
     if scope_result.decision == "pause":
         return DoneResult("block", scope_result.files, (), scope_result.message)
-    manual_issue = _manual_manifest_issue(task_dir)
+    owner = task_id or load_active_task(root).task_id
+    manual_issue = _manual_manifest_issue(task_dir, owner)
     if manual_issue:
         return DoneResult("block", scope_result.files, (), manual_issue)
     manifest_path = Path(task_dir) / ".acceptance-manifest.json"
     if manifest_path.is_file():
         try:
-            import json
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            has_commands = any(
-                isinstance(item, dict) and isinstance(item.get("command"), list)
-                for item in manifest.get("scenarios", [])
-            )
+            if not isinstance(manifest.get("scenarios"), list):
+                raise ValueError("invalid scenarios")
         except (OSError, ValueError, TypeError):
             return DoneResult("block", scope_result.files, (), "acceptance manifest invalid")
-        if has_commands:
-            from cf_acceptance_runner import run_manifest
+        from cf_acceptance_runner import run_manifest
 
-            scenario_result = run_manifest(str(manifest_path), root, write_evidence=True, include_e2e=include_e2e)
-            if scenario_result["decision"] == "block":
-                return DoneResult("block", scope_result.files, (), "acceptance scenario failed")
+        deadline = started + budget if budget is not None else None
+        scenario_result = run_manifest(str(manifest_path), root, write_evidence=True, include_e2e=include_e2e, owner=owner, deadline=deadline)
+        if scenario_result["decision"] == "block":
+            reason = scenario_result.get("error") or "acceptance scenario failed"
+            return DoneResult("block", scope_result.files, (), f"acceptance scenario failed: {reason}")
     phase_started = time.monotonic()
     context = load_context(_context_path(task_dir))
     diff_hash = _diff_hash(root, scope_result.files)

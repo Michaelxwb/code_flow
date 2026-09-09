@@ -13,7 +13,7 @@ import sys
 import cf_log
 from cf_core import _log, ensure_utf8_io, load_config, normalize_path, resolve_enforcement, resolve_session_id, timing_log
 from cf_session_state import load_session_state, save_session_state
-from cf_spec_context import load_active_task, load_context
+from cf_spec_context import injection_version, load_active_task, load_context
 from cf_spec_resolver import resolve_candidate_headers
 from cf_spec_router import RouterError, route_prompt
 
@@ -30,6 +30,7 @@ def _active_expansion(root: str, relative: str) -> tuple[str, ...]:
     return tuple(
         item.spec_id for item in resolve_candidate_headers(root, "code", (relative,))
         if item.spec_id not in bound and item.enforcement == "required"
+        and getattr(item, "scope", "path") != "unmatched"
     )
 
 
@@ -70,12 +71,15 @@ def main() -> None:
         text = result.text
         if result.mode == "task" and result.context_sha256:
             # The projection is already in context from the prompt route unless
-            # the bound rules changed; skip per-edit re-injection.
+            # the session/task/contract version changed; skip per-edit
+            # re-injection. Same version key as the prompt hook so a TASK
+            # switch re-injects here too.
             state = load_session_state(root)
-            if state.get("injected_sha256") == result.context_sha256:
+            version = injection_version(root, sid, result.context_sha256)
+            if state.get("injected_version") == version:
                 text = ""
             else:
-                state["injected_sha256"] = result.context_sha256
+                state["injected_version"] = version
                 save_session_state(root, state)
         if text:
             sys.stdout.write(json.dumps(_inject(text), ensure_ascii=False))

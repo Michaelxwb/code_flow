@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import shlex
 from pathlib import Path
 import re
 import sys
@@ -13,6 +14,8 @@ from typing import IO, Mapping, Optional, Sequence
 
 
 _ROW_RE = re.compile(r"^\|\s*([SEB]-\d+)\s*\|(.+?)\|$")
+
+_MANIFEST_SCHEMA = 2
 
 
 def _kind(level: str) -> str:
@@ -30,8 +33,37 @@ def _kind(level: str) -> str:
     return "functional"
 
 
-def _manifest_hash(rows: list[dict[str, str]]) -> str:
-    immutable = [{key: item[key] for key in ("id", "source", "level", "kind", "boundary", "owner")} for item in rows]
+def _parse_command(cell: str, scenario_id: str) -> Optional[list[str]]:
+    """Parse the optional 命令 column: argv JSON array preferred, else shell words.
+
+    Empty / `-` / `planned` → None (not yet registered, not executable).
+    """
+    text = (cell or "").strip()
+    if not text or text in {"-", "planned", "pending", "TBD", "tbd"}:
+        return None
+    if text.startswith("["):
+        try:
+            value = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"{scenario_id} 命令列不是合法 argv JSON: {exc}") from exc
+        if not isinstance(value, list) or not value or not all(isinstance(item, str) for item in value):
+            raise ValueError(f"{scenario_id} 命令列必须是 argv 字符串数组")
+        return list(value)
+    return shlex.split(text)
+
+
+def _parse_float(cell: str, default: float) -> float:
+    try:
+        return float((cell or "").strip() or default)
+    except (TypeError, ValueError):
+        return default
+
+
+def _manifest_hash(rows: list[dict[str, object]]) -> str:
+    immutable = [
+        {key: item[key] for key in ("id", "source", "level", "kind", "boundary", "owner", "command", "cwd", "timeout", "depends_on")}
+        for item in rows
+    ]
     payload = json.dumps(immutable, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
@@ -39,7 +71,7 @@ def _manifest_hash(rows: list[dict[str, str]]) -> str:
 def extract_manifest(task_file: str) -> dict[str, object]:
     path = Path(task_file)
     text = path.read_text(encoding="utf-8")
-    rows: list[dict[str, str]] = []
+    rows: list[dict[str, object]] = []
     in_table = False
     seen: set[str] = set()
     for line in text.splitlines():
@@ -57,10 +89,23 @@ def extract_manifest(task_file: str) -> dict[str, object]:
         if len(fields) < 5 or match.group(1) in seen:
             continue
         seen.add(match.group(1))
-        rows.append({"id": match.group(1), "source": fields[0], "level": fields[1], "kind": _kind(fields[1]), "boundary": fields[2], "owner": fields[3], "status": fields[4]})
+        depends = [item.strip() for item in (fields[8] if len(fields) > 8 else "").split(",") if item.strip()]
+        rows.append({
+            "id": match.group(1),
+            "source": fields[0],
+            "level": fields[1],
+            "kind": _kind(fields[1]),
+            "boundary": fields[2],
+            "owner": fields[3],
+            "status": fields[4],
+            "command": _parse_command(fields[5], match.group(1)) if len(fields) > 5 else None,
+            "cwd": (fields[6] if len(fields) > 6 else "").strip() or ".",
+            "timeout": _parse_float(fields[7], 60.0) if len(fields) > 7 else 60.0,
+            "depends_on": depends,
+        })
     if not rows:
         raise ValueError("Acceptance Coverage 缺失或为空")
-    return {"schema": 1, "task_file": str(path), "task_sha256": _manifest_hash(rows), "scenarios": rows}
+    return {"schema": _MANIFEST_SCHEMA, "task_file": str(path), "task_sha256": _manifest_hash(rows), "scenarios": rows}
 
 
 def write_manifest(task_file: str, output: str) -> dict[str, object]:
@@ -75,18 +120,34 @@ def write_manifest(task_file: str, output: str) -> dict[str, object]:
     return manifest
 
 
+_IMMUTABLE_SCENARIO_FIELDS = (
+    "id", "source", "level", "kind", "boundary", "owner", "command", "cwd", "timeout", "depends_on",
+)
+
+
 def validate_manifest(task_file: str, manifest_file: str) -> tuple[bool, str]:
     try:
         manifest = json.loads(Path(manifest_file).read_text(encoding="utf-8"))
         expected = extract_manifest(task_file)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         return False, f"acceptance_manifest_invalid: {exc}"
-    if manifest.get("schema") != 1 or manifest.get("task_sha256") != expected["task_sha256"]:
+    if manifest.get("schema") != _MANIFEST_SCHEMA or manifest.get("task_sha256") != expected["task_sha256"]:
         return False, "acceptance_manifest_drift"
-    actual = {item.get("id") for item in manifest.get("scenarios", []) if isinstance(item, Mapping)}
-    required = {item["id"] for item in expected["scenarios"]}
-    if actual != required:
+    if not isinstance(manifest.get("scenarios"), list):
         return False, "acceptance_manifest_scenarios_changed"
+    stored = {
+        item.get("id"): item
+        for item in manifest["scenarios"]
+        if isinstance(item, Mapping) and isinstance(item.get("id"), str)
+    }
+    required = {item["id"] for item in expected["scenarios"]}
+    if set(stored) != required:
+        return False, "acceptance_manifest_scenarios_changed"
+    for item in expected["scenarios"]:
+        current = stored[item["id"]]
+        for field in _IMMUTABLE_SCENARIO_FIELDS:
+            if current.get(field) != item.get(field):
+                return False, f"acceptance_manifest_field_changed:{item['id']}:{field}"
     text = Path(task_file).read_text(encoding="utf-8")
     for scenario in expected["scenarios"]:
         owner = scenario["owner"]
@@ -126,8 +187,29 @@ def record_manual_evidence(manifest_file: str, scenario_id: str, confirmed_by: s
         _sync_task_evidence(task_path, scenario_id, confirmed_by, evidence, owner)
 
 
+def _replace_or_append(lines: list[str], scenario_id: str, replacement: str) -> list[str]:
+    """Replace the first line mentioning the scenario, else append. Idempotent:
+    re-syncing the same state yields byte-identical output."""
+    out: list[str] = []
+    replaced = False
+    for line in lines:
+        if not replaced and scenario_id in line:
+            out.append(replacement)
+            replaced = True
+        elif line == replacement:
+            replaced = True
+        else:
+            out.append(line)
+    if not replaced:
+        out.append(replacement)
+    return out
+
+
 def _sync_task_evidence(task_file: Path, scenario_id: str, confirmed_by: str, evidence: str, owner: str = "") -> None:
-    text = task_file.read_text(encoding="utf-8")
+    try:
+        text = task_file.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return
     if owner:
         section_match = re.search(rf"(?ms)^##\s+{re.escape(owner)}:.*?(?=^##\s+TASK-|\Z)", text)
     else:
@@ -137,18 +219,51 @@ def _sync_task_evidence(task_file: Path, scenario_id: str, confirmed_by: str, ev
     section = section_match.group(0)
     line = f"- {scenario_id}: verified — {evidence} (confirmed_by: {confirmed_by})"
     contract_match = re.search(r"(?ms)^### Acceptance Contract\s*$\n(.*?)(?=^### |^## |\Z)", section)
-    if contract_match and scenario_id in contract_match.group(1) and "verified" not in contract_match.group(1).lower():
-        body = contract_match.group(1)
-        body = "\n".join((f"{item} — verified" if scenario_id in item else item) for item in body.splitlines())
-        section = section[:contract_match.start(1)] + body + section[contract_match.end(1):]
+    if contract_match:
+        body = _replace_or_append(contract_match.group(1).splitlines(), scenario_id, line)
+        replacement = "\n".join(body)
+        if not replacement.endswith("\n"):
+            replacement += "\n"
+        section = section[:contract_match.start(1)] + replacement + section[contract_match.end(1):]
     evidence_match = re.search(r"(?ms)^### Acceptance Evidence\s*$\n(.*?)(?=^### |^## |\Z)", section)
     if evidence_match:
-        body = evidence_match.group(1)
-        replacement = body.rstrip() + "\n" + line + "\n"
+        body = _replace_or_append(evidence_match.group(1).splitlines(), scenario_id, line)
+        replacement = "\n".join(body)
+        if not replacement.endswith("\n"):
+            replacement += "\n"
         section = section[:evidence_match.start(1)] + replacement + section[evidence_match.end(1):]
     else:
         section = section.rstrip() + "\n\n### Acceptance Evidence\n" + line + "\n"
-    task_file.write_text(text[:section_match.start()] + section + text[section_match.end():], encoding="utf-8")
+    text = text[:section_match.start()] + section + text[section_match.end():]
+    task_file.write_text(_sync_coverage_status(text, scenario_id), encoding="utf-8")
+
+
+def _sync_coverage_status(text: str, scenario_id: str) -> str:
+    """Flip the scenario's Acceptance Coverage row to verified (idempotent).
+
+    The coverage table lives outside TASK sections, so it is patched on the
+    whole document: only the status cell (6th column) of the matching row.
+    """
+    start = text.find("## Acceptance Coverage")
+    if start == -1:
+        return text
+    end = text.find("\n## ", start)
+    block = text[start:] if end == -1 else text[start:end]
+    lines = block.splitlines()
+    changed = False
+    for index, raw in enumerate(lines):
+        cells = [cell.strip() for cell in raw.strip().strip("|").split("|")]
+        if len(cells) >= 6 and cells[0] == scenario_id and cells[5].lower() != "verified":
+            parts = raw.split("|")
+            # parts[0] is "" (leading |); status is parts[6].
+            if len(parts) >= 7:
+                parts[6] = " verified "
+                lines[index] = "|".join(parts)
+                changed = True
+    if not changed:
+        return text
+    block = "\n".join(lines)
+    return text[:start] + block + (text[end:] if end != -1 else "")
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:

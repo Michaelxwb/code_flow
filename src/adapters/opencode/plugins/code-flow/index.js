@@ -1,11 +1,20 @@
-import { spawnSync } from "child_process";
+import { execFile } from "child_process";
 import { join } from "path";
 import { appendFileSync, mkdirSync } from "fs";
 
 const SCRIPT_DIR = ".code-flow/scripts";
 
-// Per-session cache of spec context to inject into system prompt
+// Per-session queued feedback. Single map, append-only: idle/stop-check and
+// post-check feedback accumulate here and are consumed by the next
+// system.transform. Never overwrite — chat.message arriving between idle and
+// transform must not drop queued stop-check feedback.
 const sessionContext = new Map();
+
+export function mergePending(existing, incoming) {
+  if (!existing) return incoming;
+  if (!incoming) return existing;
+  return existing + "\n\n" + incoming;
+}
 
 function debugLog(projectRoot, msg) {
   if (process.env.CF_DEBUG !== "1") return;
@@ -22,25 +31,39 @@ function pythonPath(projectRoot, script) {
 }
 
 function callHook(projectRoot, script, input, timeout = 5000) {
-  try {
-    const proc = spawnSync("python3", [pythonPath(projectRoot, script)], {
-      cwd: projectRoot,
-      input: JSON.stringify(input),
-      encoding: "utf-8",
-      timeout,
-      maxBuffer: 1024 * 1024,
-    });
-    if (proc.error || proc.status !== 0) {
-      debugLog(projectRoot, `callHook ${script} failed: ${proc.error || proc.stderr}`);
-      return null;
+  // Async child process: never block the plugin event thread. opencode's
+  // idle event cannot interrupt a turn, so stop-check failures queue into
+  // sessionContext for the next system.transform (documented platform gap
+  // vs. blocking Stop hooks).
+  return new Promise((resolve) => {
+    const child = execFile(
+      "python3",
+      [pythonPath(projectRoot, script)],
+      { cwd: projectRoot, timeout, maxBuffer: 1024 * 1024 },
+      (error, stdout, stderr) => {
+        if (error) {
+          debugLog(projectRoot, `callHook ${script} failed: ${error.message || stderr}`);
+          resolve(null);
+          return;
+        }
+        const text = (stdout || "").trim();
+        if (!text) {
+          resolve(null);
+          return;
+        }
+        try {
+          resolve(JSON.parse(text));
+        } catch (e) {
+          debugLog(projectRoot, `callHook ${script} bad JSON: ${e.message}`);
+          resolve(null);
+        }
+      }
+    );
+    if (input !== undefined && child.stdin) {
+      child.stdin.write(JSON.stringify(input));
+      child.stdin.end();
     }
-    const stdout = (proc.stdout || "").trim();
-    if (!stdout) return null;
-    return JSON.parse(stdout);
-  } catch (e) {
-    debugLog(projectRoot, `callHook ${script} exception: ${e.message}`);
-    return null;
-  }
+  });
 }
 
 function extractPromptText(output) {
@@ -65,11 +88,10 @@ export const CodeFlow = async (ctx) => {
         const sid =
           input.event?.properties?.sessionID ||
           input.event?.properties?.info?.id || "";
-        const result = callHook(projectRoot, "cf_stop_hook.py", { session_id: sid }, 35000);
+        const result = await callHook(projectRoot, "cf_stop_hook.py", { session_id: sid }, 35000);
         if (result?.reason) {
           // idle 无法阻断，校验失败排队到下一轮 system prompt
-          const pending = sessionContext.get(sid);
-          sessionContext.set(sid, pending ? pending + "\n\n" + result.reason : result.reason);
+          sessionContext.set(sid, mergePending(sessionContext.get(sid), result.reason));
           debugLog(projectRoot, `stop-check feedback queued`);
         }
       }
@@ -81,7 +103,7 @@ export const CodeFlow = async (ctx) => {
 
       debugLog(projectRoot, `chat.message sid=${input.sessionID} prompt_len=${promptText.length}`);
 
-      const result = callHook(projectRoot, "cf_user_prompt_hook.py", {
+      const result = await callHook(projectRoot, "cf_user_prompt_hook.py", {
         prompt: promptText,
         session_id: input.sessionID,
       });
@@ -89,9 +111,10 @@ export const CodeFlow = async (ctx) => {
       if (result?.hookSpecificOutput?.additionalContext) {
         const ctxLen = result.hookSpecificOutput.additionalContext.length;
         debugLog(projectRoot, `hook matched — context ${ctxLen} chars cached`);
+        // Append, never overwrite: queued stop-check feedback survives.
         sessionContext.set(
           input.sessionID,
-          result.hookSpecificOutput.additionalContext
+          mergePending(sessionContext.get(input.sessionID), result.hookSpecificOutput.additionalContext)
         );
       } else {
         debugLog(projectRoot, `hook returned no context`);
@@ -104,7 +127,7 @@ export const CodeFlow = async (ctx) => {
       const args = output?.args || input?.args || {};
       const filePath = args.filePath || args.file_path || args.path;
       if (!filePath) return;
-      const result = callHook(projectRoot, "cf_post_hook.py", {
+      const result = await callHook(projectRoot, "cf_post_hook.py", {
         tool_name: tool === "write" ? "Write" : "Edit",
         tool_input: { file_path: filePath },
         session_id: input?.sessionID || "",
@@ -113,8 +136,7 @@ export const CodeFlow = async (ctx) => {
       if (ctx) {
         // 反馈排队，下一轮 system.transform 注入（opencode 无法当轮插话）
         const sid = input?.sessionID || "";
-        const pending = sessionContext.get(sid);
-        sessionContext.set(sid, pending ? pending + "\n\n" + ctx : ctx);
+        sessionContext.set(sid, mergePending(sessionContext.get(sid), ctx));
         debugLog(projectRoot, `post-check feedback queued ${ctx.length} chars`);
       }
     },

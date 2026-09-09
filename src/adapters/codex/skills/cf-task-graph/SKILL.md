@@ -14,6 +14,10 @@ description: Visualize task dependency DAG, identify parallelizable task groups 
 
 ## 执行步骤
 
+### 0. 程序计算（推荐）
+
+用 `python3 .code-flow/scripts/cf_task_index.py --task-file <file> --dag --json` 直接输出拓扑批次与独立分组，不要全文手算。单 worktree 一次仅激活一个 TASK：批次内“可并行”指可独立开发，而非可同时激活。
+
 ### 1. 读取任务数据
 
 - 指定文件：用 `rg --files` 或 `find` 定位后读取

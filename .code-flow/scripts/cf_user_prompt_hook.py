@@ -19,6 +19,7 @@ from cf_core import (
     timing_log,
 )
 from cf_session_state import load_session_state, save_session_state
+from cf_spec_context import injection_version
 from cf_spec_router import RouterError, route_prompt
 
 
@@ -133,9 +134,11 @@ def main() -> None:
             reminder = _session_reminder(root, sid)
         text = result.text
         if result.mode == "task" and result.context_sha256:
-            # Dedup: inject the projection once per session/context, refreshing
+            # Dedup: inject once per session/task/contract version, refreshing
             # at the compress cadence so long sessions do not re-pay 12k chars
-            # on every prompt.
+            # on every prompt. The key covers task_id and the TASK contract
+            # digest (not just the Context hash) so switching TASKs on a
+            # shared Context always re-injects the new contract.
             state = load_session_state(root)
             count = int(state.get("prompt_count", 0))
             dirty = False
@@ -146,12 +149,13 @@ def main() -> None:
                 count += 1
                 state["prompt_count"] = count
                 dirty = True
-            injected = state.get("injected_sha256")
+            version = injection_version(root, sid, result.context_sha256)
+            injected = state.get("injected_version")
             last_inject = int(state.get("last_inject_prompt", 0))
-            if injected == result.context_sha256 and count - last_inject < _REINJECT_INTERVAL:
+            if injected == version and count - last_inject < _REINJECT_INTERVAL:
                 text = ""
             else:
-                state["injected_sha256"] = result.context_sha256
+                state["injected_version"] = version
                 state["last_inject_prompt"] = count
                 dirty = True
             if dirty:

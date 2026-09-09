@@ -162,6 +162,8 @@ def _read_candidates(root: str, paths: Sequence[str], compress: bool = True) -> 
         raise RouterError("invalid_spec_metadata", str(exc)) from exc
     specs = []
     for candidate in candidates:
+        if candidate.scope == "unmatched":
+            continue
         target = Path(root) / ".code-flow/specs" / candidate.path
         try:
             raw = target.read_text(encoding="utf-8")

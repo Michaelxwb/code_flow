@@ -10,13 +10,20 @@ import subprocess
 import sys
 from typing import IO, Mapping, Optional, Sequence
 
+from cf_exec_base import remaining_seconds, run_command
 
-def _run(item: Mapping[str, object], root: Path, include_e2e: bool = False) -> dict[str, object]:
+
+def _run(
+    item: Mapping[str, object], root: Path, include_e2e: bool = False, deadline: Optional[float] = None,
+    only_e2e: bool = False,
+) -> dict[str, object]:
     scenario_id = str(item.get("id", "unknown"))
     kind = str(item.get("kind", "functional"))
     if kind == "manual":
         return {"id": scenario_id, "kind": kind, "status": "manual_pending"}
-    if kind == "e2e" and not include_e2e:
+    if only_e2e and kind != "e2e":
+        return {"id": scenario_id, "kind": kind, "status": "not_included"}
+    if kind == "e2e" and not include_e2e and not only_e2e:
         return {"id": scenario_id, "kind": kind, "status": "e2e_deferred"}
     command = item.get("command")
     if not isinstance(command, list) or not command or not all(isinstance(value, str) for value in command):
@@ -24,13 +31,18 @@ def _run(item: Mapping[str, object], root: Path, include_e2e: bool = False) -> d
     timeout = item.get("timeout", 60)
     timeout_value = float(timeout) if isinstance(timeout, (int, float)) else 60.0
     cwd = item.get("cwd", ".") if isinstance(item.get("cwd", "."), str) else "."
-    try:
-        result = subprocess.run(command, cwd=str(root / cwd), capture_output=True, timeout=timeout_value, check=False)
-    except subprocess.TimeoutExpired:
-        return {"id": scenario_id, "kind": kind, "status": "failed", "error": "timeout"}
-    except OSError as exc:
-        return {"id": scenario_id, "kind": kind, "status": "failed", "error": str(exc)}
-    return {"id": scenario_id, "kind": kind, "status": "passed" if result.returncode == 0 else "failed", "exit_code": result.returncode}
+    outcome = run_command(command, str(root / cwd), timeout_value, deadline)
+    if outcome["status"] == "deadline_exceeded":
+        return {"id": scenario_id, "kind": kind, "status": "incomplete", "error": "deadline_exceeded"}
+    if outcome["status"] == "timeout":
+        return {"id": scenario_id, "kind": kind, "status": "failed", "error": "timeout",
+                "output": str(outcome.get("stdout", ""))}
+    if outcome["status"] == "spawn_error":
+        return {"id": scenario_id, "kind": kind, "status": "failed", "error": str(outcome.get("stderr", ""))}
+    if outcome["returncode"] == 0:
+        return {"id": scenario_id, "kind": kind, "status": "passed", "exit_code": 0}
+    output = (str(outcome.get("stdout", "")) + str(outcome.get("stderr", ""))).strip()[-4000:]
+    return {"id": scenario_id, "kind": kind, "status": "failed", "exit_code": outcome["returncode"], "output": output}
 
 
 def _ordered(items: list[Mapping[str, object]]) -> list[Mapping[str, object]]:
@@ -56,22 +68,110 @@ def _ordered(items: list[Mapping[str, object]]) -> list[Mapping[str, object]]:
     return ordered
 
 
-def run_manifest(manifest_file: str, root: str, write_evidence: bool = False, include_e2e: bool = False) -> dict[str, object]:
+def _executable(items: list[Mapping[str, object]]) -> bool:
+    """Draft completeness vs execution gate: at least one scenario must be
+    executable — a functional scenario with a registered command, or a
+    manual / e2e scenario with its own confirmation/deferral path. Zero
+    executable scenarios must block execution acceptance, never pass it."""
+    for item in items:
+        command = item.get("command")
+        if isinstance(command, list) and command and all(isinstance(value, str) for value in command):
+            return True
+        if str(item.get("kind", "")) in ("manual", "e2e"):
+            return True
+    return False
+
+
+def _owned(items: list[Mapping[str, object]], owner: str) -> list[Mapping[str, object]]:
+    """Keep scenarios owned by the active TASK; ownerless legacy scenarios stay
+    included so old manifests keep working. Cross-TASK depends_on edges are
+    pruned: single-TASK ordering is enforced here, whole-demand ordering at
+    the final (archive/E2E) gate."""
+    if not owner:
+        return items
+    kept = [
+        item for item in items
+        if not isinstance(item.get("owner"), str) or not item.get("owner") or item.get("owner") == owner
+    ]
+    kept_ids = {str(item.get("id")) for item in kept}
+    pruned: list[Mapping[str, object]] = []
+    for item in kept:
+        if not isinstance(item, dict):
+            pruned.append(item)
+            continue
+        deps = item.get("depends_on")
+        if isinstance(deps, list):
+            item = {**item, "depends_on": [dep for dep in deps if str(dep) in kept_ids]}
+        pruned.append(item)
+    return pruned
+
+
+def _run_unique(
+    ordered: list[Mapping[str, object]], root: Path, include_e2e: bool, deadline: Optional[float] = None,
+    only_e2e: bool = False,
+) -> list[dict[str, object]]:
+    """Execute each unique command once; scenarios sharing a command reuse the
+    outcome (with their own id). Manual/e2e kinds never execute."""
+    cache: dict[str, Mapping[str, object]] = {}
+    results: list[dict[str, object]] = []
+    for item in ordered:
+        scenario_id = str(item.get("id", "unknown"))
+        command = item.get("command")
+        key: Optional[str] = None
+        if isinstance(command, list) and command and all(isinstance(value, str) for value in command):
+            key = json.dumps(command, sort_keys=True)
+        if key is not None and key in cache:
+            shared = dict(cache[key])
+            shared["id"] = scenario_id
+            results.append(shared)
+            continue
+        result = _run(item, root, include_e2e, deadline, only_e2e)
+        if key is not None:
+            cache[key] = result
+        results.append(result)
+    return results
+
+
+def run_manifest(
+    manifest_file: str,
+    root: str,
+    write_evidence: bool = False,
+    include_e2e: bool = False,
+    owner: str = "",
+    deadline: Optional[float] = None,
+    only_e2e: bool = False,
+) -> dict[str, object]:
     data = json.loads(Path(manifest_file).read_text(encoding="utf-8"))
     scenarios = data.get("scenarios", [])
     if not isinstance(scenarios, list):
         raise ValueError("invalid scenarios")
-    items = [item for item in scenarios if isinstance(item, Mapping)]
+    items = _owned([item for item in scenarios if isinstance(item, Mapping)], owner)
     ordered = _ordered(items)
-    results = [_run(item, Path(root), include_e2e) for item in ordered]
-    configured = any(isinstance(item.get("command"), list) for item in items)
-    allowed = ("passed", "manual_pending", "e2e_deferred", "not_configured") if not configured else ("passed", "manual_pending", "e2e_deferred")
+    results = _run_unique(ordered, Path(root), include_e2e or only_e2e, deadline, only_e2e)
+    if not _executable(items):
+        return {"decision": "block", "results": results, "error": "no_executable_scenarios"}
+    allowed = ("passed", "manual_pending", "e2e_deferred", "not_included")
     decision = "pass" if all(item["status"] in allowed for item in results) else "block"
+    error = ""
+    if decision == "block":
+        pending = sorted({str(item["id"]) for item in results if item["status"] == "incomplete"})
+        failed = sorted({str(item["id"]) for item in results if item["status"] not in (*allowed, "incomplete")})
+        error = ",".join((["incomplete:" + ",".join(pending)] if pending else []) + (["failed:" + ",".join(failed)] if failed else [])) or "acceptance scenario failed"
     if write_evidence:
         for item, result in zip(ordered, results):
-            if isinstance(item, dict) and result["status"] == "passed":
+            if not isinstance(item, dict):
+                continue
+            try:
+                item["revision"] = int(item.get("revision", 0)) + 1
+            except (TypeError, ValueError):
+                item["revision"] = 1
+            if result["status"] == "passed":
                 item["status"] = "verified"
                 item["evidence"] = result
+            elif result["status"] == "failed":
+                item["evidence"] = {"revision": item["revision"], **result}
+            elif result["status"] == "incomplete":
+                item["evidence"] = {"revision": item["revision"], **result}
         Path(manifest_file).write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         task_file = data.get("task_file")
         if isinstance(task_file, str) and task_file:
@@ -84,7 +184,10 @@ def run_manifest(manifest_file: str, root: str, write_evidence: bool = False, in
                 if result["status"] == "passed":
                     owner = item.get("owner") if isinstance(item.get("owner"), str) else ""
                     _sync_task_evidence(task_path, str(result["id"]), "runner", "automated command passed", owner)
-    return {"decision": decision, "results": results}
+    outcome: dict[str, object] = {"decision": decision, "results": results}
+    if error:
+        outcome["error"] = error
+    return outcome
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
@@ -93,9 +196,12 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--root", required=True)
     parser.add_argument("--write-evidence", action="store_true")
     parser.add_argument("--include-e2e", action="store_true", help="Execute E2E scenarios (deferred by default)")
+    parser.add_argument("--only-e2e", action="store_true", help="Execute only E2E scenarios; functional/manual are reported not_included")
+    parser.add_argument("--owner", default="", help="Only execute scenarios owned by this TASK (plus ownerless legacy ones)")
+    parser.add_argument("--deadline", type=float, default=0.0, help="Absolute monotonic deadline propagated from the entry gate (0 = unbounded)")
     args = parser.parse_args(argv)
     try:
-        result = run_manifest(args.manifest, args.root, args.write_evidence, args.include_e2e)
+        result = run_manifest(args.manifest, args.root, args.write_evidence, args.include_e2e, args.owner, args.deadline or None, args.only_e2e)
         stdout.write(json.dumps(result, ensure_ascii=False))
         return 0 if result["decision"] == "pass" else 3
     except (OSError, ValueError, json.JSONDecodeError) as exc:

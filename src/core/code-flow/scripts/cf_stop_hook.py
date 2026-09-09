@@ -14,10 +14,11 @@ import fnmatch
 import json
 import os
 import re
-import subprocess
 import sys
+import time
 
 import cf_log
+from cf_exec_base import build_argv, remaining_seconds, run_command
 from cf_spec_context import load_active_task
 from cf_task_runtime import run_done_gate
 from cf_core import (
@@ -110,7 +111,9 @@ def _subsection(section: str, heading: str) -> str:
 
 def _acceptance_gap(task_id: str, section: str, coverage: str) -> str:
     status = re.search(r"(?m)^- \*\*Status\*\*: ([^\n]+)", section)
-    if not status or status.group(1).strip() != "done":
+    # done = implementation finished; verified = E2E/final acceptance closed.
+    # Both enter the same contract checks; anything else is still in flight.
+    if not status or status.group(1).strip() not in ("done", "verified"):
         return ""
     refs_match = re.search(r"(?m)^- \*\*Acceptance-Refs\*\*: ([^\n]+)", section)
     if not refs_match:
@@ -169,47 +172,71 @@ def task_acceptance_failures(project_root: str, files: list) -> list:
 def run_validators(
     project_root: str, validators: list, files: list, sid: str,
     total_budget: float = TOTAL_BUDGET_SECONDS,
+    deadline: float = 0.0,
 ) -> tuple:
-    """Run matching validators serially → (failures, truncated)."""
+    """Run matching validators serially → (failures, truncated).
+
+    One entry deadline constrains everything: validators past it are reported
+    `incomplete` (never silently skipped, never falsely passed). Commands run
+    via argv — no shell — with `{files}` expanding to one entry per file.
+    """
     import time
     failures = []
     truncated = False
-    deadline = time.monotonic() + total_budget
+    if not deadline:
+        deadline = time.monotonic() + total_budget
     for validator in validators:
         if not isinstance(validator, dict):
             continue
         matched = [f for f in files if trigger_matches(validator.get("trigger", ""), f)]
         if not matched:
             continue
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
+        remaining = remaining_seconds(deadline)
+        if remaining is not None and remaining <= 0:
             truncated = True
-            break
-        try:
-            timeout = min(float(validator.get("timeout", 30000)) / 1000.0, remaining)
-        except (ValueError, TypeError):
-            timeout = remaining
-        command = str(validator.get("command", "")).replace(
-            "{files}", " ".join(matched)
-        )
-        if not command.strip():
+            failures.append({
+                "name": validator.get("name", "validator"),
+                "on_fail": validator.get("on_fail", ""),
+                "detail": "预算耗尽未执行",
+                "incomplete": True,
+            })
             continue
-        passed = False
-        detail = ""
         try:
-            proc = subprocess.run(
-                command, shell=True, cwd=project_root,
-                capture_output=True, text=True, timeout=timeout,
-            )
-            passed = proc.returncode == 0
-            if not passed:
-                detail = (proc.stdout + proc.stderr).strip()[-400:]
-        except subprocess.TimeoutExpired:
+            timeout = min(float(validator.get("timeout", 30000)) / 1000.0, remaining if remaining is not None else float("inf"))
+        except (ValueError, TypeError):
+            timeout = remaining if remaining is not None else 30.0
+        try:
+            argv = build_argv(str(validator.get("command", "")), matched)
+        except ValueError as exc:
+            failures.append({
+                "name": validator.get("name", "validator"),
+                "on_fail": validator.get("on_fail", ""),
+                "detail": f"validator 配置错误: {exc}",
+            })
+            continue
+        if not argv:
+            continue
+        outcome = run_command(argv, project_root, timeout, deadline)
+        passed = outcome["status"] == "ok" and outcome["returncode"] == 0
+        if outcome["status"] == "deadline_exceeded":
+            truncated = True
+            failures.append({
+                "name": validator.get("name", "validator"),
+                "on_fail": validator.get("on_fail", ""),
+                "detail": "预算耗尽未执行",
+                "incomplete": True,
+            })
+            continue
+        if outcome["status"] == "timeout":
             detail = f"超时（>{timeout:.0f}s），跳过"
             truncated = True
-        except Exception as exc:
+        elif not passed:
+            detail = (str(outcome.get("stdout", "")) + str(outcome.get("stderr", ""))).strip()[-400:]
+        else:
+            detail = ""
+        if outcome["status"] == "spawn_error":
             # 命令在环境中不可用等：降级跳过，不打扰（E 场景）
-            cf_log.degrade(project_root, "stop_check", f"{validator.get('name')}:{exc}", sid)
+            cf_log.degrade(project_root, "stop_check", f"{validator.get('name')}:{outcome['stderr']}", sid)
             continue
         cf_log.append_event(
             project_root, "stop_check",
@@ -229,7 +256,8 @@ def run_validators(
 def _reason_text(failures: list, truncated: bool) -> str:
     lines = ["收尾校验未通过（cf-stop）："]
     for item in failures:
-        lines.append(f"✗ {item['name']}：{item['on_fail']}")
+        tag = "（未执行）" if item.get("incomplete") else ""
+        lines.append(f"✗ {item['name']}{tag}：{item['on_fail']}")
         if item["detail"]:
             lines.append(f"  输出片段: {item['detail'][:200]}")
     if truncated:
@@ -258,11 +286,16 @@ def main() -> None:
         marker = os.path.join(project_root, ".code-flow", ".active-task.json")
         has_active = os.path.exists(marker)
         files = []
+        # Single entry deadline constrains the whole chain (Done + validators),
+        # so long checks end as `incomplete` instead of being killed by the
+        # host without a verdict.
+        deadline = time.monotonic() + TOTAL_BUDGET_SECONDS
         if has_active:
             try:
                 active = load_active_task(project_root)
                 task_dir = os.path.join(project_root, active.task_dir)
-                done = run_done_gate(project_root, task_dir, budget=GATE_BUDGET_SECONDS)
+                gate_remaining = deadline - time.monotonic()
+                done = run_done_gate(project_root, task_dir, budget=min(GATE_BUDGET_SECONDS, max(gate_remaining, 0.01)))
             except (OSError, ValueError) as exc:
                 if enforcement == "required":
                     payload = {"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: active task is invalid: {exc}"}
@@ -290,7 +323,7 @@ def main() -> None:
         acceptance_failures = task_acceptance_failures(project_root, files)
         validators = load_validators(project_root)
         failures, truncated = run_validators(
-            project_root, validators, files, sid
+            project_root, validators, files, sid, deadline=deadline
         ) if validators else ([], False)
         failures = acceptance_failures + failures
         if not failures:

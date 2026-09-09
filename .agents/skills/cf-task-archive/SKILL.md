@@ -17,7 +17,7 @@ description: Archive a completed task file after completeness, correctness, trac
 
 1. 读取匹配到的 task 文件
 2. 提取所有 `## TASK-xxx` 段落的 Status
-3. 检查是否所有子任务均为 `done`
+3. 检查是否所有子任务均为 `verified`（E2E 终验后的终态；仍为 `done` 说明 verify-e2e 尚未执行，先跑它）
 
 若有未完成子任务，拒绝归档并输出：
 

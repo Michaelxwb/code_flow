@@ -56,16 +56,16 @@ def test_codex_init_deploys_skills_and_upgrade_overwrites_tool_files(tmp_path: P
     assert cf_init_skill.read_text(encoding="utf-8") != "SENTINEL\n"
 
 
-def test_codex_init_removes_non_empty_legacy_claude_skills_dir(tmp_path: Path) -> None:
+def test_codex_init_preserves_foreign_claude_skills_dir(tmp_path: Path) -> None:
+    """TASK-001: codex init 不得触碰 .claude/skills（用户自有内容 + 他平台域）。"""
     legacy_skill_file = tmp_path / ".claude" / "skills" / "legacy" / "SKILL.md"
     legacy_skill_file.parent.mkdir(parents=True)
     legacy_skill_file.write_text("legacy\n", encoding="utf-8")
 
     result = run_cli(tmp_path)
     assert result.returncode == 0, result.stderr
-    assert not (tmp_path / ".claude" / "skills").exists()
-    assert "Removed (deprecated):" in result.stdout
-    assert ".claude/skills/" in result.stdout
+    assert legacy_skill_file.is_file()
+    assert legacy_skill_file.read_text(encoding="utf-8") == "legacy\n"
 
 
 def test_codex_upgrade_removes_orphan_codex_user_prompt_hook(tmp_path: Path) -> None:

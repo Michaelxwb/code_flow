@@ -26,6 +26,7 @@ description: 标记子任务为阻塞状态
 5. 在 `### Log` 追加：`- [<当前日期>] blocked (<阻塞原因>, was <原状态>)`
 6. 更新文件头 `Updated` 日期
 7. 输出确认：`TASK-001 已标记为 blocked: <原因>`
+8. 用 stdin `{"reason": "<阻塞原因>"}` 调用 `cf_spec_context.py active block --root <root> --task-dir <需求目录> --task <TASK-ID> --json`，由 workflow service 同步 marker 与 Markdown；无 active marker 时仅改 Markdown。
 
 ## 解除阻塞
 

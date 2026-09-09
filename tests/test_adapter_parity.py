@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-CF_TASK = ["align", "archive", "block", "graph", "note", "plan", "prd", "start", "status"]
+CF_TASK = ["align", "archive", "block", "graph", "note", "plan", "prd", "start", "status", "verify-e2e"]
 
 # 平台中立命令：costrict 必须与 claude 逐字相同（无任何合法平台 token 差异）
 COSTRICT_IDENTICAL = [
@@ -31,6 +31,7 @@ COSTRICT_IDENTICAL = [
     "cf-task/prd.md",
     "cf-task/start.md",
     "cf-task/status.md",
+    "cf-task/verify-e2e.md",
 ]
 
 # 含合法平台路径差异（.claude↔.costrict / --platform）的命令，仅做内容存在性回归

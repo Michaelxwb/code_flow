@@ -25,7 +25,9 @@
 
 ## Quick Navigation
 
-- 改路径匹配/优先级 → `cf_spec_resolver.py`；改三分支 → `cf_spec_router.py`；改 Catalog 展示 → `cf_core.build_spec_catalog`
+- 改路径匹配/优先级 → `cf_spec_resolver.py`（unmatched 域不注入）；改三分支 → `cf_spec_router.py`；改 Catalog 展示 → `cf_core.build_spec_catalog`
+- 改任务状态迁移 → `cf_workflow_service.py`（唯一入口，Markdown 为视图）；改注入去重键 → `cf_spec_context.injection_version`
+- 改命令执行/预算 → `cf_exec_base.py`（deadline/argv 共享基础层）；改任务索引/DAG → `cf_task_index.py`
 - 改合规检查 → `cf_checks.run_checks` / 反馈文案 `cf_post_hook._feedback_text`
 - 收尾 → `cf_stop_hook.run_validators|task_acceptance_failures|trigger_matches`
 - 改度量/审计 → `cf_stats.py`

@@ -21,6 +21,7 @@ def _violation_fixed(index: int, events: list) -> bool:
     """修正口径：违规后同会话同文件有后续编辑，且其后无同 check 再违规。
 
     用日志追加顺序判先后（ts 仅秒级精度，同秒事件无法靠时间戳排序）。
+    保留单点查询语义；批量聚合请用 violation_fixed_batch（一次线性扫描）。
     """
     violation = events[index]
     v_data = violation.get("data") or {}
@@ -39,6 +40,37 @@ def _violation_fixed(index: int, events: list) -> bool:
         ):
             return False
     return later_edit
+
+
+def violation_fixed_batch(events: list) -> list[bool]:
+    """Batch twin of _violation_fixed: one reverse pass, identical semantics.
+
+    Segments the timeline per (session, file) at edits: a violation is fixed
+    iff an edit exists after it and no same-check violation exists in a later
+    segment. No slicing, no per-violation rescan: O(n) time.
+    """
+    fixed: dict[int, bool] = {}
+    edit_right: set[tuple[str, str]] = set()
+    current: dict[tuple[str, str], set[str]] = {}
+    later: dict[tuple[str, str], set[str]] = {}
+    for index in range(len(events) - 1, -1, -1):
+        event = events[index]
+        if not isinstance(event, dict):
+            continue
+        kind = event.get("event")
+        data = event.get("data")
+        if not isinstance(data, dict):
+            data = {}
+        key = (str(event.get("sid")), str(data.get("file")))
+        if kind == "edit":
+            later.setdefault(key, set()).update(current.get(key, ()))
+            current[key] = set()
+            edit_right.add(key)
+        elif kind == "violation":
+            check = str(data.get("check_id"))
+            fixed[index] = key in edit_right and check not in later.get(key, ())
+            current.setdefault(key, set()).add(check)
+    return [fixed[index] for index, event in enumerate(events) if isinstance(event, dict) and event.get("event") == "violation"]
 
 
 def quality_loop_summary(project_root: str, config: dict) -> dict:
@@ -61,13 +93,10 @@ def quality_loop_summary(project_root: str, config: dict) -> dict:
         key=lambda item: -item["count"],
     )[:10]
 
-    fixed = sum(
-        1 for i, event in enumerate(events)
-        if event.get("event") == "violation" and _violation_fixed(i, events)
-    )
+    fixed = violation_fixed_batch(events)
     summary["violation_total"] = len(violations)
     summary["fix_rate"] = (
-        f"{round(fixed * 100 / len(violations))}%" if violations else "n/a"
+        f"{round(sum(fixed) * 100 / len(violations))}%" if violations else "n/a"
     )
 
     state = load_check_state(project_root)

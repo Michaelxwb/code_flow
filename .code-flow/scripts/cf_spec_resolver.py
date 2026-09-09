@@ -18,7 +18,7 @@ from cf_spec_metadata import (
 )
 
 
-SCOPE_PRIORITY = {"global": 1, "path": 2, "task": 3}
+SCOPE_PRIORITY = {"unmatched": 0, "global": 1, "path": 2, "task": 3}
 _config_cache: dict[str, tuple[int, int, Mapping[str, object]]] = {}
 _metadata_cache: dict[str, tuple[int, int, SpecMetadata]] = {}
 
@@ -174,7 +174,12 @@ def _candidate_scope(relative: str, patterns: Sequence[str], paths: Sequence[str
     if relative.startswith("_session/"):
         return "task", ()
     matched = tuple(path for path in paths if any(fnmatch.fnmatch(path, pattern) for pattern in patterns))
-    return ("path", matched) if matched else ("global", ())
+    if matched:
+        return "path", matched
+    # A domain without patterns is truly global. A domain WITH patterns that
+    # match nothing is irrelevant to these paths ("unmatched") — discovery
+    # keeps it, but injection and scope expansion must not consume it.
+    return ("global", ()) if not patterns else ("unmatched", ())
 
 
 def _candidate_for(
