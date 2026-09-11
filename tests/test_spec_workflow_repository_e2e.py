@@ -97,7 +97,8 @@ def test_s_04_s_05_s_07_exact_context_and_done_blocks_violation(tmp_path: Path) 
         cf_stop_hook.main()
     result = json.loads(output.getvalue())
     assert result["decision"] == "block"
-    assert "required Spec verifier" in result["reason"]
+    assert "release-rules#RULE-release-001" in result["reason"]
+    assert "unverified" in result["reason"]
 
 
 def test_four_platform_fresh_init_routes_default_schema_one_specs(tmp_path: Path) -> None:

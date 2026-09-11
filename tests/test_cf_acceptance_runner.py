@@ -60,3 +60,19 @@ def test_runner_orders_dependencies_and_can_write_evidence(tmp_path: Path) -> No
     saved = json.loads(manifest.read_text(encoding="utf-8"))
     assert all(item["status"] == "verified" for item in saved["scenarios"])
     assert "S-01: verified" in task.read_text(encoding="utf-8")
+
+
+def test_only_e2e_does_not_reuse_functional_not_included_result(tmp_path: Path) -> None:
+    manifest = tmp_path / "manifest.json"
+    failing = [sys.executable, "-c", "raise SystemExit(7)"]
+    manifest.write_text(json.dumps({"scenarios": [
+        {"id": "S-01", "kind": "functional", "command": failing},
+        {"id": "E-01", "kind": "e2e", "command": failing},
+    ]}), encoding="utf-8")
+
+    result = run_manifest(str(manifest), str(tmp_path), only_e2e=True)
+
+    statuses = {item["id"]: item["status"] for item in result["results"]}
+    assert statuses["S-01"] == "not_included"
+    assert statuses["E-01"] == "failed"
+    assert result["decision"] == "block"

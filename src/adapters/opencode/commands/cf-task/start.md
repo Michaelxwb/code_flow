@@ -27,8 +27,8 @@ description: 激活子任务并开始编码
 用 Read 读取任务文件，定位 `## TASK-xxx` 段落：
 
 **状态检查**：Status 必须为 `draft`。若为其他状态：
-- `in-progress` → 提示"任务已在进行中，继续编码"（不阻塞，直接跳到步骤 2）
-- `done` → 先执行验收契约检查；全部 verified 才提示"任务已完成"并结束，否则恢复为 `in-progress`，列出缺口并继续补齐测试与证据
+- `in-progress` → 校验现有 marker 的需求目录、TASK-ID 与 Context；匹配且为 active 才继续步骤 2，跳过重复 Start。paused/blocked 先解除原因并调用 resume；marker 缺失或不匹配先 doctor，不能仅改 Markdown。
+- `done` / `verified` → 实现已完成；done 的 E2E 可为 e2e_deferred，转 verify-e2e 终验。发现缺口时报告并显式重新规划修复任务，不直接把终态改成 in-progress。
 - `blocked` → 提示"任务被阻塞"，列出 Notes 中的阻塞原因，结束
 
 **#NOTES 检查**：扫描该子任务段落全文（Description、Checklist 等）
@@ -37,7 +37,7 @@ description: 激活子任务并开始编码
 
 **依赖检查**：读取 `Depends` 字段
 - 对每个依赖的 TASK-ID，在同文件中查找其 Status
-- 所有依赖必须为 `done`
+- 所有依赖必须为 `done` 或 `verified`
 - 未满足 → 输出：`前置检查失败：以下依赖未完成\n- TASK-001: in-progress\n- TASK-003: draft`
 
 **验收契约检查**：
@@ -65,9 +65,9 @@ description: 激活子任务并开始编码
 
 在改状态或生产代码前，顺序固定且不得跳步：
 
-1. 调用 `cf_spec_context.py start --task-dir ... --root ... --task ... --task-file ... --json`，由单个进程按 refresh → active start → session 顺序执行 Start Gate；stdin JSON 传入逐路径确认的 `owned_paths`。stale/pending/conflict、依赖未闭合、已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。前置硬门禁（blocked / #NOTES / 依赖）由 workflow service 在改状态前强制执行，不依赖 AI 自觉检查。
+1. 调用 `cf_spec_context.py start --task-dir ... --root ... --task ... --task-file ... --json`，由单个进程按 refresh → active start → session 顺序执行 Start Gate；stdin JSON 传入逐路径确认的 `owned_paths`。stale/conflict、依赖未闭合、已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。前置硬门禁（blocked / #NOTES / 依赖）由 workflow service 在改状态前强制执行。用户已确认内容时，Design/Plan 的 pending 不单独阻止激活；不新增阶段状态门禁。
 2. 从命令返回值读取 refresh 后的 Context hash、active 状态和 session 输出路径；该命令只根据当前 TASK 的 `Spec-Refs`、Source 与 Acceptance Contract 覆盖写入 `.code-flow/specs/_session/task-<name>.md`，禁止重新 catalog 或猜测规则。
-3. 只有前两步全部成功，才用 Edit 更新子任务 Status 为 `in-progress`、追加 started log 并更新文件头日期。
+3. Start 返回成功时，workflow service 已通过可恢复事务同步 Status、started log 和 active marker；不要再手动改状态。失败保留原状态，按返回原因恢复。
 4. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令
 5. 先编写验收测试。E2E 测试必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
 6. 新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因。纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败
@@ -88,11 +88,10 @@ RED 证据写入 `Acceptance Evidence`：
 
 ### 3.2 GREEN 与验收证据
 
-1. 执行每个契约中的验收命令，再执行受影响范围的回归测试
-2. 对每个预期结果记录对应的测试断言位置，并指出 fixture/构造路径如何证明关键边界使用真实组件
-3. 将 `Acceptance Contract` 行状态改为 `verified`，将 `Acceptance Evidence` 补齐 GREEN、断言位置和边界证据
-4. 负责该场景的任务验证完成后，将全局 `Acceptance Coverage` 对应行改为 `verified`
-5. 测试文件存在但未被测试框架收集、命令未实际执行、只有场景 ID 没有关键断言，都视为未验证
+1. 执行 functional 验收和受影响范围的回归测试；E2E 已在编码前锁定场景、断言、真实边界和命令，完整 GREEN 留给 verify-e2e。
+2. 对每个预期结果记录断言位置与 fixture/构造路径；环境未就绪的错误不得冒充有效 RED，明确记录尚未验证。
+3. 由 runner 写入最新状态和运行历史；不要覆盖原契约、RED 证据或历史失败。functional 必须 verified，已登记的 E2E 在实现阶段允许 e2e_deferred。
+4. 测试未收集、命令未实际执行或缺少关键断言，都不算验证完成。失败重跑必须使旧 verified 失效。
 
 ### 3.5 TASK-bound Spec Session
 
@@ -110,16 +109,18 @@ RED 证据写入 `Acceptance Evidence`：
 
 只有同时满足以下条件才能自动完成：
 - 所有 checklist 项均为 `[x]`
-- 每个 Acceptance-Ref 在契约、证据和全局覆盖表中均为 `verified`，不存在 `planned` / `pending` / `TBD`
+- functional/manual 在契约、证据和覆盖表中均为 `verified`；仅 E2E 可为 `e2e_deferred`，仍不得遗留未登记的 `planned` / `pending` / `TBD`
 - 测试层级未低于 design，关键真实边界没有被 mock 绕过
-- 每个预期结果都有具体断言位置，验收命令和回归测试均已实际通过
+- 每个预期结果都有具体断言位置，functional 验收命令和回归测试均已实际通过；E2E 留到终验执行
 - `manual` 场景已有用户确认和可复核记录
 
-满足后：
-1. 用 Edit 更新 Status 为 `done`
-2. 在 `### Log` 追加：`- [<当前日期>] completed (done)`
-3. 更新文件头 `Updated` 日期
-4. 输出：`TASK-xxx 已完成`
+满足后，执行唯一收尾入口：
+
+```bash
+python3 .code-flow/scripts/cf_task_workflow.py finish --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json
+```
+
+该命令先校验完整任务身份与锁定 manifest，再执行 Done Gate；通过后以可恢复事务更新 done、Log、Updated 并清理 marker。只有 `decision=pass` 才输出完成并启动下一 TASK。禁止手动设置 done 或传入自报的 gate_passed 绕过验证。
 
 任一验收条件不满足时保持 `in-progress`，明确列出缺口，不能标记为 `done`。
 

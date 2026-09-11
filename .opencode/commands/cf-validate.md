@@ -8,7 +8,7 @@ description: 根据变更文件自动匹配并执行验证规则
 
 ## 输入
 
-- `/project:cf-validate` — 基于 git diff 自动获取变更文件
+- `/project:cf-validate` — 自动获取任务基线或 Git 全部变更文件
 - `/project:cf-validate src/Foo.tsx` — 验证指定文件
 - `/project:cf-validate --files=src/a.ts,src/b.ts` — 验证多个文件
 
@@ -19,10 +19,10 @@ description: 根据变更文件自动匹配并执行验证规则
 用 Bash 执行：
 
 ```bash
-git diff --name-only HEAD
+python3 .code-flow/scripts/cf_validation.py --root "$PWD" --scope-only --json
 ```
 
-如果用户指定了文件路径，使用用户指定的文件。如果无变更文件，输出"无变更需要验证"。
+有 active TASK 时使用冻结基线以来的全部任务变更（含已提交文件）；无 active TASK 时包含暂存、未暂存和未跟踪文件。用户指定路径时用 `--files "src/a.py" "src/b.py"` 原样传递；若结果确实为空才输出“无变更需要验证”。
 
 ### 2. 读取验证规则
 
@@ -41,14 +41,13 @@ validators:
 
 ### 3. 匹配并执行验证
 
-对每条验证规则：
-- 将 `trigger` glob 与变更文件列表做匹配
-- 匹配到 → 用 Bash 执行 `command`
-  - 如果 command 包含 `{files}` → 替换为匹配到的文件路径列表，**每个路径用单引号包裹**（如 `'src/foo.ts' 'src/bar.ts'`）
-  - 如果 command 不含 `{files}` → 直接执行原命令（如 `npx tsc --noEmit` 本身就检查全局）
-- 未匹配 → 跳过该规则
+执行统一验证入口：
 
-每条命令使用对应的 `timeout` 值（毫秒）。
+```bash
+python3 .code-flow/scripts/cf_validation.py --root "$PWD" --json
+```
+
+显式范围追加 `--files "src/a.py" "src/b.py"`。程序匹配 trigger、解析 argv 并展开 `{files}`，不拼接 shell 命令；同一运行内相同 argv/cwd/timeout 去重，跨运行不复用。删除文件仍触发全局测试，但不传给文件级编译器。每条 timeout 仍按配置的毫秒值生效，总预算耗尽返回 incomplete/block。
 
 ### 4. 汇总结果
 
@@ -65,13 +64,13 @@ validators:
 
 ## 安全设计
 
-- 对 `{files}` 中的每个文件路径用单引号包裹，防止 shell 注入
-- 仅接受 `git diff` 输出的文件路径或用户显式指定的路径
+- `{files}` 直接展开为 argv 参数；带空格、引号的路径仍是一个参数，不手工拼接引号或执行 shell
+- 范围来自任务基线、Git 状态（包括 untracked）或用户显式指定的路径
 - 用户指定的路径必须位于项目根目录内
 
 ## 异常处理
 
 - validation.yml 不存在 → 尝试检测 package.json scripts 中的 test/lint 命令
 - 命令执行超时 → 输出超时提示，建议增大 timeout 或缩小验证范围
-- 命令不存在 → 提示安装依赖（如 `pip install mypy`）
+- 命令不存在或配置无效 → 返回 block 并提示所缺依赖，不当作验证通过
 - 无变更文件 → 输出"无变更需要验证"

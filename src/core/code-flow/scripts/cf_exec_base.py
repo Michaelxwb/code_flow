@@ -10,10 +10,39 @@ chain, commands never pass through a shell, and unrun work is reported as
 from __future__ import annotations
 
 import shlex
+import json
 import subprocess
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
-from typing import Mapping, Optional, Sequence
+from typing import Iterator, Mapping, Optional, Sequence
+
+_EXECUTIONS: ContextVar[Optional[dict[str, dict[str, object]]]] = ContextVar("cf_executions", default=None)
+
+
+@contextmanager
+def execution_session() -> Iterator[None]:
+    """Share results only inside one validation operation, never across turns."""
+    if _EXECUTIONS.get() is not None:
+        yield
+        return
+    token = _EXECUTIONS.set({})
+    try:
+        yield
+    finally:
+        _EXECUTIONS.reset(token)
+
+
+def invalidate_executions() -> None:
+    cache = _EXECUTIONS.get()
+    if cache is not None:
+        cache.clear()
+
+
+def execution_key(argv: Sequence[str], cwd: str, timeout: float) -> str:
+    """Identity of a command under the current process environment."""
+    return json.dumps([list(argv), str(Path(cwd).resolve()), float(timeout)], ensure_ascii=False)
 
 
 def remaining_seconds(deadline: Optional[float]) -> Optional[float]:
@@ -51,6 +80,17 @@ def run_command(
     deadline: Optional[float] = None,
 ) -> dict[str, object]:
     """Run argv synchronously under timeout+deadline. Never uses a shell."""
+    key = execution_key(argv, cwd, timeout)
+    cache = _EXECUTIONS.get()
+    if cache is not None and key in cache:
+        return dict(cache[key])
+    result = _execute(argv, cwd, timeout, deadline)
+    if cache is not None and result["status"] == "ok":
+        cache[key] = result
+    return result
+
+
+def _execute(argv: Sequence[str], cwd: str, timeout: float, deadline: Optional[float]) -> dict[str, object]:
     remaining = remaining_seconds(deadline)
     if remaining is not None and remaining <= 0:
         return {"status": "deadline_exceeded", "returncode": None, "stdout": "", "stderr": ""}

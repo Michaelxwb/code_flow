@@ -11,6 +11,7 @@ from cf_core import (
     build_spec_catalog,
     estimate_tokens,
     load_config,
+    project_instruction_file,
     non_injectable_specs,
     parse_spec_frontmatter,
 )
@@ -120,19 +121,20 @@ def find_missing_paths(text: str, project_root: str, base_dir: str = "") -> list
     return sorted(missing)
 
 
-def build_report(project_root: str) -> dict:
+def build_report(project_root: str, platform: str = "") -> dict:
     """规范质量审计数据（cf-scan 引擎，亦供 cf-stats --audit 复用）。
 
     files 含 issues / template 标记，review 为待复审清单；展示层负责过滤与渲染。"""
     files = []
     total_tokens = 0
 
-    claude_path = os.path.join(project_root, "CLAUDE.md")
+    instruction_file = project_instruction_file(project_root, platform)
+    claude_path = os.path.join(project_root, instruction_file)
     if os.path.exists(claude_path):
         content = read_text(claude_path)
         tokens = estimate_tokens(content)
         total_tokens += tokens
-        files.append({"path": "CLAUDE.md", "tokens": tokens, "issues": []})
+        files.append({"path": instruction_file, "tokens": tokens, "issues": []})
 
     specs_root = os.path.join(project_root, ".code-flow", "specs")
     specs = []
@@ -142,14 +144,14 @@ def build_report(project_root: str) -> dict:
                 if not name.endswith(".md"):
                     continue
                 full_path = os.path.join(root, name)
+                rel = os.path.relpath(full_path, specs_root)
+                if rel.replace(os.sep, "/").startswith("_session/"):
+                    continue
                 content = read_text(full_path)
                 if not content:
                     continue
                 tokens = estimate_tokens(content)
                 total_tokens += tokens
-                rel = os.path.relpath(full_path, specs_root)
-                if rel.replace(os.sep, "/").startswith("_session/"):
-                    continue  # 会话级临时约束（FEAT-08）不参与审计与预算
                 rel_path = os.path.join("specs", rel).replace(os.sep, "/")
                 spec_entry = {
                     "path": rel_path,

@@ -29,7 +29,6 @@ def test_e2e_deferred_by_default():
         # Create manifest with mixed scenarios
         manifest = {
             "schema": 1,
-            "task_file": "task.md",
             "task_sha256": "abc123",
             "scenarios": [
                 {"id": "S-01", "kind": "functional", "command": ["echo", "unit"]},
@@ -58,7 +57,6 @@ def test_e2e_executed_when_enabled():
 
         manifest = {
             "schema": 1,
-            "task_file": "task.md",
             "task_sha256": "abc123",
             "scenarios": [
                 {"id": "E-01", "kind": "e2e", "command": ["echo", "e2e"]},
@@ -82,7 +80,6 @@ def test_e2e_failure_blocks_when_enabled():
 
         manifest = {
             "schema": 1,
-            "task_file": "task.md",
             "task_sha256": "abc123",
             "scenarios": [
                 {"id": "E-01", "kind": "e2e", "command": ["false"]},

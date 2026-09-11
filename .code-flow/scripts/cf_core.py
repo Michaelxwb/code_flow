@@ -13,6 +13,12 @@ _effective_mapping_cache: dict = {}
 _ext_set_cache: dict = {}
 
 
+def project_instruction_file(project_root: str, platform: str = "") -> str:
+    """Select the installed platform's instruction file, with legacy fallback."""
+    names = ("CLAUDE.md", "AGENTS.md") if platform in ("claude", "costrict") else ("AGENTS.md", "CLAUDE.md")
+    return next((name for name in names if os.path.isfile(os.path.join(project_root, name))), names[0])
+
+
 def load_config(project_root: str) -> dict:
     config_path = os.path.join(project_root, ".code-flow", "config.yml")
     if not os.path.exists(config_path):

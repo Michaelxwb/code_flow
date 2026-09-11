@@ -6,11 +6,12 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-import subprocess
 import sys
 from typing import IO, Mapping, Optional, Sequence
 
-from cf_exec_base import remaining_seconds, run_command
+from cf_exec_base import execution_key, run_command, invalidate_executions
+from cf_acceptance_schema import load_manifest, validate_execution_baseline
+from cf_acceptance_evidence import persist_results
 
 
 def _run(
@@ -19,10 +20,10 @@ def _run(
 ) -> dict[str, object]:
     scenario_id = str(item.get("id", "unknown"))
     kind = str(item.get("kind", "functional"))
-    if kind == "manual":
-        return {"id": scenario_id, "kind": kind, "status": "manual_pending"}
     if only_e2e and kind != "e2e":
         return {"id": scenario_id, "kind": kind, "status": "not_included"}
+    if kind == "manual":
+        return {"id": scenario_id, "kind": kind, "status": "manual_pending"}
     if kind == "e2e" and not include_e2e and not only_e2e:
         return {"id": scenario_id, "kind": kind, "status": "e2e_deferred"}
     command = item.get("command")
@@ -110,8 +111,7 @@ def _run_unique(
     ordered: list[Mapping[str, object]], root: Path, include_e2e: bool, deadline: Optional[float] = None,
     only_e2e: bool = False,
 ) -> list[dict[str, object]]:
-    """Execute each unique command once; scenarios sharing a command reuse the
-    outcome (with their own id). Manual/e2e kinds never execute."""
+    """Reuse identical execution semantics within a dependency-free batch."""
     cache: dict[str, Mapping[str, object]] = {}
     results: list[dict[str, object]] = []
     for item in ordered:
@@ -119,7 +119,11 @@ def _run_unique(
         command = item.get("command")
         key: Optional[str] = None
         if isinstance(command, list) and command and all(isinstance(value, str) for value in command):
-            key = json.dumps(command, sort_keys=True)
+            key = execution_key(command, str(root / str(item.get("cwd", "."))), float(item.get("timeout", 60)))
+            key += json.dumps([item.get("kind", "functional"), include_e2e, only_e2e])
+        if item.get("depends_on"):
+            cache.clear()
+            invalidate_executions()
         if key is not None and key in cache:
             shared = dict(cache[key])
             shared["id"] = scenario_id
@@ -141,13 +145,15 @@ def run_manifest(
     deadline: Optional[float] = None,
     only_e2e: bool = False,
 ) -> dict[str, object]:
-    data = json.loads(Path(manifest_file).read_text(encoding="utf-8"))
-    scenarios = data.get("scenarios", [])
-    if not isinstance(scenarios, list):
-        raise ValueError("invalid scenarios")
-    items = _owned([item for item in scenarios if isinstance(item, Mapping)], owner)
+    data = load_manifest(Path(manifest_file))
+    validate_execution_baseline(Path(manifest_file), data)
+    scenarios = data["scenarios"]
+    _ordered(scenarios)  # Validate the complete DAG before owner filtering.
+    items = _owned(scenarios, owner)
     ordered = _ordered(items)
     results = _run_unique(ordered, Path(root), include_e2e or only_e2e, deadline, only_e2e)
+    if write_evidence:
+        persist_results(Path(manifest_file), data, results)
     if not _executable(items):
         return {"decision": "block", "results": results, "error": "no_executable_scenarios"}
     allowed = ("passed", "manual_pending", "e2e_deferred", "not_included")
@@ -157,33 +163,6 @@ def run_manifest(
         pending = sorted({str(item["id"]) for item in results if item["status"] == "incomplete"})
         failed = sorted({str(item["id"]) for item in results if item["status"] not in (*allowed, "incomplete")})
         error = ",".join((["incomplete:" + ",".join(pending)] if pending else []) + (["failed:" + ",".join(failed)] if failed else [])) or "acceptance scenario failed"
-    if write_evidence:
-        for item, result in zip(ordered, results):
-            if not isinstance(item, dict):
-                continue
-            try:
-                item["revision"] = int(item.get("revision", 0)) + 1
-            except (TypeError, ValueError):
-                item["revision"] = 1
-            if result["status"] == "passed":
-                item["status"] = "verified"
-                item["evidence"] = result
-            elif result["status"] == "failed":
-                item["evidence"] = {"revision": item["revision"], **result}
-            elif result["status"] == "incomplete":
-                item["evidence"] = {"revision": item["revision"], **result}
-        Path(manifest_file).write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        task_file = data.get("task_file")
-        if isinstance(task_file, str) and task_file:
-            from cf_acceptance_manifest import _sync_task_evidence
-
-            task_path = Path(task_file)
-            if not task_path.is_absolute():
-                task_path = Path(manifest_file).parent / task_path
-            for item, result in zip(ordered, results):
-                if result["status"] == "passed":
-                    owner = item.get("owner") if isinstance(item.get("owner"), str) else ""
-                    _sync_task_evidence(task_path, str(result["id"]), "runner", "automated command passed", owner)
     outcome: dict[str, object] = {"decision": decision, "results": results}
     if error:
         outcome["error"] = error

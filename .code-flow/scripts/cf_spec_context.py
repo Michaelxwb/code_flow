@@ -384,7 +384,11 @@ def task_contract_digest(root: str, task_dir: str, task_id: str) -> str:
         chunks: list[str] = []
         for heading in ("Acceptance-Refs", "Acceptance Contract", "Acceptance Evidence"):
             index = section.find(heading)
-            chunks.append(section[index:index + 2000] if index != -1 else f"{heading}:missing")
+            if index == -1:
+                chunks.append(f"{heading}:missing")
+                continue
+            end = section.find("\n### ", index)
+            chunks.append(section[index:] if end == -1 else section[index:end])
         return hashlib.sha256("\n".join(chunks).encode("utf-8")).hexdigest()
     return ""
 
@@ -1435,6 +1439,16 @@ def _bind_command(args: argparse.Namespace, payload: Mapping[str, object]) -> di
 
 def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> dict[str, object]:
     from cf_workflow_service import WorkflowError, locate_task_file
+    from cf_workflow_transaction import recover_transition
+
+    recover_transition(args.root)
+    if args.active_action in ("pause", "resume", "block", "complete"):
+        marker, _ = _active_paths(args.root)
+        if marker.exists():
+            current = load_active_task(args.root)
+            if (current.task_id != args.task or
+                    (Path(args.root) / current.task_dir).resolve() != (Path(args.root) / args.task_dir).resolve()):
+                raise ContextError("active_mismatch", "active", "requested TASK does not match marker", str(marker))
 
     def _directory() -> str:
         return args.task_dir if Path(args.task_dir).is_absolute() else str(Path(args.root) / args.task_dir)

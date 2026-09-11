@@ -63,8 +63,7 @@ def test_evidence_sync_is_idempotent_and_closes_coverage(tmp_path: Path) -> None
 
 def test_failure_then_success_keeps_single_verified_plus_log(tmp_path: Path) -> None:
     """[E-08] 失败日志保留，成功不堆叠 verified。"""
-    cmd_fail = json.dumps([sys.executable, "-c", "import sys; print('boom'); raise SystemExit(1)"])
-    cmd_ok = json.dumps([sys.executable, "-c", "pass"])
+    cmd_fail = json.dumps([sys.executable, "-c", "from pathlib import Path; print('boom'); assert Path('ready').exists()"])
     task = _task(
         tmp_path,
         f"|S-01|src|integration|real Store|TASK-001|planned|{cmd_fail}|\n"
@@ -77,9 +76,7 @@ def test_failure_then_success_keeps_single_verified_plus_log(tmp_path: Path) -> 
     saved = json.loads(manifest.read_text(encoding="utf-8"))
     assert saved["scenarios"][0]["evidence"]["status"] == "failed"
     assert "boom" in json.dumps(saved["scenarios"][0]["evidence"])
-    data = json.loads(manifest.read_text(encoding="utf-8"))
-    data["scenarios"][0]["command"] = json.loads(cmd_ok)
-    manifest.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+    (tmp_path / "ready").touch()
     second = run_manifest(str(manifest), str(tmp_path), write_evidence=True)
     assert second["decision"] == "pass"
     body = task.read_text(encoding="utf-8")

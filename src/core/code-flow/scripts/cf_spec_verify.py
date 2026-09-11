@@ -18,6 +18,7 @@ from typing import Mapping, Optional, Sequence
 
 from cf_checks import run_regex_verifier
 from cf_spec_metadata import SpecMetadata, SpecRule, SpecVerifier
+from cf_exec_base import execution_session, run_command
 
 
 _RESULT_CACHE: dict[str, dict[str, object]] = {}
@@ -66,8 +67,21 @@ def _cache_key(metadata: SpecMetadata, rule: SpecRule, verifier: SpecVerifier, s
         "files": scope.files,
         "diff": scope.diff_sha256,
         "confirmation": confirmation or {},
+        "artifact_content": _artifact_fingerprint(verifier, scope),
     }
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str).encode()).hexdigest()
+
+
+def _artifact_fingerprint(verifier: SpecVerifier, scope: VerificationScope) -> Optional[str]:
+    if verifier.type != "document":
+        return None
+    relative = verifier.config.get("artifact")
+    if not isinstance(relative, str):
+        return "invalid"
+    try:
+        return hashlib.sha256((Path(scope.root) / relative).read_bytes()).hexdigest()
+    except OSError as exc:
+        return f"unreadable:{exc}"
 
 
 def _load_result_cache(root: str) -> None:
@@ -266,30 +280,22 @@ def _command(config: Mapping[str, object], scope: VerificationScope, timeout_cap
     cwd = _config_string(config, "cwd") or "."
     timeout_value = config.get("timeout", 30)
     timeout = float(timeout_value) if isinstance(timeout_value, (int, float)) else 30.0
-    if timeout_cap is not None:
-        timeout = min(timeout, timeout_cap)
     allowed_value = config.get("allowed_exit_codes", [0])
     allowed = tuple(item for item in allowed_value if isinstance(item, int)) if isinstance(allowed_value, list) else (0,)
-    try:
-        completed = subprocess.run(
-            argv,
-            cwd=str(Path(scope.root) / cwd),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
-    except subprocess.TimeoutExpired:
+    deadline = None if timeout_cap is None else time.monotonic() + timeout_cap
+    completed = run_command(argv, str(Path(scope.root) / cwd), timeout, deadline)
+    if completed["status"] in ("timeout", "deadline_exceeded"):
         return _Outcome(False, "verifier_timeout", None, {"timeout": timeout, "argv": argv})
-    except OSError as exc:
-        return _Outcome(False, "command_unavailable", None, {"argv": argv, "error": str(exc)})
+    if completed["status"] == "spawn_error":
+        return _Outcome(False, "command_unavailable", None, {"argv": argv, "error": completed["stderr"]})
     details = {
         "argv": argv,
-        "exit_code": completed.returncode,
-        "stdout_sha256": _hash_bytes(completed.stdout.encode()),
-        "stderr_sha256": _hash_bytes(completed.stderr.encode()),
+        "exit_code": completed["returncode"],
+        "stdout_sha256": _hash_bytes(str(completed["stdout"]).encode()),
+        "stderr_sha256": _hash_bytes(str(completed["stderr"]).encode()),
+        "output": (str(completed["stdout"]) + str(completed["stderr"]))[-4000:],
     }
-    passed = completed.returncode in allowed
+    passed = completed["returncode"] in allowed
     return _Outcome(passed, None if passed else "command_failed", None, details)
 
 
@@ -379,7 +385,16 @@ def _budget_evidence(metadata: SpecMetadata, rule: SpecRule, scope: Verification
     )
 
 
-def run_all_verifiers(
+def _missing_evidence(metadata: SpecMetadata, rule: SpecRule, scope: VerificationScope) -> VerificationEvidence:
+    details = {"rule": rule.ref}
+    return VerificationEvidence(
+        f"{metadata.id}#{rule.ref}", datetime.now(timezone.utc).isoformat(),
+        "unverified", rule.text_sha256, None, scope.diff_sha256,
+        _result_hash("unverified", "verifier_missing", details), "verifier_missing", details,
+    )
+
+
+def _run_all_verifiers(
     metadata: SpecMetadata,
     scope: VerificationScope,
     confirmations: Optional[Mapping[str, Mapping[str, object]]] = None,
@@ -402,18 +417,7 @@ def run_all_verifiers(
                 continue
         verifier = verifier_by_rule.get(rule.ref)
         if verifier is None:
-            details = {"rule": rule.ref}
-            evidence_by_ref[rule.ref] = VerificationEvidence(
-                    f"{metadata.id}#{rule.ref}",
-                    datetime.now(timezone.utc).isoformat(),
-                    "unverified",
-                    rule.text_sha256,
-                    None,
-                    scope.diff_sha256,
-                    _result_hash("unverified", "verifier_missing", details),
-                    "verifier_missing",
-                    details,
-                )
+            evidence_by_ref[rule.ref] = _missing_evidence(metadata, rule, scope)
             continue
         if skip_command and verifier.type in ("command", "test"):
             evidence_by_ref[rule.ref] = _skipped_evidence(metadata, rule, scope)
@@ -434,6 +438,13 @@ def run_all_verifiers(
     result = tuple(evidence_by_ref[rule.ref] for rule in metadata.rules if rule.ref in evidence_by_ref)
     _flush_result_cache(scope.root)
     return VerificationResult(result, bool(result) and all(item.status == "verified" for item in result))
+
+
+def run_all_verifiers(metadata: SpecMetadata, scope: VerificationScope,
+                      confirmations: Optional[Mapping[str, Mapping[str, object]]] = None,
+                      skip_command: bool = False, timeout_budget: Optional[float] = None) -> VerificationResult:
+    with execution_session():
+        return _run_all_verifiers(metadata, scope, confirmations, skip_command, timeout_budget)
 
 
 def evidence_is_fresh(

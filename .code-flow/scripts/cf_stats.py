@@ -12,6 +12,7 @@ from cf_core import (
     compress_content,
     estimate_tokens,
     load_config,
+    project_instruction_file,
     non_injectable_specs,
     resolve_quality_loop,
 )
@@ -302,7 +303,9 @@ def main() -> None:
     except Exception:
         total_budget = l0_budget + l1_budget
 
-    claude_path = os.path.join(project_root, "CLAUDE.md")
+    platform = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--platform=")), "")
+    instruction_file = project_instruction_file(project_root, platform)
+    claude_path = os.path.join(project_root, instruction_file)
     l0_tokens = 0
     if os.path.exists(claude_path):
         l0_tokens = estimate_tokens(read_text(claude_path))
@@ -403,7 +406,7 @@ def main() -> None:
     workflow_summary = spec_workflow_summary(project_root)
 
     output = {
-        "l0": {"file": "CLAUDE.md", "tokens": l0_tokens, "budget": l0_budget},
+        "l0": {"file": instruction_file, "tokens": l0_tokens, "budget": l0_budget},
         "l1": l1,
         "total_tokens": total_tokens,
         "total_budget": total_budget,
@@ -423,7 +426,7 @@ def main() -> None:
     }
     if audit_mode:
         from cf_scan import build_report
-        scan = build_report(project_root)
+        scan = build_report(project_root, platform)
         output["audit"] = {
             "files": [e for e in scan["files"] if e.get("issues")],
             "review": scan["review"],
@@ -433,7 +436,7 @@ def main() -> None:
         print(json.dumps(output, ensure_ascii=False))
         return
 
-    print("L0 (CLAUDE.md):", f"{l0_tokens} / {l0_budget}")
+    print(f"L0 ({instruction_file}):", f"{l0_tokens} / {l0_budget}")
     for domain, items in l1.items():
         total_domain = sum(i["tokens"] for i in items if i.get("injectable", True))
         print(f"L1 {domain}:", total_domain)

@@ -17,6 +17,8 @@
 
 用 `python3 .code-flow/scripts/cf_task_index.py --task-file <file> --dag --json` 直接输出拓扑批次与独立分组，不要全文手算。单 worktree 一次仅激活一个 TASK：批次内“可并行”指可独立开发，而非可同时激活。
 
+`batches` 是组内可独立开发的拓扑批次；`dependency_components` 是依赖连通分组，只保证组与组之间独立，组内仍有先后依赖。`independent_groups` 仅为后者的兼容别名，不要把它显示成组内并行。
+
 ### 1. 读取任务数据
 
 - 指定文件：Glob 定位后 Read
@@ -69,7 +71,8 @@ Layer 2:
 按子任务状态标注：
 - `[draft]` — 待启动
 - `[in-progress]` — 进行中
-- `[done]` — 已完成
+- `[done]` — 实现完成，E2E 可能仍待终验
+- `[verified]` — 终验完成
 - `[blocked]` — 被阻塞（附原因）
 
 ### 5. 多文件模式

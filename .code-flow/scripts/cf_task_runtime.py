@@ -30,6 +30,8 @@ from cf_spec_resolver import resolve_candidates, SpecCandidate
 from cf_spec_session import context_sha256
 from cf_spec_verify import VerificationEvidence, VerificationScope, run_all_verifiers
 from cf_core import phase_timing
+from cf_acceptance_schema import load_manifest, validate_execution_baseline, verified_evidence
+from cf_exec_base import execution_session
 
 
 @dataclass(frozen=True)
@@ -59,16 +61,36 @@ def _manual_manifest_issue(task_dir: str, owner: str = "") -> str:
     try:
         import json
 
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = load_manifest(path)
         pending = [
             item.get("id", "unknown")
             for item in data.get("scenarios", [])
-            if isinstance(item, dict) and item.get("kind") == "manual" and item.get("status") != "verified"
+            if item.get("kind") == "manual" and not verified_evidence(item)
             and (not owner or not isinstance(item.get("owner"), str) or not item.get("owner") or item.get("owner") == owner)
         ]
         return f"manual 场景未完成: {', '.join(pending)}" if pending else ""
     except (OSError, ValueError, TypeError):
         return "acceptance manifest invalid"
+
+
+def _acceptance_baseline_issue(task_dir: str, owner: str) -> str:
+    from cf_workflow_service import locate_task_file
+    path = Path(task_dir) / ".acceptance-manifest.json"
+    task = locate_task_file(task_dir, owner)
+    try:
+        requires = task is not None and "## Acceptance Coverage" in task.read_text(encoding="utf-8")
+        if not path.is_file():
+            return "acceptance_manifest_missing" if requires else ""
+        data = load_manifest(path)
+        if requires:
+            from cf_acceptance_manifest import validate_manifest
+            valid, reason = validate_manifest(str(task), str(path))
+            if not valid:
+                return reason
+        validate_execution_baseline(path, data)
+        return ""
+    except (OSError, ValueError) as exc:
+        return f"acceptance_manifest_invalid: {exc}"
 
 
 def _required_candidate(candidate: SpecCandidate) -> bool:
@@ -178,32 +200,38 @@ def _rule_manual_confirmation(rule: RuleBinding) -> Optional[Mapping[str, object
     }
 
 
-def run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optional[float] = None, include_e2e: bool = False, task_id: str = "") -> DoneResult:
-    started = time.monotonic()
-    phase_started = time.monotonic()
-    scope_result = evaluate_scope(root, task_dir)
-    phase_timing("done.evaluate_scope", phase_started)
-    if scope_result.decision == "pause":
-        return DoneResult("block", scope_result.files, (), scope_result.message)
-    owner = task_id or load_active_task(root).task_id
+def _run_acceptance(root: str, task_dir: str, owner: str, include_e2e: bool,
+                    deadline: Optional[float]) -> str:
+    baseline_issue = _acceptance_baseline_issue(task_dir, owner)
+    if baseline_issue:
+        return baseline_issue
     manual_issue = _manual_manifest_issue(task_dir, owner)
     if manual_issue:
-        return DoneResult("block", scope_result.files, (), manual_issue)
+        return manual_issue
     manifest_path = Path(task_dir) / ".acceptance-manifest.json"
     if manifest_path.is_file():
-        try:
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            if not isinstance(manifest.get("scenarios"), list):
-                raise ValueError("invalid scenarios")
-        except (OSError, ValueError, TypeError):
-            return DoneResult("block", scope_result.files, (), "acceptance manifest invalid")
         from cf_acceptance_runner import run_manifest
-
-        deadline = started + budget if budget is not None else None
         scenario_result = run_manifest(str(manifest_path), root, write_evidence=True, include_e2e=include_e2e, owner=owner, deadline=deadline)
         if scenario_result["decision"] == "block":
             reason = scenario_result.get("error") or "acceptance scenario failed"
-            return DoneResult("block", scope_result.files, (), f"acceptance scenario failed: {reason}")
+            return f"acceptance scenario failed: {reason}"
+    return ""
+
+
+def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optional[float] = None, include_e2e: bool = False, task_id: str = "") -> DoneResult:
+    active = load_active_task(root)
+    owner = task_id or active.task_id
+    if owner != active.task_id or (Path(root) / active.task_dir).resolve() != Path(task_dir).resolve():
+        return DoneResult("block", (), (), "active_mismatch: task identity does not match marker")
+    started = time.monotonic()
+    scope_result = evaluate_scope(root, task_dir)
+    phase_timing("done.evaluate_scope", started)
+    if scope_result.decision == "pause":
+        return DoneResult("block", scope_result.files, (), scope_result.message)
+    deadline = started + budget if budget is not None else None
+    issue = _run_acceptance(root, task_dir, owner, include_e2e, deadline)
+    if issue:
+        return DoneResult("block", scope_result.files, (), issue)
     phase_started = time.monotonic()
     context = load_context(_context_path(task_dir))
     diff_hash = _diff_hash(root, scope_result.files)
@@ -228,4 +256,10 @@ def run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optiona
         save_context(_context_path(task_dir), updated)
     gate = validate_stage(updated, "code", diff_sha256=diff_hash)
     phase_timing("done.total", started)
-    return DoneResult(gate.decision, scope_result.files, tuple(all_evidence))
+    return DoneResult(gate.decision, scope_result.files, tuple(all_evidence),
+                      "; ".join(issue.message for issue in gate.errors))
+
+
+def run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optional[float] = None, include_e2e: bool = False, task_id: str = "") -> DoneResult:
+    with execution_session():
+        return _run_done_gate(root, task_dir, cheap, budget, include_e2e, task_id)

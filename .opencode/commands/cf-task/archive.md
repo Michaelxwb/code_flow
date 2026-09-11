@@ -41,24 +41,24 @@ description: 归档已完成的 task 文件
 
 - 需求目录必须存在 `spec-context.yml`；执行 `python3 .code-flow/scripts/cf_spec_context.py refresh --task-dir <需求目录> --root "$PWD" --json`
 - 执行 `python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage code --json`；required Rule 的 stale/pending/conflict/unverified 任一存在即 FAIL
-- 若 `.code-flow/.active-task.json` 仍指向本需求，必须先完成对应 TASK 的 Done Gate，并以 `{"gate_passed": true}` 调用 `active complete`；不得通过归档绕过 active 状态
+- 若 `.code-flow/.active-task.json` 仍指向本需求，先执行 `python3 .code-flow/scripts/cf_task_workflow.py finish --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json`，通过后再 verify-e2e；不得自报 gate_passed 或通过归档绕过 active 状态
 - Context 与 Evidence 随需求目录一并归档，`_session` 仅是可重建投影，不是事实源
 
-所有子任务 done 后，执行四维校验：
+所有子任务 verified 后，执行四维校验：
 
 **完整性**：
 - 所有 Checklist 项已勾选
 - 全文无残留的 `#NOTES` 标记
 
 **正确性**：
-- 如果 `.code-flow/validation.yml` 存在，Read 读取验证规则，用 Bash 执行其中匹配的 `command`（如 `npx tsc --noEmit`、`python3 -m pytest` 等）
+- 执行 `python3 .code-flow/scripts/cf_validation.py --root "$PWD" --json`；归档时任务已无 marker，须补充本需求基线至当前的变更路径作为 `--files` 参数，不能把工作区干净误认为本需求无需验证
 - 检查本次变更涉及的文件是否通过 lint/type check
 
 **验收追溯**：
 - 来源 design 含结构化 S-/E-/B- 场景时，逐项对照 `## Acceptance Coverage`，P0/P1 场景以及 RULE/高影响 RISK 映射场景必须全部存在且状态为 `verified`
 - 每个负责任务的 `Acceptance-Refs`、`Acceptance Contract`、`Acceptance Evidence` 必须闭合，不得残留 `planned` / `pending` / `TBD`
 - 测试层级不得低于 design；E2E 的真实边界和关键断言必须有文件/用例位置与 fixture/构造证据
-- 汇总并重新执行契约中所有唯一验收命令；测试未收集、未执行或失败均为 FAIL
+- 先用 `cf_acceptance_manifest.py --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json" --verify-plan` 校验基线，再用 `cf_acceptance_runner.py --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --include-e2e --write-evidence` 统一复验。相同 argv、cwd、timeout 的命令在单次运行内复用结果；跨运行不复用，依赖步骤不跨状态屏障复用。测试未收集、未执行或失败均为 FAIL
 - `manual` 场景必须有用户确认和可复核记录。旧 design 没有结构化场景时注明“不适用”，不得伪造覆盖
 
 **一致性**：

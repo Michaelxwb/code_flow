@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import IO, Mapping, Optional, Sequence
 
 
-_DONE_STATUSES = ("done", "verified")
+from cf_task_state import FINISHED_STATUSES as _DONE_STATUSES
 
 
 @dataclass(frozen=True)
@@ -80,8 +80,8 @@ def task_batches(nodes: Sequence[TaskNode]) -> list[list[str]]:
     return batches
 
 
-def independent_groups(nodes: Sequence[TaskNode]) -> list[list[str]]:
-    """Groups with no dependency path between members (safely orderable)."""
+def dependency_components(nodes: Sequence[TaskNode]) -> list[list[str]]:
+    """Connected dependency components; different components are independent."""
     parent = {node.task_id: node.task_id for node in nodes}
 
     def find(task: str) -> str:
@@ -101,6 +101,11 @@ def independent_groups(nodes: Sequence[TaskNode]) -> list[list[str]]:
     return [sorted(members) for members in groups.values()]
 
 
+def independent_groups(nodes: Sequence[TaskNode]) -> list[list[str]]:
+    """Compatibility alias: groups are independent of each other, not within."""
+    return dependency_components(nodes)
+
+
 def index_data(task_file: str) -> dict[str, object]:
     nodes = parse_task_file(task_file)
     return {
@@ -110,7 +115,8 @@ def index_data(task_file: str) -> dict[str, object]:
         ],
         "batches": task_batches(nodes),
         "independent_groups": independent_groups(nodes),
-        "note": "batches 可独立开发；单 worktree 一次仅激活一个 TASK",
+        "dependency_components": dependency_components(nodes),
+        "note": "batches 组内无依赖；dependency_components 仅组间独立（independent_groups 为兼容别名）；单 worktree 一次仅激活一个 TASK",
     }
 
 

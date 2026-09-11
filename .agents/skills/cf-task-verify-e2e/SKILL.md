@@ -49,12 +49,11 @@ E2E 场景需要以下环境：
 用户确认后，执行：
 
 ```bash
-python3 .code-flow/scripts/cf_acceptance_runner.py \
-  --manifest <需求目录>/.acceptance-manifest.json \
-  --root . \
-  --only-e2e \
-  --write-evidence
+python3 .code-flow/scripts/cf_task_workflow.py verify-e2e \
+  --task-dir "<需求目录>" --root "$PWD" --json
 ```
+
+该入口重新检查所有 TASK、锁定 manifest 和 functional/manual 最新证据，内部以 `--only-e2e` 调用 runner；只有全通过才把任务提升为 verified。不得手动改状态。
 
 ### 4. 报告结果
 
@@ -62,7 +61,7 @@ python3 .code-flow/scripts/cf_acceptance_runner.py \
 
 ```json
 {
-  "decision": "pass",
+  "decision": "block",
   "results": [
     {"id": "E-01", "kind": "e2e", "status": "passed"},
     {"id": "E-02", "kind": "e2e", "status": "failed", "exit_code": 1}
@@ -75,7 +74,7 @@ python3 .code-flow/scripts/cf_acceptance_runner.py \
 
 ### 5. 更新任务状态
 
-所有 E2E 通过后，将需求目录下的任务状态更新为 `verified`（如果当前是 `done`）。
+确认命令已将需求目录下所有任务 Status 更新为 `verified`，并保留原契约与运行历史。无需再次编辑状态。
 
 ## 失败处理
 

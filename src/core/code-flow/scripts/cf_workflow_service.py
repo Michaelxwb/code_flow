@@ -4,16 +4,21 @@
 Markdown task files are a readable view; the active marker plus Context are
 the facts. Every transition below validates preconditions, mutates the marker
 through cf_spec_context primitives, and syncs the Markdown view in the same
-call so the two can never drift apart (cf-task:block/start auto-complete used
-to edit Markdown only, leaving stale markers behind).
+call with a recovery journal. Interrupted transitions can be rolled forward;
+concurrent user edits block recovery instead of being overwritten.
 """
 
 from __future__ import annotations
 
 import re
+import json
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Mapping, Optional, Sequence
+from cf_spec_context import ActiveTask, SpecContext
+from cf_workflow_transaction import recover_transition
+from cf_task_state import FINISHED_STATUSES
 
 
 class WorkflowError(ValueError):
@@ -104,7 +109,7 @@ def check_startable(task_file: str, task_id: str) -> list[str]:
     if notes:
         blockers.append(f"{len(notes)} unresolved #NOTES: {notes[0][:80]}")
     statuses = _all_statuses(task_file)
-    unmet = [dep for dep in section_depends(section) if statuses.get(dep) != "done"]
+    unmet = [dep for dep in section_depends(section) if statuses.get(dep) not in FINISHED_STATUSES]
     if unmet:
         rendered = ", ".join(dep + "(" + str(statuses.get(dep, "missing")) + ")" for dep in unmet)
         blockers.append("unmet depends: " + rendered)
@@ -115,25 +120,6 @@ def _today() -> str:
     return date.today().isoformat()
 
 
-def _patch_section(task_file: Path, task_id: str, transform) -> bool:
-    """Apply transform(section) -> new_section; True when the file changed."""
-    try:
-        text = task_file.read_text(encoding="utf-8")
-    except (OSError, UnicodeError) as exc:
-        raise WorkflowError("task_read_error", str(exc)) from exc
-    section = read_task_section(str(task_file), task_id)
-    updated = transform(section)
-    if updated == section:
-        return False
-    start = text.find(section)
-    text = text[:start] + updated + text[start + len(section):]
-    try:
-        task_file.write_text(text, encoding="utf-8")
-    except OSError as exc:
-        raise WorkflowError("task_write_error", str(exc)) from exc
-    return True
-
-
 def _set_status(section: str, status: str, log_line: str = "") -> str:
     if re.search(r"(?m)^- \*\*Status\*\*:", section):
         section = re.sub(r"(?m)^- \*\*Status\*\*:.*$", f"- **Status**: {status}", section, count=1)
@@ -141,44 +127,48 @@ def _set_status(section: str, status: str, log_line: str = "") -> str:
         anchor = re.search(r"(?m)^## TASK-\d+:.*$", section)
         insert_at = anchor.end() if anchor else 0
         section = section[:insert_at] + f"\n- **Status**: {status}" + section[insert_at:]
-    if log_line:
-        if "### Log" in section:
-            section = section.rstrip() + f"\n{log_line}\n"
-        else:
-            section = section.rstrip() + f"\n\n### Log\n{log_line}\n"
+    if log_line and log_line not in section.splitlines():
+        section = section.rstrip() + ("\n" if "### Log" in section else "\n\n### Log\n") + log_line + "\n"
     return section
 
 
-def _touch_updated(task_file: Path) -> None:
-    try:
-        text = task_file.read_text(encoding="utf-8")
-    except (OSError, UnicodeError):
-        return
-    updated, count = re.subn(r"(?m)^- \*\*Updated\*\*:.*$", f"- **Updated**: {_today()}", text, count=1)
-    if count:
-        try:
-            task_file.write_text(updated, encoding="utf-8")
-        except OSError:
-            return
+def _render_markdown(text: str, task_id: str, status: str, log_line: str = "", prepend: str = "") -> str:
+    match = re.search(rf"(?ms)^## {re.escape(task_id)}:.*?(?=^## |\Z)", text)
+    if match is None:
+        raise WorkflowError("task_not_found", task_id)
+    section = _set_status(match.group(0), status, log_line)
+    if prepend and prepend not in section:
+        section = section.replace("### Log", prepend + "\n### Log", 1) if "### Log" in section else section + "\n" + prepend + "\n"
+    text = text[:match.start()] + section + text[match.end():]
+    return re.sub(r"(?m)^- \*\*Updated\*\*:.*$", f"- **Updated**: {_today()}", text, count=1)
 
 
 def _sync_markdown(task_file: str, task_id: str, status: str, log_line: str = "", prepend: str = "") -> str:
-    """Sync the Markdown view; returns 'synced'. Task file absence is explicit."""
+    from cf_spec_context import _atomic_text
     target = Path(task_file)
-    if not target.is_file():
-        return "skipped_no_task_file"
+    text = target.read_text(encoding="utf-8")
+    _atomic_text(target, _render_markdown(text, task_id, status, log_line, prepend))
+    return "synced"
 
-    def transform(section: str) -> str:
-        result = _set_status(section, status, log_line)
-        if prepend:
-            if "### Log" in result:
-                result = result.replace("### Log", f"{prepend}\n### Log", 1)
-            else:
-                result = result.rstrip() + f"\n\n{prepend}\n"
-        return result
 
-    _patch_section(target, task_id, transform)
-    _touch_updated(target)
+def _commit_state(root: str, task_file: str, task_id: str, status: str, previous: Optional[ActiveTask],
+                  updated: Optional[ActiveTask], log_line: str = "", prepend: str = "") -> str:
+    from cf_spec_context import _active_data
+    from cf_workflow_transaction import commit_transition
+    marker = Path(root) / ".code-flow/.active-task.json"
+    marker_before = marker.read_text(encoding="utf-8") if marker.exists() else None
+    actual = json.loads(marker_before) if marker_before is not None else None
+    expected = _active_data(previous) if previous is not None else None
+    if actual != expected:
+        raise WorkflowError("active_mismatch", "active task changed before commit")
+    marker_after = json.dumps(_active_data(updated), ensure_ascii=False, indent=2) + "\n" if updated is not None else None
+    task = Path(task_file)
+    before = task.read_text(encoding="utf-8")
+    after = _render_markdown(before, task_id, status, log_line, prepend)
+    try:
+        commit_transition(root, task, before, after, marker_before, marker_after)
+    except (OSError, ValueError) as exc:
+        raise WorkflowError("transition_failed", str(exc)) from exc
     return "synced"
 
 
@@ -186,9 +176,41 @@ def _resolve_paths(root: str, task_dir: str, task_file: str) -> tuple[Path, Path
     base = Path(root)
     directory = Path(task_dir) if Path(task_dir).is_absolute() else base / task_dir
     candidate = Path(task_file) if Path(task_file).is_absolute() else base / task_file
-    if candidate.parent.resolve() != directory.resolve() or not candidate.is_file():
+    if base.resolve() not in candidate.resolve().parents or candidate.parent.resolve() != directory.resolve() or not candidate.is_file():
         raise WorkflowError("invalid_task_file", str(candidate), (str(directory),))
     return directory, candidate
+
+
+def _validate_start_manifest(directory: Path, candidate: Path) -> None:
+    if "## Acceptance Coverage" not in candidate.read_text(encoding="utf-8"):
+        return
+    manifest_file = directory / ".acceptance-manifest.json"
+    if not manifest_file.is_file():
+        raise WorkflowError("acceptance_manifest_missing", str(manifest_file), ("run plan verification and lock the manifest",))
+    from cf_acceptance_manifest import validate_manifest
+    valid, reason = validate_manifest(str(candidate), str(manifest_file))
+    if not valid:
+        raise WorkflowError(reason or "acceptance_manifest_invalid", str(manifest_file), ("run plan verification before coding",))
+
+
+def _write_projection(root: str, candidate: Path, context: SpecContext, task_id: str, session_output: str) -> Path:
+    from cf_spec_context import _atomic_text
+    from cf_spec_session import project_task_session
+    try:
+        projection = project_task_session(context, str(candidate), task_id)
+    except ValueError as exc:
+        raise WorkflowError("task_projection_failed", str(exc)) from exc
+    if projection.truncated:
+        raise WorkflowError("task_projection_truncated", task_id, ("split the TASK before coding",))
+    output = Path(session_output) if session_output else (
+        Path(root) / ".code-flow/specs/_session" / f"task-{candidate.stem}.md"
+    )
+    try:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        _atomic_text(output, projection.text)
+    except (OSError, ValueError) as exc:
+        raise WorkflowError("session_write_failed", str(exc)) from exc
+    return output
 
 
 def start_task(
@@ -202,15 +224,13 @@ def start_task(
     """Full Start Gate: hard preconditions first, then the guarded pipeline
     (refresh → manifest check → projection → activation), then the Markdown
     view flips to in-progress in the same call."""
-    from cf_spec_context import load_context, refresh_context, save_context, start_active_task
-    from cf_spec_session import context_sha256, project_task_session
+    from cf_spec_context import load_context, refresh_context, save_context, _new_active
+    from cf_spec_session import context_sha256
 
+    recover_transition(root)
     directory, candidate = _resolve_paths(root, task_dir, task_file)
     blockers = check_startable(str(candidate), task_id)
-    try:
-        marker_active = (Path(root) / ".code-flow" / ".active-task.json").exists()
-    except OSError:
-        marker_active = False
+    marker_active = (Path(root) / ".code-flow" / ".active-task.json").exists()
     if marker_active:
         blockers = [f"active_exists: run cf-spec doctor before starting {task_id}"] + blockers
     if blockers:
@@ -223,39 +243,16 @@ def start_task(
     # re-sync is needed before activation below.
     current_hash = context_sha256(refreshed.context)
     owned = tuple(item for item in owned_paths if isinstance(item, str))
-    if "## Acceptance Coverage" in candidate.read_text(encoding="utf-8"):
-        manifest_file = directory / ".acceptance-manifest.json"
-        if not manifest_file.is_file():
-            raise WorkflowError("acceptance_manifest_missing", str(manifest_file), ("run plan verification and lock the manifest",))
-        from cf_acceptance_manifest import validate_manifest
-
-        valid, reason = validate_manifest(str(candidate), str(manifest_file))
-        if not valid:
-            raise WorkflowError(reason or "acceptance_manifest_invalid", str(manifest_file), ("run plan verification before coding",))
+    _validate_start_manifest(directory, candidate)
+    output = _write_projection(root, candidate, refreshed.context, task_id, session_output)
     try:
-        projection = project_task_session(refreshed.context, str(candidate), task_id)
-    except ValueError as exc:
-        raise WorkflowError("task_projection_failed", str(exc)) from exc
-    if projection.truncated:
-        raise WorkflowError("task_projection_truncated", task_id, ("split the TASK before coding",))
-    output = Path(session_output) if session_output else (
-        Path(root) / ".code-flow/specs/_session" / f"task-{candidate.stem}.md"
-    )
-    output.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        from cf_spec_context import _atomic_text
-
-        _atomic_text(output, projection.text)
-    except Exception as exc:
-        raise WorkflowError("session_write_failed", str(exc)) from exc
-    try:
-        active = start_active_task(root, str(directory), task_id, current_hash, owned)
+        active = replace(_new_active(root, str(directory), task_id, current_hash, owned), status="active")
+        markdown = _commit_state(root, str(candidate), task_id, "in-progress", None, active, f"- [{_today()}] started")
     except Exception as exc:
         code = getattr(exc, "code", "activation_failed") if isinstance(exc, ValueError) else "activation_failed"
         raise WorkflowError(str(code), str(exc)) from exc
     from cf_spec_context import _active_data
 
-    markdown = _sync_markdown(str(candidate), task_id, "in-progress", f"- [{_today()}] started")
     return {
         "ok": True,
         "context_sha256": current_hash,
@@ -267,39 +264,53 @@ def start_task(
     }
 
 
-def _require_marker_task(root: str, task_id: str) -> None:
+def _require_marker_task(root: str, task_id: str, task_dir: str, task_file: str) -> None:
     from cf_spec_context import ContextError, load_active_task
 
+    recover_transition(root)
     try:
         active = load_active_task(root)
     except (ContextError, OSError, ValueError) as exc:
         raise WorkflowError("no_active_task", str(exc)) from exc
-    if active.task_id != task_id:
+    directory, candidate = _resolve_paths(root, task_dir, task_file)
+    if active.task_id != task_id or (Path(root) / active.task_dir).resolve() != directory.resolve():
         raise WorkflowError("active_mismatch", f"marker={active.task_id} requested={task_id}")
+    located = locate_task_file(str(directory), task_id)
+    if located is None or located.resolve() != candidate.resolve():
+        raise WorkflowError("active_mismatch", "TASK file must be unique and match the active demand")
 
 
 def block_task(root: str, task_dir: str, task_file: str, task_id: str, reason: str) -> dict[str, object]:
     """Block a TASK: marker (when it is ours and active) plus Markdown view."""
-    from cf_spec_context import ContextError, block_active_task, load_active_task
+    from cf_spec_context import ContextError, load_active_task
 
     if not reason.strip():
         raise WorkflowError("block_reason_required", task_id)
+    recover_transition(root)
+    _, target = _resolve_paths(root, task_dir, task_file)
+    task_file = str(target)
     section = read_task_section(task_file, task_id)
-    if section_status(section) == "done":
+    if section_status(section) in FINISHED_STATUSES:
         raise WorkflowError("task_already_done", task_id, ("completed TASKs cannot be blocked",))
     marker = "skipped_no_marker"
+    active = None
+    updated = None
     try:
         active = load_active_task(root)
+        _require_marker_task(root, task_id, task_dir, task_file)
         if active.task_id == task_id and active.status == "active":
-            block_active_task(root)
+            updated = replace(active, status="blocked")
             marker = "blocked"
         elif active.task_id == task_id:
             marker = active.status
-    except (ContextError, OSError, ValueError):
+            updated = active
+    except ContextError:
+        if (Path(root) / ".code-flow/.active-task.json").exists():
+            raise
         marker = "skipped_no_marker"
     today = _today()
-    markdown = _sync_markdown(
-        task_file, task_id, "blocked",
+    markdown = _commit_state(
+        root, task_file, task_id, "blocked", active, updated,
         f"- [{today}] blocked ({reason})",
         prepend=f"> BLOCKED: {reason}",
     )
@@ -308,44 +319,48 @@ def block_task(root: str, task_dir: str, task_file: str, task_id: str, reason: s
 
 def resume_task(root: str, task_dir: str, task_file: str, task_id: str) -> dict[str, object]:
     """Resume a blocked/paused TASK after its blockers clear."""
-    from cf_spec_context import ContextError, load_active_task, resume_active_task
+    from cf_spec_context import load_active_task
 
-    _require_marker_task(root, task_id)
-    try:
+    recover_transition(root)
+    _, target = _resolve_paths(root, task_dir, task_file)
+    task_file = str(target)
+    active = None
+    if (Path(root) / ".code-flow/.active-task.json").exists():
+        _require_marker_task(root, task_id, task_dir, task_file)
         active = load_active_task(root)
-    except (ContextError, OSError, ValueError) as exc:
-        raise WorkflowError("no_active_task", str(exc)) from exc
-    if active.status not in ("blocked", "paused"):
-        raise WorkflowError("resume_unexpected_state", active.status, (task_id,))
+        if active.status not in ("blocked", "paused"):
+            raise WorkflowError("resume_unexpected_state", active.status, (task_id,))
     section = read_task_section(task_file, task_id)
+    if active is None and section_status(section) != "blocked":
+        raise WorkflowError("resume_unexpected_state", section_status(section), (task_id,))
     notes = section_notes(section)
     statuses = _all_statuses(task_file)
-    unmet = [dep for dep in section_depends(section) if statuses.get(dep) != "done"]
+    unmet = [dep for dep in section_depends(section) if statuses.get(dep) not in FINISHED_STATUSES]
     if notes or unmet:
         raise WorkflowError(
             "resume_blocked", task_id,
             tuple(([f"{len(notes)} unresolved #NOTES"] if notes else []) + ([f"unmet depends: {', '.join(unmet)}"] if unmet else [])),
         )
-    try:
-        resumed = resume_active_task(root)
-    except (ContextError, OSError, ValueError) as exc:
-        raise WorkflowError(getattr(exc, "code", "resume_failed"), str(exc)) from exc
-    markdown = _sync_markdown(task_file, task_id, "in-progress", f"- [{_today()}] resumed")
-    return {"ok": True, "task_id": task_id, "marker": resumed.status, "markdown": markdown}
+    resumed = replace(active, status="active") if active is not None else None
+    status = "in-progress" if resumed is not None else "draft"
+    markdown = _commit_state(root, task_file, task_id, status, active, resumed, f"- [{_today()}] resumed ({status})")
+    return {"ok": True, "task_id": task_id, "marker": resumed.status if resumed else "absent", "markdown": markdown}
 
 
 def complete_task(root: str, task_dir: str, task_file: str, task_id: str, gate_passed: bool) -> dict[str, object]:
     """Complete a TASK after its Done Gate passed; syncs both records."""
-    from cf_spec_context import complete_active_task
+    from cf_spec_context import load_active_task
 
     if not gate_passed:
         raise WorkflowError("gate_failed", task_id, ("Done Gate 未通过",))
-    _require_marker_task(root, task_id)
-    try:
-        completed = complete_active_task(root, True)
-    except (ValueError, OSError) as exc:
-        raise WorkflowError(getattr(exc, "code", "complete_failed"), str(exc)) from exc
+    _require_marker_task(root, task_id, task_dir, task_file)
+    _, target = _resolve_paths(root, task_dir, task_file)
+    task_file = str(target)
+    active = load_active_task(root)
+    if active.status != "active":
+        raise WorkflowError("invalid_active_transition", active.status)
+    completed = replace(active, status="completed")
     from cf_spec_context import _active_data
 
-    markdown = _sync_markdown(task_file, task_id, "done", f"- [{_today()}] completed (done)")
+    markdown = _commit_state(root, task_file, task_id, "done", active, None, f"- [{_today()}] completed (done)")
     return {"ok": True, "task_id": task_id, "active": _active_data(completed), "markdown": markdown}

@@ -45,7 +45,9 @@ def test_start_requires_test_first_and_verified_evidence() -> None:
             "### 3.2 GREEN 与验收证据",
             "Acceptance Evidence",
             "不能标记为 `done`",
-            "否则恢复为 `in-progress`",
+            "cf_task_workflow.py finish",
+            "e2e_deferred",
+            "禁止手动设置 done",
         ):
             assert phrase in text, f"{path}: missing {phrase}"
 
@@ -56,7 +58,9 @@ def test_archive_blocks_traceability_gaps_and_cleans_empty_date_dir() -> None:
         for phrase in (
             "执行四维校验",
             "**验收追溯**",
-            "重新执行契约中所有唯一验收命令",
+            "cf_acceptance_runner.py",
+            "--include-e2e --write-evidence",
+            "--verify-plan",
             "归档后统一收尾（布局 A/B 都必须执行）",
             'rmdir "$source_date_dir"',
             "如果源日期目录仍存在但为空，视为归档未完成",
