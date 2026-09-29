@@ -400,6 +400,7 @@ def _run_all_verifiers(
     confirmations: Optional[Mapping[str, Mapping[str, object]]] = None,
     skip_command: bool = False,
     timeout_budget: Optional[float] = None,
+    stage: str = "code",
 ) -> VerificationResult:
     verifier_by_rule = {item.rule: item for item in metadata.verifiers}
     confirmation_by_rule = confirmations or {}
@@ -410,12 +411,14 @@ def _run_all_verifiers(
     for rule in metadata.rules:
         if rule.enforcement != "required":
             continue
+        verifier = verifier_by_rule.get(rule.ref)
+        if verifier is not None and verifier.stage != stage:
+            continue
         if timeout_budget is not None:
             remaining = timeout_budget - (time.monotonic() - started)
             if remaining <= 0:
                 evidence_by_ref[rule.ref] = _budget_evidence(metadata, rule, scope, timeout_budget)
                 continue
-        verifier = verifier_by_rule.get(rule.ref)
         if verifier is None:
             evidence_by_ref[rule.ref] = _missing_evidence(metadata, rule, scope)
             continue
@@ -442,9 +445,10 @@ def _run_all_verifiers(
 
 def run_all_verifiers(metadata: SpecMetadata, scope: VerificationScope,
                       confirmations: Optional[Mapping[str, Mapping[str, object]]] = None,
-                      skip_command: bool = False, timeout_budget: Optional[float] = None) -> VerificationResult:
+                      skip_command: bool = False, timeout_budget: Optional[float] = None,
+                      stage: str = "code") -> VerificationResult:
     with execution_session():
-        return _run_all_verifiers(metadata, scope, confirmations, skip_command, timeout_budget)
+        return _run_all_verifiers(metadata, scope, confirmations, skip_command, timeout_budget, stage)
 
 
 def evidence_is_fresh(

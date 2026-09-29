@@ -48,6 +48,7 @@ class DoneResult:
     files: tuple[str, ...]
     evidence: tuple[Mapping[str, object], ...]
     message: str = ""
+    deferred_review: int = 0
 
 
 def _context_path(task_dir: str) -> str:
@@ -153,10 +154,11 @@ def _evidence_data(evidence: VerificationEvidence) -> Mapping[str, object]:
 
 
 def _update_rule(rule: RuleBinding, evidence: Mapping[str, object]) -> RuleBinding:
-    if "code" not in rule.stage_status:
+    stage = rule.verifier_stage or "code"
+    if stage not in rule.stage_status:
         return rule
     statuses = dict(rule.stage_status)
-    current = statuses["code"]
+    current = statuses[stage]
     if current.status in ("not_applicable", "waived"):
         return rule
     status = "verified" if evidence.get("status") == "verified" else "unverified"
@@ -168,9 +170,9 @@ def _update_rule(rule: RuleBinding, evidence: Mapping[str, object]) -> RuleBindi
         (item.get("verifier_ref"), item.get("result_sha256"), item.get("diff_sha256")) == signature
         for item in current.evidence
     ):
-        statuses["code"] = replace(current, status=status)
+        statuses[stage] = replace(current, status=status)
     else:
-        statuses["code"] = replace(current, status=status, evidence=(*current.evidence, evidence))
+        statuses[stage] = replace(current, status=status, evidence=(*current.evidence, evidence))
     return replace(rule, stage_status=statuses)
 
 
@@ -267,9 +269,11 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
     diff_hash = _diff_hash(root, scope_result.files)
     phase_timing("done.load_context_and_diff", phase_started)
     all_evidence: list[Mapping[str, object]] = []
+    deferred_review = 0
     for binding in context.bindings:
         phase_started = time.monotonic()
         metadata = load_spec_metadata(str(Path(root) / ".code-flow/specs" / binding.path))
+        deferred_review += sum(1 for rule in binding.rules if rule.verifier_stage == "review")
         confirmations: dict[str, Mapping[str, object]] = {}
         for rule in binding.rules:
             confirmation = _rule_manual_confirmation(rule)
@@ -277,7 +281,8 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
                 confirmations[rule.ref] = confirmation
         remaining = None if budget is None else budget - (time.monotonic() - started)
         result = run_all_verifiers(
-            metadata, VerificationScope(root, scope_result.files, diff_hash), confirmations, cheap, remaining
+            metadata, VerificationScope(root, scope_result.files, diff_hash), confirmations, cheap, remaining,
+            stage="code",
         )
         phase_timing(f"done.verify.{binding.spec_id}", phase_started)
         all_evidence.extend(_evidence_data(item) for item in result.evidence)
@@ -288,10 +293,10 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
     if gate.decision == "pass" and not cheap:
         validation_issue = _run_finish_validation(root, scope_result.files)
         if validation_issue:
-            return DoneResult("block", scope_result.files, tuple(all_evidence), validation_issue)
+            return DoneResult("block", scope_result.files, tuple(all_evidence), validation_issue, deferred_review)
     phase_timing("done.total", started)
     return DoneResult(gate.decision, scope_result.files, tuple(all_evidence),
-                      "; ".join(issue.message for issue in gate.errors))
+                      "; ".join(issue.message for issue in gate.errors), deferred_review)
 
 
 def run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optional[float] = None, include_e2e: bool = False, task_id: str = "") -> DoneResult:

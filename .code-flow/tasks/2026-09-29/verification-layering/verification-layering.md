@@ -14,11 +14,11 @@
 
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |
 |--------|---------|---------|-------------|---------|------|---------|
-| S-01 | verification-layering.design.md#2.5 验收条件 | integration | 真实 git 仓库 + spec-context + 命令执行器 | TASK-02 | planned | ["python3","-m","pytest","-q","tests/test_cf_task_runtime.py","-k","s_01_done_gate_stage_split"] |
+| S-01 | verification-layering.design.md#2.5 验收条件 | integration | 真实 git 仓库 + spec-context + 命令执行器 | TASK-02 | verified | ["python3","-m","pytest","-q","tests/test_cf_task_runtime.py","-k","s_01_done_gate_stage_split"] |
 | S-02 | verification-layering.design.md#2.5 验收条件 | integration | 多 task context + 真实命令 + 证据写回 | TASK-04 | planned | ["python3","-m","pytest","-q","tests/test_cf_e2e_flow.py","-k","s_02_review_aggregation"] |
 | S-03 | verification-layering.design.md#2.5 验收条件 | integration | 真实仓库 + owned files + 缓存文件 | TASK-03 | planned | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","s_03_scoped_cache"] |
 | S-04 | verification-layering.design.md#2.5 验收条件 | integration | 真实需求目录 + cf_spec_gate + 归档流程 | TASK-05 | planned | ["python3","-m","pytest","-q","tests/test_cf_task_acceptance_workflow.py","-k","s_04_review_gate"] |
-| S-05 | verification-layering.design.md#2.5 验收条件 | integration | 旧格式 spec（无 stage/files）+ finish | TASK-02 | planned | ["python3","-m","pytest","-q","tests/test_cf_task_runtime.py","-k","s_05_legacy_defaults"] |
+| S-05 | verification-layering.design.md#2.5 验收条件 | integration | 旧格式 spec（无 stage/files）+ finish | TASK-02 | verified | ["python3","-m","pytest","-q","tests/test_cf_task_runtime.py","-k","s_05_legacy_defaults"] |
 | S-06 | verification-layering.design.md#2.5 验收条件 | integration | 真实 .code-flow/specs + 缓存文件 | TASK-06 | planned | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","s_06_repo_spec_scopes"] |
 | E-01 | verification-layering.design.md#2.5 验收条件 | integration | 真实失败命令 + 证据写回 | TASK-04 | planned | ["python3","-m","pytest","-q","tests/test_cf_e2e_flow.py","-k","e_01_review_failure_incremental"] |
 | E-02 | verification-layering.design.md#2.5 验收条件 | unit | metadata 加载器 + 真实 spec 文件 | TASK-01 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_metadata.py","-k","verifier_stage"] |
@@ -80,7 +80,7 @@
 - [2026-09-29] completed (done)
 ## TASK-02: Done Gate 分层执行与 review 登记
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-01
 - **Source**: verification-layering.design.md#3.2 架构设计, #3.4 接口设计, #3.5 质量实现方案
@@ -91,33 +91,39 @@
 Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态保持 pending），finish 输出 `deferred_review` 并在摘要提示 `cf-task:verify-e2e`；未声明 stage/files 的旧 spec 行为不变。
 
 ### Checklist
-- [ ] `run_all_verifiers` 增加 `stage` 过滤参数（Done Gate 只调度 code 层）
-- [ ] `_run_done_gate` 使用 stage=code；review 规则不执行、不写 code 证据
-- [ ] finish JSON 输出 `deferred_review` 计数；文本摘要提示 verify-e2e 入口
-- [ ] [S-01][integration] 先写测试记录 RED：真实 git 仓库 + spec-context + 真实命令，finish 后 review verifier 未执行、code 执行（不得 Mock 门禁运行时与命令执行器）
-- [ ] [S-01] 断言 `deferred_review > 0` 且 review 状态为 pending
-- [ ] [S-05][integration] 先写测试记录 RED+GREEN：未声明 stage/files 的旧格式 spec 在 finish 全量执行（兼容回归）
-- [ ] [S-05] 断言旧格式 spec 的全部 verifier 均被调度
-- [ ] [RULE-scripts-hook-protocol-001] verifier: `python3 -m pytest -q tests/test_hook_command_robustness.py tests/test_cf_user_prompt_hook.py tests/test_cf_post_hook.py`（hook 协议与静默 no-op 不变）
-- [ ] [RULE-scripts-no-print-debug-001] verifier: 既有正则 check（`*_hook.py` 无 print）+ `python3 -m pytest -q tests/test_cf_stop_hook.py`
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] `run_all_verifiers` 增加 `stage` 过滤参数（Done Gate 只调度 code 层）
+- [x] `_run_done_gate` 使用 stage=code；review 规则不执行、不写 code 证据
+- [x] finish JSON 输出 `deferred_review` 计数与 `deferred_hint` verify-e2e 提示
+- [x] [S-01][integration] 先写测试记录 RED：真实 git 仓库 + spec-context + 真实命令，finish 后 review verifier 未执行、code 执行（不得 Mock 门禁运行时与命令执行器）
+- [x] [S-01] 断言 `deferred_review > 0` 且 review 状态为 pending
+- [x] [S-05][integration] 先写测试记录 RED+GREEN：未声明 stage/files 的旧格式 spec 在 finish 全量执行（兼容回归）
+- [x] [S-05] 断言旧格式 spec 的全部 verifier 均被调度
+- [x] [RULE-scripts-hook-protocol-001] verifier: `python3 -m pytest -q tests/test_hook_command_robustness.py tests/test_cf_user_prompt_hook.py tests/test_cf_post_hook.py`（hook 协议与静默 no-op 不变）
+- [x] [RULE-scripts-no-print-debug-001] verifier: 既有正则 check（`*_hook.py` 无 print）+ `python3 -m pytest -q tests/test_cf_stop_hook.py`
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-01 | integration | cf_task_runtime、spec-context、命令执行器 | review 未执行 + review=pending + deferred_review>0 | planned | planned | planned |
-| S-05 | integration | cf_task_runtime、旧格式 spec | 旧格式全部 verifier 被调度 | planned | planned | planned |
+| S-01 | integration | cf_task_runtime、spec-context、命令执行器 | review 未执行 + review=pending + deferred_review>0 | planned | planned | verified |
+| S-05 | integration | cf_task_runtime、旧格式 spec | 旧格式全部 verifier 被调度 | planned | planned | verified |
 
 ### Acceptance Evidence
 
-> `cf-task-start` 在编码期填写 functional/manual 的 RED/GREEN 结果、每个关键断言的位置和真实组件证据；E2E 仅登记测试与命令，执行统一留给 verify-e2e。全部 functional 状态 verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-01 | FAIL: review verifier 在 Done Gate 被执行（`review-ran.txt` 存在）；`DoneResult.deferred_review` 不存在（AttributeError） | PASS: `pytest -k s_01_done_gate_stage_split` 1 passed | tests/test_cf_task_runtime.py::test_s_01_done_gate_stage_split（code 执行 / review 未执行 / review=pending / deferred=1） | 真实 git 仓库 + spec-context + 真实子进程命令 | verified |
+| S-05 | FAIL: `deferred_review` AttributeError（旧格式执行行为本身已通过） | PASS: `pytest -k s_05_legacy_defaults` 1 passed | tests/test_cf_task_runtime.py::test_s_05_legacy_defaults（旧格式 verifier 执行 / deferred=0） | 真实 git 仓库 + 旧格式 spec + 真实命令 | verified |
+- S-01: verified — automated command passed; run_id=42fb5a42e39740cb91fe37d0cf4bbe57 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=42fb5a42e39740cb91fe37d0cf4bbe57 (confirmed_by: runner)
 
 ### Log
 - [2026-09-29] created (draft)
 
 ---
-
+- [2026-09-29] started
+- [2026-09-29] completed (done)
 ## TASK-03: 作用域缓存（command/test）
 
 - **Status**: draft

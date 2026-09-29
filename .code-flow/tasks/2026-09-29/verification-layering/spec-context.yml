@@ -1,7 +1,7 @@
 version: 1
 task: verification-layering
 enforcement: required
-updated_at: '2026-09-29T12:23:32.212139+00:00'
+updated_at: '2026-09-29T12:54:09.210489+00:00'
 sources:
 - type: cli
   ref: bind
@@ -29,6 +29,7 @@ bindings:
     text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
     enforcement: required
     verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+    verifier_stage: code
     stage_status:
       design:
         status: applied
@@ -45,7 +46,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-02
           item_id: RULE-scripts-no-print-debug-001
-          artifact_sha256: 41f1353e9259a6626dc5d1d393066e6d0f46d9749a0f95e3999574ac77797f4d
+          artifact_sha256: 77b578389520a6b8a6f0654d0c59f299513b852a6ad53e60367a068ddf6ce2f1
         decision: null
         evidence: []
       code:
@@ -64,6 +65,17 @@ bindings:
           details:
             checked_files: 0
             violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-09-29T12:59:57.698585+00:00'
+          status: verified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: 6900311a9de8d48525a12b2a36c6f1fcca98b878249caea552cb9cd7820571e4
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
       review:
         status: pending
         refs: []
@@ -75,6 +87,7 @@ bindings:
     text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
     enforcement: required
     verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+    verifier_stage: code
     stage_status:
       design:
         status: applied
@@ -91,7 +104,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-03
           item_id: RULE-scripts-no-bare-except-001
-          artifact_sha256: 41f1353e9259a6626dc5d1d393066e6d0f46d9749a0f95e3999574ac77797f4d
+          artifact_sha256: 77b578389520a6b8a6f0654d0c59f299513b852a6ad53e60367a068ddf6ce2f1
         decision: null
         evidence: []
       code:
@@ -110,6 +123,17 @@ bindings:
           details:
             checked_files: 6
             violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-09-29T12:59:57.701023+00:00'
+          status: verified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: 6900311a9de8d48525a12b2a36c6f1fcca98b878249caea552cb9cd7820571e4
+          result_sha256: 8a8f19021b287a79815f511729ca296664ee339b853a1ffb21f67ea72928e70b
+          error_code: null
+          details:
+            checked_files: 11
+            violations: []
       review:
         status: pending
         refs: []
@@ -121,6 +145,7 @@ bindings:
     text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
     enforcement: required
     verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+    verifier_stage: code
     stage_status:
       design:
         status: applied
@@ -137,7 +162,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-02
           item_id: RULE-scripts-hook-protocol-001
-          artifact_sha256: 41f1353e9259a6626dc5d1d393066e6d0f46d9749a0f95e3999574ac77797f4d
+          artifact_sha256: 77b578389520a6b8a6f0654d0c59f299513b852a6ad53e60367a068ddf6ce2f1
         decision: null
         evidence: []
       code:
@@ -170,6 +195,31 @@ bindings:
               30 passed in 0.73s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-09-29T12:59:53.221980+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: 6900311a9de8d48525a12b2a36c6f1fcca98b878249caea552cb9cd7820571e4
+          result_sha256: 949c6279e2a1a424e9496bda1673706b59e8dd20d663c11b4792c0abb306cdb2
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            exit_code: 0
+            stdout_sha256: 19c04c466f467f52991a43aeb5575191682169c81d6df5f4069fa4c24ac26408
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '..............................                                           [100%]
+
+              30 passed in 0.88s
+
+              '
       review:
         status: pending
         refs: []
@@ -181,6 +231,7 @@ bindings:
     text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
     enforcement: required
     verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+    verifier_stage: code
     stage_status:
       design:
         status: applied
@@ -197,7 +248,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-01
           item_id: RULE-scripts-context-gate-001
-          artifact_sha256: 41f1353e9259a6626dc5d1d393066e6d0f46d9749a0f95e3999574ac77797f4d
+          artifact_sha256: 77b578389520a6b8a6f0654d0c59f299513b852a6ad53e60367a068ddf6ce2f1
         decision: null
         evidence: []
       code:
@@ -230,6 +281,31 @@ bindings:
               50 passed in 3.34s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-09-29T12:59:57.207893+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: 6900311a9de8d48525a12b2a36c6f1fcca98b878249caea552cb9cd7820571e4
+          result_sha256: a65ff3a799f448988ec52f5231f0c76717753bd33fd46f4ee8805e6c7d215b76
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            stdout_sha256: 2d22bc9ccaefc0131a78576014cc44ad3cd3543f8517097a8d5a8f5d42382e56
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '....................................................                     [100%]
+
+              52 passed in 3.87s
+
+              '
       review:
         status: pending
         refs: []
@@ -241,6 +317,7 @@ bindings:
     text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
     enforcement: required
     verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+    verifier_stage: code
     stage_status:
       design:
         status: applied
@@ -257,7 +334,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-05
           item_id: RULE-scripts-canonical-parity-001
-          artifact_sha256: 41f1353e9259a6626dc5d1d393066e6d0f46d9749a0f95e3999574ac77797f4d
+          artifact_sha256: 77b578389520a6b8a6f0654d0c59f299513b852a6ad53e60367a068ddf6ce2f1
         decision: null
         evidence: []
       code:
@@ -290,6 +367,31 @@ bindings:
               18 passed in 0.40s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-09-29T12:59:57.698198+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: 6900311a9de8d48525a12b2a36c6f1fcca98b878249caea552cb9cd7820571e4
+          result_sha256: c62c38b4bb827259f8e9740a26d34f1467cdc8a9672b74218bf535dd56e6c262
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            stdout_sha256: da0f7cba0001c026ff7ad43472267ae87af5ec029e9096efaf7bdd61e01d3f5f
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '..................                                                       [100%]
+
+              18 passed in 0.39s
+
+              '
       review:
         status: pending
         refs: []
@@ -301,6 +403,7 @@ bindings:
     text_sha256: e0ed9e9790ba0be96dbccbec1e293b5c10e89f622cc2ed557cbfd6b8bd657805
     enforcement: advisory
     verifier_ref: advisory:none
+    verifier_stage: code
     stage_status:
       design:
         status: pending
@@ -328,6 +431,7 @@ bindings:
     text_sha256: 0a0bdac02a0cdd3a5765702728a4cfd133f928bc04b21254b22535aff5baf883
     enforcement: advisory
     verifier_ref: advisory:none
+    verifier_stage: code
     stage_status:
       design:
         status: pending
@@ -354,6 +458,7 @@ bindings:
     text_sha256: f71099b4a11c6810461d2523898e31689c202c857189d28a430ac0a9db0d6347
     enforcement: advisory
     verifier_ref: advisory:none
+    verifier_stage: code
     stage_status:
       design:
         status: pending
@@ -381,6 +486,7 @@ bindings:
     text_sha256: 6e5cc1e4c754904e5e4d3a5deb70a3bc2b1f0ac660464bb33b9b4a8df7a41373
     enforcement: advisory
     verifier_ref: advisory:none
+    verifier_stage: code
     stage_status:
       design:
         status: pending
@@ -407,6 +513,7 @@ bindings:
     text_sha256: 448907a472ddb048d8542219617f22f70a91099bfc0e9cf21597edb2ac22ea15
     enforcement: advisory
     verifier_ref: advisory:none
+    verifier_stage: code
     stage_status:
       design:
         status: pending
@@ -433,6 +540,7 @@ bindings:
     text_sha256: 6a16a49993f19e203b0565d1859ee5d21d83c3e40604743429b8e448a4839594
     enforcement: advisory
     verifier_ref: advisory:none
+    verifier_stage: code
     stage_status:
       design:
         status: pending
@@ -460,6 +568,7 @@ bindings:
     text_sha256: c6cc98ec99f162c4dc00cb3f651149e49d6d64c119612e77c128b6c56c4abce1
     enforcement: advisory
     verifier_ref: advisory:none
+    verifier_stage: code
     stage_status:
       design:
         status: pending
@@ -486,6 +595,7 @@ bindings:
     text_sha256: 84810934be480fce3f7a9758618ca2d5e3448b51349513d9798e448d6e4915a3
     enforcement: advisory
     verifier_ref: advisory:none
+    verifier_stage: code
     stage_status:
       design:
         status: pending
@@ -513,6 +623,7 @@ bindings:
     text_sha256: 6edab46112eb211ee3ca46805091abff5f0c46a3b5eaca2b77fc4ab5538cf472
     enforcement: advisory
     verifier_ref: advisory:none
+    verifier_stage: code
     stage_status:
       design:
         status: pending
@@ -539,6 +650,7 @@ bindings:
     text_sha256: 6db937b1e84c2278c3dc3d9feef51c5644f4af6c315eeeb0c6c4cfbdc734400a
     enforcement: advisory
     verifier_ref: advisory:none
+    verifier_stage: code
     stage_status:
       design:
         status: pending

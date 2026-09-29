@@ -116,6 +116,8 @@ def _binding_issues(
         status = rule.stage_status.get(stage)
         if status is None:
             continue
+        if stage in ("code", "review") and getattr(rule, "verifier_stage", "code") != stage:
+            continue
         if rule.enforcement == "advisory" and status.status == "pending":
             continue
         code = "missing_spec" if binding.status == "missing" else _status_issue(rule, status, now, diff_sha256, allow_cheap_skips)

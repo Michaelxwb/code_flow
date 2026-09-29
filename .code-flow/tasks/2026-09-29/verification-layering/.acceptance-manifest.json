@@ -10,7 +10,7 @@
       "kind": "functional",
       "boundary": "真实 git 仓库 + spec-context + 命令执行器",
       "owner": "TASK-02",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -22,7 +22,28 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "42fb5a42e39740cb91fe37d0cf4bbe57",
+        "executed_at": "2026-09-29T12:59:52.160540+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "42fb5a42e39740cb91fe37d0cf4bbe57",
+          "executed_at": "2026-09-29T12:59:52.160540+00:00"
+        }
+      ]
     },
     {
       "id": "S-02",
@@ -94,7 +115,7 @@
       "kind": "functional",
       "boundary": "旧格式 spec（无 stage/files）+ finish",
       "owner": "TASK-02",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -106,7 +127,28 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "42fb5a42e39740cb91fe37d0cf4bbe57",
+        "executed_at": "2026-09-29T12:59:52.160540+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "42fb5a42e39740cb91fe37d0cf4bbe57",
+          "executed_at": "2026-09-29T12:59:52.160540+00:00"
+        }
+      ]
     },
     {
       "id": "S-06",

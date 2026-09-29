@@ -23,7 +23,10 @@ def finish_task(root: str, directory: str, task_file: str, task_id: str) -> dict
     gate = run_done_gate(root, directory, task_id=task_id)
     if gate.decision != "pass":
         return {"decision": "block", "reason": gate.message, "evidence": gate.evidence}
-    return {"decision": "pass", **complete_task(root, directory, task_file, task_id, True)}
+    result = {"decision": "pass", "deferred_review": gate.deferred_review, **complete_task(root, directory, task_file, task_id, True)}
+    if gate.deferred_review:
+        result["deferred_hint"] = f"{gate.deferred_review} review-layer verifier(s) deferred; run cf-task:verify-e2e for the requirement directory"
+    return result
 
 
 def _demand_tasks(directory: Path) -> list[tuple[Path, str, str]]:

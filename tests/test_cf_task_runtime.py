@@ -354,3 +354,98 @@ def test_done_gate_budget_exhaustion_is_visible_in_evidence(tmp_path: Path) -> N
     assert result.decision == "block"
     assert any(item.get("error_code") == "verifier_budget_exhausted" for item in result.evidence)
     assert load_context(str(task_dir / "spec-context.yml")).bindings[0].rules[0].stage_status["code"].status == "unverified"
+
+
+STAGE_RUNTIME_SPEC = """---
+id: stage-runtime
+description: stage runtime rules
+stages: [code, review]
+enforcement: required
+verifiers:
+  - rule: RULE-stage-001
+    type: test
+    config:
+      argv: [python3, -c, "open('code-ran.txt', 'a').write('x')"]
+      timeout: 30
+  - rule: RULE-stage-002
+    type: test
+    stage: review
+    config:
+      argv: [python3, -c, "open('review-ran.txt', 'a').write('x')"]
+      timeout: 30
+---
+
+# Stage Rules
+
+## Rules
+- [RULE-stage-001] code rule.
+- [RULE-stage-002] review rule.
+"""
+
+LEGACY_RUNTIME_SPEC = """---
+id: legacy-runtime
+description: legacy runtime rules
+stages: [code, review]
+enforcement: required
+verifiers:
+  - rule: RULE-legacy-001
+    type: test
+    config:
+      argv: [python3, -c, "open('legacy-ran.txt', 'a').write('x')"]
+      timeout: 30
+---
+
+# Legacy Rules
+
+## Rules
+- [RULE-legacy-001] legacy rule without stage/files declarations.
+"""
+
+
+def _stage_repo(tmp_path: Path, spec_text: str = STAGE_RUNTIME_SPEC) -> tuple[Path, Path]:
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "config", "user.email", "test@example.com")
+    _git(tmp_path, "config", "user.name", "Test")
+    app = tmp_path / "src/app.py"
+    app.parent.mkdir()
+    app.write_text("VALUE = 1\n", encoding="utf-8")
+    specs = tmp_path / ".code-flow/specs/stage"
+    specs.mkdir(parents=True)
+    (specs / "rules.md").write_text(spec_text, encoding="utf-8")
+    config = {"path_mapping": {"stage": {"patterns": ["src/*"], "specs": [{"path": "stage/rules.md"}]}}}
+    (tmp_path / ".code-flow/config.yml").write_text(yaml.safe_dump(config), encoding="utf-8")
+    task_dir = tmp_path / ".code-flow/tasks/demo"
+    task_dir.mkdir(parents=True)
+    candidate = resolve_candidates(str(tmp_path), "code", ["src/app.py"])[0]
+    context = bind_specs(new_context("demo", (("test", "stage"),)), (BindingInput(candidate, "plan", "stage task"),))
+    save_context(str(task_dir / "spec-context.yml"), context)
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-qm", "initial")
+    start_active_task(str(tmp_path), ".code-flow/tasks/demo", "TASK-001", "ctx")
+    return tmp_path, task_dir
+
+
+def test_s_01_done_gate_stage_split(tmp_path: Path) -> None:
+    """S-01: Done Gate 只执行 code 层；review 规则不执行且保持 pending。"""
+    root, task_dir = _stage_repo(tmp_path)
+
+    result = run_done_gate(str(root), str(task_dir))
+
+    assert (root / "code-ran.txt").exists(), "code verifier 必须执行"
+    assert not (root / "review-ran.txt").exists(), "review verifier 不得在 Done Gate 执行"
+    rules = {rule.ref: rule for rule in load_context(str(task_dir / "spec-context.yml")).bindings[0].rules}
+    assert rules["RULE-stage-002"].stage_status["review"].status == "pending"
+    assert rules["RULE-stage-001"].stage_status["code"].status == "verified"
+    assert result.decision == "pass", result.message
+    assert result.deferred_review == 1
+
+
+def test_s_05_legacy_defaults(tmp_path: Path) -> None:
+    """S-05: 未声明 stage/files 的旧格式 verifier 仍在 Done Gate 执行。"""
+    root, task_dir = _stage_repo(tmp_path, LEGACY_RUNTIME_SPEC)
+
+    result = run_done_gate(str(root), str(task_dir))
+
+    assert (root / "legacy-ran.txt").exists(), "旧格式 verifier 必须照常执行"
+    assert result.decision == "pass", result.message
+    assert result.deferred_review == 0
