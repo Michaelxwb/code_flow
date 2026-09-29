@@ -1,7 +1,7 @@
 version: 1
 task: verification-layering
 enforcement: required
-updated_at: '2026-09-29T13:00:28.684224+00:00'
+updated_at: '2026-09-29T13:14:10.176241+00:00'
 sources:
 - type: cli
   ref: bind
@@ -46,7 +46,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-02
           item_id: RULE-scripts-no-print-debug-001
-          artifact_sha256: 519a07b4b7fc36c49e8fe76c279c2a7b00afb941c2198f4d08e73db06e0584b1
+          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
         decision: null
         evidence: []
       code:
@@ -115,7 +115,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-03
           item_id: RULE-scripts-no-bare-except-001
-          artifact_sha256: 519a07b4b7fc36c49e8fe76c279c2a7b00afb941c2198f4d08e73db06e0584b1
+          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
         decision: null
         evidence: []
       code:
@@ -184,7 +184,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-02
           item_id: RULE-scripts-hook-protocol-001
-          artifact_sha256: 519a07b4b7fc36c49e8fe76c279c2a7b00afb941c2198f4d08e73db06e0584b1
+          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
         decision: null
         evidence: []
       code:
@@ -295,7 +295,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-01
           item_id: RULE-scripts-context-gate-001
-          artifact_sha256: 519a07b4b7fc36c49e8fe76c279c2a7b00afb941c2198f4d08e73db06e0584b1
+          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
         decision: null
         evidence: []
       code:
@@ -406,7 +406,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-05
           item_id: RULE-scripts-canonical-parity-001
-          artifact_sha256: 519a07b4b7fc36c49e8fe76c279c2a7b00afb941c2198f4d08e73db06e0584b1
+          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
         decision: null
         evidence: []
       code:
