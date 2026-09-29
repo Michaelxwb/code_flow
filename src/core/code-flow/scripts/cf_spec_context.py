@@ -1003,6 +1003,17 @@ def _binding_from_input(selection: BindingInput) -> SpecBinding:
     )
 
 
+def _with_declared_stages(rule: RuleBinding, stages: Sequence[str]) -> RuleBinding:
+    """兼容补齐：绑定旧版本时声明的 stages 缺状态，按声明补 pending。"""
+    missing = [stage for stage in stages if stage not in rule.stage_status]
+    if not missing:
+        return rule
+    statuses = dict(rule.stage_status)
+    for stage in missing:
+        statuses[stage] = RuleStageStatus("pending", (), None, ())
+    return replace(rule, stage_status=statuses)
+
+
 def _rule_from_metadata(spec_id: str, metadata: SpecMetadata, rule: SpecRule) -> RuleBinding:
     enforcement = "advisory" if metadata.enforcement == "advisory" else rule.enforcement
     statuses = {stage: RuleStageStatus("pending", (), None, ()) for stage in metadata.stages}
@@ -1200,6 +1211,7 @@ def _refresh_binding(
             rule, change = _refresh_existing_rule(binding, prior, current, metadata)
             if change is not None:
                 changes.append(change)
+        rule = _with_declared_stages(rule, metadata.stages)
         rule, artifact_changes = _refresh_artifacts(binding.spec_id, rule, artifact_root)
         rules.append(rule)
         changes.extend(artifact_changes)
@@ -1571,11 +1583,13 @@ def _status_command(args: argparse.Namespace) -> dict[str, object]:
         rules = []
         for rule in binding.rules:
             status = rule.stage_status.get("code")
+            stages = {stage: item.status for stage, item in sorted(rule.stage_status.items())}
             rules.append(
                 {
                     "ref": f"{binding.spec_id}#{rule.ref}",
                     "enforcement": rule.enforcement,
                     "status": status.status if status else "missing",
+                    "stages": stages,
                     "verifier": rule.verifier_ref,
                 }
             )
@@ -1609,7 +1623,8 @@ def _status_text(data: dict[str, object]) -> str:
     for binding in data["bindings"]:
         lines.append(f"- {binding['spec_id']}（{binding['path']}）— {binding['status']}")
         for rule in binding["rules"]:
-            lines.append(f"  {rule['status']:<12} {rule['ref']}（{rule['verifier']}）")
+            stage_text = " ".join(f"{stage}={value}" for stage, value in rule.get("stages", {}).items())
+            lines.append(f"  {stage_text:<24} {rule['ref']}（{rule['verifier']}）")
     return "\n".join(lines)
 
 

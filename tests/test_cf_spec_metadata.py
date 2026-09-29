@@ -88,6 +88,95 @@ def test_e_01_valid_metadata_produces_stable_ids_and_hashes(tmp_path: Path) -> N
     assert all(len(rule.text_sha256) == 64 for rule in first.rules)
 
 
+def _stage_spec(extra: str = "", stages: str = "[code, review]") -> str:
+    return f"""\
+---
+id: stage-rules
+description: stage rules
+stages: {stages}
+enforcement: required
+verifiers:
+  - rule: RULE-stage-001
+    type: test
+{extra}    config: {{argv: [python3, -c, pass]}}
+---
+
+# Stage Rules
+
+## Rules
+- [RULE-stage-001] review rule.
+"""
+
+
+def test_verifier_stage_and_files_parse_with_defaults(tmp_path: Path) -> None:
+    path = _write_spec(
+        tmp_path,
+        """\
+---
+id: stage-rules
+description: stage rules
+stages: [code, review]
+enforcement: required
+verifiers:
+  - rule: RULE-stage-001
+    type: test
+    stage: review
+    files: ["src/ui/**", "tests/ui/**"]
+    config: {argv: [python3, -c, pass]}
+  - rule: RULE-stage-002
+    type: test
+    config: {argv: [python3, -c, pass]}
+---
+
+# Stage Rules
+
+## Rules
+- [RULE-stage-001] review rule.
+- [RULE-stage-002] code rule.
+""",
+    )
+
+    metadata = load_spec_metadata(str(path))
+
+    by_rule = {item.rule: item for item in metadata.verifiers}
+    assert by_rule["RULE-stage-001"].stage == "review"
+    assert by_rule["RULE-stage-001"].files == ("src/ui/**", "tests/ui/**")
+    assert by_rule["RULE-stage-002"].stage == "code"
+    assert by_rule["RULE-stage-002"].files == ()
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        "    stage: deploy\n",
+        "    files: []\n",
+        "    files: 'src/**'\n",
+        "    files: ['/abs/**']\n",
+        "    files: ['../outside/**']\n",
+        "    files: ['']\n",
+        "    files: [123]\n",
+    ],
+)
+def test_e_02_invalid_verifier_stage_or_files_rejected(tmp_path: Path, extra: str) -> None:
+    path = _write_spec(tmp_path, _stage_spec(extra))
+
+    with pytest.raises(SpecMetadataError) as caught:
+        load_spec_metadata(str(path))
+
+    assert "stage" in caught.value.field or "files" in caught.value.field
+    assert "verifiers[0]" in caught.value.field
+
+
+def test_e_02_verifier_stage_must_be_declared(tmp_path: Path) -> None:
+    path = _write_spec(tmp_path, _stage_spec("    stage: review\n", stages="[code]"))
+
+    with pytest.raises(SpecMetadataError) as caught:
+        load_spec_metadata(str(path))
+
+    assert caught.value.field == "verifiers[0].stage"
+    assert "code" in caught.value.message
+
+
 def test_routing_header_reader_stops_before_spec_body(tmp_path: Path) -> None:
     path = tmp_path / "scripts" / "routing-only.md"
     path.parent.mkdir(parents=True)

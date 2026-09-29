@@ -15,6 +15,7 @@ from typing import Mapping, Optional
 ALLOWED_STAGES = frozenset(("prd", "design", "plan", "code", "review"))
 ALLOWED_ENFORCEMENT = frozenset(("required", "advisory"))
 ALLOWED_VERIFIERS = frozenset(("document", "regex", "ast", "command", "test", "manual"))
+ALLOWED_VERIFIER_STAGES = frozenset(("code", "review"))
 _ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _RULE_ID_RE = re.compile(r"^RULE-[a-z0-9]+(?:-[a-z0-9]+)*-\d{3}$")
 _EXPLICIT_RULE_RE = re.compile(r"^\[(RULE-[a-z0-9-]+-\d{3})\]\s+(.+)$")
@@ -52,6 +53,8 @@ class SpecVerifier:
     rule: str
     type: str
     config: Mapping[str, object]
+    stage: str = "code"
+    files: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -209,7 +212,26 @@ def _validate_checks(meta: Mapping[str, object], path: str, raw: str) -> tuple[M
     return tuple(value)
 
 
-def _parse_verifiers(meta: Mapping[str, object], path: str, raw: str) -> tuple[SpecVerifier, ...]:
+def _parse_verifier_files(value: object, path: str, raw: str, index: int) -> tuple[str, ...]:
+    line = _verifier_field_line(raw, index, "files")
+    if not isinstance(value, list) or not value:
+        raise SpecMetadataError(path, f"verifiers[{index}].files", line, "必须是非空 glob 字符串数组")
+    files: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item.strip():
+            raise SpecMetadataError(path, f"verifiers[{index}].files", line, "glob 必须是非空字符串")
+        text = item.strip().replace("\\", "/")
+        if text.startswith("/") or re.match(r"^[A-Za-z]:/", text):
+            raise SpecMetadataError(path, f"verifiers[{index}].files", line, f"禁止绝对路径: {item!r}")
+        if ".." in text.split("/"):
+            raise SpecMetadataError(path, f"verifiers[{index}].files", line, f"禁止 .. 跳出仓库: {item!r}")
+        files.append(text)
+    return tuple(files)
+
+
+def _parse_verifiers(
+    meta: Mapping[str, object], path: str, raw: str, stages: tuple[str, ...]
+) -> tuple[SpecVerifier, ...]:
     value = meta.get("verifiers", [])
     if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
         raise SpecMetadataError(path, "verifiers", _field_line(raw, "verifiers"), "必须是 mapping 列表")
@@ -219,6 +241,8 @@ def _parse_verifiers(meta: Mapping[str, object], path: str, raw: str) -> tuple[S
         rule = item.get("rule")
         kind = item.get("type")
         config = item.get("config")
+        explicit_stage = "stage" in item
+        stage = item.get("stage", "code")
         if not isinstance(rule, str) or not _RULE_ID_RE.fullmatch(rule):
             line = _verifier_field_line(raw, index, "rule")
             raise SpecMetadataError(path, f"verifiers[{index}].rule", line, "必须是稳定 RULE ID")
@@ -228,10 +252,17 @@ def _parse_verifiers(meta: Mapping[str, object], path: str, raw: str) -> tuple[S
         if not isinstance(config, dict):
             line = _verifier_field_line(raw, index, "config")
             raise SpecMetadataError(path, f"verifiers[{index}].config", line, "必须是 mapping")
+        if explicit_stage and (not isinstance(stage, str) or stage not in ALLOWED_VERIFIER_STAGES):
+            line = _verifier_field_line(raw, index, "stage")
+            raise SpecMetadataError(path, f"verifiers[{index}].stage", line, f"必须是 {sorted(ALLOWED_VERIFIER_STAGES)} 之一")
+        if explicit_stage and stage not in stages:
+            line = _verifier_field_line(raw, index, "stage")
+            raise SpecMetadataError(path, f"verifiers[{index}].stage", line, f"stage {stage!r} 未在 stages 声明: {', '.join(stages)}")
+        files = _parse_verifier_files(item["files"], path, raw, index) if "files" in item else ()
         if rule in seen:
             raise SpecMetadataError(path, "verifiers", _field_line(raw, "verifiers"), f"重复 verifier: {rule}")
         seen.add(rule)
-        result.append(SpecVerifier(rule=rule, type=kind, config=config))
+        result.append(SpecVerifier(rule=rule, type=kind, config=config, stage=stage, files=files))
     return tuple(result)
 
 
@@ -324,7 +355,7 @@ def parse_spec_metadata(content: str, path: str = "<memory>", raw_bytes: Optiona
     if owner is not None and (not isinstance(owner, str) or not owner.strip()):
         raise SpecMetadataError(path, "owner", _field_line(raw_frontmatter, "owner"), "必须是非空字符串")
     checks = _validate_checks(meta, path, raw_frontmatter)
-    verifiers = _parse_verifiers(meta, path, raw_frontmatter)
+    verifiers = _parse_verifiers(meta, path, raw_frontmatter, header.stages)
     body_line_offset = raw_frontmatter.count("\n") + 3
     rules = _parse_rules(body, path, body_line_offset)
     _validate_links(rules, verifiers, path, raw_frontmatter)

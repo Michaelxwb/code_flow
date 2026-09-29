@@ -1,0 +1,322 @@
+{
+  "schema": 2,
+  "task_file": "verification-layering.md",
+  "task_sha256": "232dd188e33fdf2315453964067e508d0fdc9017b49d9eb390575f9b8fae2f13",
+  "scenarios": [
+    {
+      "id": "S-01",
+      "source": "verification-layering.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 git 仓库 + spec-context + 命令执行器",
+      "owner": "TASK-02",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_runtime.py",
+        "-k",
+        "s_01_done_gate_stage_split"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-02",
+      "source": "verification-layering.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "多 task context + 真实命令 + 证据写回",
+      "owner": "TASK-04",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_e2e_flow.py",
+        "-k",
+        "s_02_review_aggregation"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-03",
+      "source": "verification-layering.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实仓库 + owned files + 缓存文件",
+      "owner": "TASK-03",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_spec_verify.py",
+        "-k",
+        "s_03_scoped_cache"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-04",
+      "source": "verification-layering.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实需求目录 + cf_spec_gate + 归档流程",
+      "owner": "TASK-05",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_acceptance_workflow.py",
+        "-k",
+        "s_04_review_gate"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-05",
+      "source": "verification-layering.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "旧格式 spec（无 stage/files）+ finish",
+      "owner": "TASK-02",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_runtime.py",
+        "-k",
+        "s_05_legacy_defaults"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-06",
+      "source": "verification-layering.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 .code-flow/specs + 缓存文件",
+      "owner": "TASK-06",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_spec_verify.py",
+        "-k",
+        "s_06_repo_spec_scopes"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-01",
+      "source": "verification-layering.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实失败命令 + 证据写回",
+      "owner": "TASK-04",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_e2e_flow.py",
+        "-k",
+        "e_01_review_failure_incremental"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-02",
+      "source": "verification-layering.design.md#2.5 验收条件",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "metadata 加载器 + 真实 spec 文件",
+      "owner": "TASK-01",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_spec_metadata.py",
+        "-k",
+        "verifier_stage"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "cd6496ba75c54ab580752bd6a979e7e1",
+        "executed_at": "2026-09-29T12:51:05.368299+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "cd6496ba75c54ab580752bd6a979e7e1",
+          "executed_at": "2026-09-29T12:51:05.368299+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-03",
+      "source": "verification-layering.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实命令先失败后修复 + 缓存",
+      "owner": "TASK-03",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_spec_verify.py",
+        "-k",
+        "e_03_failure_not_cached"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-01",
+      "source": "verification-layering.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "缓存 + 作用域交集",
+      "owner": "TASK-03",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_spec_verify.py",
+        "-k",
+        "b_01_empty_scope_once"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-02",
+      "source": "verification-layering.design.md#2.5 验收条件",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "verify-e2e 空集",
+      "owner": "TASK-04",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_e2e_flow.py",
+        "-k",
+        "b_02_empty_noop"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-03",
+      "source": "verification-layering.design.md#2.5 验收条件",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "per-root 缓存隔离",
+      "owner": "TASK-03",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_spec_verify.py",
+        "-k",
+        "b_03_per_root_cache"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-04",
+      "source": "verification-layering.design.md#2.5 验收条件",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "status 输出结构",
+      "owner": "TASK-01",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_spec_context.py",
+        "-k",
+        "b_04"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "cd6496ba75c54ab580752bd6a979e7e1",
+        "executed_at": "2026-09-29T12:51:05.368299+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "cd6496ba75c54ab580752bd6a979e7e1",
+          "executed_at": "2026-09-29T12:51:05.368299+00:00"
+        }
+      ]
+    }
+  ]
+}

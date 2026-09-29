@@ -1,0 +1,562 @@
+version: 1
+task: verification-layering
+enforcement: required
+updated_at: '2026-09-29T12:23:32.212139+00:00'
+sources:
+- type: cli
+  ref: bind
+bindings:
+- spec_id: scripts-code-standards
+  path: scripts/code-standards.md
+  status: active
+  hashes:
+    file_sha256: f1b5d62051014e4a19780d67054557a7547665c905d6adf9b0ef6f72fa569b24
+    metadata_sha256: dd324131cd9bde615340b4ab2863c94070585d4b038127e571fcade3e9d4dad2
+    rules_sha256: a78a60d13e2473c23756d62aa501f494500270cd62e66e3c72a334c4c69b634d
+  selected_by: cf-task:align
+  reason: 本需求实现路径覆盖 src/core/code-flow/scripts/*.py 与 tests/*.py（stage/cache/gate
+    逻辑），design-stage 增量绑定
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-scripts-no-print-debug-001
+    summary: Hook modules must not write debug output with print(), preserving the
+      stdout JSON protocol.
+    text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: verification-layering.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-no-print-debug-001
+          artifact_sha256: 2f18d2bfc5fd6d7f67b904e79f5dd7bc0e36b2225442b89bcbca64d885e932c9
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: verification-layering.md
+          section_id: TASK-02
+          item_id: RULE-scripts-no-print-debug-001
+          artifact_sha256: 41f1353e9259a6626dc5d1d393066e6d0f46d9749a0f95e3999574ac77797f4d
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-09-29T12:51:10.713774+00:00'
+          status: verified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: 6bdc6b65bb1017445f162049d31ef698e396153f7865c19e5a27026346126e42
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-no-bare-except-001
+    summary: Python modules must not use a bare except clause that silently erases
+      failure context.
+    text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: verification-layering.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-no-bare-except-001
+          artifact_sha256: 2f18d2bfc5fd6d7f67b904e79f5dd7bc0e36b2225442b89bcbca64d885e932c9
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: verification-layering.md
+          section_id: TASK-03
+          item_id: RULE-scripts-no-bare-except-001
+          artifact_sha256: 41f1353e9259a6626dc5d1d393066e6d0f46d9749a0f95e3999574ac77797f4d
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-09-29T12:51:10.715558+00:00'
+          status: verified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: 6bdc6b65bb1017445f162049d31ef698e396153f7865c19e5a27026346126e42
+          result_sha256: 04b142ace2cb9de4ddf4065b3a7dc1810f32514b443ce1f1a772c3f5aeb4261e
+          error_code: null
+          details:
+            checked_files: 6
+            violations: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-hook-protocol-001
+    summary: Installed hooks must keep guarded project resolution, valid JSON output,
+      silent no-op behavior, and explicit stderr diagnostics.
+    text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: verification-layering.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-hook-protocol-001
+          artifact_sha256: 2f18d2bfc5fd6d7f67b904e79f5dd7bc0e36b2225442b89bcbca64d885e932c9
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: verification-layering.md
+          section_id: TASK-02
+          item_id: RULE-scripts-hook-protocol-001
+          artifact_sha256: 41f1353e9259a6626dc5d1d393066e6d0f46d9749a0f95e3999574ac77797f4d
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-09-29T12:51:06.769491+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: 6bdc6b65bb1017445f162049d31ef698e396153f7865c19e5a27026346126e42
+          result_sha256: c1854c05c6bc54a25f80e73212081faeda6ad0c466cf948c342076d3f6d696f9
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            exit_code: 0
+            stdout_sha256: 3be82569511a9f8fcaa447039657defa7e4fdcc333899dc2ea219d1959dcd6cb
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '..............................                                           [100%]
+
+              30 passed in 0.73s
+
+              '
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-context-gate-001
+    summary: Spec Context refresh, scope expansion, verifier Evidence, and required
+      Stage Gates must remain deterministic and fail-closed.
+    text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: verification-layering.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-context-gate-001
+          artifact_sha256: 2f18d2bfc5fd6d7f67b904e79f5dd7bc0e36b2225442b89bcbca64d885e932c9
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: verification-layering.md
+          section_id: TASK-01
+          item_id: RULE-scripts-context-gate-001
+          artifact_sha256: 41f1353e9259a6626dc5d1d393066e6d0f46d9749a0f95e3999574ac77797f4d
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-09-29T12:51:10.207029+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: 6bdc6b65bb1017445f162049d31ef698e396153f7865c19e5a27026346126e42
+          result_sha256: 42d9ac638f6f85ab1afaca969734bbc781ba330228796b8e34d4b72d6f04232e
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            stdout_sha256: bb8c670a2aefa02c5d15fca100c5dfdb86fa47177f3fbfc72718a2376c072ac4
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '..................................................                       [100%]
+
+              50 passed in 3.34s
+
+              '
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-canonical-parity-001
+    summary: Canonical Python runtime, live deployment, templates, and platform adapters
+      must remain synchronized without legacy runtime residue.
+    text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: verification-layering.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-canonical-parity-001
+          artifact_sha256: 2f18d2bfc5fd6d7f67b904e79f5dd7bc0e36b2225442b89bcbca64d885e932c9
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: verification-layering.md
+          section_id: TASK-05
+          item_id: RULE-scripts-canonical-parity-001
+          artifact_sha256: 41f1353e9259a6626dc5d1d393066e6d0f46d9749a0f95e3999574ac77797f4d
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-09-29T12:51:10.713377+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: 6bdc6b65bb1017445f162049d31ef698e396153f7865c19e5a27026346126e42
+          result_sha256: ec409aa8306e52908cebb8eb4a8bc3630ae6e2bce549d70ae90a4ad7074196e1
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            stdout_sha256: 3bbb215f351550f6a49ca26a4a4f1a59796c44e70cfa771efef2775978f90e9b
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '..................                                                       [100%]
+
+              18 passed in 0.40s
+
+              '
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-001
+    summary: 单一功能的 schema、resolver、gate、migration 可放在 `cf_<feature>.py` **feature-scoped
+      core module**；跨功能稳定原语才进入 `cf_core.py`
+    text_sha256: e0ed9e9790ba0be96dbccbec1e293b5c10e89f622cc2ed557cbfd6b8bd657805
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-002
+    summary: 新增 Context/router 能力 → 保持 feature module 单一职责，公开数据结构完整 type hints，函数
+      ≤50 行
+    text_sha256: 0a0bdac02a0cdd3a5765702728a4cfd133f928bc04b21254b22535aff5baf883
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-003
+    summary: 新增 Claude Hook → 在 settings.local.json 模板中注册，脚本放在 scripts/ 目录
+    text_sha256: f71099b4a11c6810461d2523898e31689c202c857189d28a430ac0a9db0d6347
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-004
+    summary: 新增 Codex Hook → 在 hooks.json 模板中注册（3 层结构：event → [{hooks:[{type,command}]}]），脚本放在
+      scripts/ 目录
+    text_sha256: 6e5cc1e4c754904e5e4d3a5deb70a3bc2b1f0ac660464bb33b9b4a8df7a41373
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-005
+    summary: Codex prompt 路径提取同时支持裸路径、`@path`、反引号路径，并在注入前做去重与噪音过滤（需至少一个斜杠或有效代码扩展名）
+    text_sha256: 448907a472ddb048d8542219617f22f70a91099bfc0e9cf21597edb2ac22ea15
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-006
+    summary: 测试 → tests/ 目录，使用 pytest，覆盖 happy path / fail-closed / 空输入
+    text_sha256: 6a16a49993f19e203b0565d1859ee5d21d83c3e40604743429b8e448a4839594
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-007
+    summary: PreToolUse Hook 仅 `Edit/Write/MultiEdit` 工具触发 Context/scope 检查，`Read/Bash`
+      等不触发（`cf_pre_tool_hook.py`）
+    text_sha256: c6cc98ec99f162c4dc00cb3f651149e49d6d64c119612e77c128b6c56c4abce1
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-008
+    summary: 路径提取正则 `_PATH_RE` 支持裸路径/`@path`/反引号路径，需至少一个斜杠或代码扩展名（`cf_user_prompt_hook.py`）
+    text_sha256: 84810934be480fce3f7a9758618ca2d5e3448b51349513d9798e448d6e4915a3
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-009
+    summary: 测试 fixture 模式：`_make_project() + tempfile.TemporaryDirectory() + mock
+      stdin/stdout`（tests/test_cf_*.py）
+    text_sha256: 6edab46112eb211ee3ca46805091abff5f0c46a3b5eaca2b77fc4ab5538cf472
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-010
+    summary: 测试取 fixture 数据按名称选择而非列表索引，结构扩展不连带断（test_hook_command_robustness::_command_for）
+    text_sha256: 6db937b1e84c2278c3dc3d9feef51c5644f4af6c315eeeb0c6c4cfbdc734400a
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []

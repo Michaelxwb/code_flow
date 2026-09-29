@@ -10,4 +10,5 @@ migrations/
 sessions/
 specs/_session/
 worktrees/
+.task-projection-state.json
 # <<< code-flow:runtime schema=1

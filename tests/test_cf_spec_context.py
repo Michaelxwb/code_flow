@@ -22,6 +22,8 @@ from cf_spec_context import (
     _business_changes,
     _git_changes,
     _start_command,
+    _status_command,
+    _status_text,
     apply_artifact_ref,
     apply_decision,
     ArtifactRef,
@@ -138,6 +140,45 @@ def _bound_context(tmp_path: Path) -> tuple[Path, Path, Path]:
     context = bind_specs(context, (BindingInput(candidate, "path+agent", "changes hook"),))
     save_context(str(context_path), context)
     return root, spec_path, context_path
+
+
+SPEC_REVIEW = SPEC.replace("stages: [design, plan, code]", "stages: [design, plan, code, review]")
+
+
+def _review_project(tmp_path: Path) -> tuple[Path, Path, Path]:
+    root, spec_path, context_path = _project(tmp_path)
+    spec_path.write_text(SPEC_REVIEW, encoding="utf-8")
+    candidate = resolve_candidates(str(root), "design", ["src/hook.py"])[0]
+    context = new_context("context-test", (("test", "B-04"),))
+    context = bind_specs(context, (BindingInput(candidate, "path+agent", "review stage"),))
+    save_context(str(context_path), context)
+    return root, spec_path, context_path
+
+
+def test_b_04_refresh_backfills_review_stage_status(tmp_path: Path) -> None:
+    root, spec_path, context_path = _bound_context(tmp_path)
+    before = load_context(str(context_path))
+    assert "review" not in before.bindings[0].rules[0].stage_status
+
+    spec_path.write_text(SPEC_REVIEW, encoding="utf-8")
+    refreshed = refresh_context(before, str(root)).context
+
+    statuses = refreshed.bindings[0].rules[0].stage_status
+    assert set(statuses) == {"design", "plan", "code", "review"}
+    assert statuses["review"].status == "pending"
+
+
+def test_b_04_status_command_outputs_code_and_review(tmp_path: Path) -> None:
+    root, spec_path, context_path = _review_project(tmp_path)
+    args = argparse.Namespace(task_dir=str(context_path.parent), root=str(root))
+
+    data = _status_command(args)
+
+    rule = data["bindings"][0]["rules"][0]
+    assert rule["status"] == "pending"
+    assert rule["stages"]["code"] == "pending"
+    assert rule["stages"]["review"] == "pending"
+    assert "review" in _status_text(data)
 
 
 def test_e_02_deleted_spec_marks_binding_missing_and_rules_stale(tmp_path: Path) -> None:
