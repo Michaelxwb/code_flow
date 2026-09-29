@@ -19,7 +19,7 @@
 | S-03 | verification-layering.design.md#2.5 验收条件 | integration | 真实仓库 + owned files + 缓存文件 | TASK-03 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","s_03_scoped_cache"] |
 | S-04 | verification-layering.design.md#2.5 验收条件 | integration | 真实需求目录 + cf_spec_gate + 归档流程 | TASK-05 | planned | ["python3","-m","pytest","-q","tests/test_cf_task_acceptance_workflow.py","-k","s_04_review_gate"] |
 | S-05 | verification-layering.design.md#2.5 验收条件 | integration | 旧格式 spec（无 stage/files）+ finish | TASK-02 | verified | ["python3","-m","pytest","-q","tests/test_cf_task_runtime.py","-k","s_05_legacy_defaults"] |
-| S-06 | verification-layering.design.md#2.5 验收条件 | integration | 真实 .code-flow/specs + 缓存文件 | TASK-06 | planned | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","s_06_repo_spec_scopes"] |
+| S-06 | verification-layering.design.md#2.5 验收条件 | integration | 真实 .code-flow/specs + 缓存文件 | TASK-06 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","s_06_repo_spec_scopes"] |
 | E-01 | verification-layering.design.md#2.5 验收条件 | integration | 真实失败命令 + 证据写回 | TASK-04 | verified | ["python3","-m","pytest","-q","tests/test_cf_e2e_flow.py","-k","e_01_review_failure_incremental"] |
 | E-02 | verification-layering.design.md#2.5 验收条件 | unit | metadata 加载器 + 真实 spec 文件 | TASK-01 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_metadata.py","-k","verifier_stage"] |
 | E-03 | verification-layering.design.md#2.5 验收条件 | integration | 真实命令先失败后修复 + 缓存 | TASK-03 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","e_03_failure_not_cached"] |
@@ -266,7 +266,7 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 
 ## TASK-06: 本仓库 spec 作用域声明
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-03
 - **Source**: verification-layering.design.md#2.3 功能方案, #3.3 数据设计
@@ -277,22 +277,30 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 为 `.code-flow/specs/cli` 与 `.code-flow/specs/scripts` 的 test verifier 补充 `files` 输入作用域；复核规则原子性；全部保持 code 层。无关改动命中缓存，作用域内改动重跑。
 
 ### Checklist
-- [ ] 为 cli/scripts spec 全部 test verifier 声明 `files`（相对路径、保守覆盖真实输入：被测脚本、测试文件、适配器模板）
-- [ ] 复核规则原子性（一条规则一个可验证断言）；全部保持 code 层，无 review 标注
-- [ ] canonical/部署同步（如涉及）并保持既有 spec 校验测试通过
-- [ ] [S-06][integration] 先写测试记录 RED：作用域外文件变更命中缓存不执行；作用域内变更重跑（真实边界：真实 .code-flow/specs + 缓存文件 + finish）
-- [ ] [S-06] 断言两次 finish 的执行集合差异符合声明作用域
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 为 cli/scripts spec 全部 test verifier 声明 `files`（相对路径、保守覆盖真实输入：被测脚本、测试文件、适配器模板）
+- [x] 复核规则原子性（一条规则一个可验证断言）；全部保持 code 层，无 review 标注
+- [x] canonical/部署同步（如涉及）并保持既有 spec 校验测试通过
+- [x] [S-06][integration] 先写测试记录 RED：作用域外文件变更命中缓存不执行；作用域内变更重跑（真实边界：真实 .code-flow/specs + 缓存文件 + finish）
+- [x] [S-06] 断言两次 finish 的执行集合差异符合声明作用域
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-06 | integration | 真实 .code-flow/specs、缓存文件、finish | 作用域外命中、作用域内重跑 | planned | planned | planned |
+| S-06 | integration | 真实 .code-flow/specs、缓存文件、finish | 作用域外命中、作用域内重跑 | tests/test_cf_spec_verify.py::test_s_06_repo_spec_scopes | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","s_06_repo_spec_scopes"] | verified |
 
 ### Acceptance Evidence
 
-> `cf-task-start` 在编码期填写 functional/manual 的 RED/GREEN 结果、每个关键断言的位置和真实组件证据；E2E 仅登记测试与命令，执行统一留给 verify-e2e。全部 functional 状态 verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-06 | FAIL: 真实 spec 的 test verifier `files` 为空（`pytest -q tests/test_cf_spec_verify.py -k s_06_repo_spec_scopes` 1 failed: `.code-flow/specs/cli/code-standards.md#RULE-cli-dependency-allowlist-001 缺少非空 files 作用域`） | PASS: `pytest -q tests/test_cf_spec_verify.py -k s_06_repo_spec_scopes` 1 passed | tests/test_cf_spec_verify.py::test_s_06_repo_spec_scopes（cli 5 + scripts 3 条 test verifier 均有非空相对作用域；argv 真实输入被 `_matches_scope` 覆盖；作用域外变更命中缓存 runs=1/cache_reused=True；作用域内变更重跑 runs=2） | 真实 `.code-flow/specs/{cli,scripts}/code-standards.md` + 真实 git 仓库 + 真实子进程命令 + 真实 `.code-flow/.verifier-cache.json` | verified |
+
+> 复核说明：8 条 test verifier 全部保持 code 层（无 `stage: review` 标注），规则文本未拆分/未改动；每规则恰有一条自动 verifier（regex 规则沿用既有 check），作用域按保守原则纳入 argv 测试文件、被测脚本（src/cli.js、src/core/code-flow/scripts、.code-flow/scripts）、适配器模板（src/adapters、四平台部署目录）。本仓库 spec 直接生效；`src/core/code-flow/specs/**` 通用模板不含这两个 spec，无需同步。
+> 回归：`pytest -q tests/test_cf_spec_verify.py tests/test_spec_workflow_templates.py tests/test_adapter_parity.py tests/test_cf_learn_spec_updates.py tests/test_cf_spec_metadata.py tests/test_spec_workflow_residue.py tests/test_cf_spec_gate.py` 58 passed；全量 `pytest --tb=short -q` 439 passed。
+- S-06: verified — automated command passed; run_id=1f07a9184cd84e40b02cb94cb0613b91 (confirmed_by: runner)
 
 ### Log
 - [2026-09-29] created (draft)
+- [2026-09-29] started
+- [2026-09-29] completed (done)
