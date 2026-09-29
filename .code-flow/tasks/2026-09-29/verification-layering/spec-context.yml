@@ -1,7 +1,7 @@
 version: 1
 task: verification-layering
 enforcement: required
-updated_at: '2026-09-29T13:14:10.176241+00:00'
+updated_at: '2026-09-29T13:22:03.086559+00:00'
 sources:
 - type: cli
   ref: bind
@@ -10,8 +10,8 @@ bindings:
   path: scripts/code-standards.md
   status: active
   hashes:
-    file_sha256: f1b5d62051014e4a19780d67054557a7547665c905d6adf9b0ef6f72fa569b24
-    metadata_sha256: dd324131cd9bde615340b4ab2863c94070585d4b038127e571fcade3e9d4dad2
+    file_sha256: 9177e9a8b2cdfec18484a9491b49c5b3c15d571a7d9e78e7c05bc1cc614791a5
+    metadata_sha256: e3019618abef4f7199561a2b423c22445dda028d94ec9995943951e296f199a1
     rules_sha256: a78a60d13e2473c23756d62aa501f494500270cd62e66e3c72a334c4c69b634d
   selected_by: cf-task:align
   reason: 本需求实现路径覆盖 src/core/code-flow/scripts/*.py 与 tests/*.py（stage/cache/gate
@@ -46,7 +46,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-02
           item_id: RULE-scripts-no-print-debug-001
-          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
+          artifact_sha256: 7a50380a2aa4d436c864cd783926d11721fa44acbf5e052ad5afd4c5df4712c8
         decision: null
         evidence: []
       code:
@@ -126,7 +126,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-03
           item_id: RULE-scripts-no-bare-except-001
-          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
+          artifact_sha256: 7a50380a2aa4d436c864cd783926d11721fa44acbf5e052ad5afd4c5df4712c8
         decision: null
         evidence: []
       code:
@@ -206,7 +206,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-02
           item_id: RULE-scripts-hook-protocol-001
-          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
+          artifact_sha256: 7a50380a2aa4d436c864cd783926d11721fa44acbf5e052ad5afd4c5df4712c8
         decision: null
         evidence: []
       code:
@@ -342,7 +342,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-01
           item_id: RULE-scripts-context-gate-001
-          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
+          artifact_sha256: 7a50380a2aa4d436c864cd783926d11721fa44acbf5e052ad5afd4c5df4712c8
         decision: null
         evidence: []
       code:
@@ -478,7 +478,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-05
           item_id: RULE-scripts-canonical-parity-001
-          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
+          artifact_sha256: 7a50380a2aa4d436c864cd783926d11721fa44acbf5e052ad5afd4c5df4712c8
         decision: null
         evidence: []
       code:

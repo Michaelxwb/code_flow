@@ -230,7 +230,7 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 - [2026-09-29] completed (done)
 ## TASK-05: archive review 门禁与四平台命令同步
 
-- **Status**: draft
+- **Status**: in-progress
 - **Priority**: P0
 - **Depends**: TASK-04
 - **Source**: verification-layering.design.md#3.2 架构设计, #4.1 部署架构
@@ -263,7 +263,7 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 - [2026-09-29] created (draft)
 
 ---
-
+- [2026-09-29] started
 ## TASK-06: 本仓库 spec 作用域声明
 
 - **Status**: done
