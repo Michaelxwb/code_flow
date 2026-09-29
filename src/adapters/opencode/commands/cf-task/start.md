@@ -69,9 +69,9 @@ description: 激活子任务并开始编码
 1. 调用 `cf_spec_context.py start --task-dir ... --root ... --task ... --task-file ... --json`，由单个进程按 refresh → active start → session 顺序执行 Start Gate；stdin JSON 传入逐路径确认的 `owned_paths`。stale/conflict、依赖未闭合、已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。前置硬门禁（blocked / #NOTES / 依赖）由 workflow service 在改状态前强制执行。用户已确认内容时，Design/Plan 的 pending 不单独阻止激活；不新增阶段状态门禁。
 2. 从命令返回值读取 refresh 后的 Context hash、active 状态和 session 输出路径；该命令只根据当前 TASK 的 `Spec-Refs`、Source 与 Acceptance Contract 覆盖写入 `.code-flow/specs/_session/task-<name>.md`，禁止重新 catalog 或猜测规则。
 3. Start 返回成功时，workflow service 已通过可恢复事务同步 Status、started log 和 active marker；不要再手动改状态。失败保留原状态，按返回原因恢复。
-4. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令
-5. 先编写验收测试。E2E 测试必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
-6. 新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因。纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败
+4. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令（E2E 只登记，不在本阶段执行）
+5. 先编写验收测试（E2E 只编写并登记）。E2E 测试必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
+6. 新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因。纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败。E2E 场景不执行 RED，登记为 e2e_deferred 留给 verify-e2e
 
 RED 证据写入 `Acceptance Evidence`：
 
@@ -89,7 +89,7 @@ RED 证据写入 `Acceptance Evidence`：
 
 ### 3.2 GREEN 与验收证据
 
-1. 执行 functional 验收和受影响范围的回归测试；E2E 已在编码前锁定场景、断言、真实边界和命令，完整 GREEN 留给 verify-e2e。
+1. 执行 functional 验收和受影响范围的回归测试；E2E 只登记场景、断言、真实边界和命令，RED/GREEN 都不在编码阶段执行，统一留给 verify-e2e。
 2. 对每个预期结果记录断言位置与 fixture/构造路径；环境未就绪的错误不得冒充有效 RED，明确记录尚未验证。
 3. 由 runner 写入最新状态和运行历史；不要覆盖原契约、RED 证据或历史失败。functional 必须 verified，已登记的 E2E 在实现阶段允许 e2e_deferred。
 4. 测试未收集、命令未实际执行或缺少关键断言，都不算验证完成。失败重跑必须使旧 verified 失效。
@@ -121,7 +121,7 @@ RED 证据写入 `Acceptance Evidence`：
 python3 .code-flow/scripts/cf_task_workflow.py finish --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json
 ```
 
-该命令先校验完整任务身份与锁定 manifest，再执行 Done Gate；通过后以可恢复事务更新 done、Log、Updated 并清理 marker。只有 `decision=pass` 才输出完成并启动下一 TASK。禁止手动设置 done 或传入自报的 gate_passed 绕过验证。
+该命令先校验完整任务身份与锁定 manifest，再执行 Done Gate（acceptance 场景 + spec verifiers + 全量 validation.yml，含 heavy）；通过后以可恢复事务更新 done、Log、Updated 并清理 marker。只有 `decision=pass` 才输出完成并启动下一 TASK。禁止手动设置 done 或传入自报的 gate_passed 绕过验证。
 
 任一验收条件不满足时保持 `in-progress`，明确列出缺口，不能标记为 `done`。
 
@@ -209,7 +209,7 @@ python3 .code-flow/scripts/cf_task_parallel.py prepare --root "$PWD" \
 若当前平台提供子 agent/Task 派发能力，为本批次每个 TASK 各派发一个子 agent（同一批并发不超过 3，超出时按 TASK 顺序拆成多轮）。子 agent prompt 必须包含 worktree 绝对路径、TASK-ID、任务文件相对路径，并声明以下硬性要求：
 
 1. 进入 worktree：所有命令 `cd <worktree>` 执行，文件读写使用该 worktree 内路径。
-2. 按本命令"单任务模式"步骤 1-4 完成该 TASK：`cf_spec_context.py start` → 写 RED → 实现 → GREEN → `cf_task_workflow.py finish --root "<worktree>"`。
+2. 按本命令"单任务模式"步骤 1-4 完成该 TASK：`cf_spec_context.py start` → functional RED → 实现 → functional GREEN（E2E 只登记）→ `cf_task_workflow.py finish --root "<worktree>"`。
 3. 平台 hook 注入绑定主工作区；子 agent 必须显式读取 Spec Session（`.code-flow/specs/_session/task-*.md`）与详设章节，不得依赖自动注入。
 4. 完成时在 worktree 内提交全部改动（含任务文件 Checklist/Evidence/Status 更新），提交信息 `cf-task(<TASK-ID>): <标题>`。
 5. 返回摘要：TASK-ID、Status、验收命令及结果、提交 SHA、遗留问题。
@@ -227,15 +227,28 @@ python3 .code-flow/scripts/cf_task_parallel.py collect --root "$PWD" --run-id <r
 
 #### 4.4 回并主分支
 
-按 TASK-ID 先后顺序逐个合并 collect 返回的分支：
+按 TASK-ID 先后顺序逐个回并；先 rebase 再合并，让冲突只在任务自己的 worktree 内解决。
+
+1. 取主工作区当前分支名（主工作区执行 `git rev-parse --abbrev-ref HEAD`，记为 <主分支>），在任务 worktree 内对齐：
+
+```bash
+cd <worktree> && git rebase <主分支>
+```
+
+- rebase 冲突：读取冲突现场 + 本任务详设章节与 Acceptance Contract，合并双方意图（不是二选一）；无法调和（设计要求互斥）→ `git rebase --abort`，保留现场与分支，列出矛盾点叫停交用户决策，不得擅自删除一方实现。
+- rebase 成功后重跑该任务的 functional 验收命令（E2E 留给 verify-e2e）；失败则在 worktree 内修复并提交，再执行 4.3 collect 复核。
+
+2. 回到主工作区合并（此时应无冲突）：
 
 ```bash
 git merge --no-ff -m "merge cf-task <TASK-ID>" <branch>
 ```
 
-- 无冲突：合并后立即重跑该任务 Acceptance Evidence 中的验收命令；通过才继续下一个任务。失败则记录合并前 HEAD 并 `git reset --hard <合并前HEAD>`（分支与 worktree 原样保留），回到 4.2 让对应子 agent 修复后重新 collect 合并。
-- 有冲突：读取冲突现场 + 双方详设章节与 Acceptance Contract，合并双方意图（不是二选一），随后重跑双方验收命令；通过后提交 merge 并继续。
-- 无法调和（设计要求互斥）：不提交，保留冲突现场与两个分支，列出矛盾点叫停交用户决策；不得擅自删除一方实现。
+- 仍出现冲突（主区期间有新合并）：按双方意图解决并重跑双方 functional 验收；通过后提交 merge。
+- 合并后验收失败：记录合并前 HEAD 并 `git reset --hard <合并前HEAD>`（分支与 worktree 原样保留），回到 4.2 让对应子 agent 修复后重新 collect / rebase / 合并。
+
+3. 全部任务合并完成后进入 4.5 清理。
+
 - E2E 验收留给 verify-e2e，不在本步骤执行。
 
 #### 4.5 清理
@@ -273,3 +286,5 @@ Spec 同步提示:
 
   运行 /cf-learn --map 可自动更新导航地图。
 ```
+
+3. 若需求目录已无 `draft` / `in-progress` / `blocked` 子任务，提示：运行 `/cf-task:verify-e2e <需求目录>` 执行延迟的 E2E 终验。

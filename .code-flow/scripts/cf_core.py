@@ -55,6 +55,31 @@ def normalize_path(path: str) -> str:
     return path.replace("\\", "/")
 
 
+def effective_project_root(project_root: str, absolute_path: str) -> str:
+    """Resolve the project root that owns an edited file.
+
+    Parallel subagents edit `.code-flow/worktrees/<run>/<TASK>/...`; the nearest
+    `.code-flow` ancestor is that worktree's root, not the session root. Files
+    outside the session root and unresolvable paths fall back to `project_root`.
+    Lexical `abspath` (not `realpath`) keeps caller/returned paths in the same
+    coordinates (macOS /var ↔ /private/var symlink).
+    """
+    root = os.path.abspath(project_root)
+    target = os.path.abspath(absolute_path) if absolute_path else root
+    if target != root and not target.startswith(root + os.sep):
+        return root
+    current = target
+    while True:
+        if os.path.isdir(os.path.join(current, ".code-flow")):
+            return current
+        if current == root:
+            return root
+        parent = os.path.dirname(current)
+        if parent == current:
+            return root
+        current = parent
+
+
 def _spec_path_from_entry(entry) -> str:
     cfg = normalize_spec_entry(entry)
     return normalize_path(cfg.get("path", ""))
@@ -474,7 +499,8 @@ def resolve_quality_loop(config: dict) -> dict:
     """
     if not isinstance(config, dict):
         return {"enabled": False, "post_check": False,
-                "stop_check": False, "correction_capture": False,
+                "stop_check": False, "finish_check": False,
+                "correction_capture": False,
                 "compress_reminder": False}
     cfg = config.get("quality_loop")
     cfg = cfg if isinstance(cfg, dict) else {}
@@ -487,6 +513,7 @@ def resolve_quality_loop(config: dict) -> dict:
         "enabled": enabled,
         "post_check": _sub("post_check"),
         "stop_check": _sub("stop_check"),
+        "finish_check": _sub("finish_check"),
         "correction_capture": _sub("correction_capture"),
         "compress_reminder": _sub("compress_reminder"),
     }

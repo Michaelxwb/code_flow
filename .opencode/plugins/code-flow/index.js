@@ -150,19 +150,43 @@ async function registerContextHook(ctx) {
   });
 }
 
+// 子会话（子 agent / worktree 并行任务）的 idle 不得触发主工作区 stop-check：
+// 子会话的编辑发生在自己的工作区，主区既无 active marker 也没有对应文件，
+// 触发只会重复执行主区 validators（全量测试）。用 session.created.parentID 标记子会话。
+export function createSessionRegistry() {
+  const children = new Set();
+  return {
+    observe(event) {
+      if (!event || typeof event.type !== "string") return null;
+      const sid = event.data?.sessionID || "";
+      if (!sid) return null;
+      if (event.type === "session.created") {
+        if (event.data?.parentID) children.add(sid);
+        return { type: "created", sid };
+      }
+      if (event.type === "session.idle") {
+        return { type: "idle", sid, child: children.has(sid) };
+      }
+      return null;
+    },
+  };
+}
+
 function startEventSubscription(ctx, projectRoot) {
   const controller = new AbortController();
+  const registry = createSessionRegistry();
   void (async () => {
     try {
       for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
-        if (!event || typeof event.type !== "string") continue;
-        if (event.type === "session.created") {
-          const sid = event.data?.sessionID || "";
-          debugLog(projectRoot, `session.created sid=${sid}`);
-          if (sid) sessionContext.delete(sid);
-        } else if (event.type === "session.idle") {
-          const sid = event.data?.sessionID || "";
-          if (sid) await runStopCheck(projectRoot, sid);
+        const observed = registry.observe(event);
+        if (!observed) continue;
+        if (observed.type === "created") {
+          debugLog(projectRoot, `session.created sid=${observed.sid}`);
+          sessionContext.delete(observed.sid);
+        } else if (observed.child) {
+          debugLog(projectRoot, `session.idle sid=${observed.sid} (child) — stop-check skipped`);
+        } else {
+          await runStopCheck(projectRoot, observed.sid);
         }
       }
     } catch (err) {

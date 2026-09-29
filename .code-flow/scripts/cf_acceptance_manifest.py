@@ -10,7 +10,7 @@ import shlex
 from pathlib import Path
 import re
 import sys
-from typing import IO, Mapping, Optional, Sequence
+from typing import IO, Callable, Mapping, Optional, Sequence
 
 from cf_acceptance_schema import load_manifest, validate_scenarios
 
@@ -26,12 +26,18 @@ def _kind(level: str) -> str:
     - functional: auto-executed in Done Gate (unit, integration)
     - e2e: deferred until explicit --verify-e2e (needs external dependencies)
     - manual: user confirmation required, never auto-executed
+
+    层级单元格允许带注解（如 `E2E（Playwright）`、`e2e/chrome`、`manual(chrome)`），
+    取分隔符前的词元判定；避免带注解的 E2E 被误判为 functional 而每任务执行。
     """
-    normalized = level.strip().lower()
-    if normalized == "manual":
+    head = level.strip().lower()
+    for separator in ("(", "（", "[", "/", ",", "，", " ", "—", "-"):
+        head = head.split(separator, 1)[0]
+    head = head.strip()
+    if head in ("manual", "手工", "手动"):
         return "manual"
-    if normalized == "e2e":
-        return "e2e"  # Keep as separate kind, not functional
+    if head in ("e2e", "端到端", "end"):
+        return "e2e"
     return "functional"
 
 
@@ -70,7 +76,17 @@ def _manifest_hash(rows: list[dict[str, object]]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def extract_manifest(task_file: str) -> dict[str, object]:
+def _legacy_kind(level: str) -> str:
+    """v1 精确匹配：仅用于识别旧版锁定的 manifest，不做新语义判定。"""
+    normalized = level.strip().lower()
+    if normalized == "manual":
+        return "manual"
+    if normalized == "e2e":
+        return "e2e"
+    return "functional"
+
+
+def _extract_rows(task_file: str, kind_fn: Callable[[str], str]) -> dict[str, object]:
     path = Path(task_file)
     text = path.read_text(encoding="utf-8")
     rows: list[dict[str, object]] = []
@@ -98,7 +114,7 @@ def extract_manifest(task_file: str) -> dict[str, object]:
             "id": match.group(1),
             "source": fields[0],
             "level": fields[1],
-            "kind": _kind(fields[1]),
+            "kind": kind_fn(fields[1]),
             "boundary": fields[2],
             "owner": fields[3],
             "status": fields[4],
@@ -111,6 +127,10 @@ def extract_manifest(task_file: str) -> dict[str, object]:
         raise ValueError("Acceptance Coverage 缺失或为空")
     validate_scenarios(rows)
     return {"schema": _MANIFEST_SCHEMA, "task_file": str(path), "task_sha256": _manifest_hash(rows), "scenarios": rows}
+
+
+def extract_manifest(task_file: str, kind_fn: Callable[[str], str] = _kind) -> dict[str, object]:
+    return _extract_rows(task_file, kind_fn)
 
 
 def write_manifest(task_file: str, output: str) -> dict[str, object]:
@@ -130,14 +150,40 @@ _IMMUTABLE_SCENARIO_FIELDS = (
 )
 
 
+def _heal_legacy_kinds(manifest_file: Path, manifest: dict[str, object], expected: dict[str, object]) -> None:
+    """旧版 `_kind` 精确匹配把带注解的 E2E 锁成 functional；任务内容未变时
+    原地升级 kind 并重锁哈希，保留 execution evidence 等运行态字段。"""
+    by_id: dict[str, dict[str, object]] = {}
+    scenarios = expected.get("scenarios")
+    if isinstance(scenarios, list):
+        for item in scenarios:
+            if isinstance(item, dict) and isinstance(item.get("id"), str):
+                by_id[item["id"]] = item
+    current = manifest.get("scenarios")
+    if isinstance(current, list):
+        for item in current:
+            if not isinstance(item, dict):
+                continue
+            target = by_id.get(item.get("id")) if isinstance(item.get("id"), str) else None
+            if target is not None:
+                item["kind"] = target.get("kind")
+    manifest["task_sha256"] = expected["task_sha256"]
+    manifest_file.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def validate_manifest(task_file: str, manifest_file: str) -> tuple[bool, str]:
     try:
         manifest = load_manifest(Path(manifest_file))
         expected = extract_manifest(task_file)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         return False, f"acceptance_manifest_invalid: {exc}"
-    if manifest.get("schema") != _MANIFEST_SCHEMA or manifest.get("task_sha256") != expected["task_sha256"]:
+    if manifest.get("schema") != _MANIFEST_SCHEMA:
         return False, "acceptance_manifest_drift"
+    if manifest.get("task_sha256") != expected["task_sha256"]:
+        legacy = extract_manifest(task_file, _legacy_kind)
+        if manifest.get("task_sha256") != legacy["task_sha256"]:
+            return False, "acceptance_manifest_drift"
+        _heal_legacy_kinds(Path(manifest_file), manifest, expected)
     stored_task = manifest.get("task_file", "")
     if not stored_task or (Path(manifest_file).parent / stored_task).resolve() != Path(task_file).resolve():
         return False, "acceptance_manifest_task_mismatch"

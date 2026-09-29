@@ -1,3 +1,6 @@
+# validators 在每次 Stop 按“会话内编辑过的文件”匹配执行（quality_loop.stop_check）。
+# 全量测试 / e2e 等慢命令标 `heavy: true`：Stop 每轮跳过，任务 finish 自动执行
+# 一次，也可显式运行 /cf-validate；避免每个任务都重跑多遍。
 validators:
     - name: "Python 语法检查"
       trigger: "**/*.py"
@@ -33,6 +36,7 @@ validators:
       trigger: "**/*.{ts,tsx,js,jsx,vue}"
       command: "npx vitest run --reporter=dot"
       timeout: 60000
+      heavy: true
       on_fail: "前端测试失败，检查组件渲染和 mock 是否需要更新"
 
     - name: "Python 类型检查"
@@ -45,4 +49,5 @@ validators:
       trigger: "**/*.py"
       command: "python3 -m pytest --tb=short -q"
       timeout: 60000
+      heavy: true
       on_fail: "测试失败，检查断言和 mock 是否需要更新"

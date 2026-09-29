@@ -24,7 +24,8 @@ budget:
 quality_loop:
     enabled: true
     post_check: true            # PostToolUse 违规反馈（只提示不阻断）
-    stop_check: true            # Stop 收尾按 validation.yml 校验
+    stop_check: true            # Stop 收尾按 validation.yml 校验（heavy 项跳过）
+    finish_check: true          # 任务 finish 时全量执行 validation.yml（含 heavy，每任务一次）
     correction_capture: true    # 纠正句式采集（喂 cf-learn 候选）
     # 注入时对 spec 内容做保守无损压缩（去行尾空白、折叠多空行、剥 HTML 注释、去重 bullet）
     # 缺省视为 true；仅显式 false 关闭

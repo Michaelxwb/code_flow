@@ -29,7 +29,7 @@ from cf_spec_metadata import load_spec_metadata
 from cf_spec_resolver import resolve_candidates, SpecCandidate
 from cf_spec_session import context_sha256
 from cf_spec_verify import VerificationEvidence, VerificationScope, run_all_verifiers
-from cf_core import phase_timing
+from cf_core import load_config, phase_timing, resolve_quality_loop
 from cf_acceptance_schema import load_manifest, validate_execution_baseline, verified_evidence
 from cf_exec_base import execution_session
 
@@ -201,13 +201,17 @@ def _rule_manual_confirmation(rule: RuleBinding) -> Optional[Mapping[str, object
 
 
 def _run_acceptance(root: str, task_dir: str, owner: str, include_e2e: bool,
-                    deadline: Optional[float]) -> str:
+                    deadline: Optional[float], cheap: bool = False) -> str:
     baseline_issue = _acceptance_baseline_issue(task_dir, owner)
     if baseline_issue:
         return baseline_issue
     manual_issue = _manual_manifest_issue(task_dir, owner)
     if manual_issue:
         return manual_issue
+    if cheap:
+        # 轻量门禁：只做 manifest 基线与 manual 检查，不执行 functional 场景；
+        # 场景命令由 finish 的全量 Done Gate 执行。
+        return ""
     manifest_path = Path(task_dir) / ".acceptance-manifest.json"
     if manifest_path.is_file():
         from cf_acceptance_runner import run_manifest
@@ -216,6 +220,32 @@ def _run_acceptance(root: str, task_dir: str, owner: str, include_e2e: bool,
             reason = scenario_result.get("error") or "acceptance scenario failed"
             return f"acceptance scenario failed: {reason}"
     return ""
+
+
+def _run_finish_validation(root: str, files: tuple[str, ...]) -> str:
+    """Full validation.yml (including heavy validators) once per TASK finish.
+
+    Stop-time checks stay cheap; this is the single automatic execution point
+    for slow suites (task finish `/cf-validate` scope). `quality_loop.finish_check:
+    false` disables it; projects without validation.yml / package.json scripts are a no-op.
+    """
+    if not resolve_quality_loop(load_config(root)).get("finish_check"):
+        return ""
+    from cf_validation import validate_files
+
+    try:
+        result = validate_files(root, files)
+    except (OSError, ValueError) as exc:
+        return f"finish validation error: {exc}"
+    reason = result.get("reason")
+    if result.get("decision") == "pass" or reason in ("no_changes", "no_validators_configured"):
+        return ""
+    failures = result.get("failures")
+    names = ", ".join(str(item.get("name", "validator")) for item in failures[:3]) if isinstance(failures, list) and failures else "validator"
+    if result.get("incomplete") and not failures:
+        return "finish validation 预算耗尽：部分 validator 未执行"
+    suffix = "（预算耗尽，部分未执行）" if result.get("incomplete") else ""
+    return f"finish validation failed{suffix}: {names}"
 
 
 def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optional[float] = None, include_e2e: bool = False, task_id: str = "") -> DoneResult:
@@ -229,7 +259,7 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
     if scope_result.decision == "pause":
         return DoneResult("block", scope_result.files, (), scope_result.message)
     deadline = started + budget if budget is not None else None
-    issue = _run_acceptance(root, task_dir, owner, include_e2e, deadline)
+    issue = _run_acceptance(root, task_dir, owner, include_e2e, deadline, cheap)
     if issue:
         return DoneResult("block", scope_result.files, (), issue)
     phase_started = time.monotonic()
@@ -254,7 +284,11 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
     updated = _apply_evidence(context, tuple(all_evidence))
     if updated != context:
         save_context(_context_path(task_dir), updated)
-    gate = validate_stage(updated, "code", diff_sha256=diff_hash)
+    gate = validate_stage(updated, "code", diff_sha256=diff_hash, allow_cheap_skips=cheap)
+    if gate.decision == "pass" and not cheap:
+        validation_issue = _run_finish_validation(root, scope_result.files)
+        if validation_issue:
+            return DoneResult("block", scope_result.files, tuple(all_evidence), validation_issue)
     phase_timing("done.total", started)
     return DoneResult(gate.decision, scope_result.files, tuple(all_evidence),
                       "; ".join(issue.message for issue in gate.errors))

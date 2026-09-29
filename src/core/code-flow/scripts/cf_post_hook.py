@@ -31,6 +31,7 @@ from cf_checks import (
 from cf_core import (
     _log,
     build_effective_mapping,
+    effective_project_root,
     ensure_utf8_io,
     is_code_file,
     load_config,
@@ -107,7 +108,10 @@ def main() -> None:
         if not isinstance(file_path, str) or not file_path:
             return
 
-        project_root = os.getcwd()
+        session_root = os.getcwd()
+        abs_path = file_path if os.path.isabs(file_path) else os.path.join(session_root, file_path)
+        # 并行子 agent 在 .code-flow/worktrees/... 内编辑时路由到该 worktree 的规格与状态
+        project_root = effective_project_root(session_root, abs_path)
         config = load_config(project_root)
         if not config:
             return
@@ -117,9 +121,6 @@ def main() -> None:
         if not quality_loop["post_check"]:
             return
 
-        abs_path = file_path
-        if not os.path.isabs(abs_path):
-            abs_path = os.path.join(project_root, file_path)
         rel_path = normalize_path(os.path.relpath(abs_path, project_root))
         sid = resolve_session_id(data)
         cf_log.append_event(project_root, "edit", {"file": rel_path, "tool": tool_name}, sid)

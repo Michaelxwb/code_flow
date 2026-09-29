@@ -14,6 +14,7 @@ sys.path.insert(0, str(SCRIPTS))
 from cf_core import (
     compress_content,
     debug_log,
+    effective_project_root,
     ensure_utf8_io,
     estimate_tokens,
     extract_context_tags,
@@ -155,3 +156,18 @@ def test_resolve_enforcement_modes_and_defaults() -> None:
     assert resolve_enforcement({"spec_workflow": {}}) == "required"
     assert resolve_enforcement({}) == "required"
     assert resolve_enforcement(None) == "required"
+
+
+def test_effective_project_root_routes_worktree_edits() -> None:
+    with tempfile.TemporaryDirectory() as root:
+        worktree = os.path.join(root, ".code-flow", "worktrees", "run-1", "TASK-001")
+        os.makedirs(os.path.join(worktree, ".code-flow", "scripts"))
+        os.makedirs(os.path.join(root, "src"))
+        os.makedirs(os.path.join(worktree, "src"))
+
+        assert effective_project_root(root, os.path.join(root, "src", "app.py")) == os.path.abspath(root)
+        assert effective_project_root(root, os.path.join(worktree, "src", "app.py")) == os.path.abspath(worktree)
+        assert effective_project_root(root, os.path.join(worktree, "src")) == os.path.abspath(worktree)
+        # 根外路径与空路径回退到 root
+        assert effective_project_root(root, os.path.join(os.path.dirname(root), "outside.py")) == os.path.abspath(root)
+        assert effective_project_root(root, "") == os.path.abspath(root)

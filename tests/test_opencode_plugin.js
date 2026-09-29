@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 
 const PLUGIN = path.resolve(import.meta.dirname, "..", "src/adapters/opencode/plugins/code-flow/index.js");
 const mod = await import(pathToFileURL(PLUGIN).href);
-const { mergePending } = mod;
+const { mergePending, createSessionRegistry } = mod;
 const plugin = mod.default;
 
 // 反馈合并：append-only，永不覆盖排队中的 stop-check 反馈
@@ -57,6 +57,15 @@ const system = [];
 await callbacks["session:context"]({ sessionID: "s1", system });
 assert.deepEqual(system, []);
 cleanup();
+
+// 子会话过滤：子 agent/worktree 会话的 idle 不得触发主工作区 stop-check
+const registry = createSessionRegistry();
+registry.observe({ type: "session.created", data: { sessionID: "main" } });
+assert.equal(registry.observe({ type: "session.idle", data: { sessionID: "main" } }).child, false);
+registry.observe({ type: "session.created", data: { sessionID: "child", parentID: "main" } });
+assert.equal(registry.observe({ type: "session.idle", data: { sessionID: "child" } }).child, true);
+assert.equal(registry.observe({ type: "session.idle", data: {} }), null);
+assert.equal(registry.observe({ type: "session.updated", data: { sessionID: "main" } }), null);
 
 // 源码级断言：无同步阻塞调用、无 v1 hook 键残留
 const { readFileSync } = await import("node:fs");

@@ -110,6 +110,49 @@ def test_quality_loop_off_silent():
         assert _run(root) == {}
 
 
+def test_worktree_internal_edits_do_not_trigger_validators():
+    """并行子 agent 的 worktree 内编辑不得触发主工作区 validators。"""
+    with tempfile.TemporaryDirectory() as root:
+        _make_project(root, [FAIL_V])
+        cf_log.append_event(
+            root, "edit",
+            {"file": ".code-flow/worktrees/run-1/TASK-001/src/a.py", "tool": "Edit"},
+            "s1",
+        )
+        assert _run(root) == {}
+
+
+def test_stop_hook_uses_cheap_done_gate():
+    """Stop 阶段必须走 cheap 门禁：不执行命令类 verifier / acceptance 场景。"""
+    with tempfile.TemporaryDirectory() as root:
+        _make_project(root, None)
+        marker = os.path.join(root, ".code-flow", ".active-task.json")
+        with open(marker, "w", encoding="utf-8") as f:
+            f.write("{}")
+        fake = mock.Mock(decision="pass", message="", evidence=(), files=[])
+        with mock.patch("cf_stop_hook.load_active_task", return_value=mock.Mock(task_dir=".code-flow/tasks/demo")), \
+                mock.patch("cf_stop_hook.run_done_gate", return_value=fake) as gate:
+            payload = {"session_id": "s1"}
+            with mock.patch("sys.stdin", io.StringIO(json.dumps(payload))), \
+                    mock.patch("sys.stdout", io.StringIO()) as out, \
+                    mock.patch("os.getcwd", return_value=root):
+                cf_stop_hook.main()
+        gate.assert_called_once()
+        assert gate.call_args.kwargs.get("cheap") is True
+        assert out.getvalue() == ""
+
+
+def test_heavy_validator_skipped_on_stop_but_run_by_validate():
+    """heavy 全量测试只在 /cf-validate 执行，Stop 每轮跳过。"""
+    with tempfile.TemporaryDirectory() as root:
+        _make_project(root, [dict(FAIL_V, heavy=True)])
+        cf_log.append_event(root, "edit", {"file": "src/a.py", "tool": "Edit"}, "s1")
+        assert _run(root) == {}
+        from cf_validation import validate_files
+        result = validate_files(root, ["src/a.py"])
+        assert result["decision"] == "block", "cf-validate 必须仍然执行 heavy validator"
+
+
 def test_unmatched_trigger_skipped():
     with tempfile.TemporaryDirectory() as root:
         _make_project(root, [dict(FAIL_V, trigger="**/*.go")])

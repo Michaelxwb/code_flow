@@ -182,11 +182,67 @@ def test_cheap_gate_skips_command_verifiers(tmp_path: Path) -> None:
     full = run_done_gate(str(tmp_path), str(task_dir))
     cheap = run_done_gate(str(tmp_path), str(task_dir), cheap=True)
 
+    assert full.decision == "block"
     assert full.evidence and full.evidence[0]["status"] == "unverified"
+    assert cheap.decision == "pass", "cheap 门禁不得因命令类 verifier 未执行而阻断"
     assert cheap.evidence, "cheap gate must not run command/test verifiers"
     assert all(item["error_code"] == "skipped_in_cheap_gate" for item in cheap.evidence)
     assert all(item["status"] == "unverified" for item in cheap.evidence)
     assert all(item["diff_sha256"] == cheap.evidence[0]["diff_sha256"] for item in cheap.evidence)
+
+
+def _validation_repo(tmp_path: Path, command: str, finish_check: bool = True) -> tuple[Path, Path]:
+    root, task_dir = _repo(tmp_path, activate=False)
+    quoted = command.replace("'", "''")
+    (root / ".code-flow/validation.yml").write_text(
+        "validators:\n"
+        '    - name: "HeavySuite"\n'
+        '      trigger: "**/*.py"\n'
+        f"      command: '{quoted}'\n"
+        "      timeout: 15000\n"
+        "      heavy: true\n"
+        '      on_fail: "修复全量测试"\n',
+        encoding="utf-8",
+    )
+    config_path = root / ".code-flow/config.yml"
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    config["quality_loop"] = {"enabled": True, "finish_check": finish_check}
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "validation config")
+    start_active_task(str(root), ".code-flow/tasks/demo", "TASK-001", context_sha256(load_context(str(task_dir / "spec-context.yml"))))
+    (root / "src/app.py").write_text("VALUE = 2\n", encoding="utf-8")
+    return root, task_dir
+
+
+def test_finish_runs_heavy_validation_once_while_cheap_skips(tmp_path: Path) -> None:
+    """三段式：Stop(cheap) 跳过 heavy；finish 全量执行一次并阻断失败。"""
+    root, task_dir = _validation_repo(tmp_path, 'python3 -c "open(\'.heavy-run\', \'a\').write(\'x\')"')
+
+    cheap = run_done_gate(str(root), str(task_dir), cheap=True)
+    assert cheap.decision == "pass"
+    assert not (root / ".heavy-run").exists(), "Stop 轻量门禁不得执行 heavy validator"
+
+    full = run_done_gate(str(root), str(task_dir))
+    assert full.decision == "pass", full.message
+    assert (root / ".heavy-run").read_text(encoding="utf-8") == "x", "finish 必须执行 heavy validator"
+
+
+def test_finish_validation_failure_blocks_done(tmp_path: Path) -> None:
+    root, task_dir = _validation_repo(tmp_path, "python3 -c 'import sys; sys.exit(1)'")
+
+    full = run_done_gate(str(root), str(task_dir))
+
+    assert full.decision == "block"
+    assert "finish validation failed" in full.message and "HeavySuite" in full.message
+
+
+def test_finish_check_can_be_disabled_by_config(tmp_path: Path) -> None:
+    root, task_dir = _validation_repo(tmp_path, "python3 -c 'import sys; sys.exit(1)'", finish_check=False)
+
+    full = run_done_gate(str(root), str(task_dir))
+
+    assert full.decision == "pass", full.message
 
 
 def test_scope_expansion_re_syncs_marker_hash(tmp_path: Path) -> None:

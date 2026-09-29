@@ -36,8 +36,11 @@ validators:
     trigger: "**/*.{ts,tsx}"
     command: "npx tsc --noEmit"
     timeout: 30000
+    heavy: false          # true = Stop 每轮跳过，finish 与 /cf-validate 执行
     on_fail: "修复建议"
 ```
+
+全量测试 / e2e 等慢命令标 `heavy: true`：Stop 每轮跳过，**任务 finish 自动执行一次**，也可显式运行 `/cf-validate`（或 CI），避免拖慢每个任务。
 
 ### 3. 匹配并执行验证
 

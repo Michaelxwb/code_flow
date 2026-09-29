@@ -116,7 +116,12 @@ def _commit_task_dir(root: Path, task_file: str) -> Optional[str]:
     ]
     if outside:
         sample = ", ".join(outside[:8]) + (" ..." if len(outside) > 8 else "")
-        raise ParallelError("dirty_tree", f"并行要求 tracked 工作区干净（需求目录以外仍有改动: {sample}）")
+        raise ParallelError(
+            "dirty_tree",
+            "并行要求 tracked 工作区干净（需求目录以外仍有改动: "
+            f"{sample}）。请先提交（git add -A && git commit -m 'wip'）"
+            "或暂存（git stash push -u）后重试；需求目录内的流程产物会自动提交。",
+        )
     if not entries:
         return None
     _run_git(root, ("add", "-A", "--", str(task_dir)))

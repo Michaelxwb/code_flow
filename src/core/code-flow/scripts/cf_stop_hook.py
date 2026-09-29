@@ -96,6 +96,34 @@ def session_edited_files(project_root: str, sid: str) -> list:
     return files
 
 
+def _root_scoped_files(project_root: str, files: list) -> list:
+    """Drop worktree-internal / outside-root paths.
+
+    Parallel subagents edit another working copy (.code-flow/worktrees/<run>/<TASK>/);
+    those paths must not trigger this root's validators.
+    """
+    root = os.path.realpath(project_root)
+    scoped = []
+    for rel in files:
+        path = normalize_path(rel)
+        if path.startswith(".code-flow/worktrees/"):
+            continue
+        absolute = os.path.realpath(os.path.join(root, path))
+        if absolute == root or absolute.startswith(root + os.sep):
+            scoped.append(rel)
+    return scoped
+
+
+def _stop_validators(project_root: str) -> list:
+    """Per-stop validators: heavy entries (full tests / e2e suites) are skipped
+    on every Stop and only run via the explicit `cf-validate` command (or CI)."""
+    return [
+        validator
+        for validator in load_validators(project_root)
+        if not (isinstance(validator, dict) and validator.get("heavy") is True)
+    ]
+
+
 def _is_active_task_file(rel_path: str) -> bool:
     path = normalize_path(rel_path)
     if not path.startswith(".code-flow/tasks/") or "/archived/" in path:
@@ -294,7 +322,7 @@ def _main() -> None:
                 active = load_active_task(project_root)
                 task_dir = os.path.join(project_root, active.task_dir)
                 gate_remaining = deadline - time.monotonic()
-                done = run_done_gate(project_root, task_dir, budget=min(GATE_BUDGET_SECONDS, max(gate_remaining, 0.01)))
+                done = run_done_gate(project_root, task_dir, cheap=True, budget=min(GATE_BUDGET_SECONDS, max(gate_remaining, 0.01)))
             except (OSError, ValueError) as exc:
                 if enforcement == "required":
                     payload = {"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: active task is invalid: {exc}"}
@@ -316,11 +344,11 @@ def _main() -> None:
         if not resolve_quality_loop(config)["stop_check"]:
             return
         if not has_active:
-            files = session_edited_files(project_root, sid)
+            files = _root_scoped_files(project_root, session_edited_files(project_root, sid))
         if not files:
             return
         acceptance_failures = task_acceptance_failures(project_root, files)
-        validators = load_validators(project_root)
+        validators = _stop_validators(project_root)
         failures, truncated = run_validators(
             project_root, validators, files, sid, deadline=deadline
         ) if validators else ([], False)

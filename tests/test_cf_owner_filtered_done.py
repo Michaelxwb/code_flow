@@ -84,3 +84,24 @@ def test_shared_command_failure_maps_to_all_bound_scenarios_once(tmp_path: Path)
     result = run_done_gate(str(root), str(task_dir), task_id="TASK-001")
     assert result.decision == "block"
     assert marker.read_text(encoding="utf-8") == "x\n", "同一命令必须只执行一次"
+
+
+def test_cheap_gate_skips_acceptance_commands(tmp_path: Path) -> None:
+    """轻量门禁（stop 阶段）不执行 acceptance 场景命令，全量 finish 才执行。"""
+    marker = tmp_path / "ran.txt"
+    code = "import sys; open(sys.argv[1], 'a').write('x\\n')"
+    cmd = json.dumps([sys.executable, "-c", code, str(marker)])
+    root, task_dir = _repo(
+        tmp_path,
+        f"|S-01|src|integration|real|TASK-001|planned|{cmd}|\n"
+        "|---|---|---|---|---|---|---|\n",
+    )
+    start_active_task(str(root), ".code-flow/tasks/demand", "TASK-001", "ctx")
+
+    cheap = run_done_gate(str(root), str(task_dir), cheap=True, task_id="TASK-001")
+    assert cheap.decision == "pass"
+    assert not marker.exists(), "cheap 门禁不得执行 acceptance 命令"
+
+    full = run_done_gate(str(root), str(task_dir), task_id="TASK-001")
+    assert full.decision == "pass", full.message
+    assert marker.exists(), "全量门禁必须执行 acceptance 命令"

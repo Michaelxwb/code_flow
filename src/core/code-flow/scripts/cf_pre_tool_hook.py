@@ -11,7 +11,16 @@ from pathlib import Path
 import sys
 
 import cf_log
-from cf_core import _log, ensure_utf8_io, load_config, normalize_path, resolve_enforcement, resolve_session_id, timing_log
+from cf_core import (
+    _log,
+    effective_project_root,
+    ensure_utf8_io,
+    load_config,
+    normalize_path,
+    resolve_enforcement,
+    resolve_session_id,
+    timing_log,
+)
 from cf_session_state import load_session_state, save_session_state
 from cf_spec_context import injection_version, load_active_task, load_context
 from cf_spec_resolver import resolve_candidate_headers
@@ -49,11 +58,13 @@ def main() -> None:
         file_path = (data.get("tool_input") or {}).get("file_path", "")
         if tool_name not in {"Edit", "Write", "MultiEdit"} or not isinstance(file_path, str) or not file_path:
             return
-        root = os.getcwd()
+        session_root = os.getcwd()
+        absolute = file_path if os.path.isabs(file_path) else os.path.join(session_root, file_path)
+        # 并行子 agent 在 .code-flow/worktrees/... 内编辑时路由到该 worktree 的上下文
+        root = effective_project_root(session_root, absolute)
         sid = resolve_session_id(data)
         config = load_config(root)
         enforcement = resolve_enforcement(config) if config else "required"
-        absolute = file_path if os.path.isabs(file_path) else os.path.join(root, file_path)
         relative = normalize_path(os.path.relpath(absolute, root))
         try:
             expanded = _active_expansion(root, relative)

@@ -143,6 +143,7 @@ def test_prepare_refuses_dirty_outside_task_dir(tmp_path: Path) -> None:
     with pytest.raises(ParallelError) as exc:
         prepare(root, TASK_FILE, ["TASK-001"], "run-1")
     assert exc.value.code == "dirty_tree"
+    assert "git stash" in exc.value.message and "outside.txt" in exc.value.message
 
 
 def test_prepare_refuses_unready_and_non_draft_tasks(tmp_path: Path) -> None:

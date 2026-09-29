@@ -69,6 +69,7 @@ description: Initialize the code-flow spec system in a project. Use when setting
 - Python 后端项目：删除 `TypeScript 类型检查`、`Vue 类型检查`、`ESLint`、`Stylelint`、`前端单元测试`
 - Go/Rust/Java 后端：删除前端 validator；如果没有对应语言 validator，保留文件并在摘要中提示用户补充
 - fullstack / generic：全部保留，除非项目明确没有对应语言文件
+- 全量测试 / e2e 等慢命令（`pytest`、`vitest run`、Playwright 等）标 `heavy: true`：Stop 每轮跳过，任务 finish 自动执行一次，也可 `cf-validate` 手动执行
 
 若 `.code-flow/validation.yml` 缺失，提示用户重跑 `code-flow init`，不要手工拼装 YAML。
 

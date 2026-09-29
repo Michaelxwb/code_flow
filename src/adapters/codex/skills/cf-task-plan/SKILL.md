@@ -226,7 +226,7 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 ### Checklist
 - [ ] <具体实现步骤1>
 - [ ] <具体实现步骤2>
-- [ ] [S-01][E2E] 修改生产代码前，按 API → Store → Renderer 真实边界编写验收测试并记录 RED
+- [ ] [S-01][E2E] 编写 E2E 验收测试并登记可单独执行的命令（真实边界：API → Store → Renderer）；不在编码期执行 RED/GREEN，统一留给 verify-e2e
 - [ ] [S-01] 断言 <最终可观测结果 1> 与 <最终可观测结果 2>
 - [ ] [E-01][integration] 覆盖 <异常输入> 与 <可观测失败行为>
 - [ ] 运行验收命令并填写 Acceptance Evidence
@@ -240,7 +240,7 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 
 ### Acceptance Evidence
 
-> `cf-task-start` 在编码期填写 RED/GREEN 结果、每个关键断言的位置和真实组件证据；全部状态 verified 后任务才可 done。
+> `cf-task-start` 在编码期填写 functional/manual 的 RED/GREEN 结果、每个关键断言的位置和真实组件证据；E2E 仅登记测试与命令，执行统一留给 verify-e2e。全部 functional 状态 verified 后任务才可 done。
 
 ### Log
 - [<当前日期>] created (draft)

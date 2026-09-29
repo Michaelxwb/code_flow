@@ -17,6 +17,7 @@ quality_loop:
   enabled: true
   post_check: true
   stop_check: true
+  finish_check: true
   correction_capture: true
   compress: true
   compress_reminder: true

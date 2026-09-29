@@ -110,6 +110,22 @@ def test_same_check_same_file_reported_once_per_session():
         assert third != {}             # 新会话重置
 
 
+def test_worktree_edits_route_to_worktree_root():
+    """并行子 agent 在 worktree 内编辑时，检查/日志作用于该 worktree 的规格。"""
+    with tempfile.TemporaryDirectory() as root:
+        _make_project(root)
+        worktree = os.path.join(root, ".code-flow", "worktrees", "run-1", "TASK-001")
+        _make_project(worktree)
+        _write_target(worktree, "src/app.py", "x = 1\nprint('debug')\n")
+
+        result = _run(root, rel=".code-flow/worktrees/run-1/TASK-001/src/app.py", sid="sub-1")
+
+        assert result["hookSpecificOutput"]["additionalContext"].count("禁止 print() 调试") == 1
+        assert cf_log.read_events(worktree, events=("edit",)), "edit 事件必须落在 worktree 根"
+        assert cf_log.read_events(worktree, events=("violation",)), "违规事件必须落在 worktree 根"
+        assert not cf_log.read_events(root, events=("violation",)), "主工作区不得记录 worktree 违规"
+
+
 def test_disabled_check_not_reported():
     with tempfile.TemporaryDirectory() as root:
         _make_project(root)
