@@ -23,7 +23,7 @@ function loadCliInternals() {
   const cut = src.indexOf('// --- CLI argument parsing ---');
   if (cut === -1) throw new Error('cli.js sentinel comment moved');
   const head = src.slice(0, cut);
-  const wrapped = head + '\nmodule.exports = { mergeClaudeMd, mergeSettingsJson, mergeCodexConfigToml, mergeHookEventArray, maskFencedCode, ensurePyYaml, installAdapterFile };\n';
+  const wrapped = head + '\nmodule.exports = { mergeClaudeMd, mergeSettingsJson, mergeOpencodeJson, mergeCodexConfigToml, mergeHookEventArray, maskFencedCode, ensurePyYaml, installAdapterFile };\n';
   // Write the temp module alongside cli.js so its `require('../package.json')`
   // (and any other relative requires) resolves the same way the real cli.js does.
   const tmp = path.join(path.dirname(CLI_PATH), `.cli-internals-${process.pid}.js`);
@@ -36,7 +36,7 @@ function loadCliInternals() {
   }
 }
 
-const { mergeClaudeMd, mergeSettingsJson, mergeCodexConfigToml, maskFencedCode } = loadCliInternals();
+const { mergeClaudeMd, mergeSettingsJson, mergeOpencodeJson, mergeCodexConfigToml, maskFencedCode } = loadCliInternals();
 
 function withTmp(fn) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cf-merge-test-'));
@@ -313,6 +313,51 @@ function testMergeCodexConfigTomlIsIdempotent() {
   console.log('  ✓ mergeCodexConfigToml is idempotent');
 }
 
+// --- mergeOpencodeJson (v1 `plugin` → v2 `plugins` migration) ---
+
+function testMergeOpencodeMigratesLegacyPluginKey() {
+  withTmp(dir => {
+    const src = path.join(dir, 'src.json');
+    const dest = path.join(dir, 'dest.json');
+    fs.writeFileSync(src, '{"$schema": "https://opencode.ai/config.json"}\n');
+    fs.writeFileSync(dest, '{"$schema": "https://opencode.ai/config.json", "plugin": [".opencode/plugins/code-flow", "my-pkg"], "model": "m"}\n');
+
+    mergeOpencodeJson(src, dest);
+    const cfg = JSON.parse(fs.readFileSync(dest, 'utf8'));
+    assert.ok(!('plugin' in cfg), 'legacy v1 key removed');
+    assert.deepStrictEqual(cfg.plugins, ['my-pkg'], 'user entry carried to plugins, local path dropped');
+    assert.strictEqual(cfg.model, 'm', 'unrelated user config preserved');
+  });
+  console.log('  ✓ mergeOpencodeJson migrates legacy plugin key');
+}
+
+function testMergeOpencodeDropsLocalPluginEntry() {
+  withTmp(dir => {
+    const src = path.join(dir, 'src.json');
+    const dest = path.join(dir, 'dest.json');
+    fs.writeFileSync(src, '{"$schema": "https://opencode.ai/config.json"}\n');
+    fs.writeFileSync(dest, '{"plugins": [".opencode/plugins/code-flow", "other"]}\n');
+
+    mergeOpencodeJson(src, dest);
+    const cfg = JSON.parse(fs.readFileSync(dest, 'utf8'));
+    assert.deepStrictEqual(cfg.plugins, ['other'], 'auto-discovered local entry dropped');
+  });
+  console.log('  ✓ mergeOpencodeJson drops auto-discovered local plugin entry');
+}
+
+function testMergeOpencodeIsIdempotent() {
+  withTmp(dir => {
+    const src = path.join(dir, 'src.json');
+    const dest = path.join(dir, 'dest.json');
+    fs.writeFileSync(src, '{"$schema": "https://opencode.ai/config.json"}\n');
+    fs.writeFileSync(dest, '{"$schema": "https://opencode.ai/config.json", "plugins": ["my-pkg"]}\n');
+
+    const added = mergeOpencodeJson(src, dest);
+    assert.deepStrictEqual(added, []);
+  });
+  console.log('  ✓ mergeOpencodeJson is idempotent');
+}
+
 // --- run ---
 
 const tests = [
@@ -329,6 +374,9 @@ const tests = [
   testMergeCodexConfigTomlInsertsBeforeBlankLineAfterFeatures,
   testMergeCodexConfigTomlMigratesDeprecatedHookAlias,
   testMergeCodexConfigTomlIsIdempotent,
+  testMergeOpencodeMigratesLegacyPluginKey,
+  testMergeOpencodeDropsLocalPluginEntry,
+  testMergeOpencodeIsIdempotent,
 ];
 
 console.log('Running cli.js merge helper tests...');

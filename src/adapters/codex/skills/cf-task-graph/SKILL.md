@@ -16,7 +16,7 @@ description: Visualize task dependency DAG, identify parallelizable task groups 
 
 ### 0. 程序计算（推荐）
 
-用 `python3 .code-flow/scripts/cf_task_index.py --task-file <file> --dag --json` 直接输出拓扑批次与独立分组，不要全文手算。单 worktree 一次仅激活一个 TASK：批次内“可并行”指可独立开发，而非可同时激活。
+用 `python3 .code-flow/scripts/cf_task_index.py --task-file <file> --dag --json` 直接输出拓扑批次与独立分组，不要全文手算。单 worktree 一次仅激活一个 TASK；批次内的独立任务由 cf-task-start 在各自 worktree 中并行派发子 agent（预检失败自动回退串行），详见 cf-task-start 步骤 4。
 
 `batches` 是组内可独立开发的拓扑批次；`dependency_components` 是依赖连通分组，只保证组与组之间独立，组内仍有先后依赖。`independent_groups` 仅为后者的兼容别名，不要把它显示成组内并行。
 

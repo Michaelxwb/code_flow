@@ -156,18 +156,22 @@ AGENTS.md 的完整内容由适配器模板统一定义，`code-flow init` 已�
 
 ### 6. 生成 OpenCode 插件配置
 
+OpenCode v2 会自动加载 `.opencode/plugins/` 下的插件目录，无需在 `opencode.json` 中声明。
 检查 `opencode.json` 是否存在。如果不存在，创建：
 
 ```json
 {
-  "$schema": "https://opencode.ai/config.json",
-  "plugin": [".opencode/plugins/code-flow"]
+  "$schema": "https://opencode.ai/config.json"
 }
 ```
 
-如果 `opencode.json` 已存在，只合并缺失的 `plugin` 条目，保留用户已有配置。
+如果 `opencode.json` 已存在，只做 v1→v2 迁移，保留用户已有配置：
+- 删除遗留的顶层 `plugin` 键（v1 写法，如 `".opencode/plugins/code-flow"`）；其中非本地的用户条目搬入 `plugins`。
+- 不要向 `plugins` 写入 `.opencode/plugins/code-flow`（自动发现已覆盖，显式声明会导致重复加载或包解析告警）。
 
-确保 `.opencode/plugins/code-flow/` 已存在。OpenCode 通过插件转发 `chat.message` 并注入 specs，不需要生成 Claude/Costrict 风格的 settings 文件。
+确保 `.opencode/plugins/code-flow/` 已存在且为 v2 形态（默认导出 `{ id: "code-flow", setup }`，不依赖 `@opencode/plugin` 包），
+注册 `session.prompt` / `tool.execute.after` / `session.context` hooks + `event.subscribe` 订阅 `session.idle`）。
+OpenCode 通过插件转发用户 prompt 并经 context hook 注入 specs，不需要生成 Claude/Costrict 风格的 settings 文件。
 
 ### 7. 安装 pyyaml
 

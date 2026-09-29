@@ -42,6 +42,7 @@ DEFAULT_ACTIVE_EXCLUDES = (
     ".code-flow/.session-log.jsonl",
     ".code-flow/.active-task.json",
     ".code-flow/.active-task.lock",
+    ".code-flow/worktrees/*",
 )
 
 
@@ -1314,8 +1315,15 @@ def apply_artifact_ref(
 
 def _json_payload(stream: IO[str]) -> Mapping[str, object]:
     try:
-        loaded = json.load(stream)
-    except (json.JSONDecodeError, UnicodeError) as exc:
+        raw = stream.read()
+    except (OSError, UnicodeError) as exc:
+        raise ContextError("invalid_json", "stdin", str(exc)) from exc
+    if not raw.strip():
+        # 空 stdin = 无 payload（例如 active doctor --resync 全参数走 CLI 开关）。
+        return {}
+    try:
+        loaded = json.loads(raw)
+    except json.JSONDecodeError as exc:
         raise ContextError("invalid_json", "stdin", str(exc)) from exc
     return _mapping(loaded, "stdin", "")
 
@@ -1508,12 +1516,11 @@ def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> 
             except WorkflowError as exc:
                 raise _reraise(exc) from exc
     else:
-        result = doctor_active_task(
-            args.root,
-            args.context_sha256,
-            payload.get("abandon") is True,
-            payload.get("resync") is True,
-        )
+        abandon = payload.get("abandon") is True or args.abandon
+        resync = payload.get("resync") is True or args.resync
+        if abandon and resync:
+            raise ContextError("conflicting_recovery", "doctor", "abandon 与 resync 不能同时使用", args.task_dir)
+        result = doctor_active_task(args.root, args.context_sha256, abandon, resync)
         return {"ok": True, "action": result.action, "active": _active_data(result.active)}
     return {"ok": True, "active": _active_data(active)}
 
@@ -1589,7 +1596,7 @@ def _status_text(data: dict[str, object]) -> str:
         match = "✓ 一致" if marker["hash_match"] else "✗ 漂移"
         lines.append(f"- TASK {marker['task_id']}（{marker['status']}），marker hash {match}")
         if not marker["hash_match"]:
-            lines.append("  下一步: 运行 cf-spec doctor（resync 可自动重同步）")
+            lines.append("  下一步: 运行 cf-spec refresh 自动重同步 marker hash；仍不一致时用 active doctor --resync（hash 取本命令 --json 的 context_sha256）")
     else:
         lines.append("- 无 active TASK（path/catalog 路由模式）")
     gate = data["gate"]
@@ -1643,6 +1650,9 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("--task", required=True)
         command.add_argument("--context-sha256", required=True)
         command.add_argument("--json", action="store_true")
+        if action == "doctor":
+            command.add_argument("--abandon", action="store_true", help="确认放弃无法证明的 marker（需用户确认）")
+            command.add_argument("--resync", action="store_true", help="用 --context-sha256 重新绑定 marker 并恢复 active")
     start = commands.add_parser("start")
     start.add_argument("--task-dir", required=True)
     start.add_argument("--root", required=True)

@@ -137,7 +137,7 @@ def _active_route(root: str) -> RouteResult:
     if current_hash != active.context_sha256:
         raise RouterError(
             "active_context_drift",
-            "active marker Context hash does not match; run `cf-spec doctor` (resync) to re-sync the marker before continuing",
+            "active marker Context hash does not match; run `cf_spec_context.py refresh --task-dir <dir> --root <root> --json` to re-sync it (refresh updates the marker hash), or `active doctor --resync` with the hash from `status --json`",
         )
     cached = _cached_projection(root, task_dir, active.task_id, current_hash)
     if cached is None:

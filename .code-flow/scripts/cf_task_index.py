@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Programmatic task-file index: parse TASK statuses/depends, compute DAG batches.
 
-Single worktrees allow one active TASK at a time, so "parallel" below means
-*independently developable* (no dependency path between them) — not
-simultaneously activatable, a distinction `cf-task:graph` used to blur.
+Single worktrees allow one active TASK at a time; batches list *independently
+developable* tasks (no dependency path between them). `cf-task:start` may
+dispatch batch tasks in their own worktrees for parallel subagents — the
+single-active constraint stays per worktree.
 """
 
 from __future__ import annotations
@@ -116,7 +117,7 @@ def index_data(task_file: str) -> dict[str, object]:
         "batches": task_batches(nodes),
         "independent_groups": independent_groups(nodes),
         "dependency_components": dependency_components(nodes),
-        "note": "batches 组内无依赖；dependency_components 仅组间独立（independent_groups 为兼容别名）；单 worktree 一次仅激活一个 TASK",
+        "note": "batches 组内无依赖；dependency_components 仅组间独立（independent_groups 为兼容别名）；单 worktree 一次仅激活一个 TASK，批次内独立任务可由 cf-task:start 在各 worktree 并行派发",
     }
 
 

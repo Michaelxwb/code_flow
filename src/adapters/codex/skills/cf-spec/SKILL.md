@@ -52,5 +52,9 @@ description: Manage schema-v1 Spec Context, drift recovery, and prepared one-sho
 ## doctor
 
 1. 校验 config schema、active marker、lock、Context hash、task/status、migration journal 和 legacy residue。
-2. active marker 存在时执行 `cf_spec_context.py active doctor`，传入可证明的 Context hash；无法证明时保持 `recovery_required`。
-3. 输出明确修复命令。不得删除损坏 marker、越过 required Gate 或静默切换到无任务模式。
+2. 按场景恢复，禁止删除 marker、手改状态或越过 required Gate：
+   - **Context hash drift**（`status` 显示 marker hash 漂移）：先执行 refresh，它会自动重同步 marker hash；成功后继续原流程，不要用 doctor。
+   - **marker 停在 `activating`（start 事务中断）**：取 `status --json` 的 `context_sha256` 执行 `active doctor`；hash/head 可证明时自动恢复 active，无法证明时加 `--resync` 重新绑定。
+   - **marker 损坏或归属无法证明**：向用户说明影响，仅在用户明确确认放弃该 TASK 后执行 `active doctor --abandon`，随后重新规划该任务。
+3. `active doctor` 返回 `recovery_required`（退出码 3）是诊断结果而非崩溃：按第 2 步选择 refresh / `--resync` / `--abandon`，不要用 `--help` 探测或反复重试。
+4. 输出明确修复命令。不得删除损坏 marker、越过 required Gate 或静默切换到无任务模式。

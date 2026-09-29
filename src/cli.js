@@ -237,6 +237,56 @@ function mergeSettingsJson(srcFile, destFile) {
   return added;
 }
 
+// OpenCode v2 merge: migrate the v1 `plugin` key to `plugins`, drop the
+// auto-discovered local path (`.opencode/plugins/*` loads without config),
+// and union template `plugins` entries without overwriting user content.
+function mergeOpencodeJson(srcFile, destFile) {
+  const src = JSON.parse(fs.readFileSync(srcFile, 'utf8'));
+  const dest = JSON.parse(fs.readFileSync(destFile, 'utf8'));
+  const added = [];
+  const isLocalEntry = (e) => {
+    const p = typeof e === 'string' ? e : (e && e.package);
+    return typeof p === 'string' && /(^|\/)\.opencode\/plugins\//.test(p);
+  };
+  if (Array.isArray(dest.plugin)) {
+    const carried = dest.plugin.filter((e) => !isLocalEntry(e));
+    delete dest.plugin;
+    added.push(`removed legacy 'plugin' key (v1 → v2)`);
+    if (carried.length > 0 && !Array.isArray(dest.plugins)) dest.plugins = carried;
+  } else if ('plugin' in dest) {
+    delete dest.plugin;
+    added.push(`removed legacy 'plugin' key (v1 → v2)`);
+  }
+  if (Array.isArray(dest.plugins)) {
+    const before = dest.plugins.length;
+    dest.plugins = dest.plugins.filter((e) => !isLocalEntry(e));
+    if (dest.plugins.length !== before) added.push('removed auto-discovered local plugin entry');
+  }
+  if (Array.isArray(src.plugins)) {
+    if (!Array.isArray(dest.plugins)) dest.plugins = [];
+    const seen = new Set(dest.plugins.map((e) => JSON.stringify(e)));
+    for (const entry of src.plugins) {
+      const key = JSON.stringify(entry);
+      if (!seen.has(key)) {
+        dest.plugins.push(entry);
+        seen.add(key);
+        added.push(`plugins +${typeof entry === 'string' ? entry : key}`.slice(0, 80));
+      }
+    }
+  }
+  for (const key of Object.keys(src)) {
+    if (key === 'plugins' || key === 'plugin') continue;
+    if (!(key in dest)) {
+      dest[key] = src[key];
+      added.push(key);
+    }
+  }
+  if (added.length > 0) {
+    fs.writeFileSync(destFile, JSON.stringify(dest, null, 2) + '\n');
+  }
+  return added;
+}
+
 function mergeConfigYml(srcFile, destFile) {
   const srcText = fs.readFileSync(srcFile, 'utf8');
   const destText = fs.readFileSync(destFile, 'utf8');
@@ -781,7 +831,7 @@ function runInit(force, platform, opts) {
       dest: path.join(cwd, 'opencode.json'),
       label: 'opencode.json',
       mode: platformMode,
-      mergeFn: mergeSettingsJson,
+      mergeFn: mergeOpencodeJson,
       toolOnUpgrade: false,
       results,
     });

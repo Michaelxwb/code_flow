@@ -9,4 +9,5 @@ migrations/
 .check-state.json
 sessions/
 specs/_session/
+worktrees/
 # <<< code-flow:runtime schema=1

@@ -5,7 +5,8 @@
 ## 输入
 
 - `/cf-task:start <file> TASK-001` — 激活指定文件中的单个子任务
-- `/cf-task:start <file>` — 激活文件内所有可执行的 draft 子任务
+- `/cf-task:start <file>` — 激活文件内所有可执行的 draft 子任务；批次内独立任务默认并行派发子 agent
+- `/cf-task:start <file> --serial` — 整文件模式强制串行执行，不建 worktree
 
 其中 `<file>` 为 `.code-flow/tasks/` 下的文件名，可省略日期目录前缀和 `.md` 后缀。
 
@@ -181,14 +182,68 @@ Spec 同步提示:
   - TASK-004: #NOTES 未解决
   - TASK-005: 依赖 TASK-004 (blocked)
 
-开始执行...
+开始执行（批次内默认并行派发子 agent，预检失败自动回退串行）...
 ```
 
-### 4. 按序执行
+### 4. 执行批次
 
-对每个可激活的子任务，执行单任务模式的步骤 3-4，包括先写验收测试、RED、实现、GREEN 和证据核对（详设已在步骤 2 加载，无需重复读取）。
+对每个批次执行；批次内仅 1 个 TASK、传入 `--serial`、或并行预检失败时，走 4.6 串行回退。
 
-完成一个子任务后，检查是否解锁了新的子任务（依赖已满足），如果是则继续执行。
+#### 4.1 并行预检与 worktree 准备
+
+```bash
+python3 .code-flow/scripts/cf_task_parallel.py prepare --root "$PWD" \
+  --task-file "<任务文件相对路径>" --tasks TASK-001,TASK-003 --json
+```
+
+- 返回 `{"ok": true, "run_id": ..., "worktrees": [...]}` 才可并行；`ok: false` 时打印 `code`/`message` 并回退串行，禁止手工建 worktree/分支。
+- 预检内容：git 仓库、`.code-flow/.gitignore` 含 `worktrees/`、主 worktree 无 active marker、tracked 工作区干净。命令会自动提交仅位于当前需求目录内的流程产物（任务文件等）；需求目录以外存在未提交改动时拒绝并行，提示用户先提交或收起。
+
+#### 4.2 派发子 agent（平台自适应）
+
+若当前平台提供子 agent/Task 派发能力，为本批次每个 TASK 各派发一个子 agent（同一批并发不超过 3，超出时按 TASK 顺序拆成多轮）。子 agent prompt 必须包含 worktree 绝对路径、TASK-ID、任务文件相对路径，并声明以下硬性要求：
+
+1. 进入 worktree：所有命令 `cd <worktree>` 执行，文件读写使用该 worktree 内路径。
+2. 按本命令"单任务模式"步骤 1-4 完成该 TASK：`cf_spec_context.py start` → 写 RED → 实现 → GREEN → `cf_task_workflow.py finish --root "<worktree>"`。
+3. 平台 hook 注入绑定主工作区；子 agent 必须显式读取 Spec Session（`.code-flow/specs/_session/task-*.md`）与详设章节，不得依赖自动注入。
+4. 完成时在 worktree 内提交全部改动（含任务文件 Checklist/Evidence/Status 更新），提交信息 `cf-task(<TASK-ID>): <标题>`。
+5. 返回摘要：TASK-ID、Status、验收命令及结果、提交 SHA、遗留问题。
+
+平台不支持子 agent 时，不建 worktree，直接走 4.6 串行回退。
+
+#### 4.3 收集与校验
+
+```bash
+python3 .code-flow/scripts/cf_task_parallel.py collect --root "$PWD" --run-id <run_id> --json
+```
+
+- 每个任务必须 `ok: true`（改动已提交、Status 为 done/verified、marker 已清理、有提交）。
+- 任一任务失败：停止本批次，不合并；保留 worktree 并列出失败原因。修复后重跑 collect；确认放弃时执行 4.5 cleanup。
+
+#### 4.4 回并主分支
+
+按 TASK-ID 先后顺序逐个合并 collect 返回的分支：
+
+```bash
+git merge --no-ff -m "merge cf-task <TASK-ID>" <branch>
+```
+
+- 无冲突：合并后立即重跑该任务 Acceptance Evidence 中的验收命令；通过才继续下一个任务。失败则记录合并前 HEAD 并 `git reset --hard <合并前HEAD>`（分支与 worktree 原样保留），回到 4.2 让对应子 agent 修复后重新 collect 合并。
+- 有冲突：读取冲突现场 + 双方详设章节与 Acceptance Contract，合并双方意图（不是二选一），随后重跑双方验收命令；通过后提交 merge 并继续。
+- 无法调和（设计要求互斥）：不提交，保留冲突现场与两个分支，列出矛盾点叫停交用户决策；不得擅自删除一方实现。
+- E2E 验收留给 verify-e2e，不在本步骤执行。
+
+#### 4.5 清理
+
+```bash
+python3 .code-flow/scripts/cf_task_parallel.py cleanup --root "$PWD" --run-id <run_id> --json
+```
+
+清理 worktree；已合入的分支自动删除，未合入的保留供排查。worktree 存在未提交改动时 cleanup 会拒绝，先人工确认再决定处理方式。全部批次完成后进入步骤 5。
+
+#### 4.6 串行回退
+
+未启用并行、批次仅 1 个任务或预检失败时，对批次内可激活子任务执行单任务模式步骤 3-4（详设已在步骤 2 加载，无需重复读取），完成一个后再解锁下一个。
 
 ### 5. 输出摘要与文档同步检查
 

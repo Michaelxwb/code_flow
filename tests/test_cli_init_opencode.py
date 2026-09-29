@@ -47,8 +47,10 @@ def test_opencode_init_deploys_agents_md_and_plugin(tmp_path: Path) -> None:
     opencode_json = tmp_path / "opencode.json"
     assert opencode_json.exists()
     cfg = json.loads(opencode_json.read_text(encoding="utf-8"))
-    assert "plugin" in cfg
-    assert ".opencode/plugins/code-flow" in cfg["plugin"]
+    # v2: 本地插件经 `.opencode/plugins/` 自动发现，不再写入配置键；
+    # 遗留 v1 `plugin` 键必须消失。
+    assert "plugin" not in cfg
+    assert cfg.get("$schema") == "https://opencode.ai/config.json"
 
     plugin_dir = tmp_path / ".opencode" / "plugins" / "code-flow"
     assert plugin_dir.is_dir()
@@ -112,7 +114,10 @@ def test_opencode_upgrade_overwrites_tool_files(tmp_path: Path) -> None:
 
     # Tool files were overwritten
     assert plugin_index.read_text(encoding="utf-8") != "// user edited\n"
-    assert "import {" in plugin_index.read_text(encoding="utf-8")
+    plugin_text = plugin_index.read_text(encoding="utf-8")
+    assert "import {" in plugin_text
+    assert 'id: "code-flow"' in plugin_text or '"code-flow"' in plugin_text
+    assert "export default" in plugin_text
     assert cmd_init.read_text(encoding="utf-8") != "stale content\n"
     assert cmd_init.read_text(encoding="utf-8").startswith("---\n")
 
@@ -152,4 +157,35 @@ def test_opencode_init_force_overwrites_all(tmp_path: Path) -> None:
 
     assert "# completely different" not in agents_md.read_text(encoding="utf-8")
     cfg = json.loads(opencode_json.read_text(encoding="utf-8"))
-    assert ".opencode/plugins/code-flow" in cfg["plugin"]
+    # --force 用模板全量覆盖：遗留 v1 `plugin` 键消失，v2 无需声明本地插件
+    assert "plugin" not in cfg
+
+
+def test_opencode_upgrade_migrates_legacy_plugin_key(tmp_path: Path) -> None:
+    """Upgrade must migrate v1 `plugin` key: drop auto-discovered local path,
+    carry user entries to `plugins`, never delete user content."""
+    first = run_cli(tmp_path)
+    assert first.returncode == 0, first.stderr
+
+    # Simulate a v1-era project: legacy key with local path + user package
+    opencode_json = tmp_path / "opencode.json"
+    opencode_json.write_text(
+        json.dumps({
+            "$schema": "https://opencode.ai/config.json",
+            "plugin": [".opencode/plugins/code-flow", "my-pkg"],
+            "model": "anthropic/claude-sonnet-4-5",
+        }),
+        encoding="utf-8",
+    )
+    # Force upgrade path (downgrade recorded versions)
+    (tmp_path / ".code-flow" / ".version").write_text("0.0.0\n", encoding="utf-8")
+
+    second = run_cli(tmp_path)
+    assert second.returncode == 0, second.stderr
+
+    cfg = json.loads(opencode_json.read_text(encoding="utf-8"))
+    assert "plugin" not in cfg
+    assert "my-pkg" in cfg.get("plugins", [])
+    assert not any(".opencode/plugins/" in str(e) for e in cfg.get("plugins", []))
+    # Unrelated user config preserved
+    assert cfg.get("model") == "anthropic/claude-sonnet-4-5"

@@ -124,8 +124,8 @@ CLAUDE.md                         # 与 Claude 共用全局指令
 
 # OpenCode (--platform=opencode)
 .opencode/commands/               # 命令模板（含 cf-task/）
-.opencode/plugins/code-flow/      # 插件：转发到 cf_user_prompt_hook.py
-opencode.json                     # 插件注册
+.opencode/plugins/code-flow/      # v2 插件：session.prompt 转发到 cf_user_prompt_hook.py
+opencode.json                     # OpenCode 配置（`.opencode/plugins/` 自动发现，无需注册键）
 AGENTS.md                         # 全局指令
 ```
 

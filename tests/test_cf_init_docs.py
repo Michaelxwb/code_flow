@@ -93,6 +93,9 @@ def test_platform_specific_cf_init_sections_match_adapter_contracts() -> None:
     opencode = _read("opencode")
     assert "opencode.json" in opencode
     assert ".opencode/plugins/code-flow/" in opencode
+    assert "自动加载 `.opencode/plugins/`" in opencode
+    assert "session.prompt" in opencode
+    assert "默认导出" in opencode
     assert ".claude/settings.local.json" not in opencode
     assert "CLAUDE.md" not in opencode
 

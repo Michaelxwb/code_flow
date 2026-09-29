@@ -148,3 +148,48 @@ def test_active_cli_emits_one_json_object(tmp_path: Path) -> None:
     assert payload["active"]["status"] == "active"
     assert result.stdout.count("{") >= 1
     assert result.stderr == ""
+
+
+def test_active_doctor_cli_exposes_resync_and_abandon(tmp_path: Path) -> None:
+    """recovery_required 场景必须能通过 CLI 恢复：--resync 重绑定、--abandon 放弃、二者互斥。"""
+    root = _repository(tmp_path)
+    task_dir = root / ".code-flow" / "tasks" / "demo"
+    task_dir.mkdir(parents=True)
+    start_active_task(str(root), ".code-flow/tasks/demo", "TASK-007", "ctx-old")
+
+    def doctor(*extra: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPTS / "cf_spec_context.py"),
+                "active",
+                "doctor",
+                "--root",
+                str(root),
+                "--task-dir",
+                str(task_dir),
+                "--task",
+                "TASK-007",
+                "--context-sha256",
+                "ctx-new",
+                *extra,
+                "--json",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    conflict = doctor("--abandon", "--resync")
+    assert conflict.returncode == 3
+    assert json.loads(conflict.stdout)["error"]["code"] == "conflicting_recovery"
+
+    resynced = doctor("--resync")
+    assert resynced.returncode == 0
+    assert json.loads(resynced.stdout)["action"] == "resynced"
+    assert load_active_task(str(root)).context_sha256 == "ctx-new"
+
+    abandoned = doctor("--abandon")
+    assert abandoned.returncode == 0
+    assert json.loads(abandoned.stdout)["action"] == "abandoned"
+    assert not (root / ".code-flow" / ".active-task.json").exists()
