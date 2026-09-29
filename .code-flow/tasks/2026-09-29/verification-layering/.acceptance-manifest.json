@@ -73,7 +73,7 @@
       "kind": "functional",
       "boundary": "真实仓库 + owned files + 缓存文件",
       "owner": "TASK-03",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -85,7 +85,28 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c401664b71ad429f88b39f411c85fa09",
+        "executed_at": "2026-09-29T13:05:04.285934+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c401664b71ad429f88b39f411c85fa09",
+          "executed_at": "2026-09-29T13:05:04.285934+00:00"
+        }
+      ]
     },
     {
       "id": "S-04",
@@ -241,7 +262,7 @@
       "kind": "functional",
       "boundary": "真实命令先失败后修复 + 缓存",
       "owner": "TASK-03",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -253,7 +274,28 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c401664b71ad429f88b39f411c85fa09",
+        "executed_at": "2026-09-29T13:05:04.285934+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c401664b71ad429f88b39f411c85fa09",
+          "executed_at": "2026-09-29T13:05:04.285934+00:00"
+        }
+      ]
     },
     {
       "id": "B-01",
@@ -262,7 +304,7 @@
       "kind": "functional",
       "boundary": "缓存 + 作用域交集",
       "owner": "TASK-03",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -274,7 +316,28 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c401664b71ad429f88b39f411c85fa09",
+        "executed_at": "2026-09-29T13:05:04.285934+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c401664b71ad429f88b39f411c85fa09",
+          "executed_at": "2026-09-29T13:05:04.285934+00:00"
+        }
+      ]
     },
     {
       "id": "B-02",
@@ -304,7 +367,7 @@
       "kind": "functional",
       "boundary": "per-root 缓存隔离",
       "owner": "TASK-03",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -316,7 +379,28 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c401664b71ad429f88b39f411c85fa09",
+        "executed_at": "2026-09-29T13:05:04.285934+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c401664b71ad429f88b39f411c85fa09",
+          "executed_at": "2026-09-29T13:05:04.285934+00:00"
+        }
+      ]
     },
     {
       "id": "B-04",

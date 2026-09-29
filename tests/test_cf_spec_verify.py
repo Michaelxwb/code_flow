@@ -3,6 +3,7 @@
 
 import hashlib
 from pathlib import Path
+import subprocess
 import sys
 
 import yaml
@@ -194,3 +195,109 @@ def test_regex_ignores_deleted_and_unmatched_scope_files(tmp_path: Path) -> None
 
     assert result.passed is True
     assert result.evidence[0].details["checked_files"] == 1
+
+
+APPEND_RUN = (
+    "from pathlib import Path; import sys; "
+    "p=Path(sys.argv[1]); p.write_text((p.read_text() if p.exists() else '') + 'x')"
+)
+
+
+def _runs(marker: Path) -> int:
+    return len(marker.read_text(encoding="utf-8")) if marker.exists() else 0
+
+
+def _scoped_metadata(root: Path, files: list[str], argv: list[str]):
+    verifier = {"rule": "RULE-verify-001", "type": "test", "config": {"argv": argv, "timeout": 30}, "files": files}
+    return _metadata(root, [verifier], [("RULE-verify-001", "Scoped command rule")])
+
+
+def _git(root: Path, *args: str) -> None:
+    subprocess.run(("git", *args), cwd=root, check=True, capture_output=True)
+
+
+def test_s_03_scoped_cache(tmp_path: Path) -> None:
+    """S-03: 作用域未变跨任务复用；作用域内容变化重跑（真实 git 仓库）。"""
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "config", "user.email", "test@example.com")
+    _git(tmp_path, "config", "user.name", "Test")
+    marker = tmp_path / "runs.txt"
+    metadata = _scoped_metadata(tmp_path, ["src/ui/**"], [sys.executable, "-c", APPEND_RUN, str(marker)])
+    ui = tmp_path / "src/ui/a.ts"
+    ui.parent.mkdir(parents=True)
+    ui.write_text("v1\n", encoding="utf-8")
+    logic = tmp_path / "src/logic/b.py"
+    logic.parent.mkdir(parents=True)
+    logic.write_text("l\n", encoding="utf-8")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-qm", "init")
+
+    assert run_all_verifiers(metadata, VerificationScope(str(tmp_path), ("src/ui/a.ts",), "d1")).passed
+    assert _runs(marker) == 1
+
+    assert run_all_verifiers(metadata, VerificationScope(str(tmp_path), ("src/logic/b.py",), "d2")).passed
+    assert _runs(marker) == 1, "作用域未变必须命中缓存"
+
+    ui.write_text("v2\n", encoding="utf-8")
+    assert run_all_verifiers(metadata, VerificationScope(str(tmp_path), ("src/ui/a.ts",), "d3")).passed
+    assert _runs(marker) == 2, "作用域内容变化必须重跑"
+
+
+def test_e_03_failure_not_cached(tmp_path: Path) -> None:
+    """E-03: 失败结果不入缓存；修复后必须真实重跑，通过后才缓存。"""
+    marker = tmp_path / "runs.txt"
+    flag = tmp_path / "ok.flag"
+    code = (
+        "from pathlib import Path; import sys; "
+        f"p=Path({str(marker)!r}); p.write_text((p.read_text() if p.exists() else '') + 'x'); "
+        f"sys.exit(0 if Path({str(flag)!r}).exists() else 1)"
+    )
+    metadata = _scoped_metadata(tmp_path, ["src/ui/**"], [sys.executable, "-c", code])
+    ui = tmp_path / "src/ui/a.ts"
+    ui.parent.mkdir(parents=True)
+    ui.write_text("v1\n", encoding="utf-8")
+    scope = VerificationScope(str(tmp_path), ("src/ui/a.ts",), "d1")
+
+    first = run_all_verifiers(metadata, scope)
+    assert not first.passed
+    assert _runs(marker) == 1
+
+    flag.write_text("ok\n", encoding="utf-8")
+    second = run_all_verifiers(metadata, scope)
+    assert second.passed
+    assert _runs(marker) == 2, "失败结果不得缓存，必须重跑"
+
+    third = run_all_verifiers(metadata, scope)
+    assert third.passed
+    assert _runs(marker) == 2, "通过后应命中缓存"
+
+
+def test_b_01_empty_scope_once(tmp_path: Path) -> None:
+    """B-01: 作用域无匹配且无缓存 → 执行一次并缓存；之后复用。"""
+    marker = tmp_path / "runs.txt"
+    metadata = _scoped_metadata(tmp_path, ["src/ui/**"], [sys.executable, "-c", APPEND_RUN, str(marker)])
+    logic = tmp_path / "src/logic/b.py"
+    logic.parent.mkdir(parents=True)
+    logic.write_text("l\n", encoding="utf-8")
+    scope = VerificationScope(str(tmp_path), ("src/logic/b.py",), "d1")
+
+    assert run_all_verifiers(metadata, scope).passed
+    assert _runs(marker) == 1
+    assert run_all_verifiers(metadata, scope).passed
+    assert _runs(marker) == 1
+
+
+def test_b_03_per_root_cache(tmp_path: Path) -> None:
+    """B-03: 缓存文件 per-root；两个 root 各自执行一次，不跨 root 复用、不报错。"""
+    for name in ("r1", "r2"):
+        root = tmp_path / name
+        root.mkdir()
+        marker = root / "runs.txt"
+        metadata = _scoped_metadata(root, ["src/ui/**"], [sys.executable, "-c", APPEND_RUN, str(marker)])
+        ui = root / "src/ui/a.ts"
+        ui.parent.mkdir(parents=True)
+        ui.write_text("v1\n", encoding="utf-8")
+        scope = VerificationScope(str(root), ("src/ui/a.ts",), "d1")
+
+        assert run_all_verifiers(metadata, scope).passed
+        assert _runs(marker) == 1
