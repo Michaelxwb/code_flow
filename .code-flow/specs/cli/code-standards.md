@@ -6,26 +6,51 @@ enforcement: required
 verifiers:
   - rule: RULE-cli-dependency-allowlist-001
     type: test
+    files:
+      - package.json
+      - tests/test_cli_spec_workflow.py
     config:
       argv: [python3, -m, pytest, -q, tests/test_cli_spec_workflow.py::test_package_manifest_includes_migrator_without_new_dependency]
       timeout: 30
   - rule: RULE-cli-user-content-preservation-001
     type: test
+    files:
+      - src/cli.js
+      - package.json
+      - tests/test_cli_merge_helpers.js
     config:
       argv: [node, tests/test_cli_merge_helpers.js]
       timeout: 30
   - rule: RULE-cli-platform-parity-001
     type: test
+    files:
+      - tests/test_adapter_parity.py
+      - src/adapters/*
+      - .claude/*
+      - .costrict/*
+      - .opencode/*
+      - .agents/*
     config:
       argv: [python3, -m, pytest, -q, tests/test_adapter_parity.py]
       timeout: 30
   - rule: RULE-cli-hook-guard-001
     type: test
+    files:
+      - tests/test_hook_command_robustness.py
+      - src/adapters/*
+      - src/core/code-flow/scripts/*.py
+      - .code-flow/scripts/*.py
     config:
       argv: [python3, -m, pytest, -q, tests/test_hook_command_robustness.py]
       timeout: 30
   - rule: RULE-cli-migration-transaction-001
     type: test
+    files:
+      - tests/test_spec_workflow_migrate.js
+      - src/migrate/*
+      - src/cli.js
+      - src/core/code-flow/scripts/*.py
+      - package.json
     config:
       argv: [node, tests/test_spec_workflow_migrate.js]
       timeout: 30

@@ -25,16 +25,43 @@ verifiers:
       check_id: bare-except
   - rule: RULE-scripts-hook-protocol-001
     type: test
+    files:
+      - tests/test_hook_command_robustness.py
+      - tests/test_cf_user_prompt_hook.py
+      - tests/test_cf_post_hook.py
+      - src/core/code-flow/scripts/*.py
+      - .code-flow/scripts/*.py
+      - src/adapters/*
     config:
       argv: [python3, -m, pytest, -q, tests/test_hook_command_robustness.py, tests/test_cf_user_prompt_hook.py, tests/test_cf_post_hook.py]
       timeout: 60
   - rule: RULE-scripts-context-gate-001
     type: test
+    files:
+      - tests/test_cf_spec_context.py
+      - tests/test_cf_spec_gate.py
+      - tests/test_cf_task_runtime.py
+      - src/core/code-flow/scripts/*.py
+      - .code-flow/scripts/*.py
     config:
       argv: [python3, -m, pytest, -q, tests/test_cf_spec_context.py, tests/test_cf_spec_gate.py, tests/test_cf_task_runtime.py]
       timeout: 60
   - rule: RULE-scripts-canonical-parity-001
     type: test
+    files:
+      - tests/test_spec_workflow_templates.py
+      - tests/test_adapter_parity.py
+      - tests/test_spec_workflow_residue.py
+      - src/*
+      - .code-flow/config.yml
+      - .code-flow/.gitignore
+      - .code-flow/specs/*
+      - .claude/*
+      - .costrict/*
+      - .opencode/*
+      - .agents/*
+      - AGENTS.md
+      - CLAUDE.md
     config:
       argv: [python3, -m, pytest, -q, tests/test_spec_workflow_templates.py, tests/test_adapter_parity.py, tests/test_spec_workflow_residue.py]
       timeout: 60

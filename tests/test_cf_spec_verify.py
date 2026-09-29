@@ -3,17 +3,19 @@
 
 import hashlib
 from pathlib import Path
+import re
 import subprocess
 import sys
 
 import yaml
 
 
-SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "core" / "code-flow" / "scripts"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = REPO_ROOT / "src" / "core" / "code-flow" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_spec_metadata import load_spec_metadata
-from cf_spec_verify import VerificationScope, evidence_is_fresh, run_all_verifiers
+from cf_spec_verify import VerificationScope, _matches_scope, evidence_is_fresh, run_all_verifiers
 
 
 def test_verified_pure_result_is_persisted_and_reused(tmp_path: Path, monkeypatch) -> None:
@@ -301,3 +303,100 @@ def test_b_03_per_root_cache(tmp_path: Path) -> None:
 
         assert run_all_verifiers(metadata, scope).passed
         assert _runs(marker) == 1
+
+
+REPO_TEST_SPECS = (
+    REPO_ROOT / ".code-flow" / "specs" / "cli" / "code-standards.md",
+    REPO_ROOT / ".code-flow" / "specs" / "scripts" / "code-standards.md",
+)
+_LITERAL_GLOB_CHARS = "*?["
+
+
+def _repo_test_verifiers():
+    entries = []
+    for spec_path in REPO_TEST_SPECS:
+        metadata = load_spec_metadata(str(spec_path))
+        entries.extend((spec_path, verifier) for verifier in metadata.verifiers if verifier.type == "test")
+    return entries
+
+
+def _argv_sources(verifier) -> tuple[str, ...]:
+    """argv 中真实存在的仓库内输入文件（pytest node id 去掉 :: 后缀）。"""
+    argv = verifier.config.get("argv")
+    if not isinstance(argv, list):
+        return ()
+    sources = []
+    for item in argv:
+        if not isinstance(item, str):
+            continue
+        candidate = item.split("::", 1)[0].strip().lstrip("./")
+        if "/" in candidate and (REPO_ROOT / candidate).is_file():
+            sources.append(candidate)
+    return tuple(sources)
+
+
+def test_s_06_repo_spec_scopes(tmp_path: Path) -> None:
+    """S-06: 本仓库 cli/scripts spec 的 test verifier 全部声明保守 files 作用域，
+    且真实作用域驱动缓存失效（作用域外命中 / 作用域内重跑）。"""
+    verifiers = _repo_test_verifiers()
+    assert len(verifiers) >= 8, "cli(5)+scripts(3) 的 test verifier 都必须纳入作用域校验"
+    for spec_path, verifier in verifiers:
+        relative = spec_path.relative_to(REPO_ROOT)
+        assert verifier.files, f"{relative}#{verifier.rule} 缺少非空 files 作用域"
+        for pattern in verifier.files:
+            assert not pattern.startswith("/") and not re.match(r"^[A-Za-z]:/", pattern), (
+                f"{relative}#{verifier.rule} files 禁止绝对路径: {pattern!r}"
+            )
+            assert ".." not in pattern.split("/"), f"{relative}#{verifier.rule} files 禁止 ..: {pattern!r}"
+        sources = _argv_sources(verifier)
+        assert sources, f"{relative}#{verifier.rule} argv 缺少可识别的仓库内测试文件"
+        for source in sources:
+            assert _matches_scope(source, verifier.files), (
+                f"{relative}#{verifier.rule} 作用域未覆盖真实输入 {source}: {list(verifier.files)}"
+            )
+
+    _, scoped_verifier = next(
+        (spec_path, verifier)
+        for spec_path, verifier in verifiers
+        if any(not any(char in pattern for char in _LITERAL_GLOB_CHARS) for pattern in verifier.files)
+    )
+    literal = next(
+        pattern for pattern in scoped_verifier.files
+        if not any(char in pattern for char in _LITERAL_GLOB_CHARS)
+    )
+    outside = "docs/notes.md"
+    assert not _matches_scope(outside, scoped_verifier.files), "演示用的作用域外文件不应命中声明的 glob"
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    _git(root, "init", "-q")
+    _git(root, "config", "user.email", "test@example.com")
+    _git(root, "config", "user.name", "Test")
+    in_scope = root / literal
+    in_scope.parent.mkdir(parents=True, exist_ok=True)
+    in_scope.write_text("v1\n", encoding="utf-8")
+    outside_path = root / outside
+    outside_path.parent.mkdir(parents=True)
+    outside_path.write_text("n1\n", encoding="utf-8")
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "init")
+
+    marker = tmp_path / "runs.txt"
+    metadata = _scoped_metadata(
+        root, list(scoped_verifier.files), [sys.executable, "-c", APPEND_RUN, str(marker)]
+    )
+
+    first = run_all_verifiers(metadata, VerificationScope(str(root), (literal,), "d1"))
+    assert first.passed
+    assert _runs(marker) == 1
+    assert (root / ".code-flow" / ".verifier-cache.json").is_file()
+
+    second = run_all_verifiers(metadata, VerificationScope(str(root), (outside,), "d2"))
+    assert second.passed
+    assert _runs(marker) == 1, "作用域外变更必须命中缓存"
+    assert second.evidence[0].details.get("cache_reused") is True
+
+    in_scope.write_text("v2\n", encoding="utf-8")
+    third = run_all_verifiers(metadata, VerificationScope(str(root), (literal,), "d3"))
+    assert third.passed
+    assert _runs(marker) == 2, "作用域内变更必须重跑"
