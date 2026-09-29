@@ -136,7 +136,7 @@
       "kind": "functional",
       "boundary": "真实需求目录 + cf_spec_gate + 归档流程",
       "owner": "TASK-05",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -148,7 +148,28 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "e9798535299b43539bb27da3537ac6da",
+        "executed_at": "2026-09-29T13:26:13.418416+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "e9798535299b43539bb27da3537ac6da",
+          "executed_at": "2026-09-29T13:26:13.418416+00:00"
+        }
+      ]
     },
     {
       "id": "S-05",

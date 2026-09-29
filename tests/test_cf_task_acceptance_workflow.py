@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
 """Regression guards for design-to-test traceability in cf-task skills."""
+import json
+import subprocess
+import sys
 from pathlib import Path
+
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = ROOT / "src" / "core" / "code-flow" / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+
+from cf_spec_context import BindingInput, bind_specs, new_context, save_context  # noqa: E402
+from cf_spec_resolver import resolve_candidates  # noqa: E402
+from cf_task_workflow import verify_e2e  # noqa: E402
+
 CODEX_TASK_ROOT = ROOT / "src" / "adapters" / "codex" / "skills"
 COMMAND_ROOTS = [
     ROOT / "src" / "adapters" / platform / "commands" / "cf-task"
@@ -104,3 +116,81 @@ def test_changed_workflow_deploy_copies_match_sources() -> None:
             ))
     for source, deployed in mappings:
         assert _read(source) == _read(deployed), f"out of sync: {deployed}"
+
+
+def _git(root: Path, *args: str) -> None:
+    subprocess.run(("git", *args), cwd=root, check=True, capture_output=True)
+
+
+def _stage_gate(root: Path, task_dir: Path, stage: str) -> dict:
+    result = subprocess.run(
+        (sys.executable, str(SCRIPTS / "cf_spec_gate.py"), "--task-dir", str(task_dir), "--stage", stage, "--json"),
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode in (0, 3), result.stderr
+    return json.loads(result.stdout)
+
+
+def test_s_04_review_gate_blocks_archive_until_verification(tmp_path: Path) -> None:
+    """S-04: review 未验证时归档前置门禁阻断；verify-e2e 终验后放行。"""
+    for path in _task_docs("archive"):
+        text = _read(path)
+        assert "--stage review" in text, f"{path}: archive 缺少 review 门禁"
+        assert "verify-e2e" in text, f"{path}: archive 缺少终验入口"
+    for path in _task_docs("verify-e2e"):
+        text = _read(path)
+        assert "需求级终验" in text and "review" in text, f"{path}: verify-e2e 未声明 review 终验职责"
+
+    root = tmp_path / "proj"
+    root.mkdir()
+    _git(root, "init", "-q")
+    _git(root, "config", "user.email", "t@t")
+    _git(root, "config", "user.name", "t")
+    (root / "src").mkdir()
+    (root / "src/app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    spec_dir = root / ".code-flow" / "specs" / "review"
+    spec_dir.mkdir(parents=True)
+    (spec_dir / "rules.md").write_text(
+        "---\n"
+        "id: review-rules\n"
+        "description: review rules\n"
+        "stages: [design, plan, code, review]\n"
+        "enforcement: required\n"
+        "verifiers:\n"
+        "  - rule: RULE-review-001\n"
+        "    type: test\n"
+        "    stage: review\n"
+        "    config:\n"
+        f"      argv: {json.dumps([sys.executable, '-c', 'pass'])}\n"
+        "      timeout: 30\n"
+        "---\n\n# Review Rules\n\n## Rules\n- [RULE-review-001] review rule.\n",
+        encoding="utf-8",
+    )
+    config = {"path_mapping": {"review": {"patterns": ["src/*"], "specs": [{"path": "review/rules.md"}]}}}
+    (root / ".code-flow/config.yml").write_text(yaml.safe_dump(config), encoding="utf-8")
+    req = root / ".code-flow" / "tasks" / "req"
+    req.mkdir(parents=True)
+    (req / "req.md").write_text(
+        "# Tasks: req\n\n- **Source**: req.design.md\n\n"
+        "## TASK-001: A\n\n- **Status**: done\n- **Acceptance-Refs**:\n",
+        encoding="utf-8",
+    )
+    candidate = resolve_candidates(str(root), "design", ["src/app.py"])[0]
+    context = new_context("req", (("test", "S-04"),))
+    context = bind_specs(context, (BindingInput(candidate, "path+agent", "review gate"),))
+    save_context(str(req / "spec-context.yml"), context)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "init")
+
+    assert _stage_gate(root, req, "code")["decision"] == "pass"
+    blocked = _stage_gate(root, req, "review")
+    assert blocked["decision"] == "block"
+    assert any(issue["rule_ref"] == "RULE-review-001" for issue in blocked["errors"])
+
+    result = verify_e2e(str(root), str(req))
+
+    assert result["decision"] == "pass", result
+    assert _stage_gate(root, req, "review")["decision"] == "pass"

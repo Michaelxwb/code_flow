@@ -5,7 +5,12 @@ description: Execute deferred E2E scenarios after all functional tests pass
 
 ## 使用场景
 
-E2E 测试依赖外部环境（数据库、API、浏览器等），在编码阶段默认跳过（状态 `e2e_deferred`）。当所有子任务的 functional 测试通过后，使用此命令统一执行 E2E 验收。
+本命令是**需求级终验**入口，在所有子任务的 functional 测试通过后统一执行：
+
+1. **review 层 verifier**：绑定规范中 `stage: review` 的 required verifier（e2e/acceptance/构建等重型验证）。遍历需求目录全部 task context，按 spec/rule 去重执行一次，证据写回全部相关 context；输出 `executed` / `reused` / `failed` 计数。
+2. **E2E 验收场景**：依赖外部环境（数据库、API、浏览器等）、编码阶段标记 `e2e_deferred` 的场景。
+
+失败不写 verified、不反转已 done 的任务状态；归档前必须 `decision=pass`。未声明 review verifier 且无 E2E 场景时为空操作（`reason=nothing_to_verify`）。
 
 ## 调用方式
 

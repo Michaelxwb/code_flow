@@ -17,7 +17,7 @@
 | S-01 | verification-layering.design.md#2.5 验收条件 | integration | 真实 git 仓库 + spec-context + 命令执行器 | TASK-02 | verified | ["python3","-m","pytest","-q","tests/test_cf_task_runtime.py","-k","s_01_done_gate_stage_split"] |
 | S-02 | verification-layering.design.md#2.5 验收条件 | integration | 多 task context + 真实命令 + 证据写回 | TASK-04 | verified | ["python3","-m","pytest","-q","tests/test_cf_e2e_flow.py","-k","s_02_review_aggregation"] |
 | S-03 | verification-layering.design.md#2.5 验收条件 | integration | 真实仓库 + owned files + 缓存文件 | TASK-03 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","s_03_scoped_cache"] |
-| S-04 | verification-layering.design.md#2.5 验收条件 | integration | 真实需求目录 + cf_spec_gate + 归档流程 | TASK-05 | planned | ["python3","-m","pytest","-q","tests/test_cf_task_acceptance_workflow.py","-k","s_04_review_gate"] |
+| S-04 | verification-layering.design.md#2.5 验收条件 | integration | 真实需求目录 + cf_spec_gate + 归档流程 | TASK-05 | verified | ["python3","-m","pytest","-q","tests/test_cf_task_acceptance_workflow.py","-k","s_04_review_gate"] |
 | S-05 | verification-layering.design.md#2.5 验收条件 | integration | 旧格式 spec（无 stage/files）+ finish | TASK-02 | verified | ["python3","-m","pytest","-q","tests/test_cf_task_runtime.py","-k","s_05_legacy_defaults"] |
 | S-06 | verification-layering.design.md#2.5 验收条件 | integration | 真实 .code-flow/specs + 缓存文件 | TASK-06 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","s_06_repo_spec_scopes"] |
 | E-01 | verification-layering.design.md#2.5 验收条件 | integration | 真实失败命令 + 证据写回 | TASK-04 | verified | ["python3","-m","pytest","-q","tests/test_cf_e2e_flow.py","-k","e_01_review_failure_incremental"] |
@@ -230,7 +230,7 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 - [2026-09-29] completed (done)
 ## TASK-05: archive review 门禁与四平台命令同步
 
-- **Status**: in-progress
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-04
 - **Source**: verification-layering.design.md#3.2 架构设计, #4.1 部署架构
@@ -241,29 +241,33 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 归档前置校验加入 review 门禁：refresh → `cf_spec_gate --stage code` → review 终验（`cf-task:verify-e2e`）→ 四维校验；archive 与 verify-e2e 命令文档四平台同步并部署。
 
 ### Checklist
-- [ ] archive 命令文档四平台同步：归档前依次 refresh → `cf_spec_gate --stage code` → review 终验 → 四维校验；review 未 verified 时阻断并输出 verify-e2e 命令
-- [ ] verify-e2e 命令文档四平台同步：职责扩展（聚合 review verifiers + acceptance E2E）
-- [ ] 部署副本同步（.claude / .costrict / .opencode / .agents）
-- [ ] [S-04][integration] 先写测试记录 RED：review 未 verified 时归档校验阻断并输出 verify-e2e 命令；终验通过后放行（真实边界：需求目录 + cf_spec_gate + 命令文档）
-- [ ] [S-04] 断言阻断原因与放行条件均符合门禁语义
-- [ ] [RULE-scripts-canonical-parity-001] verifier: `python3 -m pytest -q tests/test_adapter_parity.py tests/test_spec_workflow_templates.py tests/test_spec_workflow_residue.py tests/test_cf_sync.py`
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] archive 命令文档四平台同步：归档前依次 refresh → `cf_spec_gate --stage code` → review 终验 → `cf_spec_gate --stage review` → 四维校验；review 未 verified 时阻断并输出 verify-e2e 命令
+- [x] verify-e2e 命令文档四平台同步：职责扩展（聚合 review verifiers + acceptance E2E，executed/reused/failed 计数）
+- [x] 部署副本同步（.claude / .costrict / .opencode / .agents）
+- [x] [S-04][integration] 先写测试记录 RED：review 未 verified 时归档校验阻断并输出 verify-e2e 命令；终验通过后放行（真实边界：需求目录 + cf_spec_gate + 命令文档）
+- [x] [S-04] 断言阻断原因与放行条件均符合门禁语义
+- [x] [RULE-scripts-canonical-parity-001] verifier: `python3 -m pytest -q tests/test_adapter_parity.py tests/test_spec_workflow_templates.py tests/test_spec_workflow_residue.py tests/test_cf_sync.py`
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-04 | integration | 需求目录、cf_spec_gate、归档流程 | review 未 verified 阻断 + 终验后放行 | planned | planned | planned |
+| S-04 | integration | 需求目录、cf_spec_gate、归档流程 | review 未 verified 阻断 + 终验后放行 | planned | planned | verified |
 
 ### Acceptance Evidence
 
-> `cf-task-start` 在编码期填写 functional/manual 的 RED/GREEN 结果、每个关键断言的位置和真实组件证据；E2E 仅登记测试与命令，执行统一留给 verify-e2e。全部 functional 状态 verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-04 | FAIL: archive 四平台文档缺 `--stage review` 门禁（AssertionError） | PASS: `pytest -k s_04_review_gate` 1 passed | tests/test_cf_task_acceptance_workflow.py::test_s_04_review_gate_blocks_archive_until_verification（文档门禁 + 真实 gate：code=pass / review=block / verify_e2e=pass / review=pass） | 真实 git 仓库 + 需求目录 + cf_spec_gate 子进程 + verify_e2e + 四平台文档 | verified |
+- S-04: verified — automated command passed; run_id=e9798535299b43539bb27da3537ac6da (confirmed_by: runner)
 
 ### Log
 - [2026-09-29] created (draft)
 
 ---
 - [2026-09-29] started
+- [2026-09-29] completed (done)
 ## TASK-06: 本仓库 spec 作用域声明
 
 - **Status**: done
