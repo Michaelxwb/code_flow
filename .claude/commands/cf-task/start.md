@@ -209,6 +209,23 @@ python3 .code-flow/scripts/cf_task_parallel.py prepare --root "$PWD" \
 4. 完成时在 worktree 内提交全部改动（含任务文件 Checklist/Evidence/Status 更新），提交信息 `cf-task(<TASK-ID>): <标题>`。
 5. 返回摘要：TASK-ID、Status、验收命令及结果、提交 SHA、遗留问题。
 
+标准 worker prompt 模板（替换占位符后派发）：
+
+```
+你在隔离 worktree 中执行 <TASK-ID>：<worktree 绝对路径>。
+1) cd 到 worktree；先读 Spec Session（.code-flow/specs/_session/task-<name>.md）、任务文件的当前 TASK 段落与 design 来源章节；
+2) cf_spec_context.py start → 写验收测试记录 RED → 实现 → GREEN；
+3) 运行 cf_task_workflow.py finish --root "$PWD" --task <TASK-ID> --json；decision=pass 后【再】提交全部改动（含 finish 回写的 Evidence/状态）：git add -A && git commit -m "cf-task(<TASK-ID>): <标题>"；
+4) 返回摘要：TASK-ID、Status、验收命令与结果、commit SHA、遗留问题。
+```
+
+> 提交必须在 finish 之后：finish 通过后会回写 Evidence/状态；collect 默认会自动提交这些回写，但显式提交更清晰。
+
+子 agent 中断（取消/超时）时不要重新 prepare：检查该 worktree 的 `git status`、`git log <base>..HEAD` 与 marker——
+- 无改动且无 marker：直接接管，按单任务模式继续；
+- 有未提交改动或已有提交但未 done：在 worktree 内接管收尾（补实现/测试并 finish），再走 4.3 collect；
+- 已 done 且 marker 已清理：直接进入 4.3。
+
 平台不支持子 agent 时，不建 worktree，直接走 4.6 串行回退。
 
 #### 4.3 收集与校验
@@ -218,6 +235,7 @@ python3 .code-flow/scripts/cf_task_parallel.py collect --root "$PWD" --run-id <r
 ```
 
 - 每个任务必须 `ok: true`（改动已提交、Status 为 done/verified、marker 已清理、有提交）。
+- `collect` 在任务 done/verified 且 marker 已清理后，会自动提交 finish 回写的 Evidence/状态（`--no-commit` 关闭并回到严格模式）；finish 之外的未提交改动仍应人工确认。
 - 任一任务失败：停止本批次，不合并；保留 worktree 并列出失败原因。修复后重跑 collect；确认放弃时执行 4.5 cleanup。
 
 #### 4.4 回并主分支
@@ -240,6 +258,7 @@ git merge --no-ff -m "merge cf-task <TASK-ID>" <branch>
 ```
 
 - 仍出现冲突（主区期间有新合并）：按双方意图解决并重跑双方 functional 验收；通过后提交 merge。
+- 状态文件冲突（`spec-context.yml` / 任务 md 的覆盖状态列 / `.acceptance-manifest.json`）按确定性优先级解决：覆盖状态列取并集（两边各自 verified 的行保留 verified）；`spec-context.yml` 取已包含全量规则证据的一侧；manifest 多数情况按行自动合并，冲突时以任务文件为准重建后重跑 functional 场景。解决后必须 `cf_spec_context.py refresh` 收敛 hash，并重跑合并双方的 functional 验收与 `cf_spec_gate --stage code --json`，通过后提交 merge。
 - 合并后验收失败：记录合并前 HEAD 并 `git reset --hard <合并前HEAD>`（分支与 worktree 原样保留），回到 4.2 让对应子 agent 修复后重新 collect / rebase / 合并。
 
 3. 全部任务合并完成后进入 4.5 清理。

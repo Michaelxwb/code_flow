@@ -266,20 +266,12 @@ def prepare(root: Path, task_file: str, tasks: Sequence[str], run_id: Optional[s
             "base_head": outcome["base_head"], "worktrees": worktrees}
 
 
-def _collect_one(root: Path, entry: dict[str, object], base_head: str, task_file: str) -> dict[str, object]:
+def _collect_one(root: Path, entry: dict[str, object], base_head: str, task_file: str, commit: bool = True) -> dict[str, object]:
     task = str(entry["task"])
     path = Path(str(entry["path"]))
     branch = str(entry["branch"])
     if not path.is_dir():
         raise ParallelError("worktree_missing", f"{task}: worktree 不存在: {path}")
-    dirty = _status_paths(path)
-    if dirty:
-        raise ParallelError("worktree_dirty", f"{task}: 尚有未提交改动: {', '.join(dirty[:8])}")
-    if (path / MARKER).exists():
-        raise ParallelError("active_marker_present", f"{task}: marker 未清理，finish 未完成")
-    head = _run_git(path, ("rev-parse", "HEAD")).strip()
-    if head == base_head:
-        raise ParallelError("no_commits", f"{task}: worktree 无新提交")
     try:
         nodes = parse_task_file(str(path / task_file))
     except ValueError as exc:
@@ -287,12 +279,28 @@ def _collect_one(root: Path, entry: dict[str, object], base_head: str, task_file
     status = next((node.status for node in nodes if node.task_id == task), None)
     if status not in FINISHED_STATUSES:
         raise ParallelError("task_not_finished", f"{task}: Status 为 {status}，未通过 Done Gate")
+    if (path / MARKER).exists():
+        raise ParallelError("active_marker_present", f"{task}: marker 未清理，finish 未完成")
+    dirty = _status_paths(path)
+    if dirty:
+        # finish 会在通过后回写 Evidence/状态；任务已 done 且 marker 已清理时，
+        # 这些回写由 collect 自动提交（--no-commit 可关闭，保持严格模式）。
+        if not commit:
+            raise ParallelError(
+                "worktree_dirty",
+                f"{task}: 尚有未提交改动: {', '.join(dirty[:8])}；可在 worktree 内提交后重跑 collect，或去掉 --no-commit",
+            )
+        _run_git(path, ("add", "-A"))
+        _run_git(path, ("commit", "-q", "-m", f"cf-task({task}): finish 回写验收证据与任务状态"))
+    head = _run_git(path, ("rev-parse", "HEAD")).strip()
+    if head == base_head:
+        raise ParallelError("no_commits", f"{task}: worktree 无新提交")
     files = _run_git(root, ("diff", "--name-only", f"{base_head}..{branch}")).splitlines()
     return {"task": task, "branch": branch, "path": str(path), "head": head,
             "status": status, "files": sorted(item for item in files if item)}
 
 
-def collect(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, object]:
+def collect(root: Path, run_id: str, tasks: Optional[Sequence[str]], commit: bool = True) -> dict[str, object]:
     root = root.resolve()
     meta = _read_run_meta(root, run_id)
     entries = [item for item in meta.get("worktrees", []) if isinstance(item, dict)]
@@ -302,7 +310,7 @@ def collect(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str
     results: list[dict[str, object]] = []
     for entry in entries:
         try:
-            results.append(_collect_one(root, entry, str(meta["base_head"]), str(meta["task_file"])))
+            results.append(_collect_one(root, entry, str(meta["base_head"]), str(meta["task_file"]), commit))
         except ParallelError as exc:
             results.append({"task": str(entry.get("task", "")), "ok": False, "code": exc.code, "message": exc.message})
     ok = bool(results) and all(item.get("code") is None for item in results)
@@ -363,6 +371,7 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     for name in ("collect", "cleanup"):
         sub.choices[name].add_argument("--run-id", required=True)
     sub.choices["collect"].add_argument("--tasks", default="")
+    sub.choices["collect"].add_argument("--no-commit", action="store_true")
     sub.choices["cleanup"].add_argument("--force", action="store_true")
     args = parser.parse_args(argv)
     root = Path(args.root).resolve()
@@ -372,7 +381,7 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
             payload = prepare(root, args.task_file, tasks, args.run_id or None)
         elif args.action == "collect":
             tasks = [item.strip() for item in args.tasks.split(",") if item.strip()] or None
-            payload = collect(root, args.run_id, tasks)
+            payload = collect(root, args.run_id, tasks, commit=not args.no_commit)
         else:
             payload = cleanup(root, args.run_id, args.force)
     except ParallelError as exc:

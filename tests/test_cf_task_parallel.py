@@ -177,7 +177,7 @@ def test_collect_requires_finished_committed_and_clean(tmp_path: Path) -> None:
     prepare(root, TASK_FILE, ["TASK-001", "TASK-002"], "run-1")
     initial = collect(root, "run-1", None)
     assert initial["ok"] is False
-    assert {item["code"] for item in initial["results"]} == {"no_commits"}
+    assert {item["code"] for item in initial["results"]} == {"task_not_finished"}
     _finish_task(root, "TASK-001")
     _finish_task(root, "TASK-002", status="verified")
     done = collect(root, "run-1", None)
@@ -187,7 +187,7 @@ def test_collect_requires_finished_committed_and_clean(tmp_path: Path) -> None:
 
     stale = root / ".code-flow/worktrees/run-1/TASK-001"
     (stale / "impl-TASK-001.txt").write_text("dirty", encoding="utf-8")
-    dirty = collect(root, "run-1", ["TASK-001"])
+    dirty = collect(root, "run-1", ["TASK-001"], commit=False)
     assert dirty["ok"] is False and dirty["results"][0]["code"] == "worktree_dirty"
 
     _git(stale, "checkout", "--", "impl-TASK-001.txt")
@@ -212,6 +212,28 @@ def test_cleanup_removes_worktrees_and_only_merged_branches(tmp_path: Path) -> N
     assert unmerged["branch_deleted"] is False
     assert _git(root, "branch", "--list", "cf-task/*").strip() != ""
     assert not (root / ".code-flow/worktrees/run-1").exists()
+
+
+def test_collect_auto_commits_finish_writeback(tmp_path: Path) -> None:
+    """finish 回写（Evidence/状态）在任务 done 且 marker 清理后由 collect 自动提交。"""
+    root = _repo(tmp_path)
+    prepare(root, TASK_FILE, ["TASK-001"], "run-1")
+    _finish_task(root, "TASK-001")
+    worktree = root / ".code-flow/worktrees/run-1/TASK-001"
+    task_path = worktree / TASK_FILE
+    task_path.write_text(task_path.read_text(encoding="utf-8") + "\n<!-- finish writeback -->\n", encoding="utf-8")
+    assert _git(worktree, "status", "--porcelain").strip() != ""
+
+    result = collect(root, "run-1", ["TASK-001"])
+
+    assert result["ok"] is True, result
+    assert result["results"][0]["status"] == "done"
+    assert _git(worktree, "status", "--porcelain").strip() == ""
+    assert "finish 回写" in _git(worktree, "log", "-1", "--pretty=%s")
+
+    task_path.write_text(task_path.read_text(encoding="utf-8") + "\n<!-- late edit -->\n", encoding="utf-8")
+    strict = collect(root, "run-1", ["TASK-001"], commit=False)
+    assert strict["ok"] is False and strict["results"][0]["code"] == "worktree_dirty"
 
 
 def test_cleanup_refuses_dirty_worktree_without_force(tmp_path: Path) -> None:
