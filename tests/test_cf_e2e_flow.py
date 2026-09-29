@@ -4,16 +4,23 @@
 真实边界：真实 Runner 子进程 + 真实四平台命令文档。
 """
 import json
+import subprocess
 import sys
 from pathlib import Path
+
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
+from cf_acceptance_manifest import write_manifest  # noqa: E402
 from cf_acceptance_runner import run_manifest  # noqa: E402
+from cf_spec_context import BindingInput, bind_specs, load_context, new_context, save_context  # noqa: E402
+from cf_spec_resolver import resolve_candidates  # noqa: E402
 from cf_stop_hook import _acceptance_gap  # noqa: E402
+from cf_task_workflow import verify_e2e  # noqa: E402
 
 
 def _manifest(tmp_path: Path, functional: list, e2e: list) -> str:
@@ -93,3 +100,137 @@ def test_verified_status_passes_stop_acceptance_gap() -> None:
         "S-01: verified", "S-01: planned"
     )
     assert _acceptance_gap("TASK-001", done_planned, coverage) != ""
+
+
+def _runs(marker: Path) -> int:
+    return len(marker.read_text(encoding="utf-8")) if marker.exists() else 0
+
+
+def _review_argv(marker: Path, flag: Path = None) -> list:
+    code = (
+        "from pathlib import Path; import sys; "
+        f"p=Path({str(marker)!r}); p.write_text((p.read_text() if p.exists() else '') + 'x')"
+    )
+    if flag is not None:
+        code += f"; sys.exit(0 if Path({str(flag)!r}).exists() else 1)"
+    return [sys.executable, "-c", code]
+
+
+def _write_review_spec(root: Path, argv: list) -> None:
+    spec_dir = root / ".code-flow" / "specs" / "review"
+    spec_dir.mkdir(parents=True)
+    (spec_dir / "rules.md").write_text(
+        "---\n"
+        "id: review-rules\n"
+        "description: review rules\n"
+        "stages: [design, plan, code, review]\n"
+        "enforcement: required\n"
+        "verifiers:\n"
+        "  - rule: RULE-review-001\n"
+        "    type: test\n"
+        "    stage: review\n"
+        '    files: ["src/**"]\n'
+        f"    config: {{argv: {json.dumps(argv)}, timeout: 30}}\n"
+        "---\n\n# Review Rules\n\n## Rules\n- [RULE-review-001] review rule.\n",
+        encoding="utf-8",
+    )
+
+
+def _review_task_text(e2e_command: list) -> str:
+    command = json.dumps(e2e_command)
+    return (
+        "# Tasks: req\n\n- **Source**: req.design.md\n\n"
+        "## Acceptance Coverage\n\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n"
+        "|--------|---------|---------|-------------|---------|------|---------|\n"
+        f"| E-99 | req.design.md#2.5 | E2E | real boundary | TASK-001 | planned | {command} |\n\n"
+        "## TASK-001: A\n\n- **Status**: done\n- **Acceptance-Refs**: E-99\n\n"
+        "### Acceptance Contract\n\n| E-99 | E2E | real | pass | planned | planned | planned |\n\n"
+        "### Acceptance Evidence\n\n### Log\n- [2026-09-29] created (draft)\n\n"
+        "## TASK-002: B\n\n- **Status**: done\n- **Acceptance-Refs**:\n\n"
+        "### Acceptance Contract\n\n### Acceptance Evidence\n\n### Log\n- [2026-09-29] created (draft)\n"
+    )
+
+
+def _review_requirement(
+    tmp_path: Path, argv: list, with_contexts: bool = True, with_manifest: bool = True
+) -> tuple:
+    root = tmp_path / "proj"
+    root.mkdir()
+    subprocess.run(("git", "init", "-q"), cwd=root, check=True)
+    subprocess.run(("git", "config", "user.email", "t@t"), cwd=root, check=True)
+    subprocess.run(("git", "config", "user.name", "t"), cwd=root, check=True)
+    (root / "src").mkdir()
+    (root / "src/app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    if with_contexts:
+        _write_review_spec(root, argv)
+    config = {"path_mapping": {"review": {"patterns": ["src/*"], "specs": [{"path": "review/rules.md"}]}}}
+    (root / ".code-flow").mkdir(exist_ok=True)
+    (root / ".code-flow/config.yml").write_text(yaml.safe_dump(config), encoding="utf-8")
+    req = root / ".code-flow" / "tasks" / "req"
+    req.mkdir(parents=True)
+    task_file = req / "req.md"
+    task_file.write_text(_review_task_text([sys.executable, "-c", "pass"]), encoding="utf-8")
+    if with_manifest:
+        write_manifest(str(task_file), str(req / ".acceptance-manifest.json"))
+    if with_contexts:
+        candidate = resolve_candidates(str(root), "design", ["src/app.py"])[0]
+        context = new_context("req", (("test", "S-02"),))
+        context = bind_specs(context, (BindingInput(candidate, "path+agent", "review rule"),))
+        save_context(str(req / "spec-context.yml"), context)
+        nested = req / "nested"
+        nested.mkdir()
+        save_context(str(nested / "spec-context.yml"), context)
+    subprocess.run(("git", "add", "-A"), cwd=root, check=True)
+    subprocess.run(("git", "commit", "-qm", "init"), cwd=root, check=True)
+    return root, req
+
+
+def test_s_02_review_aggregation(tmp_path: Path) -> None:
+    """S-02: 两个 task context 绑定同一 review rule → 只执行一次且两 context 均 verified。"""
+    marker = tmp_path / "runs.txt"
+    root, req = _review_requirement(tmp_path, _review_argv(marker))
+
+    result = verify_e2e(str(root), str(req))
+
+    assert result["decision"] == "pass", result
+    assert _runs(marker) == 1, "同一 review rule 跨 context 只执行一次"
+    assert result["executed"] == 1 and result["reused"] == 0
+    for ctx_path in (req / "spec-context.yml", req / "nested/spec-context.yml"):
+        status = load_context(str(ctx_path)).bindings[0].rules[0].stage_status["review"]
+        assert status.status == "verified"
+
+
+def test_e_01_review_failure_incremental(tmp_path: Path) -> None:
+    """E-01: review 失败不写 verified、任务状态不反转；修复后增量重跑。"""
+    marker = tmp_path / "runs.txt"
+    flag = tmp_path / "ok.flag"
+    root, req = _review_requirement(tmp_path, _review_argv(marker, flag))
+
+    blocked = verify_e2e(str(root), str(req))
+
+    assert blocked["decision"] == "block"
+    assert blocked["failed"] == ["review-rules#RULE-review-001"]
+    assert _runs(marker) == 1
+    status = load_context(str(req / "spec-context.yml")).bindings[0].rules[0].stage_status["review"]
+    assert status.status == "unverified", "失败不得写 verified"
+    assert "- **Status**: done" in (req / "req.md").read_text(encoding="utf-8")
+
+    flag.write_text("ok\n", encoding="utf-8")
+    passed = verify_e2e(str(root), str(req))
+
+    assert passed["decision"] == "pass", passed
+    assert _runs(marker) == 2, "失败结果不得缓存，必须重跑"
+    assert passed["executed"] == 1
+
+
+def test_b_02_empty_noop(tmp_path: Path) -> None:
+    """B-02: 无 review rules 且无 acceptance 时 verify-e2e 为 no-op pass。"""
+    root, req = _review_requirement(
+        tmp_path, _review_argv(tmp_path / "runs.txt"), with_contexts=False, with_manifest=False
+    )
+
+    result = verify_e2e(str(root), str(req))
+
+    assert result["decision"] == "pass"
+    assert result.get("reason") == "nothing_to_verify"

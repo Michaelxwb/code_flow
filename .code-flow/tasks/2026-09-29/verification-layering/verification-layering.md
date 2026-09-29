@@ -15,16 +15,16 @@
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |
 |--------|---------|---------|-------------|---------|------|---------|
 | S-01 | verification-layering.design.md#2.5 验收条件 | integration | 真实 git 仓库 + spec-context + 命令执行器 | TASK-02 | verified | ["python3","-m","pytest","-q","tests/test_cf_task_runtime.py","-k","s_01_done_gate_stage_split"] |
-| S-02 | verification-layering.design.md#2.5 验收条件 | integration | 多 task context + 真实命令 + 证据写回 | TASK-04 | planned | ["python3","-m","pytest","-q","tests/test_cf_e2e_flow.py","-k","s_02_review_aggregation"] |
+| S-02 | verification-layering.design.md#2.5 验收条件 | integration | 多 task context + 真实命令 + 证据写回 | TASK-04 | verified | ["python3","-m","pytest","-q","tests/test_cf_e2e_flow.py","-k","s_02_review_aggregation"] |
 | S-03 | verification-layering.design.md#2.5 验收条件 | integration | 真实仓库 + owned files + 缓存文件 | TASK-03 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","s_03_scoped_cache"] |
 | S-04 | verification-layering.design.md#2.5 验收条件 | integration | 真实需求目录 + cf_spec_gate + 归档流程 | TASK-05 | planned | ["python3","-m","pytest","-q","tests/test_cf_task_acceptance_workflow.py","-k","s_04_review_gate"] |
 | S-05 | verification-layering.design.md#2.5 验收条件 | integration | 旧格式 spec（无 stage/files）+ finish | TASK-02 | verified | ["python3","-m","pytest","-q","tests/test_cf_task_runtime.py","-k","s_05_legacy_defaults"] |
 | S-06 | verification-layering.design.md#2.5 验收条件 | integration | 真实 .code-flow/specs + 缓存文件 | TASK-06 | planned | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","s_06_repo_spec_scopes"] |
-| E-01 | verification-layering.design.md#2.5 验收条件 | integration | 真实失败命令 + 证据写回 | TASK-04 | planned | ["python3","-m","pytest","-q","tests/test_cf_e2e_flow.py","-k","e_01_review_failure_incremental"] |
+| E-01 | verification-layering.design.md#2.5 验收条件 | integration | 真实失败命令 + 证据写回 | TASK-04 | verified | ["python3","-m","pytest","-q","tests/test_cf_e2e_flow.py","-k","e_01_review_failure_incremental"] |
 | E-02 | verification-layering.design.md#2.5 验收条件 | unit | metadata 加载器 + 真实 spec 文件 | TASK-01 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_metadata.py","-k","verifier_stage"] |
 | E-03 | verification-layering.design.md#2.5 验收条件 | integration | 真实命令先失败后修复 + 缓存 | TASK-03 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","e_03_failure_not_cached"] |
 | B-01 | verification-layering.design.md#2.5 验收条件 | integration | 缓存 + 作用域交集 | TASK-03 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","b_01_empty_scope_once"] |
-| B-02 | verification-layering.design.md#2.5 验收条件 | unit | verify-e2e 空集 | TASK-04 | planned | ["python3","-m","pytest","-q","tests/test_cf_e2e_flow.py","-k","b_02_empty_noop"] |
+| B-02 | verification-layering.design.md#2.5 验收条件 | unit | verify-e2e 空集 | TASK-04 | verified | ["python3","-m","pytest","-q","tests/test_cf_e2e_flow.py","-k","b_02_empty_noop"] |
 | B-03 | verification-layering.design.md#2.5 验收条件 | unit | per-root 缓存隔离 | TASK-03 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","b_03_per_root_cache"] |
 | B-04 | verification-layering.design.md#2.5 验收条件 | unit | status 输出结构 | TASK-01 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_context.py","-k","b_04"] |
 
@@ -181,7 +181,7 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 - [2026-09-29] completed (done)
 ## TASK-04: verify-e2e 目录级聚合终验
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-03
 - **Source**: verification-layering.design.md#3.2 架构设计, #3.4 接口设计, #3.5 质量实现方案
@@ -192,34 +192,42 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 扩展 `cf-task:verify-e2e` 为需求级终验：遍历需求目录全部 task context，聚合 review 层 required rules 并去重执行一次，证据写回所有相关 context；与 acceptance E2E 同入口；输出 executed/reused/failed。
 
 ### Checklist
-- [ ] `collect_review_bindings(directory)`：遍历需求目录全部 spec-context.yml，收集 review 绑定，读取失败 fail-closed 报文件与原因
-- [ ] verify_e2e 聚合去重（同一 spec/rule/作用域只执行一次），证据写回全部相关 task context
-- [ ] 与 acceptance manifest E2E 场景同一入口执行；输出 executed/reused/failed 计数
-- [ ] 失败不写 verified；已 done 任务状态不反转
-- [ ] [S-02][integration] 先写测试记录 RED：两个 task 绑定同一 review rule，只执行一次且两个 context 均 verified（真实边界：多 task context + marker 计数命令）
-- [ ] [S-02] 断言命令执行计数 = 1、两个 context 的 review 状态均 verified
-- [ ] [E-01][integration] 先写测试记录 RED：review 失败不写 verified、archive 保持阻断；修复后重跑仅执行失败/输入变化项
-- [ ] [E-01] 断言任务 done 状态不变、重跑执行集合符合增量规则
-- [ ] [B-02][unit] 空集 no-op：无 review rules 且无 acceptance 时 decision=pass（兼容）
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] `collect_review_bindings(directory)`：遍历需求目录全部 spec-context.yml，收集 review 绑定，读取失败 fail-closed 报文件与原因
+- [x] verify_e2e 聚合去重（同一 spec/rule/作用域只执行一次），证据写回全部相关 task context
+- [x] 与 acceptance manifest E2E 场景同一入口执行；输出 executed/reused/failed 计数
+- [x] 失败不写 verified；已 done 任务状态不反转
+- [x] [S-02][integration] 先写测试记录 RED：两个 task 绑定同一 review rule，只执行一次且两个 context 均 verified（真实边界：多 task context + marker 计数命令）
+- [x] [S-02] 断言命令执行计数 = 1、两个 context 的 review 状态均 verified
+- [x] [E-01][integration] 先写测试记录 RED：review 失败不写 verified、archive 保持阻断；修复后重跑仅执行失败/输入变化项
+- [x] [E-01] 断言任务 done 状态不变、重跑执行集合符合增量规则
+- [x] [B-02][unit] 空集 no-op：无 review rules 且无 acceptance 时 decision=pass（兼容）
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-02 | integration | 多 task context、证据写回、真实命令 | 去重执行一次、双 context verified | planned | planned | planned |
-| E-01 | integration | 真实失败命令、证据写回 | 失败不 verified、增量重跑、任务状态不变 | planned | planned | planned |
-| B-02 | unit | verify-e2e 空集路径 | decision=pass | planned | planned | planned |
+| S-02 | integration | 多 task context、证据写回、真实命令 | 去重执行一次、双 context verified | planned | planned | verified |
+| E-01 | integration | 真实失败命令、证据写回 | 失败不 verified、增量重跑、任务状态不变 | planned | planned | verified |
+| B-02 | unit | verify-e2e 空集路径 | decision=pass | planned | planned | verified |
 
 ### Acceptance Evidence
 
-> `cf-task-start` 在编码期填写 functional/manual 的 RED/GREEN 结果、每个关键断言的位置和真实组件证据；E2E 仅登记测试与命令，执行统一留给 verify-e2e。全部 functional 状态 verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-02 | FAIL: review verifier 未执行（runs=0）、两个 context 均未写 verified（AssertionError） | PASS: `pytest -k s_02_review_aggregation` 1 passed | tests/test_cf_e2e_flow.py::test_s_02_review_aggregation（runs=1 / executed=1 / 两个 context review=verified） | 真实 git 仓库 + 两个 task context + 真实子进程命令 + 真实 manifest E2E | verified |
+| E-01 | FAIL: verify_e2e 未阻断失败 review（AssertionError，decision 非 block） | PASS: `pytest -k e_01_review_failure_incremental` 1 passed | tests/test_cf_e2e_flow.py::test_e_01_review_failure_incremental（失败 runs=1 不写 verified、任务仍 done；修复后 runs=2 增量重跑） | 真实失败/成功命令 + 双 context 写回 + 任务文件状态 | verified |
+| B-02 | FAIL: 无 manifest 时 FileNotFoundError（未兼容空集） | PASS: `pytest -k b_02_empty_noop` 1 passed | tests/test_cf_e2e_flow.py::test_b_02_empty_noop（reason=nothing_to_verify） | 无 review rules + 无 acceptance 的真实需求目录 | verified |
+- S-02: verified — automated command passed; run_id=b1faf69ffba8416682a54cac15cd8fe8 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=b1faf69ffba8416682a54cac15cd8fe8 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=b1faf69ffba8416682a54cac15cd8fe8 (confirmed_by: runner)
 
 ### Log
 - [2026-09-29] created (draft)
 
 ---
-
+- [2026-09-29] started
+- [2026-09-29] completed (done)
 ## TASK-05: archive review 门禁与四平台命令同步
 
 - **Status**: draft

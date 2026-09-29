@@ -1,7 +1,7 @@
 version: 1
 task: verification-layering
 enforcement: required
-updated_at: '2026-09-29T13:00:28.684224+00:00'
+updated_at: '2026-09-29T13:14:10.176241+00:00'
 sources:
 - type: cli
   ref: bind
@@ -46,7 +46,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-02
           item_id: RULE-scripts-no-print-debug-001
-          artifact_sha256: 519a07b4b7fc36c49e8fe76c279c2a7b00afb941c2198f4d08e73db06e0584b1
+          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
         decision: null
         evidence: []
       code:
@@ -87,6 +87,17 @@ bindings:
           details:
             checked_files: 0
             violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-09-29T13:19:19.675449+00:00'
+          status: verified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: e587607cb8e75a78177f47b355529c1c24f49917990c52bcf270e3a40dcb0e74
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
       review:
         status: pending
         refs: []
@@ -115,7 +126,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-03
           item_id: RULE-scripts-no-bare-except-001
-          artifact_sha256: 519a07b4b7fc36c49e8fe76c279c2a7b00afb941c2198f4d08e73db06e0584b1
+          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
         decision: null
         evidence: []
       code:
@@ -156,6 +167,17 @@ bindings:
           details:
             checked_files: 3
             violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-09-29T13:19:19.676147+00:00'
+          status: verified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: e587607cb8e75a78177f47b355529c1c24f49917990c52bcf270e3a40dcb0e74
+          result_sha256: 8bbe901a3c311f3bf0dfcb1a20e0273dbb7c512f78efd965abbf5d43e4afbdb3
+          error_code: null
+          details:
+            checked_files: 3
+            violations: []
       review:
         status: pending
         refs: []
@@ -184,7 +206,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-02
           item_id: RULE-scripts-hook-protocol-001
-          artifact_sha256: 519a07b4b7fc36c49e8fe76c279c2a7b00afb941c2198f4d08e73db06e0584b1
+          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
         decision: null
         evidence: []
       code:
@@ -267,6 +289,31 @@ bindings:
               30 passed in 0.66s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-09-29T13:19:15.207723+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: e587607cb8e75a78177f47b355529c1c24f49917990c52bcf270e3a40dcb0e74
+          result_sha256: 70ae0412cd28791fbc20a34a29eb408f95df07015ce2e760509f27caf16e5908
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            exit_code: 0
+            stdout_sha256: 3a60881985e5b882e6e5b583389975331233f60b4ac3e99060b336e4eb109183
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '..............................                                           [100%]
+
+              30 passed in 0.72s
+
+              '
       review:
         status: pending
         refs: []
@@ -295,7 +342,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-01
           item_id: RULE-scripts-context-gate-001
-          artifact_sha256: 519a07b4b7fc36c49e8fe76c279c2a7b00afb941c2198f4d08e73db06e0584b1
+          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
         decision: null
         evidence: []
       code:
@@ -378,6 +425,31 @@ bindings:
               52 passed in 3.72s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-09-29T13:19:19.157342+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: e587607cb8e75a78177f47b355529c1c24f49917990c52bcf270e3a40dcb0e74
+          result_sha256: 8f3d8603314f0cc51e62425ec74cfded94cdb09032b34648bf97cbd477972378
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            stdout_sha256: dc10d318b97e4a5f667b1ede427e7617eb2b2ed5fbc2813afc989692c980121e
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '....................................................                     [100%]
+
+              52 passed in 3.84s
+
+              '
       review:
         status: pending
         refs: []
@@ -406,7 +478,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-05
           item_id: RULE-scripts-canonical-parity-001
-          artifact_sha256: 519a07b4b7fc36c49e8fe76c279c2a7b00afb941c2198f4d08e73db06e0584b1
+          artifact_sha256: b3386353de6fff9e560d2d9de16e370615562f3795dfed1ae7e095b3e508c71b
         decision: null
         evidence: []
       code:
@@ -487,6 +559,31 @@ bindings:
             output: '..................                                                       [100%]
 
               18 passed in 0.42s
+
+              '
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-09-29T13:19:19.675037+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: e587607cb8e75a78177f47b355529c1c24f49917990c52bcf270e3a40dcb0e74
+          result_sha256: ec409aa8306e52908cebb8eb4a8bc3630ae6e2bce549d70ae90a4ad7074196e1
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            stdout_sha256: 3bbb215f351550f6a49ca26a4a4f1a59796c44e70cfa771efef2775978f90e9b
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '..................                                                       [100%]
+
+              18 passed in 0.40s
 
               '
       review:
