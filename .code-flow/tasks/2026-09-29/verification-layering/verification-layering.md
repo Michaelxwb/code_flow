@@ -34,7 +34,7 @@
 
 ## TASK-01: Spec 元数据扩展与两级状态兼容
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**:
 - **Source**: verification-layering.design.md#3.3 数据设计, #3.4 接口设计, #2.5 验收条件
@@ -80,7 +80,7 @@
 - [2026-09-29] completed (done)
 ## TASK-02: Done Gate 分层执行与 review 登记
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-01
 - **Source**: verification-layering.design.md#3.2 架构设计, #3.4 接口设计, #3.5 质量实现方案
@@ -126,7 +126,7 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 - [2026-09-29] completed (done)
 ## TASK-03: 作用域缓存（command/test）
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-02
 - **Source**: verification-layering.design.md#3.3 数据设计, #3.4 接口设计, #3.5 质量实现方案
@@ -181,7 +181,7 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 - [2026-09-29] completed (done)
 ## TASK-04: verify-e2e 目录级聚合终验
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-03
 - **Source**: verification-layering.design.md#3.2 架构设计, #3.4 接口设计, #3.5 质量实现方案
@@ -230,7 +230,7 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 - [2026-09-29] completed (done)
 ## TASK-05: archive review 门禁与四平台命令同步
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-04
 - **Source**: verification-layering.design.md#3.2 架构设计, #4.1 部署架构
@@ -270,7 +270,7 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 - [2026-09-29] completed (done)
 ## TASK-06: 本仓库 spec 作用域声明
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-03
 - **Source**: verification-layering.design.md#2.3 功能方案, #3.3 数据设计
