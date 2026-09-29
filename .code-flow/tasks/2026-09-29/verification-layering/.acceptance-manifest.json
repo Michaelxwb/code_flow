@@ -52,7 +52,7 @@
       "kind": "functional",
       "boundary": "多 task context + 真实命令 + 证据写回",
       "owner": "TASK-04",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -64,7 +64,28 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "b1faf69ffba8416682a54cac15cd8fe8",
+        "executed_at": "2026-09-29T13:19:14.350302+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "b1faf69ffba8416682a54cac15cd8fe8",
+          "executed_at": "2026-09-29T13:19:14.350302+00:00"
+        }
+      ]
     },
     {
       "id": "S-03",
@@ -199,7 +220,7 @@
       "kind": "functional",
       "boundary": "真实失败命令 + 证据写回",
       "owner": "TASK-04",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -211,7 +232,28 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "b1faf69ffba8416682a54cac15cd8fe8",
+        "executed_at": "2026-09-29T13:19:14.350302+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "b1faf69ffba8416682a54cac15cd8fe8",
+          "executed_at": "2026-09-29T13:19:14.350302+00:00"
+        }
+      ]
     },
     {
       "id": "E-02",
@@ -346,7 +388,7 @@
       "kind": "functional",
       "boundary": "verify-e2e 空集",
       "owner": "TASK-04",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -358,7 +400,28 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "b1faf69ffba8416682a54cac15cd8fe8",
+        "executed_at": "2026-09-29T13:19:14.350302+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "b1faf69ffba8416682a54cac15cd8fe8",
+          "executed_at": "2026-09-29T13:19:14.350302+00:00"
+        }
+      ]
     },
     {
       "id": "B-03",
