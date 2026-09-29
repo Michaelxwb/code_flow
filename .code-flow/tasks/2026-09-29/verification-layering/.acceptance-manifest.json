@@ -178,7 +178,7 @@
       "kind": "functional",
       "boundary": "真实 .code-flow/specs + 缓存文件",
       "owner": "TASK-06",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -190,7 +190,28 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "1f07a9184cd84e40b02cb94cb0613b91",
+        "executed_at": "2026-09-29T13:16:12.639900+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "1f07a9184cd84e40b02cb94cb0613b91",
+          "executed_at": "2026-09-29T13:16:12.639900+00:00"
+        }
+      ]
     },
     {
       "id": "E-01",

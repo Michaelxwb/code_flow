@@ -87,6 +87,17 @@ bindings:
           details:
             checked_files: 0
             violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-09-29T13:16:18.933181+00:00'
+          status: verified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: 11b70686ac191854c7c79a668f8b5e38db4f5479847d87173739c7d1aedc755a
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
       review:
         status: pending
         refs: []
@@ -155,6 +166,17 @@ bindings:
           error_code: null
           details:
             checked_files: 3
+            violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-09-29T13:16:18.933630+00:00'
+          status: verified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: 11b70686ac191854c7c79a668f8b5e38db4f5479847d87173739c7d1aedc755a
+          result_sha256: 391b244089c85f50a45a0bffc21abae5968dcd07efd606b83f9d8e9b6b0d956b
+          error_code: null
+          details:
+            checked_files: 1
             violations: []
       review:
         status: pending
@@ -265,6 +287,31 @@ bindings:
             output: '..............................                                           [100%]
 
               30 passed in 0.66s
+
+              '
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-09-29T13:16:13.572170+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: 11b70686ac191854c7c79a668f8b5e38db4f5479847d87173739c7d1aedc755a
+          result_sha256: 70af222fbdb9a97acbda23a25b757b2d7e7a942f696d9499d3391814a3a950d8
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            exit_code: 0
+            stdout_sha256: 829696ed6afd8d53ed9155137975453ee9e5a9cee5628b3fa0ed03ac2774fd0c
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '..............................                                           [100%]
+
+              30 passed in 0.76s
 
               '
       review:
@@ -378,6 +425,31 @@ bindings:
               52 passed in 3.72s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-09-29T13:16:18.377076+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: 11b70686ac191854c7c79a668f8b5e38db4f5479847d87173739c7d1aedc755a
+          result_sha256: d42ad01ff08390943a89ddfedae7569165564013391e3c6df31c767a412f36bc
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            stdout_sha256: e733c4b108f763e010b96e82739dbfc1d4d9c7f98e72b911031f45bda93eca46
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '....................................................                     [100%]
+
+              52 passed in 4.04s
+
+              '
       review:
         status: pending
         refs: []
@@ -487,6 +559,31 @@ bindings:
             output: '..................                                                       [100%]
 
               18 passed in 0.42s
+
+              '
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-09-29T13:16:18.932740+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: 11b70686ac191854c7c79a668f8b5e38db4f5479847d87173739c7d1aedc755a
+          result_sha256: 2ea91e2cb881062d794d1f4b7903566e0c44c9238d8ed850f16d8c4f41d417a5
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            stdout_sha256: ed3d19286295fd5d35f1c667946a3fa375145539ff7f67689f1f37eb9d00c244
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '..................                                                       [100%]
+
+              18 passed in 0.41s
 
               '
       review:

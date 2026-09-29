@@ -19,7 +19,7 @@
 | S-03 | verification-layering.design.md#2.5 验收条件 | integration | 真实仓库 + owned files + 缓存文件 | TASK-03 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","s_03_scoped_cache"] |
 | S-04 | verification-layering.design.md#2.5 验收条件 | integration | 真实需求目录 + cf_spec_gate + 归档流程 | TASK-05 | planned | ["python3","-m","pytest","-q","tests/test_cf_task_acceptance_workflow.py","-k","s_04_review_gate"] |
 | S-05 | verification-layering.design.md#2.5 验收条件 | integration | 旧格式 spec（无 stage/files）+ finish | TASK-02 | verified | ["python3","-m","pytest","-q","tests/test_cf_task_runtime.py","-k","s_05_legacy_defaults"] |
-| S-06 | verification-layering.design.md#2.5 验收条件 | integration | 真实 .code-flow/specs + 缓存文件 | TASK-06 | planned | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","s_06_repo_spec_scopes"] |
+| S-06 | verification-layering.design.md#2.5 验收条件 | integration | 真实 .code-flow/specs + 缓存文件 | TASK-06 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","s_06_repo_spec_scopes"] |
 | E-01 | verification-layering.design.md#2.5 验收条件 | integration | 真实失败命令 + 证据写回 | TASK-04 | planned | ["python3","-m","pytest","-q","tests/test_cf_e2e_flow.py","-k","e_01_review_failure_incremental"] |
 | E-02 | verification-layering.design.md#2.5 验收条件 | unit | metadata 加载器 + 真实 spec 文件 | TASK-01 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_metadata.py","-k","verifier_stage"] |
 | E-03 | verification-layering.design.md#2.5 验收条件 | integration | 真实命令先失败后修复 + 缓存 | TASK-03 | verified | ["python3","-m","pytest","-q","tests/test_cf_spec_verify.py","-k","e_03_failure_not_cached"] |
@@ -258,7 +258,7 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 
 ## TASK-06: 本仓库 spec 作用域声明
 
-- **Status**: in-progress
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-03
 - **Source**: verification-layering.design.md#2.3 功能方案, #3.3 数据设计
@@ -290,7 +290,9 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 
 > 复核说明：8 条 test verifier 全部保持 code 层（无 `stage: review` 标注），规则文本未拆分/未改动；每规则恰有一条自动 verifier（regex 规则沿用既有 check），作用域按保守原则纳入 argv 测试文件、被测脚本（src/cli.js、src/core/code-flow/scripts、.code-flow/scripts）、适配器模板（src/adapters、四平台部署目录）。本仓库 spec 直接生效；`src/core/code-flow/specs/**` 通用模板不含这两个 spec，无需同步。
 > 回归：`pytest -q tests/test_cf_spec_verify.py tests/test_spec_workflow_templates.py tests/test_adapter_parity.py tests/test_cf_learn_spec_updates.py tests/test_cf_spec_metadata.py tests/test_spec_workflow_residue.py tests/test_cf_spec_gate.py` 58 passed；全量 `pytest --tb=short -q` 439 passed。
+- S-06: verified — automated command passed; run_id=1f07a9184cd84e40b02cb94cb0613b91 (confirmed_by: runner)
 
 ### Log
 - [2026-09-29] created (draft)
 - [2026-09-29] started
+- [2026-09-29] completed (done)
