@@ -71,6 +71,8 @@
 | B-04 | FAIL: refresh 未补 review 状态；status 输出无 stages 键（`pytest -k b_04` 2 failed: assertion / KeyError 'stages'） | PASS: `pytest -k b_04` 2 passed | tests/test_cf_spec_context.py::test_b_04_refresh_backfills_review_stage_status / test_b_04_status_command_outputs_code_and_review | 真实 spec-context + `_refresh_binding` / `_status_command` | verified |
 - E-02: verified — automated command passed; run_id=cd6496ba75c54ab580752bd6a979e7e1 (confirmed_by: runner)
 - B-04: verified — automated command passed; run_id=cd6496ba75c54ab580752bd6a979e7e1 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=d6b8208b81674101b5d9c805f4d1d24b (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=d6b8208b81674101b5d9c805f4d1d24b (confirmed_by: runner)
 
 ### Log
 - [2026-09-29] created (draft)
@@ -117,6 +119,8 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 | S-05 | FAIL: `deferred_review` AttributeError（旧格式执行行为本身已通过） | PASS: `pytest -k s_05_legacy_defaults` 1 passed | tests/test_cf_task_runtime.py::test_s_05_legacy_defaults（旧格式 verifier 执行 / deferred=0） | 真实 git 仓库 + 旧格式 spec + 真实命令 | verified |
 - S-01: verified — automated command passed; run_id=42fb5a42e39740cb91fe37d0cf4bbe57 (confirmed_by: runner)
 - S-05: verified — automated command passed; run_id=42fb5a42e39740cb91fe37d0cf4bbe57 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=d6b8208b81674101b5d9c805f4d1d24b (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=d6b8208b81674101b5d9c805f4d1d24b (confirmed_by: runner)
 
 ### Log
 - [2026-09-29] created (draft)
@@ -172,6 +176,10 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 - E-03: verified — automated command passed; run_id=c401664b71ad429f88b39f411c85fa09 (confirmed_by: runner)
 - B-01: verified — automated command passed; run_id=c401664b71ad429f88b39f411c85fa09 (confirmed_by: runner)
 - B-03: verified — automated command passed; run_id=c401664b71ad429f88b39f411c85fa09 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=d6b8208b81674101b5d9c805f4d1d24b (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=d6b8208b81674101b5d9c805f4d1d24b (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=d6b8208b81674101b5d9c805f4d1d24b (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=d6b8208b81674101b5d9c805f4d1d24b (confirmed_by: runner)
 
 ### Log
 - [2026-09-29] created (draft)
@@ -221,6 +229,9 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 - S-02: verified — automated command passed; run_id=b1faf69ffba8416682a54cac15cd8fe8 (confirmed_by: runner)
 - E-01: verified — automated command passed; run_id=b1faf69ffba8416682a54cac15cd8fe8 (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=b1faf69ffba8416682a54cac15cd8fe8 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=d6b8208b81674101b5d9c805f4d1d24b (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=d6b8208b81674101b5d9c805f4d1d24b (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=d6b8208b81674101b5d9c805f4d1d24b (confirmed_by: runner)
 
 ### Log
 - [2026-09-29] created (draft)
@@ -261,6 +272,7 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 |--------|-----|-------|---------|-------------|------|
 | S-04 | FAIL: archive 四平台文档缺 `--stage review` 门禁（AssertionError） | PASS: `pytest -k s_04_review_gate` 1 passed | tests/test_cf_task_acceptance_workflow.py::test_s_04_review_gate_blocks_archive_until_verification（文档门禁 + 真实 gate：code=pass / review=block / verify_e2e=pass / review=pass） | 真实 git 仓库 + 需求目录 + cf_spec_gate 子进程 + verify_e2e + 四平台文档 | verified |
 - S-04: verified — automated command passed; run_id=e9798535299b43539bb27da3537ac6da (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=d6b8208b81674101b5d9c805f4d1d24b (confirmed_by: runner)
 
 ### Log
 - [2026-09-29] created (draft)
@@ -303,6 +315,7 @@ Done Gate 只调度 code 层 verifier；review 规则登记为待终验（状态
 > 复核说明：8 条 test verifier 全部保持 code 层（无 `stage: review` 标注），规则文本未拆分/未改动；每规则恰有一条自动 verifier（regex 规则沿用既有 check），作用域按保守原则纳入 argv 测试文件、被测脚本（src/cli.js、src/core/code-flow/scripts、.code-flow/scripts）、适配器模板（src/adapters、四平台部署目录）。本仓库 spec 直接生效；`src/core/code-flow/specs/**` 通用模板不含这两个 spec，无需同步。
 > 回归：`pytest -q tests/test_cf_spec_verify.py tests/test_spec_workflow_templates.py tests/test_adapter_parity.py tests/test_cf_learn_spec_updates.py tests/test_cf_spec_metadata.py tests/test_spec_workflow_residue.py tests/test_cf_spec_gate.py` 58 passed；全量 `pytest --tb=short -q` 439 passed。
 - S-06: verified — automated command passed; run_id=1f07a9184cd84e40b02cb94cb0613b91 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=d6b8208b81674101b5d9c805f4d1d24b (confirmed_by: runner)
 
 ### Log
 - [2026-09-29] created (draft)

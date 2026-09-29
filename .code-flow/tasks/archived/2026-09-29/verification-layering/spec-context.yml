@@ -1,7 +1,7 @@
 version: 1
 task: verification-layering
 enforcement: required
-updated_at: '2026-09-29T13:22:03.086559+00:00'
+updated_at: '2026-09-29T13:40:10.159474+00:00'
 sources:
 - type: cli
   ref: bind
@@ -46,7 +46,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-02
           item_id: RULE-scripts-no-print-debug-001
-          artifact_sha256: 7a50380a2aa4d436c864cd783926d11721fa44acbf5e052ad5afd4c5df4712c8
+          artifact_sha256: bbedad0be78c8bb4a16b3bc87c75a2b0fdfab9e5b1e0d5c21f5fec6397d52657
         decision: null
         evidence: []
       code:
@@ -137,7 +137,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-03
           item_id: RULE-scripts-no-bare-except-001
-          artifact_sha256: 7a50380a2aa4d436c864cd783926d11721fa44acbf5e052ad5afd4c5df4712c8
+          artifact_sha256: bbedad0be78c8bb4a16b3bc87c75a2b0fdfab9e5b1e0d5c21f5fec6397d52657
         decision: null
         evidence: []
       code:
@@ -228,7 +228,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-02
           item_id: RULE-scripts-hook-protocol-001
-          artifact_sha256: 7a50380a2aa4d436c864cd783926d11721fa44acbf5e052ad5afd4c5df4712c8
+          artifact_sha256: bbedad0be78c8bb4a16b3bc87c75a2b0fdfab9e5b1e0d5c21f5fec6397d52657
         decision: null
         evidence: []
       code:
@@ -389,7 +389,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-01
           item_id: RULE-scripts-context-gate-001
-          artifact_sha256: 7a50380a2aa4d436c864cd783926d11721fa44acbf5e052ad5afd4c5df4712c8
+          artifact_sha256: bbedad0be78c8bb4a16b3bc87c75a2b0fdfab9e5b1e0d5c21f5fec6397d52657
         decision: null
         evidence: []
       code:
@@ -550,7 +550,7 @@ bindings:
         - artifact: verification-layering.md
           section_id: TASK-05
           item_id: RULE-scripts-canonical-parity-001
-          artifact_sha256: 7a50380a2aa4d436c864cd783926d11721fa44acbf5e052ad5afd4c5df4712c8
+          artifact_sha256: bbedad0be78c8bb4a16b3bc87c75a2b0fdfab9e5b1e0d5c21f5fec6397d52657
         decision: null
         evidence: []
       code:
