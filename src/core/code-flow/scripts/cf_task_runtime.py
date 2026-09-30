@@ -30,7 +30,7 @@ from cf_spec_resolver import resolve_candidates, SpecCandidate
 from cf_spec_session import context_sha256
 from cf_spec_verify import VerificationEvidence, VerificationScope, run_all_verifiers
 from cf_core import load_config, phase_timing, resolve_quality_loop
-from cf_acceptance_schema import load_manifest, validate_execution_baseline, verified_evidence
+from cf_acceptance_schema import load_manifest, validate_execution_baseline
 from cf_exec_base import execution_session
 
 
@@ -53,25 +53,6 @@ class DoneResult:
 
 def _context_path(task_dir: str) -> str:
     return str(Path(task_dir) / "spec-context.yml")
-
-
-def _manual_manifest_issue(task_dir: str, owner: str = "") -> str:
-    path = Path(task_dir) / ".acceptance-manifest.json"
-    if not path.is_file():
-        return ""
-    try:
-        import json
-
-        data = load_manifest(path)
-        pending = [
-            item.get("id", "unknown")
-            for item in data.get("scenarios", [])
-            if item.get("kind") == "manual" and not verified_evidence(item)
-            and (not owner or not isinstance(item.get("owner"), str) or not item.get("owner") or item.get("owner") == owner)
-        ]
-        return f"manual 场景未完成: {', '.join(pending)}" if pending else ""
-    except (OSError, ValueError, TypeError):
-        return "acceptance manifest invalid"
 
 
 def _acceptance_baseline_issue(task_dir: str, owner: str) -> str:
@@ -207,11 +188,10 @@ def _run_acceptance(root: str, task_dir: str, owner: str, include_e2e: bool,
     baseline_issue = _acceptance_baseline_issue(task_dir, owner)
     if baseline_issue:
         return baseline_issue
-    manual_issue = _manual_manifest_issue(task_dir, owner)
-    if manual_issue:
-        return manual_issue
+    # manual 场景的人工确认统一在需求级终验（verify-e2e + confirm-manual）完成，
+    # 不在每个任务的 Done Gate 中逐任务阻断。
     if cheap:
-        # 轻量门禁：只做 manifest 基线与 manual 检查，不执行 functional 场景；
+        # 轻量门禁：只做 manifest 基线检查，不执行 functional 场景；
         # 场景命令由 finish 的全量 Done Gate 执行。
         return ""
     manifest_path = Path(task_dir) / ".acceptance-manifest.json"

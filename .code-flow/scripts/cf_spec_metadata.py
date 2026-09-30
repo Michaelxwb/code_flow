@@ -241,8 +241,6 @@ def _parse_verifiers(
         rule = item.get("rule")
         kind = item.get("type")
         config = item.get("config")
-        explicit_stage = "stage" in item
-        stage = item.get("stage", "code")
         if not isinstance(rule, str) or not _RULE_ID_RE.fullmatch(rule):
             line = _verifier_field_line(raw, index, "rule")
             raise SpecMetadataError(path, f"verifiers[{index}].rule", line, "必须是稳定 RULE ID")
@@ -252,6 +250,11 @@ def _parse_verifiers(
         if not isinstance(config, dict):
             line = _verifier_field_line(raw, index, "config")
             raise SpecMetadataError(path, f"verifiers[{index}].config", line, "必须是 mapping")
+        explicit_stage = "stage" in item
+        # manual（人工验收）默认跟随 spec 声明的 review 阶段，落在需求级终验一次性确认；
+        # spec 未声明 review 时保持 code（逐任务确认）；显式 stage 始终优先。
+        default_stage = "review" if kind == "manual" and "review" in stages else "code"
+        stage = item.get("stage", default_stage)
         if explicit_stage and (not isinstance(stage, str) or stage not in ALLOWED_VERIFIER_STAGES):
             line = _verifier_field_line(raw, index, "stage")
             raise SpecMetadataError(path, f"verifiers[{index}].stage", line, f"必须是 {sorted(ALLOWED_VERIFIER_STAGES)} 之一")

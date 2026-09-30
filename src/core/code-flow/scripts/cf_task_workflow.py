@@ -2,16 +2,19 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import os
-import re
 from pathlib import Path
-from typing import IO, Optional, Sequence
+import re
+from typing import IO, Mapping, Optional, Sequence
 import sys
 
+from cf_acceptance_manifest import record_manual_evidence
 from cf_acceptance_runner import run_manifest
 from cf_acceptance_schema import load_manifest, validate_execution_baseline, verified_evidence
-from cf_spec_context import ContextError, _git_changes, _run_git, load_context, save_context
+from cf_spec_context import (ContextError, Decision, SpecContext, _git_changes, _run_git,
+                             apply_decision, load_context, save_context)
 from cf_spec_gate import validate_stage
 from cf_spec_metadata import load_spec_metadata
 from cf_spec_verify import VerificationScope, _git_tracked_files, run_all_verifiers
@@ -88,7 +91,57 @@ def collect_review_bindings(directory: Path) -> dict[str, dict[str, object]]:
     return targets
 
 
-def _run_review_targets(root: str, targets: dict[str, dict[str, object]]) -> dict[str, object]:
+def _confirmed_manual(spec_id: str, entries: Sequence[tuple[Path, SpecContext]],
+                      rule_ref: str) -> Optional[Mapping[str, object]]:
+    """从任意绑定该 rule 的 context 读取有效的用户确认记录。"""
+    for _, context in entries:
+        for binding in context.bindings:
+            if binding.spec_id != spec_id:
+                continue
+            for rule in binding.rules:
+                if rule.ref != rule_ref:
+                    continue
+                status = rule.stage_status.get("review")
+                decision = status.decision if status is not None else None
+                if (status is not None and status.status == "verified"
+                        and decision is not None and decision.kind == "manual_verification"):
+                    return {
+                        "reason": decision.reason,
+                        "confirmed_by": decision.confirmed_by,
+                        "confirmed_at": decision.confirmed_at,
+                        "source": decision.source,
+                    }
+    return None
+
+
+def _pending_manual_rules(
+    root: str, targets: Mapping[str, Mapping[str, object]]
+) -> tuple[list[dict[str, object]], dict[str, dict[str, Mapping[str, object]]]]:
+    """收集 review 层 manual 规则：待用户确认清单 + 已确认项的 verifier 入参。"""
+    pending: list[dict[str, object]] = []
+    confirmations: dict[str, dict[str, Mapping[str, object]]] = {}
+    for spec_id in sorted(targets):
+        info = targets[spec_id]
+        metadata = load_spec_metadata(str(Path(root) / ".code-flow/specs" / str(info["path"])))
+        manual = {item.rule: item for item in metadata.verifiers if item.type == "manual"}
+        for rule_ref, entries in sorted(info["rules"].items()):
+            confirmation = _confirmed_manual(spec_id, entries, rule_ref)
+            if confirmation is not None:
+                confirmations.setdefault(spec_id, {})[rule_ref] = confirmation
+            elif rule_ref in manual:
+                verifier = manual[rule_ref]
+                pending.append({
+                    "ref": f"{spec_id}#{rule_ref}",
+                    "spec_id": spec_id,
+                    "checklist": verifier.config.get("checklist", ""),
+                    "owner": verifier.config.get("owner", ""),
+                    "bound_contexts": len(entries),
+                })
+    return pending, confirmations
+
+
+def _run_review_targets(root: str, targets: dict[str, dict[str, object]],
+                        confirmations: Optional[Mapping[str, Mapping[str, Mapping[str, object]]]] = None) -> dict[str, object]:
     """执行 review 层 verifier（按 spec/rule 去重），证据写回全部相关 context。"""
     executed = reused = 0
     failures: list[str] = []
@@ -97,7 +150,7 @@ def _run_review_targets(root: str, targets: dict[str, dict[str, object]]) -> dic
     for spec_id in sorted(targets):
         info = targets[spec_id]
         metadata = load_spec_metadata(str(Path(root) / ".code-flow/specs" / str(info["path"])))
-        result = run_all_verifiers(metadata, scope, stage="review")
+        result = run_all_verifiers(metadata, scope, (confirmations or {}).get(spec_id), stage="review")
         by_rule: dict[str, object] = {}
         for evidence in result.evidence:
             rule_ref = evidence.verifier_ref.split("#", 1)[-1]
@@ -139,18 +192,43 @@ def verify_e2e(root: str, directory: str) -> dict[str, object]:
     manifest = Path(directory) / ".acceptance-manifest.json"
     if not targets and not manifest.exists():
         return {"decision": "pass", "executed": 0, "reused": 0, "failed": [], "reason": "nothing_to_verify"}
-    review = _run_review_targets(root, targets) if targets else {"executed": 0, "reused": 0, "failed": []}
-    acceptance: dict[str, object] = {"decision": "pass", "results": []}
+    manual_scenarios: list[dict[str, object]] = []
+    functional_required: list[object] = []
     if manifest.exists():
         data = load_manifest(manifest)
         validate_execution_baseline(manifest, data)
         bound_task = (manifest.parent / str(data.get("task_file", ""))).resolve()
         if {task.resolve() for task, _, _ in tasks} != {bound_task}:
             return {"decision": "block", "reason": "acceptance_manifest_task_mismatch"}
-        required = [row["id"] for row in data["scenarios"] if row.get("kind", "functional") != "e2e"
-                    and not verified_evidence(row)]
-        if required:
-            return {"decision": "block", "reason": "functional_or_manual_evidence_missing", "scenarios": required}
+        for row in data["scenarios"]:
+            if verified_evidence(row):
+                continue
+            if row.get("kind") == "manual":
+                manual_scenarios.append({
+                    "id": row.get("id"),
+                    "owner": row.get("owner", ""),
+                    "boundary": row.get("boundary", ""),
+                })
+            elif row.get("kind", "functional") != "e2e":
+                functional_required.append(row["id"])
+    if functional_required:
+        return {"decision": "block", "reason": "functional_or_manual_evidence_missing", "scenarios": functional_required}
+    try:
+        pending_rules, confirmations = _pending_manual_rules(root, targets)
+    except ValueError as exc:
+        return {"decision": "block", "reason": "manual_review_context_unreadable", "detail": str(exc)}
+    if pending_rules or manual_scenarios:
+        return {
+            "decision": "block",
+            "reason": "manual_confirmation_required",
+            "manual_rules": pending_rules,
+            "manual_scenarios": manual_scenarios,
+            "next": ("向用户展示待确认清单并取得明确回复后，运行 confirm-manual 批量写入确认，再重跑 verify-e2e；"
+                     "Agent 不得代确认。"),
+        }
+    review = _run_review_targets(root, targets, confirmations) if targets else {"executed": 0, "reused": 0, "failed": []}
+    acceptance: dict[str, object] = {"decision": "pass", "results": []}
+    if manifest.exists():
         acceptance = run_manifest(str(manifest), root, write_evidence=True, only_e2e=True)
     decision = "pass" if not review["failed"] and acceptance.get("decision") == "pass" else "block"
     result = {
@@ -167,13 +245,79 @@ def verify_e2e(root: str, directory: str) -> dict[str, object]:
     return result
 
 
+def confirm_manual(root: str, directory: str, refs: Sequence[str], scenarios: Sequence[str],
+                   confirmed_by: str, source: str, reason: str = "", evidence: str = "") -> dict[str, object]:
+    """用户确认后批量写入 manual 验收记录（review 层 spec 规则 + manifest 场景）。
+
+    只有用户明确确认后才能调用；Agent 不得代确认（agent 身份会被拒绝）。
+    """
+    owner = confirmed_by.strip()
+    if not owner:
+        raise ValueError("confirm-manual 需要 --confirmed-by <用户身份>")
+    if not source.strip():
+        raise ValueError("confirm-manual 需要 --source <用户回复原文>")
+    targets = collect_review_bindings(Path(directory))
+    pending_rules, confirmations = _pending_manual_rules(root, targets)
+    known = {str(item["ref"]) for item in pending_rules}
+    for spec_id, by_rule in confirmations.items():
+        known.update(f"{spec_id}#{rule_ref}" for rule_ref in by_rule)
+    chosen = [ref.strip() for ref in refs if ref.strip()] or sorted(str(item["ref"]) for item in pending_rules)
+    unknown = sorted(ref for ref in chosen if ref not in known)
+    if unknown:
+        raise ValueError(f"unknown_or_not_review_manual_ref: {', '.join(unknown)}")
+    reason_text = reason.strip() or "需求级人工验收确认"
+    confirmed_at = datetime.now(timezone.utc).isoformat()
+    records: dict[Path, SpecContext] = {}
+    for ref in chosen:
+        spec_id, rule_ref = ref.split("#", 1)
+        for ctx_path, _ in targets[spec_id]["rules"][rule_ref]:
+            context = records.get(ctx_path) or load_context(str(ctx_path))
+            decision = Decision("manual_verification", reason_text, owner, confirmed_at, source.strip(), None)
+            records[ctx_path] = apply_decision(context, spec_id, rule_ref, "review", decision)
+    for ctx_path in sorted(records, key=str):
+        save_context(str(ctx_path), records[ctx_path])
+    recorded_scenarios: list[str] = []
+    manifest = Path(directory) / ".acceptance-manifest.json"
+    if manifest.is_file():
+        data = load_manifest(manifest)
+        rows = {str(row.get("id")): row for row in data.get("scenarios", [])}
+        if scenarios:
+            chosen_scenarios = [sid.strip() for sid in scenarios if sid.strip()]
+        else:
+            chosen_scenarios = [sid for sid, row in rows.items()
+                                if row.get("kind") == "manual" and not verified_evidence(row)]
+        for sid in chosen_scenarios:
+            row = rows.get(sid)
+            if row is None or row.get("kind") != "manual":
+                raise ValueError(f"unknown_manual_scenario: {sid}")
+            if verified_evidence(row):
+                continue
+            record_manual_evidence(str(manifest), sid, owner, evidence.strip() or source.strip())
+            recorded_scenarios.append(sid)
+    if not chosen and not recorded_scenarios:
+        raise ValueError("no_pending_manual_confirmation")
+    return {
+        "ok": True,
+        "rules": chosen,
+        "scenarios": recorded_scenarios,
+        "confirmed_by": owner,
+        "confirmed_at": confirmed_at,
+        "note": "确认已写入 spec-context / manifest；重跑 verify-e2e 完成终验",
+    }
+
+
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("finish", "block", "resume", "verify-e2e"))
+    parser.add_argument("action", choices=("finish", "block", "resume", "verify-e2e", "confirm-manual"))
     parser.add_argument("--root", default=os.getcwd())
     parser.add_argument("--task-dir", required=True)
     parser.add_argument("--task", default="")
     parser.add_argument("--reason", default="")
+    parser.add_argument("--refs", default="")
+    parser.add_argument("--scenarios", default="")
+    parser.add_argument("--confirmed-by", default="")
+    parser.add_argument("--source", default="")
+    parser.add_argument("--evidence", default="")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
@@ -184,6 +328,11 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
         recover_transition(root)
         if args.action == "verify-e2e":
             result = verify_e2e(root, directory)
+        elif args.action == "confirm-manual":
+            refs = [item.strip() for item in args.refs.split(",") if item.strip()]
+            scenarios = [item.strip() for item in args.scenarios.split(",") if item.strip()]
+            result = confirm_manual(root, directory, refs, scenarios, args.confirmed_by, args.source,
+                                    args.reason, args.evidence)
         else:
             task = locate_task_file(directory, args.task)
             if task is None:

@@ -89,7 +89,7 @@ RED 证据写入 `Acceptance Evidence`：
 
 ### 3.2 GREEN 与验收证据
 
-1. 执行 functional 验收和受影响范围的回归测试；E2E 只登记场景、断言、真实边界和命令，RED/GREEN 都不在编码阶段执行，统一留给 verify-e2e。
+1. 执行 functional 验收和受影响范围的回归测试；E2E 只登记场景、断言、真实边界和命令，RED/GREEN 都不在编码阶段执行，统一留给 verify-e2e；manual 场景只登记 `manual_pending`（原因、边界、验收方式），人工确认统一留给 verify-e2e。
 2. 对每个预期结果记录断言位置与 fixture/构造路径；环境未就绪的错误不得冒充有效 RED，明确记录尚未验证。
 3. 由 runner 写入最新状态和运行历史；不要覆盖原契约、RED 证据或历史失败。functional 必须 verified，已登记的 E2E 在实现阶段允许 e2e_deferred。
 4. 测试未收集、命令未实际执行或缺少关键断言，都不算验证完成。失败重跑必须使旧 verified 失效。
@@ -110,10 +110,10 @@ RED 证据写入 `Acceptance Evidence`：
 
 只有同时满足以下条件才能自动完成：
 - 所有 checklist 项均为 `[x]`
-- functional/manual 在契约、证据和覆盖表中均为 `verified`；仅 E2E 可为 `e2e_deferred`，仍不得遗留未登记的 `planned` / `pending` / `TBD`
+- functional 在契约、证据和覆盖表中均为 `verified`；E2E 可为 `e2e_deferred`，`manual` 场景与 review 层 manual 规则延后到需求级终验由用户确认，仍不得遗留未登记的 `planned` / `pending` / `TBD`
 - 测试层级未低于 design，关键真实边界没有被 mock 绕过
 - 每个预期结果都有具体断言位置，functional 验收命令和回归测试均已实际通过；E2E 留到终验执行
-- `manual` 场景已有用户确认和可复核记录
+- 显式 `stage: code` 的 manual 规则已有用户确认和可复核记录；默认 review 层的 manual 规则与 manual 场景在 verify-e2e 一次性确认
 
 满足后，执行唯一收尾入口：
 
@@ -122,6 +122,8 @@ python3 .code-flow/scripts/cf_task_workflow.py finish --root "$PWD" --task-dir "
 ```
 
 该命令先校验完整任务身份与锁定 manifest，再执行 Done Gate（acceptance 场景 + spec verifiers + 全量 validation.yml，含 heavy）；通过后以可恢复事务更新 done、Log、Updated 并清理 marker。只有 `decision=pass` 才输出完成并启动下一 TASK。禁止手动设置 done 或传入自报的 gate_passed 绕过验证。
+
+Done Gate 只执行 code 层验证；review 层 manual 规则与 manual 场景不逐任务确认，延后到需求级 verify-e2e（返回 `manual_confirmation_required` 时按该命令的「人工验收确认」流程一次性确认）。
 
 任一验收条件不满足时保持 `in-progress`，明确列出缺口，不能标记为 `done`。
 

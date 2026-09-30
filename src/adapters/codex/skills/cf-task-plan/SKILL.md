@@ -240,7 +240,7 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 
 ### Acceptance Evidence
 
-> `cf-task-start` 在编码期填写 functional/manual 的 RED/GREEN 结果、每个关键断言的位置和真实组件证据；E2E 仅登记测试与命令，执行统一留给 verify-e2e。全部 functional 状态 verified 后任务才可 done。
+> `cf-task-start` 在编码期填写 functional 的 RED/GREEN 结果、每个关键断言的位置和真实组件证据；manual 场景只登记原因/边界/验收方式，人工确认与 E2E 执行统一留给 verify-e2e。全部 functional 状态 verified 后任务才可 done。
 
 ### Log
 - [<当前日期>] created (draft)

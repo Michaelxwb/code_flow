@@ -161,14 +161,21 @@ def _acceptance_gap(task_id: str, section: str, coverage: str) -> str:
     for scenario in scenarios:
         coverage_rows = [line for line in coverage.splitlines() if scenario_line(line, scenario)]
         cells = coverage_rows[0].strip().strip("|").split("|") if coverage_rows else []
-        deferred = status.group(1).strip() == "done" and len(cells) >= 3 and cells[2].strip().lower() == "e2e"
-        allowed = {"verified", "e2e_deferred"} if deferred else {"verified"}
+        task_status = status.group(1).strip()
+        row_kind = cells[2].strip().lower() if len(cells) >= 3 else ""
+        if task_status == "done" and row_kind == "e2e":
+            allowed = {"verified", "e2e_deferred"}
+        elif task_status == "done" and row_kind == "manual":
+            # manual 人工验收延后到需求级 verify-e2e 由用户一次性确认（confirm-manual 写回 verified）
+            allowed = {"verified", "planned", "pending", "manual_pending"}
+        else:
+            allowed = {"verified"}
         states = []
         for body in (contract, evidence, coverage):
             found = [line_status(line, scenario) for line in body.splitlines() if scenario_line(line, scenario)]
             states.append(found[-1] if found else "")
         if not all(state in allowed for state in states):
-            return f"{task_id} 的 {scenario} 状态未闭环（planned/pending/TBD/failed 或缺少 verified；仅实现阶段 E2E 可 e2e_deferred）"
+            return f"{task_id} 的 {scenario} 状态未闭环（planned/pending/TBD/failed 或缺少 verified；仅实现阶段 E2E 可 e2e_deferred、manual 可 manual_pending）"
     return ""
 
 

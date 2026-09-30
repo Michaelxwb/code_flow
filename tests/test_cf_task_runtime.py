@@ -2,6 +2,7 @@
 """S-05/S-07/E-05 E2E coverage for active diff runtime gates."""
 
 from pathlib import Path
+import json
 import subprocess
 import sys
 
@@ -124,7 +125,7 @@ def test_gate_re_run_keeps_marker_hash_stable(tmp_path: Path) -> None:
     assert route_prompt(str(root), ("src/app.py",), "test").mode == "task"
 
 
-def _manual_repo(tmp_path: Path) -> tuple[Path, Path]:
+def _manual_repo(tmp_path: Path, stages: str = "[code]") -> tuple[Path, Path]:
     _git(tmp_path, "init", "-q")
     _git(tmp_path, "config", "user.email", "test@example.com")
     _git(tmp_path, "config", "user.name", "Test")
@@ -134,7 +135,7 @@ def _manual_repo(tmp_path: Path) -> tuple[Path, Path]:
     specs = tmp_path / ".code-flow/specs/app"
     specs.mkdir(parents=True)
     (specs / "rules.md").write_text(
-        "---\nid: manual-runtime\ndescription: manual rule\nstages: [code]\nenforcement: required\n"
+        f"---\nid: manual-runtime\ndescription: manual rule\nstages: {stages}\nenforcement: required\n"
         "verifiers:\n  - rule: RULE-manual-001\n    type: manual\n    config:\n"
         "      checklist: review the change\n      owner: maintainers\n"
         "---\n# Rule\n## Rules\n- [RULE-manual-001] Change must be reviewed by a human owner.\n",
@@ -317,6 +318,32 @@ def test_not_applicable_decision_survives_done_gate(tmp_path: Path) -> None:
     assert result.decision == "pass"
     assert status.status == "not_applicable", "human N/A decision must not be clobbered by the gate"
     assert status.decision == decision
+
+
+def test_review_manual_rule_defers_done_gate(tmp_path: Path) -> None:
+    """spec 声明 review 的 manual 规则不逐任务阻断，延后到需求级终验确认。"""
+    root, task_dir = _manual_repo(tmp_path, stages="[design, plan, code, review]")
+    start_active_task(str(root), ".code-flow/tasks/demo", "TASK-001", "ctx")
+
+    result = run_done_gate(str(root), str(task_dir))
+
+    assert result.decision == "pass", result.message
+    assert result.deferred_review == 1
+    status = load_context(str(task_dir / "spec-context.yml")).bindings[0].rules[0].stage_status["review"]
+    assert status.status == "pending"
+
+
+def test_manual_acceptance_scenario_does_not_block_done_gate(tmp_path: Path) -> None:
+    """manifest manual 场景不再逐任务阻断；统一在 verify-e2e 由用户确认。"""
+    root, task_dir = _manual_repo(tmp_path, stages="[design, plan, code, review]")
+    (task_dir / ".acceptance-manifest.json").write_text(
+        json.dumps({"scenarios": [{"id": "S-01", "kind": "manual"}]}), encoding="utf-8"
+    )
+    start_active_task(str(root), ".code-flow/tasks/demo", "TASK-001", "ctx")
+
+    result = run_done_gate(str(root), str(task_dir))
+
+    assert result.decision == "pass", result.message
 
 
 def test_rename_during_active_task_does_not_crash_done_gate(tmp_path: Path) -> None:

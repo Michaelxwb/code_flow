@@ -41,7 +41,7 @@ description: 归档已完成的 task 文件
 
 - 需求目录必须存在 `spec-context.yml`；执行 `python3 .code-flow/scripts/cf_spec_context.py refresh --task-dir <需求目录> --root "$PWD" --json`
 - 执行 `python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage code --json`；required Rule 的 stale/pending/conflict/unverified 任一存在即 FAIL
-- 执行 review 终验：`python3 .code-flow/scripts/cf_task_workflow.py verify-e2e --task-dir <需求目录> --root "$PWD" --json`（聚合需求目录全部 task context 的 `stage: review` verifier + acceptance E2E，按 spec/rule 去重执行一次并写回证据）；`decision=pass` 才继续，失败保持阻断
+- 执行 review 终验：`python3 .code-flow/scripts/cf_task_workflow.py verify-e2e --task-dir <需求目录> --root "$PWD" --json`（聚合需求目录全部 task context 的 `stage: review` verifier + acceptance E2E，按 spec/rule 去重执行一次并写回证据）；`decision=pass` 才继续，失败保持阻断。返回 `manual_confirmation_required` 时，先按 verify-e2e 的「人工验收确认」流程取得用户确认并执行 `confirm-manual`，再重跑
 - 执行 `python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage review --json`；required Rule 存在 unverified review 证据即 FAIL（先完成 review 终验）
 - 若 `.code-flow/.active-task.json` 仍指向本需求，先执行 `python3 .code-flow/scripts/cf_task_workflow.py finish --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json`，通过后再 verify-e2e；不得自报 gate_passed 或通过归档绕过 active 状态
 - Context 与 Evidence 随需求目录一并归档，`_session` 仅是可重建投影，不是事实源

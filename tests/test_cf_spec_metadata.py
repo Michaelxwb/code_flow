@@ -145,6 +145,34 @@ verifiers:
     assert by_rule["RULE-stage-002"].files == ()
 
 
+def test_manual_verifier_defaults_to_review_when_declared(tmp_path: Path) -> None:
+    """manual 人工验收默认落 review 层（需求级终验）；未声明 review 的 spec 保持 code。"""
+    path = _write_spec(tmp_path)
+    declared = {item.rule: item for item in load_spec_metadata(str(path)).verifiers}
+
+    assert declared["RULE-scripts-002"].stage == "review"
+
+    path.write_text(
+        textwrap.dedent(VALID_SPEC.replace("stages: [design, plan, code, review]", "stages: [code]")),
+        encoding="utf-8",
+    )
+    fallback = {item.rule: item for item in load_spec_metadata(str(path)).verifiers}
+
+    assert fallback["RULE-scripts-002"].stage == "code"
+
+
+def test_manual_verifier_explicit_stage_wins(tmp_path: Path) -> None:
+    explicit = VALID_SPEC.replace(
+        "  - rule: RULE-scripts-002\n    type: manual\n",
+        "  - rule: RULE-scripts-002\n    type: manual\n    stage: code\n",
+    )
+    path = _write_spec(tmp_path, explicit)
+
+    verifiers = {item.rule: item for item in load_spec_metadata(str(path)).verifiers}
+
+    assert verifiers["RULE-scripts-002"].stage == "code"
+
+
 @pytest.mark.parametrize(
     "extra",
     [

@@ -8,6 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 
@@ -20,7 +21,7 @@ from cf_acceptance_runner import run_manifest  # noqa: E402
 from cf_spec_context import BindingInput, bind_specs, load_context, new_context, save_context  # noqa: E402
 from cf_spec_resolver import resolve_candidates  # noqa: E402
 from cf_stop_hook import _acceptance_gap  # noqa: E402
-from cf_task_workflow import verify_e2e  # noqa: E402
+from cf_task_workflow import confirm_manual, verify_e2e  # noqa: E402
 
 
 def _manifest(tmp_path: Path, functional: list, e2e: list) -> str:
@@ -85,6 +86,22 @@ def test_verify_e2e_docs_use_real_status_pattern() -> None:
         text = doc.read_text(encoding="utf-8")
         assert '"^Status:"' not in text and "'^Status:'" not in text, f"{doc} 仍用永远匹配不到的旧正则"
         assert "Status" in text and ("verified" in text or "done" in text)
+
+
+def test_manual_scenario_defers_until_verify_e2e_in_stop_gap() -> None:
+    """[E-07] done 任务确认前的 manual 场景不触发 Stop 缺口；verified 后必须闭环。"""
+    section = (
+        "## TASK-001: Demo\n- **Status**: done\n- **Acceptance-Refs**: S-01\n"
+        "### Acceptance Contract\n| S-01 | manual | real | user | planned |\n"
+        "### Acceptance Evidence\n- S-01: manual_pending — 待需求级终验确认\n"
+    )
+    coverage = "|S-01|src|manual|real|TASK-001|planned|\n"
+
+    assert _acceptance_gap("TASK-001", section, coverage) == ""
+
+    verified = section.replace("- **Status**: done", "- **Status**: verified")
+
+    assert _acceptance_gap("TASK-001", verified, coverage) != ""
 
 
 def test_verified_status_passes_stop_acceptance_gap() -> None:
@@ -234,3 +251,103 @@ def test_b_02_empty_noop(tmp_path: Path) -> None:
 
     assert result["decision"] == "pass"
     assert result.get("reason") == "nothing_to_verify"
+
+
+def _manual_review_requirement(tmp_path: Path) -> tuple:
+    root = tmp_path / "proj"
+    root.mkdir()
+    subprocess.run(("git", "init", "-q"), cwd=root, check=True)
+    subprocess.run(("git", "config", "user.email", "t@t"), cwd=root, check=True)
+    subprocess.run(("git", "config", "user.name", "t"), cwd=root, check=True)
+    (root / "src").mkdir()
+    (root / "src/app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    spec_dir = root / ".code-flow" / "specs" / "review"
+    spec_dir.mkdir(parents=True)
+    (spec_dir / "rules.md").write_text(
+        "---\n"
+        "id: review-rules\n"
+        "description: review rules\n"
+        "stages: [design, plan, code, review]\n"
+        "enforcement: required\n"
+        "verifiers:\n"
+        "  - rule: RULE-review-001\n"
+        "    type: manual\n"
+        "    config:\n"
+        "      checklist: Confirm the guidance items.\n"
+        "      owner: project-owner\n"
+        "---\n\n# Review Rules\n\n## Rules\n- [RULE-review-001] human review rule.\n",
+        encoding="utf-8",
+    )
+    config = {"path_mapping": {"review": {"patterns": ["src/*"], "specs": [{"path": "review/rules.md"}]}}}
+    (root / ".code-flow/config.yml").write_text(yaml.safe_dump(config), encoding="utf-8")
+    req = root / ".code-flow" / "tasks" / "req"
+    req.mkdir(parents=True)
+    task_file = req / "req.md"
+    task_file.write_text(
+        "# Tasks: req\n\n- **Source**: req.design.md\n\n"
+        "## Acceptance Coverage\n\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n"
+        "|--------|---------|---------|-------------|---------|------|---------|\n"
+        "| S-01 | req.design.md#2.1 | manual | real boundary | TASK-001 | planned | |\n\n"
+        "## TASK-001: A\n\n- **Status**: done\n- **Acceptance-Refs**: S-01\n\n"
+        "### Acceptance Contract\n\n| S-01 | manual | real | user | planned | planned | planned |\n\n"
+        "### Acceptance Evidence\n\n### Log\n- [2026-09-30] created (draft)\n",
+        encoding="utf-8",
+    )
+    write_manifest(str(task_file), str(req / ".acceptance-manifest.json"))
+    candidate = resolve_candidates(str(root), "design", ["src/app.py"])[0]
+    context = new_context("req", (("test", "M-01"),))
+    context = bind_specs(context, (BindingInput(candidate, "path+agent", "manual review rule"),))
+    save_context(str(req / "spec-context.yml"), context)
+    nested = req / "nested"
+    nested.mkdir()
+    save_context(str(nested / "spec-context.yml"), context)
+    subprocess.run(("git", "add", "-A"), cwd=root, check=True)
+    subprocess.run(("git", "commit", "-qm", "init"), cwd=root, check=True)
+    return root, req
+
+
+def test_manual_confirmation_batch_flow(tmp_path: Path) -> None:
+    """S-08: manual 规则与场景在需求级终验一次性批量确认；确认前只提示不执行。"""
+    root, req = _manual_review_requirement(tmp_path)
+
+    blocked = verify_e2e(str(root), str(req))
+
+    assert blocked["decision"] == "block"
+    assert blocked["reason"] == "manual_confirmation_required"
+    assert [item["ref"] for item in blocked["manual_rules"]] == ["review-rules#RULE-review-001"]
+    assert blocked["manual_rules"][0]["checklist"] == "Confirm the guidance items."
+    assert blocked["manual_rules"][0]["bound_contexts"] == 2
+    assert [item["id"] for item in blocked["manual_scenarios"]] == ["S-01"]
+    status = load_context(str(req / "spec-context.yml")).bindings[0].rules[0].stage_status["review"]
+    assert status.status == "pending", "确认前不得写入 verified"
+
+    recorded = confirm_manual(
+        str(root), str(req), [], [], "user:jahan", "确认：人工验收清单已核对，接受。",
+        reason="需求级人工验收确认",
+    )
+
+    assert recorded["rules"] == ["review-rules#RULE-review-001"]
+    assert recorded["scenarios"] == ["S-01"]
+
+    passed = verify_e2e(str(root), str(req))
+
+    assert passed["decision"] == "pass", passed
+    for ctx_path in (req / "spec-context.yml", req / "nested/spec-context.yml"):
+        status = load_context(str(ctx_path)).bindings[0].rules[0].stage_status["review"]
+        assert status.status == "verified"
+        assert status.decision is not None and status.decision.confirmed_by == "user:jahan"
+    assert "- **Status**: verified" in (req / "req.md").read_text(encoding="utf-8")
+
+
+def test_manual_confirmation_rejects_agent_and_unknown_refs(tmp_path: Path) -> None:
+    """Agent 不得代确认；未知 ref 必须报错且不写任何确认。"""
+    root, req = _manual_review_requirement(tmp_path)
+
+    with pytest.raises(ValueError):
+        confirm_manual(str(root), str(req), [], [], "codex", "确认")
+    with pytest.raises(ValueError):
+        confirm_manual(str(root), str(req), ["review-rules#RULE-nope-001"], [], "user:jahan", "确认")
+
+    status = load_context(str(req / "spec-context.yml")).bindings[0].rules[0].stage_status["review"]
+    assert status.status == "pending", "非法确认不得留下痕迹"

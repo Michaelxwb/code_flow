@@ -60,7 +60,25 @@ python3 .code-flow/scripts/cf_task_workflow.py verify-e2e \
 
 该入口重新检查所有 TASK、锁定 manifest 和 functional/manual 最新证据，内部以 `--only-e2e` 调用 runner；只有全通过才把任务提升为 verified。不得手动改状态。
 
-### 4. 报告结果
+### 4. 人工验收确认（manual_confirmation_required）
+
+需求中的 manual 验收默认落 review 层，编码阶段不逐任务打断，统一在这里确认。`verify-e2e` 返回 `reason=manual_confirmation_required` 时：
+
+1. 向用户完整展示 `manual_rules`（spec 规则、checklist、owner）与 `manual_scenarios`（场景 ID、真实边界），一次性请求确认；用户只确认部分时记录未确认的 ref/id。
+2. 用户明确回复后执行（`--confirmed-by` 必须是用户身份，Agent 不得代确认；`--source` 填写用户回复原文）：
+
+```bash
+python3 .code-flow/scripts/cf_task_workflow.py confirm-manual \
+  --task-dir "<需求目录>" --root "$PWD" \
+  --confirmed-by "user:<用户>" --source "<用户回复原文>" --json
+```
+
+部分确认时追加 `--refs <spec#RULE,...>` 与/或 `--scenarios <S-01,...>`。
+3. 重跑 `verify-e2e`；全部通过后任务才提升为 `verified`。
+
+> 显式声明 `stage: code` 的 manual 规则仍在任务 Done Gate 逐个确认，属于有意保留的强门禁。
+
+### 5. 报告结果
 
 解析执行结果：
 
@@ -76,8 +94,9 @@ python3 .code-flow/scripts/cf_task_workflow.py verify-e2e \
 
 - `decision=pass`：所有 E2E 场景通过，提示"E2E 验收完成"
 - `decision=block`：有失败场景，列出失败的场景 ID 和错误信息
+- `reason=manual_confirmation_required`：先按「人工验收确认」章节取得用户确认并执行 `confirm-manual`，再重跑本命令
 
-### 5. 更新任务状态
+### 6. 更新任务状态
 
 确认命令已将需求目录下所有任务 Status 更新为 `verified`，并保留原契约与运行历史。无需再次编辑状态。
 
