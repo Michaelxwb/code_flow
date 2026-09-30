@@ -307,6 +307,72 @@ def _manual_review_requirement(tmp_path: Path) -> tuple:
     return root, req
 
 
+def _write_code_spec(root: Path, marker: Path) -> None:
+    spec_dir = root / ".code-flow" / "specs" / "code"
+    spec_dir.mkdir(parents=True)
+    code = (
+        "from pathlib import Path; import sys; "
+        f"p=Path({str(marker)!r}); p.write_text((p.read_text() if p.exists() else '') + 'x')"
+    )
+    (spec_dir / "rules.md").write_text(
+        "---\n"
+        "id: code-rules\n"
+        "description: code rules\n"
+        "stages: [design, plan, code, review]\n"
+        "enforcement: required\n"
+        "verifiers:\n"
+        "  - rule: RULE-code-001\n"
+        "    type: test\n"
+        f"    config: {{argv: {json.dumps([sys.executable, '-c', code])}, timeout: 30}}\n"
+        "---\n\n# Code Rules\n\n## Rules\n- [RULE-code-001] code rule.\n",
+        encoding="utf-8",
+    )
+    config = root / ".code-flow/config.yml"
+    data = yaml.safe_load(config.read_text(encoding="utf-8"))
+    data["path_mapping"]["code"] = {"patterns": ["src/*"], "specs": [{"path": "code/rules.md"}]}
+    config.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+
+def _deferred_code_requirement(tmp_path: Path) -> tuple:
+    root = tmp_path / "proj_code"
+    root.mkdir()
+    subprocess.run(("git", "init", "-q"), cwd=root, check=True)
+    subprocess.run(("git", "config", "user.email", "t@t"), cwd=root, check=True)
+    subprocess.run(("git", "config", "user.name", "t"), cwd=root, check=True)
+    (root / "src").mkdir()
+    (root / "src/app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    (root / ".code-flow").mkdir()
+    (root / ".code-flow/config.yml").write_text(yaml.safe_dump({"path_mapping": {}}), encoding="utf-8")
+    marker = tmp_path / "code-runs.txt"
+    _write_code_spec(root, marker)
+    req = root / ".code-flow" / "tasks" / "req"
+    req.mkdir(parents=True)
+    (req / "req.md").write_text(
+        "# Tasks: req\n\n- **Source**: req.design.md\n\n"
+        "## TASK-001: A\n\n- **Status**: done\n- **Acceptance-Refs**:\n",
+        encoding="utf-8",
+    )
+    candidate = resolve_candidates(str(root), "design", ["src/app.py"])[0]
+    context = new_context("req", (("test", "C-01"),))
+    context = bind_specs(context, (BindingInput(candidate, "path+agent", "code rule"),))
+    save_context(str(req / "spec-context.yml"), context)
+    subprocess.run(("git", "add", "-A"), cwd=root, check=True)
+    subprocess.run(("git", "commit", "-qm", "init"), cwd=root, check=True)
+    return root, req, marker
+
+
+def test_verify_e2e_runs_deferred_code_rules(tmp_path: Path) -> None:
+    """需求终验全量补跑 code 层规则（任务层 deferred 的也一并执行）。"""
+    root, req, marker = _deferred_code_requirement(tmp_path)
+
+    result = verify_e2e(str(root), str(req))
+
+    assert result["decision"] == "pass", result
+    assert _runs(marker) == 1, "code 规则必须在终验执行一次"
+    status = load_context(str(req / "spec-context.yml")).bindings[0].rules[0].stage_status["code"]
+    assert status.status == "verified"
+
+
 def test_manual_confirmation_batch_flow(tmp_path: Path) -> None:
     """S-08: manual 规则与场景在需求级终验一次性批量确认；确认前只提示不执行。"""
     root, req = _manual_review_requirement(tmp_path)

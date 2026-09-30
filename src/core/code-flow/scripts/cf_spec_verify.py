@@ -464,6 +464,23 @@ def _skipped_evidence(metadata: SpecMetadata, rule: SpecRule, scope: Verificatio
     )
 
 
+def _deferred_evidence(metadata: SpecMetadata, rule: SpecRule, scope: VerificationScope,
+                       reason: str) -> VerificationEvidence:
+    """任务级 Done Gate 延后执行（范围外/超预算）；需求级 verify-e2e 会全量补跑。"""
+    details = {"reason": reason, "deferred_to_review": True}
+    return VerificationEvidence(
+        f"{metadata.id}#{rule.ref}",
+        datetime.now(timezone.utc).isoformat(),
+        "unverified",
+        rule.text_sha256,
+        None,
+        scope.diff_sha256,
+        _result_hash("unverified", "deferred_to_review", details),
+        "deferred_to_review",
+        details,
+    )
+
+
 def _budget_evidence(metadata: SpecMetadata, rule: SpecRule, scope: VerificationScope, budget: float) -> VerificationEvidence:
     details = {"budget": budget}
     return VerificationEvidence(
@@ -494,10 +511,12 @@ def _run_all_verifiers(
     confirmations: Optional[Mapping[str, Mapping[str, object]]] = None,
     skip_command: bool = False,
     timeout_budget: Optional[float] = None,
-    stage: str = "code",
+    stage: Optional[str] = "code",
+    deferred: Optional[Mapping[str, str]] = None,
 ) -> VerificationResult:
     verifier_by_rule = {item.rule: item for item in metadata.verifiers}
     confirmation_by_rule = confirmations or {}
+    deferred_by_rule = deferred or {}
     _load_result_cache(scope.root)
     evidence_by_ref: dict[str, VerificationEvidence] = {}
     parallel: list[tuple[SpecRule, SpecVerifier, Optional[Mapping[str, object]]]] = []
@@ -506,7 +525,10 @@ def _run_all_verifiers(
         if rule.enforcement != "required":
             continue
         verifier = verifier_by_rule.get(rule.ref)
-        if verifier is not None and verifier.stage != stage:
+        if verifier is not None and stage is not None and verifier.stage != stage:
+            continue
+        if rule.ref in deferred_by_rule:
+            evidence_by_ref[rule.ref] = _deferred_evidence(metadata, rule, scope, deferred_by_rule[rule.ref])
             continue
         if timeout_budget is not None:
             remaining = timeout_budget - (time.monotonic() - started)
@@ -540,9 +562,10 @@ def _run_all_verifiers(
 def run_all_verifiers(metadata: SpecMetadata, scope: VerificationScope,
                       confirmations: Optional[Mapping[str, Mapping[str, object]]] = None,
                       skip_command: bool = False, timeout_budget: Optional[float] = None,
-                      stage: str = "code") -> VerificationResult:
+                      stage: Optional[str] = "code",
+                      deferred: Optional[Mapping[str, str]] = None) -> VerificationResult:
     with execution_session():
-        return _run_all_verifiers(metadata, scope, confirmations, skip_command, timeout_budget, stage)
+        return _run_all_verifiers(metadata, scope, confirmations, skip_command, timeout_budget, stage, deferred)
 
 
 def evidence_is_fresh(

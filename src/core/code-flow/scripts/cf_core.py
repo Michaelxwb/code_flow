@@ -501,13 +501,21 @@ def resolve_quality_loop(config: dict) -> dict:
         return {"enabled": False, "post_check": False,
                 "stop_check": False, "finish_check": False,
                 "correction_capture": False,
-                "compress_reminder": False}
+                "compress_reminder": False,
+                "heavy_at_finish": False,
+                "finish_verifier_budget": 300.0}
     cfg = config.get("quality_loop")
     cfg = cfg if isinstance(cfg, dict) else {}
     enabled = cfg.get("enabled") is True
 
     def _sub(key: str) -> bool:
         return enabled and cfg.get(key) is not False
+
+    # 任务级 verifier 执行预算（秒）：超预算的 command/test verifier 延后到
+    # 需求级 verify-e2e；0 = 不限制（恢复旧行为）。非法值回落默认 300。
+    budget = cfg.get("finish_verifier_budget", 300)
+    if isinstance(budget, bool) or not isinstance(budget, (int, float)) or budget < 0 or budget != budget:
+        budget = 300.0
 
     return {
         "enabled": enabled,
@@ -516,6 +524,9 @@ def resolve_quality_loop(config: dict) -> dict:
         "finish_check": _sub("finish_check"),
         "correction_capture": _sub("correction_capture"),
         "compress_reminder": _sub("compress_reminder"),
+        # heavy validator 默认只在归档 cf_validation / /cf-validate 全量执行
+        "heavy_at_finish": enabled and cfg.get("heavy_at_finish") is True,
+        "finish_verifier_budget": float(budget),
     }
 
 

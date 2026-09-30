@@ -25,7 +25,7 @@ from cf_spec_context import (
     save_context,
 )
 from cf_spec_gate import validate_stage
-from cf_spec_metadata import load_spec_metadata
+from cf_spec_metadata import SpecMetadata, load_spec_metadata
 from cf_spec_resolver import resolve_candidates, SpecCandidate
 from cf_spec_session import context_sha256
 from cf_spec_verify import VerificationEvidence, VerificationScope, run_all_verifiers
@@ -49,6 +49,9 @@ class DoneResult:
     evidence: tuple[Mapping[str, object], ...]
     message: str = ""
     deferred_review: int = 0
+    deferred_requirement: int = 0
+    deferred_budget: int = 0
+    deferred_heavy: int = 0
 
 
 def _context_path(task_dir: str) -> str:
@@ -183,6 +186,70 @@ def _rule_manual_confirmation(rule: RuleBinding) -> Optional[Mapping[str, object
     }
 
 
+def _task_scope_specs(root: str, task_dir: str, owner: str, files: tuple[str, ...]) -> set[str]:
+    """本任务的验证范围：Spec-Refs ∪ 改动文件经 path_mapping 命中的 spec。
+
+    范围外的 code 层 command/test verifier 延后到需求级 verify-e2e 全量补跑。
+    """
+    scope = {
+        candidate.spec_id
+        for candidate in resolve_candidates(root, "code", files)
+        if candidate.scope == "path"
+    }
+    from cf_workflow_service import locate_task_file
+
+    task = locate_task_file(task_dir, owner)
+    if task is None:
+        return scope
+    from cf_spec_session import _refs, _task_section
+
+    try:
+        refs = _refs(_task_section(task.read_text(encoding="utf-8"), owner))
+    except ValueError:
+        refs = ()
+    for ref in refs:
+        spec_id = ref.split("#", 1)[0].strip()
+        if spec_id:
+            scope.add(spec_id)
+    return scope
+
+
+def _binding_deferrals(
+    binding: SpecBinding,
+    metadata: SpecMetadata,
+    scope_specs: set[str],
+    budget: float,
+    run_started: float,
+) -> dict[str, str]:
+    """计算本 binding 内 code 层 command/test verifier 的延后原因。
+
+    - `out_of_task_scope`：不属于本任务（需求级累积绑定）；
+    - `over_finish_budget`：声明 timeout 超预算，或本次 finish 已用满预算。
+    document/regex/ast 静态检查始终执行，不参与延后。
+    """
+    deferred: dict[str, str] = {}
+    verifier_by_rule = {item.rule: item for item in metadata.verifiers}
+    for rule in binding.rules:
+        verifier = verifier_by_rule.get(rule.ref)
+        if verifier is None or verifier.type not in ("command", "test"):
+            continue
+        status = rule.stage_status.get("code")
+        if status is None or status.status in ("not_applicable", "waived"):
+            continue
+        if binding.spec_id not in scope_specs:
+            deferred[rule.ref] = "out_of_task_scope"
+            continue
+        if budget > 0:
+            raw_timeout = verifier.config.get("timeout", 30)
+            try:
+                declared = float(raw_timeout)
+            except (TypeError, ValueError):
+                declared = 30.0
+            if declared > budget or (time.monotonic() - run_started) >= budget:
+                deferred[rule.ref] = "over_finish_budget"
+    return deferred
+
+
 def _run_acceptance(root: str, task_dir: str, owner: str, include_e2e: bool,
                     deadline: Optional[float], cheap: bool = False) -> str:
     baseline_issue = _acceptance_baseline_issue(task_dir, owner)
@@ -204,30 +271,43 @@ def _run_acceptance(root: str, task_dir: str, owner: str, include_e2e: bool,
     return ""
 
 
-def _run_finish_validation(root: str, files: tuple[str, ...]) -> str:
-    """Full validation.yml (including heavy validators) once per TASK finish.
+def _run_finish_validation(root: str, files: tuple[str, ...]) -> tuple[str, int]:
+    """Light validation.yml once per TASK finish; heavy validators defer by default.
 
-    Stop-time checks stay cheap; this is the single automatic execution point
-    for slow suites (task finish `/cf-validate` scope). `quality_loop.finish_check:
-    false` disables it; projects without validation.yml / package.json scripts are a no-op.
+    Stop-time checks stay cheap; `heavy: true` suites (full tests/builds/e2e) are
+    skipped unless `quality_loop.heavy_at_finish: true`, and run again at archive
+    `cf_validation` / `/cf-validate`. Returns (issue, deferred_heavy_count).
     """
-    if not resolve_quality_loop(load_config(root)).get("finish_check"):
-        return ""
+    quality = resolve_quality_loop(load_config(root))
+    if not quality.get("finish_check"):
+        return "", 0
+    include_heavy = bool(quality.get("heavy_at_finish"))
     from cf_validation import validate_files
 
     try:
-        result = validate_files(root, files)
+        result = validate_files(root, files, include_heavy=include_heavy)
     except (OSError, ValueError) as exc:
-        return f"finish validation error: {exc}"
+        return f"finish validation error: {exc}", 0
+    deferred_heavy = 0
+    if not include_heavy:
+        from cf_stop_hook import load_validators, trigger_matches
+
+        deferred_heavy = sum(
+            1
+            for validator in load_validators(root)
+            if isinstance(validator, dict)
+            and validator.get("heavy") is True
+            and any(trigger_matches(str(validator.get("trigger", "")), name) for name in files)
+        )
     reason = result.get("reason")
     if result.get("decision") == "pass" or reason in ("no_changes", "no_validators_configured"):
-        return ""
+        return "", deferred_heavy
     failures = result.get("failures")
     names = ", ".join(str(item.get("name", "validator")) for item in failures[:3]) if isinstance(failures, list) and failures else "validator"
     if result.get("incomplete") and not failures:
-        return "finish validation 预算耗尽：部分 validator 未执行"
+        return "finish validation 预算耗尽：部分 validator 未执行", deferred_heavy
     suffix = "（预算耗尽，部分未执行）" if result.get("incomplete") else ""
-    return f"finish validation failed{suffix}: {names}"
+    return f"finish validation failed{suffix}: {names}", deferred_heavy
 
 
 def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optional[float] = None, include_e2e: bool = False, task_id: str = "") -> DoneResult:
@@ -250,10 +330,30 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
     phase_timing("done.load_context_and_diff", phase_started)
     all_evidence: list[Mapping[str, object]] = []
     deferred_review = 0
+    deferred_requirement = 0
+    deferred_budget = 0
+    deferred_heavy = 0
+    quality = resolve_quality_loop(load_config(root))
+    verifier_budget = float(quality.get("finish_verifier_budget", 300.0))
+    scope_specs = set() if cheap else _task_scope_specs(root, task_dir, owner, scope_result.files)
+    if not cheap and not scope_specs:
+        # 既无 Spec-Refs 也无路径命中（老任务/无改动可定位）：回退全量绑定，
+        # 避免把"定位不到"误当成"无需验证"。
+        scope_specs = {binding.spec_id for binding in context.bindings}
+    run_started = time.monotonic()
     for binding in context.bindings:
         phase_started = time.monotonic()
         metadata = load_spec_metadata(str(Path(root) / ".code-flow/specs" / binding.path))
         deferred_review += sum(1 for rule in binding.rules if rule.verifier_stage == "review")
+        deferrals = {} if cheap else _binding_deferrals(binding, metadata, scope_specs, verifier_budget, run_started)
+        deferred_requirement += sum(
+            1 for rule in binding.rules
+            if deferrals.get(rule.ref) == "out_of_task_scope" and rule.enforcement == "required"
+        )
+        deferred_budget += sum(
+            1 for rule in binding.rules
+            if deferrals.get(rule.ref) == "over_finish_budget" and rule.enforcement == "required"
+        )
         confirmations: dict[str, Mapping[str, object]] = {}
         for rule in binding.rules:
             confirmation = _rule_manual_confirmation(rule)
@@ -262,21 +362,24 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
         remaining = None if budget is None else budget - (time.monotonic() - started)
         result = run_all_verifiers(
             metadata, VerificationScope(root, scope_result.files, diff_hash), confirmations, cheap, remaining,
-            stage="code",
+            stage="code", deferred=deferrals or None,
         )
         phase_timing(f"done.verify.{binding.spec_id}", phase_started)
         all_evidence.extend(_evidence_data(item) for item in result.evidence)
     updated = _apply_evidence(context, tuple(all_evidence))
     if updated != context:
         save_context(_context_path(task_dir), updated)
-    gate = validate_stage(updated, "code", diff_sha256=diff_hash, allow_cheap_skips=cheap)
+    gate = validate_stage(updated, "code", diff_sha256=diff_hash, allow_cheap_skips=cheap,
+                          allow_deferred_skips=True)
     if gate.decision == "pass" and not cheap:
-        validation_issue = _run_finish_validation(root, scope_result.files)
+        validation_issue, deferred_heavy = _run_finish_validation(root, scope_result.files)
         if validation_issue:
-            return DoneResult("block", scope_result.files, tuple(all_evidence), validation_issue, deferred_review)
+            return DoneResult("block", scope_result.files, tuple(all_evidence), validation_issue,
+                              deferred_review, deferred_requirement, deferred_budget, deferred_heavy)
     phase_timing("done.total", started)
     return DoneResult(gate.decision, scope_result.files, tuple(all_evidence),
-                      "; ".join(issue.message for issue in gate.errors), deferred_review)
+                      "; ".join(issue.message for issue in gate.errors), deferred_review,
+                      deferred_requirement, deferred_budget, deferred_heavy)
 
 
 def run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optional[float] = None, include_e2e: bool = False, task_id: str = "") -> DoneResult:

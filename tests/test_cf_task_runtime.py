@@ -192,7 +192,8 @@ def test_cheap_gate_skips_command_verifiers(tmp_path: Path) -> None:
     assert all(item["diff_sha256"] == cheap.evidence[0]["diff_sha256"] for item in cheap.evidence)
 
 
-def _validation_repo(tmp_path: Path, command: str, finish_check: bool = True) -> tuple[Path, Path]:
+def _validation_repo(tmp_path: Path, command: str, finish_check: bool = True,
+                     heavy: bool = True, heavy_at_finish: bool = False) -> tuple[Path, Path]:
     root, task_dir = _repo(tmp_path, activate=False)
     quoted = command.replace("'", "''")
     (root / ".code-flow/validation.yml").write_text(
@@ -201,13 +202,16 @@ def _validation_repo(tmp_path: Path, command: str, finish_check: bool = True) ->
         '      trigger: "**/*.py"\n'
         f"      command: '{quoted}'\n"
         "      timeout: 15000\n"
-        "      heavy: true\n"
-        '      on_fail: "修复全量测试"\n',
+        + ("      heavy: true\n" if heavy else "")
+        + '      on_fail: "修复全量测试"\n',
         encoding="utf-8",
     )
     config_path = root / ".code-flow/config.yml"
     config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-    config["quality_loop"] = {"enabled": True, "finish_check": finish_check}
+    quality: dict = {"enabled": True, "finish_check": finish_check}
+    if heavy_at_finish:
+        quality["heavy_at_finish"] = True
+    config["quality_loop"] = quality
     config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
     _git(root, "add", "-A")
     _git(root, "commit", "-qm", "validation config")
@@ -216,8 +220,8 @@ def _validation_repo(tmp_path: Path, command: str, finish_check: bool = True) ->
     return root, task_dir
 
 
-def test_finish_runs_heavy_validation_once_while_cheap_skips(tmp_path: Path) -> None:
-    """三段式：Stop(cheap) 跳过 heavy；finish 全量执行一次并阻断失败。"""
+def test_finish_defers_heavy_validation_by_default(tmp_path: Path) -> None:
+    """heavy validator 默认不在 finish 执行（归档 cf_validation / cf-validate 全量）。"""
     root, task_dir = _validation_repo(tmp_path, 'python3 -c "open(\'.heavy-run\', \'a\').write(\'x\')"')
 
     cheap = run_done_gate(str(root), str(task_dir), cheap=True)
@@ -225,12 +229,36 @@ def test_finish_runs_heavy_validation_once_while_cheap_skips(tmp_path: Path) -> 
     assert not (root / ".heavy-run").exists(), "Stop 轻量门禁不得执行 heavy validator"
 
     full = run_done_gate(str(root), str(task_dir))
+
     assert full.decision == "pass", full.message
-    assert (root / ".heavy-run").read_text(encoding="utf-8") == "x", "finish 必须执行 heavy validator"
+    assert full.deferred_heavy == 1
+    assert not (root / ".heavy-run").exists(), "finish 默认不得执行 heavy validator"
+
+
+def test_finish_runs_heavy_validation_when_enabled(tmp_path: Path) -> None:
+    root, task_dir = _validation_repo(
+        tmp_path, 'python3 -c "open(\'.heavy-run\', \'a\').write(\'x\')"', heavy_at_finish=True
+    )
+
+    full = run_done_gate(str(root), str(task_dir))
+
+    assert full.decision == "pass", full.message
+    assert (root / ".heavy-run").read_text(encoding="utf-8") == "x", "heavy_at_finish=true 时必须执行"
 
 
 def test_finish_validation_failure_blocks_done(tmp_path: Path) -> None:
-    root, task_dir = _validation_repo(tmp_path, "python3 -c 'import sys; sys.exit(1)'")
+    root, task_dir = _validation_repo(tmp_path, "python3 -c 'import sys; sys.exit(1)'",
+                                      heavy_at_finish=True)
+
+    full = run_done_gate(str(root), str(task_dir))
+
+    assert full.decision == "block"
+    assert "finish validation failed" in full.message and "HeavySuite" in full.message
+
+
+def test_light_validation_failure_blocks_done_by_default(tmp_path: Path) -> None:
+    """非 heavy validator 仍在 finish 执行并阻断。"""
+    root, task_dir = _validation_repo(tmp_path, "python3 -c 'import sys; sys.exit(1)'", heavy=False)
 
     full = run_done_gate(str(root), str(task_dir))
 
@@ -239,7 +267,8 @@ def test_finish_validation_failure_blocks_done(tmp_path: Path) -> None:
 
 
 def test_finish_check_can_be_disabled_by_config(tmp_path: Path) -> None:
-    root, task_dir = _validation_repo(tmp_path, "python3 -c 'import sys; sys.exit(1)'", finish_check=False)
+    root, task_dir = _validation_repo(tmp_path, "python3 -c 'import sys; sys.exit(1)'",
+                                      finish_check=False, heavy_at_finish=True)
 
     full = run_done_gate(str(root), str(task_dir))
 
@@ -476,3 +505,128 @@ def test_s_05_legacy_defaults(tmp_path: Path) -> None:
     assert (root / "legacy-ran.txt").exists(), "旧格式 verifier 必须照常执行"
     assert result.decision == "pass", result.message
     assert result.deferred_review == 0
+
+
+def _scope_repo(tmp_path: Path, other_timeout: int = 30) -> tuple[Path, Path]:
+    """app(src/*) 与 other(db/*) 两个 required spec 均已绑定（模拟需求级累积 context）。"""
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "config", "user.email", "test@example.com")
+    _git(tmp_path, "config", "user.name", "Test")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "db").mkdir()
+    (tmp_path / "src/app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    (tmp_path / "db/model.py").write_text("MODEL = 1\n", encoding="utf-8")
+    specs = tmp_path / ".code-flow/specs"
+    (specs / "app").mkdir(parents=True)
+    (specs / "other").mkdir()
+    (specs / "app/rules.md").write_text(
+        "---\nid: app-runtime\ndescription: app rules\nstages: [code, review]\nenforcement: required\n"
+        "verifiers:\n  - rule: RULE-app-001\n    type: test\n    config:\n"
+        "      argv: [python3, -c, \"open('app-ran.txt', 'a').write('x')\"]\n      timeout: 30\n"
+        "---\n# App Rules\n## Rules\n- [RULE-app-001] app rule.\n",
+        encoding="utf-8",
+    )
+    (specs / "other/rules.md").write_text(
+        "---\nid: other-runtime\ndescription: other rules\nstages: [code, review]\nenforcement: required\n"
+        "verifiers:\n  - rule: RULE-other-001\n    type: test\n    config:\n"
+        "      argv: [python3, -c, \"open('other-ran.txt', 'a').write('x')\"]\n"
+        f"      timeout: {other_timeout}\n"
+        "---\n# Other Rules\n## Rules\n- [RULE-other-001] other rule.\n",
+        encoding="utf-8",
+    )
+    config = {"path_mapping": {
+        "app": {"patterns": ["src/*"], "specs": [{"path": "app/rules.md"}]},
+        "other": {"patterns": ["db/*"], "specs": [{"path": "other/rules.md"}]},
+    }}
+    (tmp_path / ".code-flow/config.yml").write_text(yaml.safe_dump(config), encoding="utf-8")
+    task_dir = tmp_path / ".code-flow/tasks/demo"
+    task_dir.mkdir(parents=True)
+    app_candidate = resolve_candidates(str(tmp_path), "code", ["src/app.py"])[0]
+    other_candidate = resolve_candidates(str(tmp_path), "code", ["db/model.py"])[0]
+    context = new_context("demo", (("test", "scope"),))
+    context = bind_specs(context, (
+        BindingInput(app_candidate, "plan", "app task"),
+        BindingInput(other_candidate, "plan", "需求级累积绑定"),
+    ))
+    save_context(str(task_dir / "spec-context.yml"), context)
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-qm", "initial")
+    return tmp_path, task_dir
+
+
+def _write_task_refs(task_dir: Path, refs: str) -> Path:
+    path = task_dir / "demo.md"
+    path.write_text(
+        f"# Tasks\n\n## TASK-001: Demo\n- **Status**: in-progress\n- **Spec-Refs**: {refs}\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_out_of_scope_verifier_deferred_to_requirement(tmp_path: Path) -> None:
+    """路径只命中 app：other 的 code verifier 不在本任务执行，登记 deferred_to_review。"""
+    root, task_dir = _scope_repo(tmp_path)
+    start_active_task(str(root), ".code-flow/tasks/demo", "TASK-001", "ctx")
+    (root / "src/app.py").write_text("VALUE = 2\n", encoding="utf-8")
+
+    result = run_done_gate(str(root), str(task_dir))
+
+    assert result.decision == "pass", result.message
+    assert (root / "app-ran.txt").exists(), "范围内 verifier 必须执行"
+    assert not (root / "other-ran.txt").exists(), "范围外 verifier 不得执行"
+    assert result.deferred_requirement == 1
+    binding = next(b for b in load_context(str(task_dir / "spec-context.yml")).bindings
+                   if b.spec_id == "other-runtime")
+    assert binding.rules[0].stage_status["code"].evidence[-1]["error_code"] == "deferred_to_review"
+
+
+def test_spec_refs_keeps_spec_in_scope(tmp_path: Path) -> None:
+    """无路径命中但有 Spec-Refs：声明的 spec 仍在本任务执行，其余延后。"""
+    root, task_dir = _scope_repo(tmp_path)
+    _write_task_refs(task_dir, "other-runtime#RULE-other-001")
+    start_active_task(str(root), ".code-flow/tasks/demo", "TASK-001", "ctx")
+    (root / "docs").mkdir()
+    (root / "docs/note.md").write_text("note\n", encoding="utf-8")
+
+    result = run_done_gate(str(root), str(task_dir))
+
+    assert result.decision == "pass", result.message
+    assert (root / "other-ran.txt").exists(), "Spec-Refs 声明的 verifier 必须执行"
+    assert not (root / "app-ran.txt").exists(), "未声明的 spec 延后"
+    assert result.deferred_requirement == 1
+
+
+def test_no_scope_sources_falls_back_to_all_bindings(tmp_path: Path) -> None:
+    """无 Spec-Refs 且无路径命中（老任务）：不静默跳过，回退全量绑定。"""
+    root, task_dir = _scope_repo(tmp_path)
+    start_active_task(str(root), ".code-flow/tasks/demo", "TASK-001", "ctx")
+
+    result = run_done_gate(str(root), str(task_dir))
+
+    assert result.decision == "pass", result.message
+    assert (root / "app-ran.txt").exists() and (root / "other-ran.txt").exists()
+    assert result.deferred_requirement == 0
+
+
+def test_over_budget_verifier_deferred(tmp_path: Path) -> None:
+    """声明 timeout 超预算（默认 300s）的 verifier 不执行；budget=0 恢复执行。"""
+    root, task_dir = _scope_repo(tmp_path, other_timeout=9999)
+    _write_task_refs(task_dir, "other-runtime#RULE-other-001")
+    start_active_task(str(root), ".code-flow/tasks/demo", "TASK-001", "ctx")
+    (root / "db/model.py").write_text("MODEL = 2\n", encoding="utf-8")
+
+    result = run_done_gate(str(root), str(task_dir))
+
+    assert result.decision == "pass", result.message
+    assert not (root / "other-ran.txt").exists(), "超预算 verifier 不得执行"
+    assert result.deferred_budget == 1
+
+    config_path = root / ".code-flow/config.yml"
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    config["quality_loop"] = {"enabled": True, "finish_verifier_budget": 0}
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    unlimited = run_done_gate(str(root), str(task_dir))
+
+    assert unlimited.decision == "pass", unlimited.message
+    assert (root / "other-ran.txt").exists(), "budget=0 时必须执行"

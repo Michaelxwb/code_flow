@@ -117,7 +117,7 @@ RED 证据写入 `Acceptance Evidence`：
 python3 .code-flow/scripts/cf_task_workflow.py finish --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json
 ```
 
-该命令先校验完整任务身份与锁定 manifest，再执行 Done Gate（acceptance 场景 + spec verifiers + 全量 validation.yml，含 heavy）；通过后以可恢复事务更新 done、Log、Updated 并清理 marker。只有 `decision=pass` 才输出完成并启动下一 TASK。禁止手动设置 done 或传入自报的 gate_passed 绕过验证。
+该命令先校验完整任务身份与锁定 manifest，再执行 Done Gate：本任务范围（`Spec-Refs` ∪ 改动路径命中）的 code verifier + 本任务 acceptance 场景 + 轻量 validation.yml（不含 heavy）；范围外/超预算的 verifier 标记 `deferred_to_review`、`heavy: true` validator 标记 `deferred_heavy`，都不阻塞本任务，统一在需求级 verify-e2e / 归档全量补跑；通过后以可恢复事务更新 done、Log、Updated 并清理 marker。只有 `decision=pass` 才输出完成并启动下一 TASK。禁止手动设置 done 或传入自报的 gate_passed 绕过验证。
 
 Done Gate 只执行 code 层验证；review 层 manual 规则与 manual 场景不逐任务确认，延后到需求级 verify-e2e（返回 `manual_confirmation_required` 时按该命令的「人工验收确认」流程一次性确认）。
 

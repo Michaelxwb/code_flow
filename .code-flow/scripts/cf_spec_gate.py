@@ -82,12 +82,21 @@ def _cheap_skip(status: RuleStageStatus) -> bool:
     return isinstance(latest, Mapping) and latest.get("error_code") == "skipped_in_cheap_gate"
 
 
+def _deferred_skip(status: RuleStageStatus) -> bool:
+    """Latest evidence is a code-gate deferral (out-of-task-scope / over budget)."""
+    if not status.evidence:
+        return False
+    latest = status.evidence[-1]
+    return isinstance(latest, Mapping) and latest.get("error_code") == "deferred_to_review"
+
+
 def _status_issue(
     rule: RuleBinding,
     status: RuleStageStatus,
     now: datetime,
     diff_sha256: Optional[str],
     allow_cheap_skips: bool = False,
+    allow_deferred_skips: bool = False,
 ) -> Optional[str]:
     if status.status == "applied":
         return None
@@ -95,6 +104,9 @@ def _status_issue(
         return _evidence_issue(rule, status, diff_sha256)
     if allow_cheap_skips and status.status == "unverified" and _cheap_skip(status):
         # 轻量门禁（stop 阶段）：命令类 verifier 未执行属预期，留给 finish 全量门禁。
+        return None
+    if allow_deferred_skips and status.status == "unverified" and _deferred_skip(status):
+        # finish 门禁：范围外/超预算 verifier 已标记延后，需求级 verify-e2e 全量补跑。
         return None
     if status.status == "not_applicable":
         return None if _decision_valid(status.decision) else "decision_invalid"
@@ -109,6 +121,7 @@ def _binding_issues(
     now: datetime,
     diff_sha256: Optional[str],
     allow_cheap_skips: bool = False,
+    allow_deferred_skips: bool = False,
 ) -> tuple[list[GateIssue], list[GateIssue]]:
     errors: list[GateIssue] = []
     warnings: list[GateIssue] = []
@@ -120,7 +133,9 @@ def _binding_issues(
             continue
         if rule.enforcement == "advisory" and status.status == "pending":
             continue
-        code = "missing_spec" if binding.status == "missing" else _status_issue(rule, status, now, diff_sha256, allow_cheap_skips)
+        code = "missing_spec" if binding.status == "missing" else _status_issue(
+            rule, status, now, diff_sha256, allow_cheap_skips, allow_deferred_skips
+        )
         if code is None:
             continue
         issue = GateIssue(code, binding.spec_id, rule.ref, stage, f"{binding.spec_id}#{rule.ref}: {code}")
@@ -137,13 +152,16 @@ def validate_stage(
     now: Optional[datetime] = None,
     diff_sha256: Optional[str] = None,
     allow_cheap_skips: bool = False,
+    allow_deferred_skips: bool = False,
 ) -> GateResult:
     del artifact, task_id
     current = now or datetime.now(timezone.utc)
     errors: list[GateIssue] = []
     warnings: list[GateIssue] = []
     for binding in context.bindings:
-        binding_errors, binding_warnings = _binding_issues(binding, stage, current, diff_sha256, allow_cheap_skips)
+        binding_errors, binding_warnings = _binding_issues(
+            binding, stage, current, diff_sha256, allow_cheap_skips, allow_deferred_skips
+        )
         errors.extend(binding_errors)
         warnings.extend(binding_warnings)
     refs = tuple(sorted({f"{item.spec_id}#{item.rule_ref}" for item in (*errors, *warnings)}))

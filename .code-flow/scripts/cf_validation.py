@@ -43,10 +43,14 @@ def _validators(root: str) -> list[dict[str, object]]:
             for name in ("test", "lint") if isinstance(scripts.get(name), str)]
 
 
-def validate_files(root: str, files: Sequence[str] = (), budget: Optional[float] = None) -> dict[str, object]:
+def validate_files(root: str, files: Sequence[str] = (), budget: Optional[float] = None,
+                   include_heavy: bool = True) -> dict[str, object]:
     from cf_stop_hook import run_validators
     selected = validation_scope(root, files)
     validators = _validators(root)
+    if not include_heavy:
+        validators = [item for item in validators
+                      if not (isinstance(item, dict) and item.get("heavy") is True)]
     if not selected:
         return {"decision": "pass", "files": [], "reason": "no_changes"}
     if not validators:
@@ -65,11 +69,13 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--root", default=os.getcwd())
     parser.add_argument("--files", nargs="*", default=[])
     parser.add_argument("--budget", type=float)
+    parser.add_argument("--no-heavy", action="store_true", help="Skip heavy validators (task-level finish scope)")
     parser.add_argument("--scope-only", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
-        result = {"files": validation_scope(args.root, args.files)} if args.scope_only else validate_files(args.root, args.files, args.budget)
+        result = ({"files": validation_scope(args.root, args.files)} if args.scope_only
+                  else validate_files(args.root, args.files, args.budget, include_heavy=not args.no_heavy))
         stdout.write(json.dumps(result, ensure_ascii=False))
         return 3 if result.get("decision") == "block" else 0
     except (OSError, ValueError) as exc:

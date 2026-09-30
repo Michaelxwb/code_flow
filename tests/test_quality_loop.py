@@ -29,6 +29,8 @@ def test_missing_section_all_off():
         "stop_check": False, "finish_check": False,
         "correction_capture": False,
         "compress_reminder": False,
+        "heavy_at_finish": False,
+        "finish_verifier_budget": 300.0,
     }
     assert resolve_quality_loop(None)["enabled"] is False
 
@@ -40,6 +42,8 @@ def test_enabled_true_turns_subswitches_on():
         "stop_check": True, "finish_check": True,
         "correction_capture": True,
         "compress_reminder": True,
+        "heavy_at_finish": False,
+        "finish_verifier_budget": 300.0,
     }
 
 
