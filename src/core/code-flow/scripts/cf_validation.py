@@ -59,9 +59,10 @@ def validate_files(root: str, files: Sequence[str] = (), budget: Optional[float]
     if not math.isfinite(maximum) or maximum <= 0:
         raise ValueError("validation budget must be finite and positive")
     with execution_session():
-        failures, truncated = run_validators(root, validators, list(selected), "cf-validate", maximum, strict=True)
+        failures, truncated, reused = run_validators(root, validators, list(selected), "cf-validate",
+                                                    maximum, strict=True)
     return {"decision": "block" if failures or truncated else "pass", "files": selected,
-            "failures": failures, "incomplete": truncated}
+            "failures": failures, "incomplete": truncated, "reused": reused}
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:

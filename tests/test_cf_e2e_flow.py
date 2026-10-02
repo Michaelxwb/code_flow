@@ -22,6 +22,7 @@ from cf_spec_context import BindingInput, bind_specs, load_context, new_context,
 from cf_spec_resolver import resolve_candidates  # noqa: E402
 from cf_stop_hook import _acceptance_gap  # noqa: E402
 from cf_task_workflow import confirm_manual, verify_e2e  # noqa: E402
+from cf_validation import validate_files  # noqa: E402
 
 
 def _manifest(tmp_path: Path, functional: list, e2e: list) -> str:
@@ -417,3 +418,51 @@ def test_manual_confirmation_rejects_agent_and_unknown_refs(tmp_path: Path) -> N
 
     status = load_context(str(req / "spec-context.yml")).bindings[0].rules[0].stage_status["review"]
     assert status.status == "pending", "非法确认不得留下痕迹"
+
+
+def _with_validation(root: Path, validator: dict) -> None:
+    (root / ".code-flow/validation.yml").write_text(
+        yaml.safe_dump({"validators": [validator]}), encoding="utf-8"
+    )
+    subprocess.run(("git", "add", "-A"), cwd=root, check=True)
+    subprocess.run(("git", "commit", "-qm", "validation"), cwd=root, check=True)
+
+
+def test_verify_e2e_runs_full_validation_and_caches(tmp_path: Path) -> None:
+    """需求终验执行全量 validation（含 heavy）；归档复验按内容指纹命中缓存不重跑。"""
+    runs = tmp_path / "heavy-runs.txt"
+    root, req = _review_requirement(tmp_path, _review_argv(tmp_path / "rule-runs.txt"))
+    _with_validation(root, {
+        "name": "Heavy", "trigger": "**/*.py",
+        "command": f"python3 -c \"open('{runs}', 'a').write('x')\"",
+        "timeout": 5000, "heavy": True, "on_fail": "修",
+    })
+
+    result = verify_e2e(str(root), str(req))
+
+    assert result["decision"] == "pass", result
+    assert result["validation"]["reused"] == 0
+    assert runs.read_text(encoding="utf-8") == "x", "verify-e2e 必须执行 heavy validation"
+
+    again = verify_e2e(str(root), str(req))
+    assert again["decision"] == "pass", again
+    assert again["validation"]["reused"] == 1, "同内容重跑必须命中缓存"
+    assert runs.read_text(encoding="utf-8") == "x"
+
+    archived = validate_files(str(root), ["src/app.py"])
+    assert archived["decision"] == "pass" and archived["reused"] == 1
+    assert runs.read_text(encoding="utf-8") == "x", "归档复验不得重复执行"
+
+
+def test_verify_e2e_blocks_on_validation_failure(tmp_path: Path) -> None:
+    root, req = _review_requirement(tmp_path, _review_argv(tmp_path / "rule-runs.txt"))
+    _with_validation(root, {
+        "name": "Heavy", "trigger": "**/*.py",
+        "command": "python3 -c 'import sys; sys.exit(1)'",
+        "timeout": 5000, "heavy": True, "on_fail": "修",
+    })
+
+    result = verify_e2e(str(root), str(req))
+
+    assert result["decision"] == "block"
+    assert result["reason"] == "validation_failed"

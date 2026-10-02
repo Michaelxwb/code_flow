@@ -13,6 +13,7 @@ globs: []
 
 1. **全量 verifier**：需求目录全部 task context 绑定的 required rules（code 层被任务延后的 `deferred_to_review` + `stage: review` 重型验证），按 spec/rule 去重全量执行一次，证据写回全部相关 context；输出 `executed` / `reused` / `failed` 计数。
 2. **E2E 验收场景**：依赖外部环境（数据库、API、浏览器等）、编码阶段标记 `e2e_deferred` 的场景。
+3. **全量 validation**：执行 `validation.yml` 全部 validator（含 `heavy: true` 全量套件/构建/E2E）；结果按工作树内容指纹缓存，归档复验命中即复用、不重复执行。
 
 失败不写 verified、不反转已 done 的任务状态；归档前必须 `decision=pass`。未声明 review verifier 且无 E2E 场景时为空操作（`reason=nothing_to_verify`）。
 
@@ -62,7 +63,7 @@ python3 .code-flow/scripts/cf_task_workflow.py verify-e2e \
   --task-dir "<需求目录>" --root "$PWD" --json
 ```
 
-该入口是需求级全量终验：重新检查所有 TASK，锁定 manifest 与 functional/manual 最新证据，全量补跑 code+review 两层 verifier（含任务层 deferred 项），并以 `--only-e2e` 调用 runner 跑 E2E；只有全通过才把任务提升为 verified。不得手动改状态。
+该入口是需求级全量终验：重新检查所有 TASK，锁定 manifest 与 functional/manual 最新证据，执行全量 validation（含 heavy），全量补跑 code+review 两层 verifier（含任务层 deferred 项），并以 `--only-e2e` 调用 runner 跑 E2E；只有全通过才把任务提升为 verified。不得手动改状态。
 
 ### 4. 人工验收确认（manual_confirmation_required）
 

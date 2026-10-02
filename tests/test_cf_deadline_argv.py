@@ -47,7 +47,7 @@ def test_validators_past_deadline_marked_incomplete(tmp_path: Path) -> None:
         {"name": "slow", "trigger": "**/*.py", "command": "python3 -c pass {files}", "timeout": 60000},
         {"name": "never", "trigger": "**/*.py", "command": "python3 -c pass {files}", "timeout": 60000},
     ]
-    failures, truncated = run_validators(
+    failures, truncated, _reused = run_validators(
         str(tmp_path), validators, ["a.py"], "sid", deadline=time.monotonic() - 1.0
     )
     assert truncated is True
@@ -71,7 +71,7 @@ def test_argv_handles_spaces_and_shell_metachars(tmp_path: Path) -> None:
             "on_fail": "语法错误",
         }
     ]
-    failures, truncated = run_validators(
+    failures, truncated, _reused = run_validators(
         str(tmp_path), validators, ["src/a b.py", "src/x$(y).py"], "sid"
     )
     assert truncated is False

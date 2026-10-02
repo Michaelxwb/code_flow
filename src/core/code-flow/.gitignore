@@ -11,4 +11,5 @@ sessions/
 specs/_session/
 worktrees/
 .task-projection-state.json
+.validation-cache.json
 # <<< code-flow:runtime schema=1

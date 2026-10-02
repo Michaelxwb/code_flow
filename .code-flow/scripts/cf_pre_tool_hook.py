@@ -50,6 +50,10 @@ def _inject(text: str) -> dict[str, object]:
 def main() -> None:
     try:
         ensure_utf8_io()
+        if sys.stdin.isatty():
+            # 手动运行且未用管道喂事件：hook 协议要求 stdin JSON，直接退出避免永久阻塞
+            print("cf_pre_tool_hook: 缺少 stdin 事件（手动运行？），跳过。", file=sys.stderr)
+            return
         raw = sys.stdin.read()
         if not raw.strip():
             return

@@ -153,6 +153,99 @@ def test_heavy_validator_skipped_on_stop_but_run_by_validate():
         assert result["decision"] == "block", "cf-validate 必须仍然执行 heavy validator"
 
 
+def test_manual_run_without_pipe_exits_immediately():
+    """交互式手动运行（无 stdin 管道）必须立即退出，不得阻塞读取 stdin。"""
+
+    class _Tty:
+        def isatty(self):
+            return True
+
+        def read(self):
+            raise AssertionError("tty 下不得读取 stdin")
+
+    with mock.patch("sys.stdin", _Tty()), \
+            mock.patch("sys.stdout", io.StringIO()), \
+            mock.patch("sys.stderr", io.StringIO()):
+        cf_stop_hook.main()
+
+
+def _git_init(root: str) -> None:
+    import subprocess
+    subprocess.run(("git", "init", "-q"), cwd=root, check=True)
+    subprocess.run(("git", "config", "user.email", "t@t"), cwd=root, check=True)
+    subprocess.run(("git", "config", "user.name", "t"), cwd=root, check=True)
+    subprocess.run(("git", "add", "-A"), cwd=root, check=True)
+    subprocess.run(("git", "commit", "-qm", "init"), cwd=root, check=True)
+
+
+def _counter_validator(counter: str, fail: bool = False) -> dict:
+    if fail:
+        command = f"python3 -c \"open('{counter}', 'a').write('x'); import sys; sys.exit(1)\""
+    else:
+        command = f"python3 -c \"open('{counter}', 'a').write('x')\""
+    return {"name": "计数", "trigger": "**/*.py", "command": command,
+            "timeout": 5000, "on_fail": "n/a"}
+
+
+def test_validator_cache_reuses_unchanged_content():
+    """内容未变 → 复用（不执行）；.code-flow 写入与提交同一内容都不失效；内容变化 → 重跑。"""
+    with tempfile.TemporaryDirectory() as root:
+        counter = os.path.join(root, "runs.txt")
+        _make_project(root, [_counter_validator(counter)])
+        os.makedirs(os.path.join(root, "src"), exist_ok=True)
+        with open(os.path.join(root, "src", "a.py"), "w") as f:
+            f.write("a = 1\n")
+        _git_init(root)
+        from cf_validation import validate_files
+
+        first = validate_files(root, ["src/a.py"])
+        assert first["decision"] == "pass" and first["reused"] == 0
+        with open(counter) as f:
+            assert f.read() == "x"
+
+        second = validate_files(root, ["src/a.py"])
+        assert second["decision"] == "pass" and second["reused"] == 1
+        with open(counter) as f:
+            assert f.read() == "x", "命中缓存不得执行命令"
+
+        with open(os.path.join(root, ".code-flow", "state.json"), "w") as f:
+            f.write("{}\n")
+        third = validate_files(root, ["src/a.py"])
+        assert third["reused"] == 1, ".code-flow 运行时写入不得使缓存失效"
+
+        with open(os.path.join(root, "src", "a.py"), "a") as f:
+            f.write("b = 2\n")
+        changed = validate_files(root, ["src/a.py"])
+        assert changed["reused"] == 0
+        with open(counter) as f:
+            assert f.read() == "xx", "内容变化必须重跑"
+
+        import subprocess
+        subprocess.run(("git", "add", "src/a.py"), cwd=root, check=True)
+        subprocess.run(("git", "commit", "-qm", "change"), cwd=root, check=True)
+        committed = validate_files(root, ["src/a.py"])
+        assert committed["reused"] == 1, "提交同一内容不得使缓存失效"
+
+
+def test_validator_failure_never_cached():
+    """失败结果不入缓存：下一次仍必须真实执行。"""
+    with tempfile.TemporaryDirectory() as root:
+        counter = os.path.join(root, "runs.txt")
+        _make_project(root, [_counter_validator(counter, fail=True)])
+        os.makedirs(os.path.join(root, "src"), exist_ok=True)
+        with open(os.path.join(root, "src", "a.py"), "w") as f:
+            f.write("a = 1\n")
+        _git_init(root)
+        from cf_validation import validate_files
+
+        first = validate_files(root, ["src/a.py"])
+        second = validate_files(root, ["src/a.py"])
+
+        assert first["decision"] == "block" and second["decision"] == "block"
+        with open(counter) as f:
+            assert f.read() == "xx", "失败结果必须每次真实执行"
+
+
 def test_unmatched_trigger_skipped():
     with tempfile.TemporaryDirectory() as root:
         _make_project(root, [dict(FAIL_V, trigger="**/*.go")])

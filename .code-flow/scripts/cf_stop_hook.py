@@ -11,12 +11,17 @@ additionalContext for Stop. `stop_hook_active` is respected so an already
 continued session is never re-blocked (no loops). All-pass → silent exit 0.
 """
 import fnmatch
+import hashlib
 import json
 import math
 import os
+from datetime import datetime, timezone
+from pathlib import Path
 import re
+import subprocess
 import sys
 import time
+from typing import Optional
 
 import cf_log
 from cf_exec_base import build_argv, remaining_seconds, run_command, execution_session
@@ -36,6 +41,8 @@ from cf_core import (
 
 TOTAL_BUDGET_SECONDS = 30.0
 GATE_BUDGET_SECONDS = 25.0
+VALIDATION_CACHE_FILE = ".validation-cache.json"
+_MAX_VALIDATION_CACHE_ENTRIES = 256
 _BRACE_RE = re.compile(r"\{([^{}]+)\}")
 _TASK_SECTION_RE = re.compile(
     r"(?ms)^## (TASK-\d+):.*?(?=^## TASK-\d+:|\Z)"
@@ -252,15 +259,125 @@ def _validator_result(root: str, validator: dict, argv: list, sid: str,
     return ([] if passed else [_validator_failure(validator, detail)]), timed_out
 
 
+def _hash_paths(project_root: str, paths: list) -> Optional[list]:
+    """批量计算工作区文件内容哈希（git hash-object --stdin-paths，单进程）。"""
+    if not paths:
+        return []
+    completed = subprocess.run(
+        ("git", "-C", project_root, "hash-object", "--stdin-paths"),
+        input="\n".join(paths) + "\n", text=True, capture_output=True,
+    )
+    if completed.returncode != 0:
+        return None
+    hashes = completed.stdout.splitlines()
+    if len(hashes) != len(paths):
+        return None
+    return [(path, sha.strip()) for path, sha in zip(paths, hashes)]
+
+
+def _tree_fingerprint(project_root: str, validators: list) -> str:
+    """工作树内容指纹（内容寻址，忽略 .code-flow），与提交状态无关。
+
+    已提交内容取 blob SHA，未提交/未跟踪内容用工作区文件哈希补齐；未跟踪文件
+    只纳入命中任一 validator trigger 的路径（构建/测试产物不使缓存失效）。
+    同一内容在提交前后得到相同指纹；返回 "" 表示无法判定（禁用缓存）。
+    """
+    from cf_spec_context import _run_git
+
+    triggers = [str(item.get("trigger", "")) for item in validators if isinstance(item, dict)]
+    try:
+        tree = _run_git(project_root, ("ls-tree", "-r", "HEAD"))
+        status = _run_git(project_root, ("status", "--porcelain", "--untracked-files=all"))
+    except (OSError, ValueError):
+        return ""
+    contents: dict[str, str] = {}
+    for line in tree.splitlines():
+        meta, _, path = line.partition("\t")
+        fields = meta.split()
+        if path and len(fields) >= 3 and not path.startswith(".code-flow/"):
+            contents[path] = fields[2]
+    changed: list[str] = []
+    deleted: list[str] = []
+    untracked: list[str] = []
+    for line in status.splitlines():
+        code, path = line[:2], line[3:].strip()
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1].strip()
+        if not path or path.startswith(".code-flow/"):
+            continue
+        if path.startswith('"'):
+            return ""  # 引号转义路径：保守禁用缓存
+        if code.strip() == "??":
+            untracked.append(path)
+        elif "D" in code:
+            contents.pop(path, None)
+            deleted.append(path)
+        else:
+            changed.append(path)
+    for path in untracked:
+        if not triggers or any(trigger_matches(trigger, path) for trigger in triggers):
+            changed.append(path)
+    hashed = _hash_paths(project_root, changed)
+    if hashed is None:
+        return ""
+    for path, sha in hashed:
+        contents[path] = sha
+    digest = hashlib.sha256()
+    for path in sorted(contents):
+        digest.update(path.encode())
+        digest.update(b"\0")
+        digest.update(contents[path].encode())
+        digest.update(b"\n")
+    for path in sorted(deleted):
+        digest.update(f"deleted:{path}".encode())
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
+def _validation_cache_path(project_root: str) -> Path:
+    return Path(project_root) / ".code-flow" / VALIDATION_CACHE_FILE
+
+
+def _load_validation_cache(project_root: str) -> dict:
+    try:
+        data = json.loads(_validation_cache_path(project_root).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _save_validation_cache(project_root: str, cache: dict) -> None:
+    if len(cache) > _MAX_VALIDATION_CACHE_ENTRIES:
+        ordered = sorted(
+            cache.items(),
+            key=lambda item: str(item[1].get("at", "")) if isinstance(item[1], dict) else "",
+        )
+        cache = dict(ordered[-_MAX_VALIDATION_CACHE_ENTRIES:])
+    try:
+        path = _validation_cache_path(project_root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(cache, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    except OSError:
+        return  # 缓存写入失败不影响验证结论
+
+
 def run_validators(
     project_root: str, validators: list, files: list, sid: str,
     total_budget: float = TOTAL_BUDGET_SECONDS,
     deadline: float = 0.0,
     strict: bool = False,
+    cache: bool = True,
 ) -> tuple:
-    """Match validators, execute argv under one deadline, report unrun work."""
-    failures, truncated = [], False
+    """Match validators, execute argv under one deadline, report unrun work.
+
+    `cache` 复用"工作树内容指纹一致 + 相同 argv"的通过结果（失败不缓存）；
+    返回 (failures, truncated, reused)。
+    """
+    failures, truncated, reused = [], False, 0
     deadline = deadline or time.monotonic() + total_budget
+    fingerprint = _tree_fingerprint(project_root, validators) if cache else ""
+    cache_data = _load_validation_cache(project_root) if fingerprint else {}
+    cache_dirty = False
     for validator in validators:
         if not isinstance(validator, dict):
             if strict:
@@ -281,10 +398,25 @@ def run_validators(
             continue
         if not argv:
             continue
+        key = hashlib.sha256(json.dumps({"argv": argv}, ensure_ascii=False).encode()).hexdigest()
+        if fingerprint:
+            entry = cache_data.get(key)
+            if isinstance(entry, dict) and entry.get("fingerprint") == fingerprint:
+                reused += 1
+                continue
         errors, incomplete = _validator_result(project_root, validator, argv, sid, deadline, strict)
         failures.extend(errors)
         truncated = truncated or incomplete
-    return failures, truncated
+        if fingerprint and not errors and not incomplete:
+            cache_data[key] = {
+                "fingerprint": fingerprint,
+                "at": datetime.now(timezone.utc).isoformat(),
+                "command": str(validator.get("command", ""))[:200],
+            }
+            cache_dirty = True
+    if cache_dirty:
+        _save_validation_cache(project_root, cache_data)
+    return failures, truncated, reused
 
 
 def _reason_text(failures: list, truncated: bool) -> str:
@@ -303,6 +435,10 @@ def _reason_text(failures: list, truncated: bool) -> str:
 def _main() -> None:
     try:
         ensure_utf8_io()
+        if sys.stdin.isatty():
+            # 手动运行且未用管道喂事件：hook 协议要求 stdin JSON，直接退出避免永久阻塞
+            print("cf_stop_hook: 缺少 stdin 事件（手动运行？），跳过。", file=sys.stderr)
+            return
         raw = sys.stdin.read()
         if not raw.strip():
             return
@@ -356,9 +492,9 @@ def _main() -> None:
             return
         acceptance_failures = task_acceptance_failures(project_root, files)
         validators = _stop_validators(project_root)
-        failures, truncated = run_validators(
+        failures, truncated, _reused = run_validators(
             project_root, validators, files, sid, deadline=deadline
-        ) if validators else ([], False)
+        ) if validators else ([], False, 0)
         failures = acceptance_failures + failures
         if not failures:
             return  # 全过或无 validation.yml 且无验收缺口时静默

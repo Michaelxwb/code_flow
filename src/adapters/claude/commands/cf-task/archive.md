@@ -48,7 +48,7 @@
 - 全文无残留的 `#NOTES` 标记
 
 **正确性**：
-- 执行 `python3 .code-flow/scripts/cf_validation.py --root "$PWD" --json`；归档时任务已无 marker，须补充本需求基线至当前的变更路径作为 `--files` 参数，不能把工作区干净误认为本需求无需验证。这是 `heavy: true`（全量套件/构建/E2E）的唯一自动执行点；只做快速自查时用 `--no-heavy`
+- 执行 `python3 .code-flow/scripts/cf_validation.py --root "$PWD" --json`；归档时任务已无 marker，须补充本需求基线至当前的变更路径作为 `--files` 参数，不能把工作区干净误认为本需求无需验证。验证结果按工作树内容指纹缓存：verify-e2e 已执行且内容未变时直接复用（不重复跑全量），只对变更内容增量重跑；只做快速自查时用 `--no-heavy`
 - 检查本次变更涉及的文件是否通过 lint/type check
 
 **验收追溯**：

@@ -1,6 +1,7 @@
 # validators 在每次 Stop 按“会话内编辑过的文件”匹配执行（quality_loop.stop_check）。
 # 全量测试 / e2e 等慢命令标 `heavy: true`：Stop 与任务 finish 都跳过（deferred_heavy），
-# 只在归档 cf_validation 与显式 /cf-validate 时全量执行一次；避免每个任务都重跑多遍。
+# 只由需求终验 verify-e2e / 归档与显式 /cf-validate 全量执行一次；结果按工作树内容指纹
+# 缓存，同一内容不会重复执行。
 validators:
     - name: "Python 语法检查"
       trigger: "**/*.py"

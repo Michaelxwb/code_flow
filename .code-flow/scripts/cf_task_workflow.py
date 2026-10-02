@@ -266,6 +266,15 @@ def verify_e2e(root: str, directory: str) -> dict[str, object]:
             "next": ("向用户展示待确认清单并取得明确回复后，运行 confirm-manual 批量写入确认，再重跑 verify-e2e；"
                      "Agent 不得代确认。"),
         }
+    validation: dict[str, object] = {"decision": "pass", "reason": "no_validators_configured", "reused": 0}
+    try:
+        from cf_validation import validate_files
+
+        validation = validate_files(root, tuple(sorted(_git_tracked_files(root))), include_heavy=True)
+    except (OSError, ValueError) as exc:
+        return {"decision": "block", "reason": "validation_error", "detail": str(exc)}
+    if validation.get("decision") != "pass" and validation.get("reason") != "no_validators_configured":
+        return {"decision": "block", "reason": "validation_failed", "validation": validation}
     confirmations = _manual_confirmations(root, all_targets)
     review = (_run_requirement_verifiers(root, all_targets, confirmations) if all_targets
               else {"executed": 0, "reused": 0, "failed": []})
@@ -280,6 +289,12 @@ def verify_e2e(root: str, directory: str) -> dict[str, object]:
         "reused": review["reused"],
         "failed": review["failed"],
         "review": review,
+        "validation": {
+            "decision": validation.get("decision"),
+            "reason": validation.get("reason", ""),
+            "reused": validation.get("reused", 0),
+            "failures": validation.get("failures", []),
+        },
     }
     if decision == "pass":
         for task_file, task_id, _ in tasks:
