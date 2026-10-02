@@ -19,6 +19,7 @@ sys.path.insert(0, str(SCRIPTS))
 from cf_acceptance_manifest import write_manifest  # noqa: E402
 from cf_acceptance_runner import run_manifest  # noqa: E402
 from cf_spec_context import BindingInput, bind_specs, load_context, new_context, save_context  # noqa: E402
+from cf_spec_gate import validate_stage  # noqa: E402
 from cf_spec_resolver import resolve_candidates  # noqa: E402
 from cf_stop_hook import _acceptance_gap  # noqa: E402
 from cf_task_workflow import confirm_manual, verify_e2e  # noqa: E402
@@ -360,6 +361,59 @@ def _deferred_code_requirement(tmp_path: Path) -> tuple:
     subprocess.run(("git", "add", "-A"), cwd=root, check=True)
     subprocess.run(("git", "commit", "-qm", "init"), cwd=root, check=True)
     return root, req, marker
+
+
+def _multi_spec_requirement(tmp_path: Path) -> tuple:
+    """两个 spec 映射同一路径并绑进同一个 context（复现共享 context 写回场景）。"""
+    root = tmp_path / "proj_multi"
+    root.mkdir()
+    subprocess.run(("git", "init", "-q"), cwd=root, check=True)
+    subprocess.run(("git", "config", "user.email", "t@t"), cwd=root, check=True)
+    subprocess.run(("git", "config", "user.name", "t"), cwd=root, check=True)
+    (root / "src").mkdir()
+    (root / "src/app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    specs = root / ".code-flow/specs"
+    for name, rule in (("a-rules", "RULE-a-001"), ("b-rules", "RULE-b-001")):
+        folder = specs / name.split("-")[0]
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "rules.md").write_text(
+            f"---\nid: {name}\ndescription: {name}\nstages: [design, plan, code, review]\nenforcement: required\n"
+            f"verifiers:\n  - rule: {rule}\n    type: test\n    config: {{argv: [python3, -c, pass]}}\n"
+            f"---\n# {name}\n## Rules\n- [{rule}] rule.\n",
+            encoding="utf-8",
+        )
+    config = {"path_mapping": {
+        "a": {"patterns": ["src/*"], "specs": [{"path": "a/rules.md"}]},
+        "b": {"patterns": ["src/*"], "specs": [{"path": "b/rules.md"}]},
+    }}
+    (root / ".code-flow/config.yml").write_text(yaml.safe_dump(config), encoding="utf-8")
+    req = root / ".code-flow" / "tasks" / "req"
+    req.mkdir(parents=True)
+    (req / "req.md").write_text(
+        "# Tasks: req\n\n- **Source**: req.design.md\n\n"
+        "## TASK-001: A\n\n- **Status**: done\n- **Acceptance-Refs**:\n",
+        encoding="utf-8",
+    )
+    candidates = resolve_candidates(str(root), "design", ["src/app.py"])
+    context = new_context("req", (("test", "multi"),))
+    context = bind_specs(context, tuple(BindingInput(item, "path+agent", "multi") for item in candidates))
+    save_context(str(req / "spec-context.yml"), context)
+    subprocess.run(("git", "add", "-A"), cwd=root, check=True)
+    subprocess.run(("git", "commit", "-qm", "init"), cwd=root, check=True)
+    return root, req
+
+
+def test_verify_e2e_flips_all_rules_in_shared_context(tmp_path: Path) -> None:
+    """同一 context 绑定多个 spec：终验必须全部翻牌（回归：写回曾互相覆盖）。"""
+    root, req = _multi_spec_requirement(tmp_path)
+
+    result = verify_e2e(str(root), str(req))
+
+    assert result["decision"] == "pass", result
+    context = load_context(str(req / "spec-context.yml"))
+    statuses = {binding.spec_id: binding.rules[0].stage_status["code"].status for binding in context.bindings}
+    assert statuses == {"a-rules": "verified", "b-rules": "verified"}, statuses
+    assert validate_stage(context, "code").decision == "pass"
 
 
 def test_verify_e2e_runs_deferred_code_rules(tmp_path: Path) -> None:

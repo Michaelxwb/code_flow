@@ -185,6 +185,7 @@ def _run_requirement_verifiers(
     executed = reused = 0
     failures: list[str] = []
     context_paths: set[Path] = set()
+    evidence_by_context: dict[Path, list[Mapping[str, object]]] = {}
     scope = _review_scope(root)
     for spec_id in sorted(targets):
         info = targets[spec_id]
@@ -204,12 +205,18 @@ def _run_requirement_verifiers(
             evidence = by_rule.get(rule_ref)
             if evidence is None:
                 continue
-            payload = (_evidence_data(evidence),)
-            for ctx_path, context in entries:
+            payload = _evidence_data(evidence)
+            for ctx_path, _context in entries:
                 context_paths.add(ctx_path)
-                updated = _apply_evidence(context, payload)
-                if updated != context:
-                    save_context(str(ctx_path), updated)
+                evidence_by_context.setdefault(ctx_path, []).append(payload)
+    # 同一 context 常绑定多个 spec：必须加载一次、合并全部证据后写回一次。
+    # 逐 spec 从收集时的旧 context 存盘会互相覆盖（历史缺陷：verify-e2e 报 pass
+    # 但只有最后一个 spec 的 status 翻牌）。
+    for ctx_path in sorted(evidence_by_context, key=str):
+        context = load_context(str(ctx_path))
+        updated = _apply_evidence(context, tuple(evidence_by_context[ctx_path]))
+        if updated != context:
+            save_context(str(ctx_path), updated)
     for ctx_path in sorted(context_paths):
         gate = validate_stage(load_context(str(ctx_path)), "review", diff_sha256=scope.diff_sha256)
         failures.extend(f"{issue.spec_id}#{issue.rule_ref}" for issue in gate.errors)
