@@ -191,3 +191,30 @@ def test_log_inserted_before_last_separator_when_body_has_rule(tmp_path: Path) -
     assert region.index("### Log") > region.index("段落内横线示例")
     assert region.rindex("---") > region.index("### Log")
     assert region.index("---") < region.index("### Log")
+
+
+def test_remove_and_cleanup_session_projections(tmp_path: Path) -> None:
+    """投影清理：单任务删除返回状态；cleanup 只删本需求、不碰其他需求。"""
+    from cf_workflow_service import cleanup_session_projections, remove_session_projection
+
+    session = tmp_path / ".code-flow/specs/_session"
+    session.mkdir(parents=True)
+    (session / "task-a.md").write_text("A", encoding="utf-8")
+    (session / "task-b.md").write_text("B", encoding="utf-8")
+    (session / "task-foreign.md").write_text("F", encoding="utf-8")
+    demand = tmp_path / "demand"
+    demand.mkdir()
+    (demand / "a.md").write_text("## TASK-001: A\n- **Status**: done\n", encoding="utf-8")
+    (demand / "b.md").write_text("## TASK-002: B\n- **Status**: done\n", encoding="utf-8")
+    (demand / "c.design.md").write_text("design", encoding="utf-8")
+
+    assert remove_session_projection(str(tmp_path), str(demand / "a.md")) == "removed"
+    assert remove_session_projection(str(tmp_path), str(demand / "a.md")) == "absent"
+
+    result = cleanup_session_projections(str(tmp_path), str(demand))
+
+    assert result["decision"] == "pass"
+    assert result["removed"] == [".code-flow/specs/_session/task-b.md"]
+    assert result["absent"] == [".code-flow/specs/_session/task-a.md"]
+    assert not (session / "task-b.md").exists()
+    assert (session / "task-foreign.md").exists(), "不得碰其他需求的投影"

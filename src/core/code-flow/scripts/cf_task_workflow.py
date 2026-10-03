@@ -21,7 +21,9 @@ from cf_spec_verify import VerificationScope, _git_tracked_files, run_all_verifi
 from cf_task_index import parse_task_file
 from cf_task_runtime import _apply_evidence, _evidence_data, run_done_gate
 from cf_workflow_service import (FINISHED_STATUSES, _require_marker_task,
-                                 _sync_markdown, block_task, complete_task, locate_task_file, resume_task)
+                                 _sync_markdown, block_task, cleanup_session_projections,
+                                 complete_task, locate_task_file, remove_session_projection,
+                                 resume_task)
 from cf_workflow_transaction import recover_transition
 
 
@@ -30,13 +32,16 @@ def finish_task(root: str, directory: str, task_file: str, task_id: str) -> dict
     gate = run_done_gate(root, directory, task_id=task_id)
     if gate.decision != "pass":
         return {"decision": "block", "reason": gate.message, "evidence": gate.evidence}
+    completed = complete_task(root, directory, task_file, task_id, True)
+    # 完成后清理本任务的 Spec Session 投影（瞬时文件，避免往期规则被后续会话读到）
     result = {
         "decision": "pass",
         "deferred_review": gate.deferred_review,
         "deferred_requirement": gate.deferred_requirement,
         "deferred_budget": gate.deferred_budget,
         "deferred_heavy": gate.deferred_heavy,
-        **complete_task(root, directory, task_file, task_id, True),
+        "session_projection": remove_session_projection(root, task_file),
+        **completed,
     }
     hints = []
     deferred_total = gate.deferred_review + gate.deferred_requirement + gate.deferred_budget
@@ -372,7 +377,7 @@ def confirm_manual(root: str, directory: str, refs: Sequence[str], scenarios: Se
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("finish", "block", "resume", "verify-e2e", "confirm-manual"))
+    parser.add_argument("action", choices=("finish", "block", "resume", "verify-e2e", "confirm-manual", "cleanup-session"))
     parser.add_argument("--root", default=os.getcwd())
     parser.add_argument("--task-dir", required=True)
     parser.add_argument("--task", default="")
@@ -392,6 +397,8 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
         recover_transition(root)
         if args.action == "verify-e2e":
             result = verify_e2e(root, directory)
+        elif args.action == "cleanup-session":
+            result = cleanup_session_projections(root, directory)
         elif args.action == "confirm-manual":
             refs = [item.strip() for item in args.refs.split(",") if item.strip()]
             scenarios = [item.strip() for item in args.scenarios.split(",") if item.strip()]

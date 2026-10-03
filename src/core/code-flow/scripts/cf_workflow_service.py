@@ -251,6 +251,48 @@ def _write_projection(root: str, candidate: Path, context: SpecContext, task_id:
     return output
 
 
+def remove_session_projection(root: str, task_file: str) -> str:
+    """删除任务在 `specs/_session/` 的投影，返回 removed / absent / error: ...。
+
+    投影是 start 生成的瞬时文件（`.gitignore` 忽略、不参与 Spec Catalog 与审计），
+    任务完成后必须清理，避免往期任务的 Required Rules/Contract 被后续会话读到。
+    清理失败不影响 Done 裁决，但状态必须显式返回。
+    """
+    projection = Path(root) / ".code-flow/specs/_session" / f"task-{Path(task_file).stem}.md"
+    try:
+        projection.unlink()
+    except FileNotFoundError:
+        return "absent"
+    except OSError as exc:
+        return f"error: {exc}"
+    return "removed"
+
+
+def cleanup_session_projections(root: str, directory: str) -> dict[str, object]:
+    """按需求目录逐个任务文件删除 `_session` 投影（只动本需求的 task-<stem>.md）。"""
+    removed: list[str] = []
+    absent: list[str] = []
+    errors: list[dict[str, str]] = []
+    for task_file in sorted(Path(directory).glob("*.md")):
+        if task_file.name.endswith((".design.md", ".prd.md")):
+            continue
+        relative = f".code-flow/specs/_session/task-{task_file.stem}.md"
+        status = remove_session_projection(root, str(task_file))
+        if status == "removed":
+            removed.append(relative)
+        elif status == "absent":
+            absent.append(relative)
+        else:
+            errors.append({"path": relative, "error": status})
+    return {
+        "ok": not errors,
+        "decision": "block" if errors else "pass",
+        "removed": removed,
+        "absent": absent,
+        "errors": errors,
+    }
+
+
 def start_task(
     root: str,
     task_dir: str,

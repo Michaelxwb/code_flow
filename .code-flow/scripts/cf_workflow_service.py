@@ -120,6 +120,39 @@ def _today() -> str:
     return date.today().isoformat()
 
 
+def _log_list_end(section: str, heading: re.Match) -> int:
+    """`### Log` 列表最后一项的末尾偏移；无条目时为标题行末。"""
+    body_start = heading.end()
+    boundary = re.search(r"(?m)^#{2,3} |^---[ \t]*$", section[body_start:])
+    body_end = body_start + (boundary.start() if boundary is not None else len(section) - body_start)
+    entries = list(re.finditer(r"(?m)^- .*$", section[body_start:body_end]))
+    return body_start + (entries[-1].end() if entries else 0)
+
+
+def _trailing_separator_at(section: str) -> int:
+    """段落尾部 `---` 分隔符的起始偏移（取最后一个）；无分隔符时为段落末尾。"""
+    at = len(section)
+    for match in re.finditer(r"(?m)^---[ \t]*$", section):
+        at = match.start()
+    return at
+
+
+def _append_log_entry(section: str, log_line: str) -> str:
+    """把生命周期记录追加进 `### Log` 列表（无该小节时在尾部分隔符前新建）。
+
+    历史缺陷：直接追加到 section 末尾会落在 `---` 分隔符之后，并吞掉下一节前的
+    空行；这里始终在段落内容区内插入，保持分隔符与空行原样。
+    """
+    heading = re.search(r"(?m)^### Log[ \t]*$", section)
+    if heading is not None:
+        at = _log_list_end(section, heading)
+        return section[:at] + f"\n{log_line}" + section[at:]
+    at = _trailing_separator_at(section)
+    head, tail = section[:at].rstrip(), section[at:].lstrip("\n")
+    body = f"{head}\n\n### Log\n{log_line}\n"
+    return body + (f"\n{tail}" if tail else "")
+
+
 def _set_status(section: str, status: str, log_line: str = "") -> str:
     if re.search(r"(?m)^- \*\*Status\*\*:", section):
         section = re.sub(r"(?m)^- \*\*Status\*\*:.*$", f"- **Status**: {status}", section, count=1)
@@ -128,7 +161,7 @@ def _set_status(section: str, status: str, log_line: str = "") -> str:
         insert_at = anchor.end() if anchor else 0
         section = section[:insert_at] + f"\n- **Status**: {status}" + section[insert_at:]
     if log_line and log_line not in section.splitlines():
-        section = section.rstrip() + ("\n" if "### Log" in section else "\n\n### Log\n") + log_line + "\n"
+        section = _append_log_entry(section, log_line)
     return section
 
 
@@ -138,7 +171,12 @@ def _render_markdown(text: str, task_id: str, status: str, log_line: str = "", p
         raise WorkflowError("task_not_found", task_id)
     section = _set_status(match.group(0), status, log_line)
     if prepend and prepend not in section:
-        section = section.replace("### Log", prepend + "\n### Log", 1) if "### Log" in section else section + "\n" + prepend + "\n"
+        if "### Log" in section:
+            section = section.replace("### Log", prepend + "\n### Log", 1)
+        else:
+            at = _trailing_separator_at(section)
+            head, tail = section[:at].rstrip(), section[at:].lstrip("\n")
+            section = f"{head}\n\n{prepend}\n" + (f"\n{tail}" if tail else "")
     text = text[:match.start()] + section + text[match.end():]
     return re.sub(r"(?m)^- \*\*Updated\*\*:.*$", f"- **Updated**: {_today()}", text, count=1)
 
@@ -211,6 +249,48 @@ def _write_projection(root: str, candidate: Path, context: SpecContext, task_id:
     except (OSError, ValueError) as exc:
         raise WorkflowError("session_write_failed", str(exc)) from exc
     return output
+
+
+def remove_session_projection(root: str, task_file: str) -> str:
+    """删除任务在 `specs/_session/` 的投影，返回 removed / absent / error: ...。
+
+    投影是 start 生成的瞬时文件（`.gitignore` 忽略、不参与 Spec Catalog 与审计），
+    任务完成后必须清理，避免往期任务的 Required Rules/Contract 被后续会话读到。
+    清理失败不影响 Done 裁决，但状态必须显式返回。
+    """
+    projection = Path(root) / ".code-flow/specs/_session" / f"task-{Path(task_file).stem}.md"
+    try:
+        projection.unlink()
+    except FileNotFoundError:
+        return "absent"
+    except OSError as exc:
+        return f"error: {exc}"
+    return "removed"
+
+
+def cleanup_session_projections(root: str, directory: str) -> dict[str, object]:
+    """按需求目录逐个任务文件删除 `_session` 投影（只动本需求的 task-<stem>.md）。"""
+    removed: list[str] = []
+    absent: list[str] = []
+    errors: list[dict[str, str]] = []
+    for task_file in sorted(Path(directory).glob("*.md")):
+        if task_file.name.endswith((".design.md", ".prd.md")):
+            continue
+        relative = f".code-flow/specs/_session/task-{task_file.stem}.md"
+        status = remove_session_projection(root, str(task_file))
+        if status == "removed":
+            removed.append(relative)
+        elif status == "absent":
+            absent.append(relative)
+        else:
+            errors.append({"path": relative, "error": status})
+    return {
+        "ok": not errors,
+        "decision": "block" if errors else "pass",
+        "removed": removed,
+        "absent": absent,
+        "errors": errors,
+    }
 
 
 def start_task(

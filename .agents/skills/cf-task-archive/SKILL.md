@@ -110,7 +110,7 @@ mv .code-flow/tasks/<日期>/<需求>/ .code-flow/tasks/archived/<日期>/<需�
 3. 复查归档目标存在、原任务/需求路径不存在；如果源日期目录仍存在但为空，视为归档未完成，立即删除后再继续。
 4. 源日期目录包含其他条目时不得删除，摘要明确写“保留（仍有 N 个条目）”。
 
-**临时约束清理（FEAT-08）**：删除 `.code-flow/specs/_session/task-<name>.md`（存在时）。该文件由 cf-task-start 生成，归档后不得残留。
+**临时约束清理（FEAT-08）**：执行 `python3 .code-flow/scripts/cf_task_workflow.py cleanup-session --task-dir <需求目录> --root "$PWD" --json`，逐个任务文件删除 `specs/_session/task-<任务文件stem>.md` 投影（finish 已清理的显示 absent）。该文件由 cf-task-start 生成，归档后不得残留。
 
 ### 4. Spec 更新提示
 

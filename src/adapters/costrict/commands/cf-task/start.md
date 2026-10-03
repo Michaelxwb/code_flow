@@ -207,7 +207,7 @@ python3 .code-flow/scripts/cf_task_parallel.py prepare --root "$PWD" \
 
 1. 进入 worktree：所有命令 `cd <worktree>` 执行，文件读写使用该 worktree 内路径。
 2. 按本命令"单任务模式"步骤 1-4 完成该 TASK：`cf_spec_context.py start` → functional RED → 实现 → functional GREEN（E2E 只登记）→ `cf_task_workflow.py finish --root "<worktree>"`。
-3. 平台 hook 注入绑定主工作区；子 agent 必须显式读取 Spec Session（`.code-flow/specs/_session/task-*.md`）与详设章节，不得依赖自动注入。
+3. 平台 hook 注入绑定主工作区；子 agent 必须显式读取 Spec Session（路径取 start 返回的 `session_output`，默认 `.code-flow/specs/_session/task-<任务文件stem>.md`）与详设章节，不得依赖自动注入。
 4. 完成时在 worktree 内提交全部改动（含任务文件 Checklist/Evidence/Status 更新），提交信息 `cf-task(<TASK-ID>): <标题>`。
 5. 返回摘要：TASK-ID、Status、验收命令及结果、提交 SHA、遗留问题。
 
@@ -215,7 +215,7 @@ python3 .code-flow/scripts/cf_task_parallel.py prepare --root "$PWD" \
 
 ```
 你在隔离 worktree 中执行 <TASK-ID>：<worktree 绝对路径>。
-1) cd 到 worktree；先读 Spec Session（.code-flow/specs/_session/task-<name>.md）、任务文件的当前 TASK 段落与 design 来源章节；
+1) cd 到 worktree；先读 Spec Session（start 返回的 session_output，默认 .code-flow/specs/_session/task-<任务文件stem>.md）、任务文件的当前 TASK 段落与 design 来源章节；
 2) cf_spec_context.py start → 写验收测试记录 RED → 实现 → GREEN；
 3) 运行 cf_task_workflow.py finish --root "$PWD" --task <TASK-ID> --json；decision=pass 后【再】提交全部改动（含 finish 回写的 Evidence/状态）：git add -A && git commit -m "cf-task(<TASK-ID>): <标题>"；
 4) 返回摘要：TASK-ID、Status、验收命令与结果、commit SHA、遗留问题。

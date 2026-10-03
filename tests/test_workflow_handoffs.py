@@ -87,6 +87,8 @@ def test_finish_cli_blocks_then_finishes_and_unlocks_next_task(tmp_path: Path) -
     root, directory = _repo(tmp_path)
     task = directory / "work.md"
     start_task(str(root), str(directory), str(task), "TASK-001")
+    projection = root / ".code-flow/specs/_session/task-work.md"
+    assert projection.exists(), "start 必须生成任务投影"
     # Regex verifiers reject matches; this fixture forbids VALUE = 2.
     (root / "src/app.py").write_text("VALUE = 2\n")
     args = ("finish", "--task-dir", str(directory), "--task", "TASK-001", "--json")
@@ -97,7 +99,10 @@ def test_finish_cli_blocks_then_finishes_and_unlocks_next_task(tmp_path: Path) -
     (root / "src/app.py").write_text("VALUE = 1\n# valid implementation\n")
     passed = _cli(root, "cf_task_workflow.py", *args)
     assert passed.returncode == 0, passed.stderr + passed.stdout
-    assert json.loads(passed.stdout)["decision"] == "pass"
+    payload = json.loads(passed.stdout)
+    assert payload["decision"] == "pass"
+    assert payload["session_projection"] == "removed"
+    assert not projection.exists(), "finish 通过后必须清理任务投影"
     assert not (root / ".code-flow/.active-task.json").exists()
     _git(root, "add", "-A")
     _git(root, "commit", "-qm", "finish first")
