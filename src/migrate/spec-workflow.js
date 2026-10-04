@@ -172,7 +172,12 @@ function rollback(planPath, error = "requested") {
   const journal = readJson(locations.journal);
   try {
     restoreBackup(plan, locations, journal.manifest || { targets: [] });
+    // A rolled-back plan must be re-appliable: stale staging content makes the
+    // next `stage` refuse ("staging root must be a pre-created empty directory").
+    if (fs.existsSync(locations.staging)) fs.rmSync(locations.staging, { recursive: true, force: true });
+    fs.mkdirSync(locations.staging, { recursive: true });
     journal.error = String(error);
+    journal.operations = [];
     persistJournal(locations.journal, journal, "rolled_back");
     return { status: "rolled_back", migration_id: plan.migration_id };
   } catch (restoreError) {
@@ -204,6 +209,16 @@ function recoverCommitting(plan, journal, locations, options) {
 function apply(planPath, options = {}) {
   const plan = readJson(planPath);
   const locations = journalPaths(planPath);
+  // Guard: a plan carries an absolute project_root; applying a plan from a
+  // different project (e.g. a copy or a stale path) would hash-check and
+  // mutate that other project instead of cwd. The CLI always passes
+  // projectRoot; direct library callers keep the previous behavior.
+  if (options.projectRoot) {
+    const expectedRoot = fs.realpathSync(options.projectRoot);
+    if (fs.realpathSync(plan.project_root) !== expectedRoot) {
+      throw new Error(`migration plan targets ${plan.project_root}, not ${expectedRoot}`);
+    }
+  }
   const versionPath = path.join(plan.project_root, ".code-flow/.version");
   if (fs.existsSync(versionPath) && fs.readFileSync(versionPath, "utf8").trim() === "0.6.0") return { status: "already_migrated", migration_id: plan.migration_id };
   const journal = readJson(locations.journal);

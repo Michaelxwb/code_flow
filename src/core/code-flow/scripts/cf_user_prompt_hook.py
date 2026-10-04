@@ -78,11 +78,12 @@ def _session_reminder(root: str, sid: str) -> str:
         if state.get("session_id") != sid:
             state = {"session_id": sid, "prompt_count": 0, "next_remind_at": _COMPRESS_INTERVAL}
         state["prompt_count"] = int(state.get("prompt_count", 0)) + 1
+        next_at = int(state.get("next_remind_at", _COMPRESS_INTERVAL))
         reminder = ""
-        if state["prompt_count"] >= int(state.get("next_remind_at", _COMPRESS_INTERVAL)):
+        if state["prompt_count"] >= next_at:
             reminder = _REMINDER_TEXT
-            state["next_remind_at"] = int(state["next_remind_at"]) + _COMPRESS_INTERVAL
-    except (ValueError, TypeError):
+            state["next_remind_at"] = next_at + _COMPRESS_INTERVAL
+    except (ValueError, TypeError, KeyError):
         return ""
     save_session_state(root, state)
     return reminder

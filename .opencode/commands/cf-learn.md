@@ -8,12 +8,12 @@ description: 自动扫描项目代码，提取编码约束和团队规范，更�
 
 ## 输入
 
-- `/project:cf-learn` - 全量扫描
-- `/project:cf-learn <域>` - 仅扫描指定域，如 `scripts`、`cli`，以 `.code-flow/config.yml` 中实际域为准
-- `/project:cf-learn --map` - 生成或更新 Retrieval Map
-- `/project:cf-learn <域> --map` - 仅生成指定域的 Retrieval Map
-- `/project:cf-learn --review` - 基于当前工作区变更提炼可沉淀规范，默认 staged + unstaged + untracked
-- `/project:cf-learn --review --staged` - 仅分析 staged 变更
+- `/cf-learn` - 全量扫描
+- `/cf-learn <域>` - 仅扫描指定域，如 `scripts`、`cli`，以 `.code-flow/config.yml` 中实际域为准
+- `/cf-learn --map` - 生成或更新 Retrieval Map
+- `/cf-learn <域> --map` - 仅生成指定域的 Retrieval Map
+- `/cf-learn --review` - 基于当前工作区变更提炼可沉淀规范，默认 staged + unstaged + untracked
+- `/cf-learn --review --staged` - 仅分析 staged 变更
 
 ## 核心原则
 

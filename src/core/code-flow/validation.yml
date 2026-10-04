@@ -13,24 +13,28 @@ validators:
       trigger: "**/*.{ts,tsx}"
       command: "npx tsc --noEmit"
       timeout: 30000
+      skip_if_missing: true  # 未安装 typescript 时跳过（degrade 记录），不阻断
       on_fail: "检查类型定义，参见 specs/frontend/quality-standards.md"
 
     - name: "Vue 类型检查"
       trigger: "**/*.vue"
       command: "npx vue-tsc --noEmit"
       timeout: 30000
+      skip_if_missing: true
       on_fail: "检查 Vue 组件类型定义，参见 specs/frontend/component-specs.md"
 
     - name: "ESLint"
       trigger: "**/*.{ts,tsx,js,jsx,vue}"
       command: "npx eslint {files}"
       timeout: 15000
+      skip_if_missing: true
       on_fail: "运行 npx eslint --fix 自动修复，参见 specs/frontend/quality-standards.md"
 
     - name: "Stylelint"
       trigger: "**/*.{css,scss,less}"
       command: "npx stylelint {files}"
       timeout: 15000
+      skip_if_missing: true
       on_fail: "运行 npx stylelint --fix 自动修复，参见 specs/frontend/component-specs.md"
 
     - name: "前端单元测试"
@@ -44,6 +48,7 @@ validators:
       trigger: "**/*.py"
       command: "python3 -m mypy {files}"
       timeout: 30000
+      skip_if_missing: true  # 未安装 mypy 时跳过（degrade 记录），新项目不再被阻断
       on_fail: "检查类型注解，参见 specs/backend/code-quality-performance.md"
 
     - name: "Pytest"

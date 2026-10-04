@@ -317,6 +317,12 @@ def start_task(
         raise WorkflowError("start_blocked", task_id, tuple(blockers))
 
     context_path = directory / "spec-context.yml"
+    if not context_path.is_file():
+        raise WorkflowError(
+            "context_missing",
+            str(context_path),
+            ("run cf-task:plan (bind --stage plan) or cf-spec refresh to create spec-context.yml before start",),
+        )
     refreshed = refresh_context(load_context(str(context_path)), root, artifact_root=str(directory))
     save_context(str(context_path), refreshed.context)
     # No marker exists at this point (active_exists raised above), so no

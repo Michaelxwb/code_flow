@@ -146,12 +146,15 @@ def _update_rule(rule: RuleBinding, evidence: Mapping[str, object]) -> RuleBindi
     if current.status in ("not_applicable", "waived"):
         return rule
     status = "verified" if evidence.get("status") == "verified" else "unverified"
-    if evidence.get("error_code") == "skipped_in_cheap_gate":
-        signature = (evidence.get("verifier_ref"), evidence.get("result_sha256"), None)
-    else:
-        signature = (evidence.get("verifier_ref"), evidence.get("result_sha256"), evidence.get("diff_sha256"))
+    # Cheap-gate skips carry no per-run diff freshness requirement: dedup on
+    # (verifier_ref, result_sha256) — the third slot stays None on BOTH sides.
+    # Storing a real diff_sha256 in the signature made every Stop append a
+    # duplicate skip entry (signature never matched).
+    signature = (evidence.get("verifier_ref"), evidence.get("result_sha256"),
+                 None if evidence.get("error_code") == "skipped_in_cheap_gate" else evidence.get("diff_sha256"))
     if any(
-        (item.get("verifier_ref"), item.get("result_sha256"), item.get("diff_sha256")) == signature
+        (item.get("verifier_ref"), item.get("result_sha256"),
+         None if item.get("error_code") == "skipped_in_cheap_gate" else item.get("diff_sha256")) == signature
         for item in current.evidence
     ):
         statuses[stage] = replace(current, status=status)

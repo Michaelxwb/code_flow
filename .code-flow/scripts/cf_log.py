@@ -59,9 +59,14 @@ def _rotate_if_needed(project_root: str, path: str) -> None:
     now = datetime.now()
     month_dir = _archive_dir(project_root, now.strftime("%Y-%m"))
     os.makedirs(month_dir, exist_ok=True)
-    target = os.path.join(
-        month_dir, f"session-log-{now.strftime('%Y%m%dT%H%M%S')}.jsonl"
-    )
+    stamp = now.strftime("%Y%m%dT%H%M%S")
+    target = os.path.join(month_dir, f"session-log-{stamp}.jsonl")
+    # Second-resolution names collide when a log rotates twice quickly; never
+    # overwrite an existing archive.
+    counter = 1
+    while os.path.exists(target):
+        counter += 1
+        target = os.path.join(month_dir, f"session-log-{stamp}-{counter}.jsonl")
     os.replace(path, target)
 
 

@@ -1,9 +1,13 @@
 {
   "name": "@michaelxwb/code-flow",
   "version": "0.6.11",
+  "description": "Initialize and manage AI coding workflow specs (Claude Code / Codex / Costrict / OpenCode)",
   "license": "UNLICENSED",
   "bin": {
     "code-flow": "src/cli.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "files": [
     "src/cli.js",

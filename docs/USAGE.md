@@ -156,9 +156,9 @@ code-flow init
 ```
 
 升级时 code-flow 会自动检测当前版本和新版本的差异：
-- **工具文件**（scripts/、hooks.json、config.toml）：直接更新
-- **合并文件**（CLAUDE.md、AGENTS.md、settings.json、config.yml）：智能合并，保留用户自定义内容
-- **用户文件**（specs/）：不覆盖
+- **工具文件**（commands/、skills/、scripts/、插件）：直接更新
+- **合并文件**（CLAUDE.md、AGENTS.md、settings.local.json、hooks.json、config.toml、config.yml、opencode.json）：智能合并，保留用户自定义内容
+- **用户文件**（specs/、tasks/、validation.yml、.gitignore）：不覆盖（.code-flow/.gitignore 的托管块会自动补齐运行时条目）
 
 如需强制重新生成所有文件：
 
@@ -227,7 +227,7 @@ checks:                          # 可选：机检标注（v0.5+，见「质量�
 
 ### 自动注入机制
 
-**Catalog 模式（v0.5+ 默认，`inject.mode: catalog`）**：prompt 不含明确文件路径时，注入一份极小的 **Spec Catalog**（每个 spec 一行适用场景，~150 token），由 AI 按语义自行读取相关 spec 全文——语义匹配交给模型本身，比关键词词表准确（实测可达率 76%→100%）：
+**Catalog 模式（默认）**：prompt 不含明确文件路径时，注入一份极小的 **Spec Catalog**（每个 spec 一行适用场景，~150 token），由 AI 按语义自行读取相关 spec 全文——语义匹配交给模型本身，比关键词词表准确（实测可达率 76%→100%）：
 
 ```
 用户提交 prompt（无明确路径）→ 注入 Spec Catalog
@@ -251,7 +251,7 @@ AI 调用 Edit/Write → Hook 拦截（文件路径）
   → 否则 → 注入 Spec Catalog（AI 自取）
 ```
 
-> 设 `inject.mode: full`（或删除该项）回到 v0.4 纯词表匹配行为。
+> Catalog 模式是唯一行为；v0.4 的纯词表匹配已移除。
 
 **OpenCode**：通过 `.opencode/plugins/code-flow/` 插件介入（v2 hooks）：
 
@@ -275,7 +275,7 @@ AI 调用 Edit/Write → Hook 拦截（文件路径）
 | `map_max` | 400 | 单个 `_map.md` 最大 token |
 | `catalog_max` | 200 | Spec Catalog 目录上限（超出按约束优先截断并告警） |
 
-> Hook 注入前默认对 spec 做**保守无损压缩**（`inject.compress: true`），压缩后的 token 才参与预算决策，相同预算下可容纳更完整的 spec。设 `inject.compress: false` 可关闭；`cf-stats` 输出 `compression_summary` 及 `COMPRESSION: raw → compressed (-pct%)` 行。
+> Hook 注入前默认对 spec 做**保守无损压缩**（`quality_loop.compress: true`），压缩后的 token 才参与预算决策，相同预算下可容纳更完整的 spec。设 `quality_loop.compress: false` 可关闭；`cf-stats` 输出 `compression_summary` 及 `COMPRESSION: raw → compressed (-pct%)` 行。
 
 ---
 
@@ -734,9 +734,9 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 
 1. `cf_task_parallel.py prepare` 预检（git 仓库、tracked 干净、无 active marker），为每个 TASK 建独立 worktree + 分支（`.code-flow/worktrees/`，已 gitignore）
 2. 每个 TASK 派发一个子 agent，在其 worktree 内跑完整单任务流程（RED → 实现 → GREEN → finish 并提交）
-3. `collect` 校验（改动已提交、done/verified、marker 已清理）后，按 TASK 顺序 `git merge --no-ff` 回并主分支
-4. 每次合并后重跑该任务验收命令；冲突由主 agent 合并双方意图并用测试仲裁，无法调和才叫停交用户决策
-5. `cleanup` 清理 worktree；已合入分支自动删除，未合入分支保留排查
+3. `collect` 校验（改动已提交、done/verified、marker 已清理）后，`merge` 按 TASK 顺序自动回并：worktree 内 rebase、状态文件冲突（覆盖状态列 / `spec-context.yml` / manifest）按确定性并集规则解决、主区 `--no-ff` 合并、`refresh` 收敛 hash
+4. 代码文件冲突无法程序化合并时 merge 报 `code_conflict` 并保持主区不变；由主 agent 合并双方意图并用测试仲裁，无法调和才叫停交用户决策
+5. `cleanup` 清理 worktree；已合入分支自动删除，未合入分支保留排查（`--force` 时按用户明确意图一并删除）
 
 预检失败（工作区不干净、平台无子 agent 能力、批次仅 1 个任务等）自动回退串行，无需用户介入。
 
@@ -835,32 +835,36 @@ budget:
   map_max: 400      # 单个 _map.md 最大 token
   catalog_max: 200  # Spec Catalog 目录上限（v0.5+）
 
-# 注入行为配置
-inject:
-  auto: true        # 是否启用自动注入
-  mode: catalog     # catalog = 注入目录由 AI 自取（路径命中仍直注）；full/缺失 = 旧词表行为（v0.5+）
-  compress: true    # 注入时对 spec 做保守无损压缩（去行尾空白、折叠多空行、剥 HTML 注释、围栏外去重 bullet）；缺省/非布尔按 true 处理
-  code_extensions:  # 触发注入的文件扩展名
+# 门禁强度（required=全门禁 | warn=门禁仅记录不阻断 | inject=只注入不门禁）
+spec_workflow:
+  enforcement: required
+
+# 质量闭环：enabled 仅 literal true 启用（存量升级默认关闭，行为不变）；
+# 子开关缺省跟随 enabled，仅 literal false 单独关闭。
+# 注入/校验的扩展名与路径过滤都在这里（v0.6 起注入行为不再有独立 inject 块）
+quality_loop:
+  enabled: true
+  post_check: true            # PostToolUse 违规反馈（只提示不阻断）
+  stop_check: true            # Stop 收尾按 validation.yml 校验（heavy 项跳过）
+  finish_check: true          # 任务 finish 时执行 validation.yml（不含 heavy）
+  heavy_at_finish: false      # 显式 true 时 finish 也跑 heavy 项（默认归档/verify-e2e 跑）
+  finish_verifier_budget: 300 # finish 的 command/test verifier 预算（秒，超预算延后到终验）
+  correction_capture: true    # 纠正句式采集（喂 cf-learn 候选）
+  compress: true              # 注入时对 spec 做保守无损压缩；缺省/非布尔按 true 处理
+  compress_reminder: true     # 会话过长每 N 轮提醒压缩上下文
+  code_extensions:            # 触发注入的文件扩展名
     - ".py"
     - ".js"
     - ".ts"
     - ".tsx"
-  skip_extensions:  # 跳过的扩展名
+  skip_extensions:            # 跳过的扩展名
     - ".md"
     - ".json"
     - ".yml"
-  skip_paths:       # 跳过的路径 glob
+  skip_paths:                 # 跳过的路径 glob
     - "docs/**"
     - ".code-flow/**"
     - "node_modules/**"
-
-# 质量闭环（v0.5）：enabled 仅 literal true 启用（存量升级默认关闭，行为不变）；
-# 子开关缺省跟随 enabled，仅 literal false 单独关闭
-quality_loop:
-  enabled: true
-  post_check: true            # PostToolUse 违规反馈（只提示不阻断）
-  stop_check: true            # Stop 收尾按 validation.yml 校验
-  correction_capture: true    # 纠正句式采集（喂 cf-learn 候选）
 
 # 路径映射：文件路径 → 域 → specs
 path_mapping:
@@ -916,6 +920,9 @@ validators:
     trigger: "**/*.{ts,tsx}"     # 触发的文件 glob
     command: "npx tsc --noEmit"  # 执行的命令（{files} 占位符可选）
     timeout: 30000               # 超时时间（毫秒）
+    skip_if_missing: true        # 可选：工具未安装时跳过（degrade 记录）而非阻断
+    heavy: true                  # 可选：慢命令（全量测试/构建/e2e），Stop 与 finish 跳过，
+                                 # 由 verify-e2e / 归档 / cf-validate 全量执行一次
     on_fail: "修复建议"           # 失败时展示的提示
 ```
 
@@ -940,11 +947,10 @@ Claude Code 的 Hook 配置。code-flow 自动生成以下 Hook：
 
 | Hook 事件 | 触发时机 | 脚本 | 作用 |
 |-----------|---------|------|------|
-| PreToolUse | AI 调用 Edit/Write/MultiEdit | `cf_inject_hook.py` | 按标签注入匹配的 specs + edit/inject 事件埋点 |
+| PreToolUse | AI 调用 Edit/Write/MultiEdit | `cf_pre_tool_hook.py` | Context/scope 检查、按匹配注入 specs + edit 事件埋点 |
 | PostToolUse | AI 编辑完成后 | `cf_post_hook.py` | frontmatter checks 合规反馈（v0.5） |
 | Stop | 会话收尾 | `cf_stop_hook.py` | validation.yml 收尾守门（v0.5） |
 | UserPromptSubmit | 每次提交 prompt | `cf_user_prompt_hook.py` | Spec Catalog / 直注 + 纠正句式采集 |
-| SessionStart | 新会话开始 | `cf_session_hook.py` | 重置注入状态，避免重复注入 |
 
 ### `.codex/hooks.json`
 
@@ -953,13 +959,13 @@ Codex CLI 的 Hook 配置。code-flow 自动生成以下 Hook：
 | Hook 事件 | 触发时机 | 脚本 | 作用 |
 |-----------|---------|------|------|
 | UserPromptSubmit | 每次提交 prompt 前 | `cf_user_prompt_hook.py` | Spec Catalog / 直注（含路径与关键词提取）+ 纠正句式采集 |
+| PreToolUse | AI 调用 Edit/Write/MultiEdit | `cf_pre_tool_hook.py` | Context/scope 检查、按匹配注入 specs |
 | PostToolUse | AI 编辑完成后 | `cf_post_hook.py` | frontmatter checks 合规反馈（v0.5） |
 | Stop | 会话收尾 | `cf_stop_hook.py` | validation.yml 收尾守门（v0.5） |
-| SessionStart | 新会话开始 | `cf_session_hook.py` | 重置注入状态，避免重复注入 |
 
 ### `.costrict/settings.local.json`
 
-Costrict 的 Hook 配置，与 Claude Code 完全一致（PreToolUse / PostToolUse / Stop / UserPromptSubmit / SessionStart 五个 Hook，同脚本同协议）。
+Costrict 的 Hook 配置，与 Claude Code 完全一致（PreToolUse / PostToolUse / Stop / UserPromptSubmit 四个 Hook，同脚本同协议）。
 
 ### `.opencode/plugins/code-flow/`
 
@@ -1084,7 +1090,7 @@ spec 文件（含 frontmatter 的 description/checks）和 `CLAUDE.md` 提交到
 
 - `npm i -g @michaelxwb/code-flow@latest && code-flow init`：工具文件覆盖、合并文件智能合并、specs 不动
 - 新能力灰度：`quality_loop` 子开关支持单项关闭（如只开 post_check、关 correction_capture）
-- 出问题一键回退：`quality_loop.enabled: false`（回 v0.5 行为）、`inject.mode: full`（回 v0.4 注入行为），均无需回滚版本
+- 出问题一键回退：`quality_loop.enabled: false` 关闭质量闭环；`spec_workflow.enforcement: warn|inject` 降低门禁强度，均无需回滚版本
 
 **管理员的关键转变**（v0.5）：过去判断"规范好不好"靠体感，现在有三组数据闭环——违规率说明规则是否被理解、修正率说明反馈是否有效、误报率说明机检是否过严。规范库的增删都有数据背书，做减法（退役僵尸规范）第一次变得有依据。
 
@@ -1099,7 +1105,7 @@ code-flow 通过 Claude Code 的 `PreToolUse` Hook 在代码编辑前注入规�
 ```
 AI 调用 Edit("src/api/users.py", ...)
   → Claude Code 触发 PreToolUse Hook
-  → cf_inject_hook.py 从 stdin 接收 JSON（tool_name + file_path）
+  → cf_pre_tool_hook.py 从 stdin 接收 JSON（tool_name + file_path）
   → 从文件路径提取上下文标签：{api, user, route, ...}
   → 标签与 config.yml 中的 specs tags 做交集匹配
   → 读取匹配到的 spec 文件内容
@@ -1125,7 +1131,7 @@ code-flow 通过 Codex 的 `UserPromptSubmit` Hook 在 prompt 提交前注入规
   → 规范内容注入到本次 prompt 上下文
 ```
 
-**四端差异**：Claude/Costrict 在"提交 prompt（UserPromptSubmit）"、"编辑前（PreToolUse）"、"编辑后（PostToolUse 合规反馈）"、"收尾（Stop 守门）"四个时机介入；Codex 同样四时机（hooks.json 注册）；OpenCode 经 v2 插件 hooks 等价转发（`session.prompt` / `tool.execute.after` / `session.idle`，反馈延迟一轮经 context 注入）。四端的 prompt 阶段都共用 `cf_user_prompt_hook.py`，session_id 由 `resolve_session_id()` 统一解析，PreToolUse 与 UserPromptSubmit 共享 `.inject-state` 不会重复注入。Hook stdout 统一用 `json.dumps(payload, ensure_ascii=False)`，避免中文 spec 被 escape 后 token 预算翻倍。
+**四端差异**：Claude/Costrict 在"提交 prompt（UserPromptSubmit）"、"编辑前（PreToolUse）"、"编辑后（PostToolUse 合规反馈）"、"收尾（Stop 守门）"四个时机介入；Codex 同样四时机（hooks.json 注册）；OpenCode 经 v2 插件 hooks 等价转发（`session.prompt` / `tool.execute.after` / `session.idle`，反馈延迟一轮经 context 注入）。四端的 prompt 阶段都共用 `cf_user_prompt_hook.py`，session_id 由 `resolve_session_id()` 统一解析，PreToolUse 与 UserPromptSubmit 共享 `injected_version` 版本键不会重复注入。Hook stdout 统一用 `json.dumps(payload, ensure_ascii=False)`，避免中文 spec 被 escape 后 token 预算翻倍。
 
 ### 质量闭环 Hook（v0.5）
 
@@ -1148,7 +1154,7 @@ Costrict 的 Hook 机制与 Claude Code 相同，通过 `PreToolUse` Hook 在代
 ```
 AI 调用 Edit("src/api/users.py", ...)
   → Costrict 触发 PreToolUse Hook
-  → cf_inject_hook.py 从 stdin 接收 JSON（tool_name + file_path）
+  → cf_pre_tool_hook.py 从 stdin 接收 JSON（tool_name + file_path）
   → 从文件路径提取上下文标签
   → 标签与 config.yml 中的 specs tags 做交集匹配
   → 读取匹配到的 spec 文件内容
@@ -1188,7 +1194,7 @@ OpenCode 不通过原生 Hook，而是通过 `.opencode/plugins/code-flow/` 插�
 **Claude Code Hook**：
 
 ```bash
-CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"/path/to/src/api/users.py","old_string":"x","new_string":"y"}}' | python3 .code-flow/scripts/cf_inject_hook.py
+CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"/path/to/src/api/users.py","old_string":"x","new_string":"y"}}' | python3 .code-flow/scripts/cf_pre_tool_hook.py
 ```
 
 **Codex Hook**：
@@ -1200,7 +1206,7 @@ CF_DEBUG=1 printf '%s' '{"session_id":"test-session","prompt":"修改 @src/api/u
 **Costrict Hook**（与 Claude Hook 相同）：
 
 ```bash
-CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"/path/to/src/api/users.py","old_string":"x","new_string":"y"}}' | python3 .code-flow/scripts/cf_inject_hook.py
+CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"/path/to/src/api/users.py","old_string":"x","new_string":"y"}}' | python3 .code-flow/scripts/cf_pre_tool_hook.py
 ```
 
 **OpenCode Hook**（与 Codex Hook 相同——本质是 plugin 转发到 `cf_user_prompt_hook.py`）：
@@ -1213,7 +1219,7 @@ CF_DEBUG=1 printf '%s' '{"session_id":"test","prompt":"修改 @src/api/users.py 
 
 ### 会话状态
 
-`cf_session_hook.py` 在每次新会话开始时重置注入状态（`.code-flow/.inject-state`），确保：
+`cf_pre_tool_hook.py` 与 `cf_user_prompt_hook.py` 通过 `.code-flow/.session-state.json` 的注入版本键去重，确保：
 - 每个会话独立（通过 session_id 隔离）
 - 已注入的 spec 不会重复注入
 
@@ -1239,7 +1245,7 @@ CF_DEBUG=1 printf '%s' '{"session_id":"test","prompt":"修改 @src/api/users.py 
 3. 检查文件路径是否被 `skip_paths` 排除
 4. 手动运行 Hook 测试：
    ```bash
-   printf '%s' '{"tool_name":"Edit","tool_input":{"file_path":"/absolute/path/to/file.py"}}' | python3 .code-flow/scripts/cf_inject_hook.py
+   printf '%s' '{"tool_name":"Edit","tool_input":{"file_path":"/absolute/path/to/file.py"}}' | python3 .code-flow/scripts/cf_pre_tool_hook.py
    ```
 
 ### Hook 未触发（Codex CLI）
@@ -1279,7 +1285,7 @@ CF_DEBUG=1 printf '%s' '{"session_id":"test","prompt":"修改 @src/api/users.py 
 3. 检查文件路径是否被 `skip_paths` 排除
 4. 手动运行 Hook 测试（与 Claude Hook 相同）：
    ```bash
-   printf '%s' '{"tool_name":"Edit","tool_input":{"file_path":"/absolute/path/to/file.py"}}' | python3 .code-flow/scripts/cf_inject_hook.py
+   printf '%s' '{"tool_name":"Edit","tool_input":{"file_path":"/absolute/path/to/file.py"}}' | python3 .code-flow/scripts/cf_pre_tool_hook.py
    ```
 
 ### Costrict 命令不可用

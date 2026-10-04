@@ -2,8 +2,10 @@
 """cf-sync: one-command canonical → deploy sync for dual-copy artifacts.
 
 Pairs (canonical source → deployed live copy), each with an explicit include
-prefix list — project-owned trees (specs/, tasks/) and deploy-only files
-(config.toml, CLAUDE.md, opencode.json) are never touched:
+prefix list. Project-owned trees (specs/, tasks/) and merge-managed files
+(CLAUDE.md, AGENTS.md, settings.local.json, hooks.json, config.toml,
+opencode.json, config.yml, validation.yml) are upgraded by `code-flow init`
+with additive merges, not by byte-sync:
 
   src/core/code-flow         → .code-flow        (scripts/, config.yml, .version, validation.yml, .gitignore)
   src/adapters/claude        → .claude           (commands/, settings.local.json)

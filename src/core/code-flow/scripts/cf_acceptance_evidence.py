@@ -57,24 +57,36 @@ def _patch_section(section: str, scenario_id: str, status: str, record: str) -> 
     return section
 
 
-def sync_task_evidence(task: Path, scenario_id: str, confirmed_by: str, evidence: str, owner: str = "", status: str = "verified") -> None:
+def sync_task_evidence(task: Path, scenario_id: str, confirmed_by: str, evidence: str, owner: str = "", status: str = "verified") -> str:
+    """Sync one scenario's status into the task file; returns what was written.
+
+    - owner + TASK section → contract/evidence + coverage
+    - ownerless legacy scenario → coverage only (a scenario with neither owner
+      nor coverage has no truthful place to attribute evidence; first-TASK
+      attribution corrupted unrelated contracts, so it is skipped)
+    """
     text = task.read_text(encoding="utf-8")
-    task_pattern = re.escape(owner) if owner else r"TASK-\d+"
-    match = re.search(rf"(?ms)^##\s+{task_pattern}:.*?(?=^## |\Z)", text)
-    if match is None:
-        raise ValueError(f"acceptance owner missing: {owner}")
     record = f"- {scenario_id}: {status} — {evidence} (confirmed_by: {confirmed_by})"
-    section = _patch_section(match.group(0), scenario_id, status, record)
-    text = text[:match.start()] + section + text[match.end():]
+    if owner:
+        task_pattern = re.escape(owner)
+        match = re.search(rf"(?ms)^##\s+{task_pattern}:.*?(?=^## |\Z)", text)
+        if match is None:
+            raise ValueError(f"acceptance owner missing: {owner}")
+        section = _patch_section(match.group(0), scenario_id, status, record)
+        text = text[:match.start()] + section + text[match.end():]
     coverage = re.search(r"(?ms)^## Acceptance Coverage[^\n]*\n(.*?)(?=^## |\Z)", text)
     if coverage:
         body = "\n".join(_status_line(line, scenario_id, status) for line in coverage.group(1).splitlines()) + "\n"
         text = text[:coverage.start(1)] + body + text[coverage.end(1):]
+    elif not owner:
+        return "skipped_no_owner"
     from cf_spec_context import _atomic_text
     _atomic_text(task, text)
+    return "synced"
 
 
-def persist_results(path: Path, data: dict[str, object], results: Sequence[Mapping[str, object]]) -> None:
+def persist_results(path: Path, data: dict[str, object], results: Sequence[Mapping[str, object]],
+                    fingerprint: str = "") -> None:
     rows = {row["id"]: row for row in data["scenarios"]}
     run_id, executed_at = uuid4().hex, datetime.now(timezone.utc).isoformat()
     updates = []
@@ -83,10 +95,25 @@ def persist_results(path: Path, data: dict[str, object], results: Sequence[Mappi
         if state in ("not_included", "manual_pending"):
             continue
         row = rows[result["id"]]
+        # A deferral placeholder (e2e skipped in a non-E2E run) must never
+        # downgrade a verified terminal scenario: verify-e2e runs first, then
+        # later Done/finish passes would otherwise silently un-verify it.
+        if state == "e2e_deferred" and row.get("status") == "verified":
+            continue
+        # Content-fingerprint reuse: nothing executed, evidence unchanged.
+        if result.get("cache_reused") is True:
+            continue
         row["revision"] = int(row.get("revision", 0)) + 1
         status = "verified" if state == "passed" else state
         row["status"] = status
         record = {**result, "revision": row["revision"], "run_id": run_id, "executed_at": executed_at}
+        # Identity for cross-run reuse checks: command/cwd/timeout + content
+        # fingerprint of the worktree the command actually ran against.
+        record["command"] = row.get("command")
+        record["cwd"] = row.get("cwd", ".")
+        record["timeout"] = row.get("timeout", 60)
+        if fingerprint and status == "verified":
+            record["fingerprint"] = fingerprint
         row["evidence"] = record
         row.setdefault("runs", []).append(record)
         updates.append((row, record, status))

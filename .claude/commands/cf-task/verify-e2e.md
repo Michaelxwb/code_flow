@@ -12,8 +12,8 @@ globs: []
 本命令是**需求级终验**入口，在所有子任务的 functional 测试通过后统一执行：
 
 1. **全量 verifier**：需求目录全部 task context 绑定的 required rules（code 层被任务延后的 `deferred_to_review` + `stage: review` 重型验证），按 spec/rule 去重全量执行一次，证据写回全部相关 context；输出 `executed` / `reused` / `failed` 计数。
-2. **E2E 验收场景**：依赖外部环境（数据库、API、浏览器等）、编码阶段标记 `e2e_deferred` 的场景。
-3. **全量 validation**：执行 `validation.yml` 全部 validator（含 `heavy: true` 全量套件/构建/E2E）；结果按工作树内容指纹缓存，归档复验命中即复用、不重复执行。
+2. **E2E 验收场景**：依赖外部环境（数据库、API、浏览器等）、编码阶段标记 `e2e_deferred` 的场景；已通过且工作树内容指纹未变的场景跨运行复用（不重复执行 E2E），内容变化/失败自动重跑，`cf_acceptance_runner.py --no-cache` 可强制全量。
+3. **全量 validation**：执行 `validation.yml` 全部 validator（含 `heavy: true` 全量套件/构建/E2E）；结果按工作树内容指纹缓存，归档复验命中即复用、不重复执行，`cf_validation.py --no-cache` 强制重跑。
 
 失败不写 verified、不反转已 done 的任务状态；归档前必须 `decision=pass`。未声明 review verifier 且无 E2E 场景时为空操作（`reason=nothing_to_verify`）。
 

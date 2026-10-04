@@ -107,3 +107,88 @@ def test_per_platform_upgrade_updates_stale_codex_command(tmp_path: Path) -> Non
     result = run_cli(tmp_path, "init", "--platform=codex")
     assert result.returncode == 0, result.stderr
     assert skill.read_text(encoding="utf-8") != "SENTINEL\n"
+
+
+def test_fresh_init_merges_spec_workflow_into_existing_agents_md(tmp_path: Path) -> None:
+    """[S-01 扩展] 已存在 AGENTS.md 时 fresh init 必须合并托管区块而非整体跳过。"""
+    agents = tmp_path / "AGENTS.md"
+    agents.write_text("# My Project\n\n## My Rules\nkeep me\n", encoding="utf-8")
+
+    result = run_cli(tmp_path, "init", "--platform=opencode")
+    assert result.returncode == 0, result.stderr
+
+    text = agents.read_text(encoding="utf-8")
+    assert "## My Rules" in text, "用户内容必须保留"
+    assert "keep me" in text
+    assert "## Spec Workflow (schema 1)" in text, "Spec Workflow 区块必须合并进已有文件"
+    assert "<!-- code-flow:spec-loading schema=1 start -->" in text, "托管块 start 标记必须保留"
+    assert "<!-- code-flow:spec-loading schema=1 end -->" in text
+
+    # 二次 init 幂等：不重复追加
+    second = run_cli(tmp_path, "init", "--platform=opencode")
+    assert second.returncode == 0, second.stderr
+    final = agents.read_text(encoding="utf-8")
+    assert final.count("## Spec Workflow (schema 1)") == 1
+    assert final.count("<!-- code-flow:spec-loading schema=1 start -->") == 1
+
+
+def test_fresh_init_merges_into_existing_claude_md(tmp_path: Path) -> None:
+    """Claude 平台同样合并已有 CLAUDE.md。"""
+    claude = tmp_path / "CLAUDE.md"
+    claude.write_text("# Existing Claude instructions\n", encoding="utf-8")
+
+    result = run_cli(tmp_path, "init", "--platform=claude")
+    assert result.returncode == 0, result.stderr
+    text = claude.read_text(encoding="utf-8")
+    assert "# Existing Claude instructions" in text
+    assert "## Spec Workflow (schema 1)" in text
+    assert "<!-- code-flow:spec-loading schema=1 start -->" in text
+
+
+def test_init_writes_runtime_gitignore_even_without_template_file(tmp_path: Path) -> None:
+    """npm tarball 不含 .gitignore：init 必须自建并覆盖全部运行时状态文件。"""
+    result = run_cli(tmp_path, "init", "--platform=opencode")
+    assert result.returncode == 0, result.stderr
+
+    ignore = tmp_path / ".code-flow" / ".gitignore"
+    assert ignore.is_file(), "fresh init 必须生成 .code-flow/.gitignore"
+    text = ignore.read_text(encoding="utf-8")
+    for entry in (".session-log.jsonl", ".check-state.json", "sessions/", "worktrees/",
+                  "migrations/", "backups/", ".artifact-hash-cache.json", ".verifier-cache.json"):
+        assert entry in text, f"运行时忽略项缺失: {entry}"
+
+    # 模拟旧安装：删除运行时块，upgrade 时重新补齐
+    ignore.unlink()
+    (tmp_path / ".code-flow" / ".version").write_text("0.0.1\n", encoding="utf-8")
+    upgrade = run_cli(tmp_path, "init", "--platform=opencode")
+    assert upgrade.returncode == 0, upgrade.stderr
+    assert ignore.is_file()
+    assert "backups/" in ignore.read_text(encoding="utf-8")
+
+
+def test_upgrade_extends_managed_gitignore_block_only(tmp_path: Path) -> None:
+    """升级只向托管块补条目，用户自定义行保持原样。"""
+    assert run_cli(tmp_path, "init", "--platform=opencode").returncode == 0
+    ignore = tmp_path / ".code-flow" / ".gitignore"
+    text = ignore.read_text(encoding="utf-8")
+    text = text.replace("backups/\n", "") + "my-custom-entry\n"
+    ignore.write_text(text, encoding="utf-8")
+    (tmp_path / ".code-flow" / ".version").write_text("0.0.1\n", encoding="utf-8")
+
+    result = run_cli(tmp_path, "init", "--platform=opencode")
+    assert result.returncode == 0, result.stderr
+    final = ignore.read_text(encoding="utf-8")
+    assert "my-custom-entry" in final, "用户行必须保留"
+    assert "backups/" in final, "托管块缺失条目必须补齐"
+
+
+def test_cli_does_not_crash_on_corrupt_merge_json(tmp_path: Path) -> None:
+    """目标 JSON 损坏时 init 必须以结构化错误失败而非堆栈崩溃。"""
+    assert run_cli(tmp_path, "init", "--platform=claude").returncode == 0
+    (tmp_path / ".claude" / "settings.local.json").write_text("{broken json", encoding="utf-8")
+    (tmp_path / ".code-flow" / ".version").write_text("0.0.1\n", encoding="utf-8")
+
+    result = run_cli(tmp_path, "init", "--platform=claude")
+    assert result.returncode != 0
+    assert "Error:" in result.stderr, "必须给出可读错误信息"
+    assert "SyntaxError" not in result.stderr and "at Object." not in result.stderr, "不得泄露 JS 堆栈"

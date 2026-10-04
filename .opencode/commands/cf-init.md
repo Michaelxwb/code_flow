@@ -8,11 +8,11 @@ description: 一键初始化项目规范体系，检测技术栈，生成 spec �
 
 ## 输入
 
-- `/project:cf-init` — 自动检测技术栈
-- `/project:cf-init frontend` — 强制前端项目
-- `/project:cf-init backend` — 强制后端项目
-- `/project:cf-init fullstack` — 强制全栈项目
-- `/project:cf-init --skip-learn` — 跳过自动扫描，仅生成/修补模板
+- `/cf-init` — 自动检测技术栈
+- `/cf-init frontend` — 强制前端项目
+- `/cf-init backend` — 强制后端项目
+- `/cf-init fullstack` — 强制全栈项目
+- `/cf-init --skip-learn` — 跳过自动扫描，仅生成/修补模板
 
 ## 执行步骤
 

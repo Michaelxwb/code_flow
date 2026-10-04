@@ -86,9 +86,45 @@ def _legacy_kind(level: str) -> str:
     return "functional"
 
 
-def _extract_rows(task_file: str, kind_fn: Callable[[str], str]) -> dict[str, object]:
+def _contract_commands(text: str) -> dict[str, str]:
+    """Acceptance Contract 表的执行命令（Coverage 表无命令列时的注册回退）。
+
+    Coverage 模板长期只有 6 列，命令实际写在 TASK 段落 Contract 表；提取器只
+    读 Coverage 会让新需求 finish 必现 no_executable_scenarios。这里按场景 ID
+    回退读取 Contract 的“执行命令”列（按表头定位，兼容列序差异），与 Coverage
+    第 7 列（argv JSON）等价。
+    """
+    commands: dict[str, str] = {}
+    for section in re.finditer(r"(?ms)^## TASK-\d+:.*?(?=^## |\Z)", text):
+        contract = re.search(
+            r"(?ms)^### Acceptance Contract[^\n]*\n(.*?)(?=^### |^## |\Z)", section.group(0)
+        )
+        if contract is None:
+            continue
+        command_idx = -1
+        for line in contract.group(1).splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("|"):
+                continue
+            cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+            if command_idx == -1:
+                match_column = next((i for i, cell in enumerate(cells) if "命令" in cell), -1)
+                if match_column == -1:
+                    continue
+                command_idx = match_column
+                continue
+            match = _ROW_RE.match(line)
+            if not match or set(match.group(2).replace("|", "").strip()) <= {"-", " "}:
+                continue
+            if command_idx < len(cells):
+                commands.setdefault(match.group(1), cells[command_idx])
+    return commands
+
+
+def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallback: bool = True) -> dict[str, object]:
     path = Path(task_file)
     text = path.read_text(encoding="utf-8")
+    contract_commands = _contract_commands(text) if contract_fallback else {}
     rows: list[dict[str, object]] = []
     in_table = False
     seen: set[str] = set()
@@ -110,6 +146,7 @@ def _extract_rows(task_file: str, kind_fn: Callable[[str], str]) -> dict[str, ob
             raise ValueError(f"Acceptance Coverage missing columns: {match.group(1)}")
         seen.add(match.group(1))
         depends = [item.strip() for item in (fields[8] if len(fields) > 8 else "").split(",") if item.strip()]
+        command_cell = fields[5] if len(fields) > 5 else contract_commands.get(match.group(1), "")
         rows.append({
             "id": match.group(1),
             "source": fields[0],
@@ -118,7 +155,7 @@ def _extract_rows(task_file: str, kind_fn: Callable[[str], str]) -> dict[str, ob
             "boundary": fields[2],
             "owner": fields[3],
             "status": fields[4],
-            "command": _parse_command(fields[5], match.group(1)) if len(fields) > 5 else None,
+            "command": _parse_command(command_cell, match.group(1)),
             "cwd": (fields[6] if len(fields) > 6 else "").strip() or ".",
             "timeout": _parse_float(fields[7], 60.0) if len(fields) > 7 else 60.0,
             "depends_on": depends,
@@ -129,13 +166,15 @@ def _extract_rows(task_file: str, kind_fn: Callable[[str], str]) -> dict[str, ob
     return {"schema": _MANIFEST_SCHEMA, "task_file": str(path), "task_sha256": _manifest_hash(rows), "scenarios": rows}
 
 
-def extract_manifest(task_file: str, kind_fn: Callable[[str], str] = _kind) -> dict[str, object]:
-    return _extract_rows(task_file, kind_fn)
+def extract_manifest(task_file: str, kind_fn: Callable[[str], str] = _kind,
+                     contract_fallback: bool = True) -> dict[str, object]:
+    return _extract_rows(task_file, kind_fn, contract_fallback)
 
 
 def write_manifest(task_file: str, output: str) -> dict[str, object]:
     manifest = extract_manifest(task_file)
     target = Path(output)
+    _preserve_runtime_state(task_file, target, manifest)
     try:
         manifest["task_file"] = str(Path(task_file).resolve().relative_to(target.parent.resolve()))
     except ValueError:
@@ -145,14 +184,53 @@ def write_manifest(task_file: str, output: str) -> dict[str, object]:
     return manifest
 
 
+_RUNTIME_SCENARIO_FIELDS = ("status", "revision", "evidence", "runs")
+
+
+def _preserve_runtime_state(task_file: str, target: Path, manifest: dict[str, object]) -> None:
+    """Re-locking an unchanged plan keeps execution history.
+
+    A plain re-extraction dropped status/revision/evidence/runs, so archive's
+    documented re-lock silently un-verified terminal scenarios. Preserve those
+    fields only when the existing manifest still validates against the task;
+    drift starts clean (stale evidence must not be trusted).
+    """
+    if not target.is_file():
+        return
+    try:
+        valid, _ = validate_manifest(task_file, str(target))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return
+    if not valid:
+        return
+    stored = {
+        item.get("id"): item
+        for item in load_manifest(target).get("scenarios", [])
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+    for item in manifest.get("scenarios", []):
+        if not isinstance(item, dict):
+            continue
+        old = stored.get(item.get("id"))
+        if not isinstance(old, dict):
+            continue
+        for key in _RUNTIME_SCENARIO_FIELDS:
+            if key in old:
+                item[key] = old[key]
+
+
 _IMMUTABLE_SCENARIO_FIELDS = (
     "id", "source", "level", "kind", "boundary", "owner", "command", "cwd", "timeout", "depends_on",
 )
 
 
-def _heal_legacy_kinds(manifest_file: Path, manifest: dict[str, object], expected: dict[str, object]) -> None:
-    """旧版 `_kind` 精确匹配把带注解的 E2E 锁成 functional；任务内容未变时
-    原地升级 kind 并重锁哈希，保留 execution evidence 等运行态字段。"""
+def _heal_legacy_manifest(manifest_file: Path, manifest: dict[str, object], expected: dict[str, object]) -> None:
+    """旧版提取规则锁定的 manifest：任务内容未变时原地升级并重锁哈希。
+
+    两种历史规则：`_kind` 精确匹配把带注解的 E2E 锁成 functional；Coverage 无
+    命令列时不回退 Contract（command=None）。两类都不改变任务事实，按当前提取
+    结果对齐不可变字段并重锁，保留 execution evidence 等运行态字段。
+    """
     by_id: dict[str, dict[str, object]] = {}
     scenarios = expected.get("scenarios")
     if isinstance(scenarios, list):
@@ -166,7 +244,9 @@ def _heal_legacy_kinds(manifest_file: Path, manifest: dict[str, object], expecte
                 continue
             target = by_id.get(item.get("id")) if isinstance(item.get("id"), str) else None
             if target is not None:
-                item["kind"] = target.get("kind")
+                for field in _IMMUTABLE_SCENARIO_FIELDS:
+                    if field in target:
+                        item[field] = target[field]
     manifest["task_sha256"] = expected["task_sha256"]
     manifest_file.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -180,10 +260,11 @@ def validate_manifest(task_file: str, manifest_file: str) -> tuple[bool, str]:
     if manifest.get("schema") != _MANIFEST_SCHEMA:
         return False, "acceptance_manifest_drift"
     if manifest.get("task_sha256") != expected["task_sha256"]:
-        legacy = extract_manifest(task_file, _legacy_kind)
+        # 旧版规则（无 Contract 回退 + _kind 精确匹配）锁定的 manifest：兼容升级。
+        legacy = extract_manifest(task_file, _legacy_kind, contract_fallback=False)
         if manifest.get("task_sha256") != legacy["task_sha256"]:
             return False, "acceptance_manifest_drift"
-        _heal_legacy_kinds(Path(manifest_file), manifest, expected)
+        _heal_legacy_manifest(Path(manifest_file), manifest, expected)
     stored_task = manifest.get("task_file", "")
     if not stored_task or (Path(manifest_file).parent / stored_task).resolve() != Path(task_file).resolve():
         return False, "acceptance_manifest_task_mismatch"

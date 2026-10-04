@@ -428,14 +428,41 @@ def _write_target_config(staging: Path) -> None:
 def _write_target_ignore(staging: Path) -> None:
     path = staging / ".code-flow/.gitignore"
     existing = path.read_text(encoding="utf-8") if path.exists() else ""
+    # Keep this block aligned with src/core/code-flow/.gitignore (the canonical
+    # runtime list): migrate must not leave sessions/worktrees/backups/logs
+    # committable after an upgrade.
     block = (
-        "# >>> code-flow:runtime schema=1\n.active-task.json\n.active-task.lock\n"
-        ".catalog-state.json\nmigrations/\nspecs/_session/\n"
+        "# >>> code-flow:runtime schema=1\n"
+        ".active-task.json\n"
+        ".active-task.lock\n"
+        ".catalog-state.json\n"
+        ".session-state.json\n"
+        ".task-projection-state.json\n"
+        "migrations/\n"
+        "backups/\n"
+        ".debug.log\n"
+        ".session-log.jsonl\n"
+        ".check-state.json\n"
+        "sessions/\n"
+        "specs/_session/\n"
+        "worktrees/\n"
+        ".validation-cache.json\n"
+        ".artifact-hash-cache.json\n"
+        ".verifier-cache.json\n"
         "# <<< code-flow:runtime schema=1\n"
     )
     lines = [line for line in existing.splitlines() if line != ".inject-state"]
     if "# >>> code-flow:runtime schema=1" not in existing:
         path.write_text("\n".join(lines).rstrip() + "\n" + block, encoding="utf-8")
+        return
+    end_marker = "# <<< code-flow:runtime schema=1"
+    if end_marker in lines:
+        missing = [line for line in block.splitlines()
+                   if line and not line.startswith("#") and line not in lines]
+        if missing:
+            at = lines.index(end_marker)
+            lines[at:at] = missing
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _target_manifest(staging: Path) -> list[dict[str, str]]:

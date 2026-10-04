@@ -58,8 +58,14 @@ def test_verify_e2e_present_on_all_platforms() -> None:
 
 
 def test_parallel_batch_protocol_present_on_all_platforms() -> None:
-    """start 的并行批次协议（worktree 编排 + 串行回退）必须四平台源/部署一致存在。"""
-    phrases = ("cf_task_parallel.py prepare", "cf_task_parallel.py collect", "--serial")
+    """start 的并行批次协议（worktree 编排 + 自动回并 + 串行回退）必须四平台源/部署一致存在。"""
+    phrases = (
+        "cf_task_parallel.py prepare",
+        "cf_task_parallel.py collect",
+        "cf_task_parallel.py merge",
+        "code_conflict",
+        "--serial",
+    )
     for platform in PLATFORMS:
         for base in (SRC[platform], DEPLOY[platform]):
             text = _path(platform, base, "start").read_text(encoding="utf-8")

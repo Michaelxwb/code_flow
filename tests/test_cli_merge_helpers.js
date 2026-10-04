@@ -23,7 +23,7 @@ function loadCliInternals() {
   const cut = src.indexOf('// --- CLI argument parsing ---');
   if (cut === -1) throw new Error('cli.js sentinel comment moved');
   const head = src.slice(0, cut);
-  const wrapped = head + '\nmodule.exports = { mergeClaudeMd, mergeSettingsJson, mergeOpencodeJson, mergeCodexConfigToml, mergeHookEventArray, maskFencedCode, ensurePyYaml, installAdapterFile };\n';
+  const wrapped = head + '\nmodule.exports = { mergeClaudeMd, mergeSettingsJson, mergeOpencodeJson, mergeCodexConfigToml, mergeHookEventArray, maskFencedCode, ensurePyYaml, installAdapterFile, RUNTIME_GITIGNORE, ensureRuntimeGitignore };\n';
   // Write the temp module alongside cli.js so its `require('../package.json')`
   // (and any other relative requires) resolves the same way the real cli.js does.
   const tmp = path.join(path.dirname(CLI_PATH), `.cli-internals-${process.pid}.js`);
@@ -36,11 +36,54 @@ function loadCliInternals() {
   }
 }
 
-const { mergeClaudeMd, mergeSettingsJson, mergeOpencodeJson, mergeCodexConfigToml, maskFencedCode } = loadCliInternals();
-
+const { mergeClaudeMd, mergeSettingsJson, mergeOpencodeJson, mergeCodexConfigToml, maskFencedCode, RUNTIME_GITIGNORE, ensureRuntimeGitignore } = loadCliInternals();
 function withTmp(fn) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cf-merge-test-'));
   try { fn(dir); } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+}
+
+// --- RUNTIME_GITIGNORE ---
+
+function testRuntimeGitignoreMatchesCanonicalTemplate() {
+  // npm never ships `.gitignore`, so cli.js embeds the list. Keep it identical
+  // (module block order aside) to src/core/code-flow/.gitignore.
+  const canonical = fs.readFileSync(
+    path.resolve(__dirname, '..', 'src', 'core', 'code-flow', '.gitignore'), 'utf8'
+  );
+  const entries = (text) => text.split('\n').filter(l => l && !l.startsWith('#')).sort();
+  assert.deepStrictEqual(
+    entries(RUNTIME_GITIGNORE), entries(canonical),
+    'embedded RUNTIME_GITIGNORE must match src/core/code-flow/.gitignore entries'
+  );
+  console.log('  ✓ RUNTIME_GITIGNORE matches canonical template');
+}
+
+function testEnsureRuntimeGitignoreCreatesAndExtends() {
+  withTmp(dir => {
+    const results = { created: [], merged: [], updated: [], skipped: [] };
+    ensureRuntimeGitignore(dir, results);
+    const ignore = path.join(dir, '.code-flow', '.gitignore');
+    assert.ok(fs.existsSync(ignore), 'fresh project must get .gitignore');
+    assert.ok(results.created.includes('.code-flow/.gitignore'), 'created reported');
+    const text = fs.readFileSync(ignore, 'utf8');
+    for (const entry of ['backups/', '.session-log.jsonl', 'worktrees/', '.verifier-cache.json']) {
+      assert.ok(text.includes(entry), `missing entry: ${entry}`);
+    }
+    // 老项目：托管块缺条目，升级补齐；用户行不动。
+    fs.writeFileSync(ignore, text.replace('backups/\n', '') + 'my-own-line\n');
+    const upgrade = { created: [], merged: [], updated: [], skipped: [] };
+    ensureRuntimeGitignore(dir, upgrade);
+    const final = fs.readFileSync(ignore, 'utf8');
+    assert.ok(final.includes('backups/'), 'missing managed entry restored');
+    assert.ok(final.includes('my-own-line'), 'user line preserved');
+    assert.ok(upgrade.merged.some(item => item.includes('.code-flow/.gitignore')), 'merge reported');
+    // 无托管块的文件视为用户所有，不得改写。
+    fs.writeFileSync(ignore, 'user-only\n');
+    const noop = { created: [], merged: [], updated: [], skipped: [] };
+    ensureRuntimeGitignore(dir, noop);
+    assert.strictEqual(fs.readFileSync(ignore, 'utf8'), 'user-only\n');
+  });
+  console.log('  ✓ ensureRuntimeGitignore creates/extends managed block only');
 }
 
 // --- mergeClaudeMd ---
@@ -91,6 +134,73 @@ function testMaskFencedCodePreservesOffsets() {
   assert.ok(masked.includes('## A') && masked.includes('## B'), 'real headings preserved');
   assert.ok(!masked.includes('## fake'), 'fenced heading replaced');
   console.log('  ✓ maskFencedCode preserves byte offsets');
+}
+
+// --- mergeClaudeMd managed markers ---
+
+function testMergeClaudeMdKeepsManagedStartMarker() {
+  withTmp(dir => {
+    const src = path.join(dir, 'src.md');
+    const dest = path.join(dir, 'dest.md');
+    fs.writeFileSync(src,
+      '# Title\n\n' +
+      '<!-- code-flow:spec-loading schema=1 start -->\n' +
+      '## Spec Workflow\nrules here\n' +
+      '<!-- code-flow:spec-loading schema=1 end -->\n'
+    );
+    fs.writeFileSync(dest, '# Title\n\n## Existing\nkeep me\n');
+
+    const added = mergeClaudeMd(src, dest);
+    assert.ok(added.includes('## Spec Workflow'), 'section should be merged');
+    const merged = fs.readFileSync(dest, 'utf8');
+    assert.ok(merged.includes('<!-- code-flow:spec-loading schema=1 start -->'),
+      'start marker must be included with its section');
+    assert.ok(merged.includes('<!-- code-flow:spec-loading schema=1 end -->'), 'end marker present');
+    assert.ok(merged.includes('## Existing'), 'user section preserved');
+  });
+  console.log('  ✓ mergeClaudeMd keeps managed start marker');
+}
+
+function testMergeClaudeMdRepairsUnpairedEndMarker() {
+  withTmp(dir => {
+    const src = path.join(dir, 'src.md');
+    const dest = path.join(dir, 'dest.md');
+    fs.writeFileSync(src,
+      '<!-- code-flow:spec-loading schema=1 start -->\n' +
+      '## Spec Workflow\nrules here\n' +
+      '<!-- code-flow:spec-loading schema=1 end -->\n'
+    );
+    // Simulates a project merged by the old buggy cli: heading + end, no start.
+    fs.writeFileSync(dest,
+      '# Title\n\n## Spec Workflow\nstale body\n<!-- code-flow:spec-loading schema=1 end -->\n'
+    );
+
+    const added = mergeClaudeMd(src, dest);
+    const merged = fs.readFileSync(dest, 'utf8');
+    assert.ok(added.some(item => item.includes('start marker')), `repair reported: ${JSON.stringify(added)}`);
+    assert.ok(merged.includes('<!-- code-flow:spec-loading schema=1 start -->'),
+      'start marker must be restored before the section heading');
+    const headingAt = merged.indexOf('## Spec Workflow');
+    const startAt = merged.indexOf('<!-- code-flow:spec-loading schema=1 start -->');
+    assert.ok(startAt !== -1 && startAt < headingAt, 'start marker must precede its heading');
+    // Idempotent: second merge reports nothing.
+    const second = mergeClaudeMd(src, dest);
+    assert.deepStrictEqual(second, [], 'repair must be idempotent');
+  });
+  console.log('  ✓ mergeClaudeMd repairs unpaired end marker');
+}
+
+function testMergeClaudeMdLeavesUserSectionsWithoutMarkersAlone() {
+  withTmp(dir => {
+    const src = path.join(dir, 'src.md');
+    const dest = path.join(dir, 'dest.md');
+    fs.writeFileSync(src, '## Alpha\nA\n');
+    fs.writeFileSync(dest, '## Alpha\nA\nuser text\n');
+    const added = mergeClaudeMd(src, dest);
+    assert.deepStrictEqual(added, [], 'no markers → no repair');
+    assert.ok(fs.readFileSync(dest, 'utf8').includes('user text'), 'user content untouched');
+  });
+  console.log('  ✓ mergeClaudeMd ignores marker-free files');
 }
 
 // --- mergeSettingsJson hook deep merge ---
@@ -213,6 +323,46 @@ function testMergeNeverOverwritesUserCommand() {
     assert.ok(cmds.includes('official-v2'), 'src command must be added');
   });
   console.log('  ✓ mergeSettingsJson never overwrites user command');
+}
+
+function testMergeReplacesRetiredManagedHookCommands() {
+  // Old managed scripts (cf_inject_hook.py / cf_session_hook.py) no longer
+  // exist; their hook entries must be replaced by the current managed command
+  // instead of lingering forever.
+  withTmp(dir => {
+    const src = path.join(dir, 'src.json');
+    const dest = path.join(dir, 'dest.json');
+    const current = 'd=...; f="$d/.code-flow/scripts/cf_pre_tool_hook.py"; python3 "$f"';
+    fs.writeFileSync(src, JSON.stringify({
+      hooks: {
+        PreToolUse: [
+          { matcher: 'Edit|Write|MultiEdit', hooks: [{ type: 'command', command: current }] }
+        ]
+      }
+    }));
+    fs.writeFileSync(dest, JSON.stringify({
+      hooks: {
+        PreToolUse: [
+          { matcher: 'Edit|Write|MultiEdit', hooks: [
+            { type: 'command', command: 'd=...; f="$d/.code-flow/scripts/cf_inject_hook.py"; python3 "$f"' },
+            { type: 'command', command: 'user-own-hook' }
+          ] }
+        ]
+      }
+    }));
+
+    const added = mergeSettingsJson(src, dest);
+    const result = JSON.parse(fs.readFileSync(dest, 'utf8'));
+    const cmds = result.hooks.PreToolUse[0].hooks.map(h => h.command);
+    assert.ok(!cmds.some(c => c.includes('cf_inject_hook.py')), 'retired managed hook removed');
+    assert.ok(cmds.includes('user-own-hook'), 'user hook preserved');
+    assert.ok(cmds.includes(current), 'current managed hook added');
+    assert.ok(added.some(s => s.includes('cf_inject_hook.py')), 'retired removal reported');
+    // Idempotent second run
+    const second = mergeSettingsJson(src, dest);
+    assert.ok(!second.some(s => s.includes('-retired')), 'no repeat retired report');
+  });
+  console.log('  ✓ mergeSettingsJson replaces retired managed hooks');
 }
 
 function testMergeIdempotent() {
@@ -361,13 +511,19 @@ function testMergeOpencodeIsIdempotent() {
 // --- run ---
 
 const tests = [
+  testRuntimeGitignoreMatchesCanonicalTemplate,
+  testEnsureRuntimeGitignoreCreatesAndExtends,
   testMergeClaudeMdAddsMissingSection,
   testMergeClaudeMdIgnoresFencedCodeHeadings,
+  testMergeClaudeMdKeepsManagedStartMarker,
+  testMergeClaudeMdRepairsUnpairedEndMarker,
+  testMergeClaudeMdLeavesUserSectionsWithoutMarkersAlone,
   testMaskFencedCodePreservesOffsets,
   testMergeAddsNewEvent,
   testMergeAddsNewMatcherWithinExistingEvent,
   testMergeAddsNewCommandIntoExistingMatcher,
   testMergeNeverOverwritesUserCommand,
+  testMergeReplacesRetiredManagedHookCommands,
   testMergeIdempotent,
   testMergeCodexConfigTomlAddsMissingHookFlag,
   testMergeCodexConfigTomlCreatesFeaturesSection,

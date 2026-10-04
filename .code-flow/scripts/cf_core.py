@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import fnmatch
+import json
 import os
 import re
 import sys
@@ -122,8 +123,20 @@ def _default_spec_entry(rel: str) -> dict:
     return {"path": rel, "tags": ["*"], "tier": tier}
 
 
+def _mapping_signature(mapping: dict) -> str:
+    """Content signature for the mapping cache.
+
+    `id(mapping)` keys were reused after GC, potentially serving a mapping
+    built from stale config contents. Hash the JSON projection instead.
+    """
+    try:
+        return json.dumps(mapping or {}, ensure_ascii=False, sort_keys=True, default=str)
+    except (TypeError, ValueError):
+        return ""
+
+
 def build_effective_mapping(project_root: str, mapping: dict) -> dict:
-    cache_key = (project_root, id(mapping))
+    cache_key = (project_root, _mapping_signature(mapping))
     cached = _effective_mapping_cache.get(cache_key)
     if cached is not None:
         return cached
@@ -182,10 +195,12 @@ def is_code_file(rel_path: str, runtime_config: dict) -> bool:
     if ext in (runtime_config.get("skip_extensions") or []):
         return False
     code_exts = runtime_config.get("code_extensions") or []
-    ext_set = _ext_set_cache.get(id(code_exts))
+    # Content key: id() reuse after GC could serve a stale extension set.
+    ext_key = tuple(code_exts)
+    ext_set = _ext_set_cache.get(ext_key)
     if ext_set is None:
         ext_set = frozenset(code_exts)
-        _ext_set_cache[id(code_exts)] = ext_set
+        _ext_set_cache[ext_key] = ext_set
     return ext in ext_set
 
 

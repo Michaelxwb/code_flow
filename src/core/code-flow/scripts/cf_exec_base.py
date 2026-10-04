@@ -9,6 +9,7 @@ chain, commands never pass through a shell, and unrun work is reported as
 
 from __future__ import annotations
 
+import hashlib
 import shlex
 import json
 import subprocess
@@ -16,7 +17,7 @@ import time
 from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Iterator, Mapping, Optional, Sequence
+from typing import Callable, Iterator, Mapping, Optional, Sequence
 
 _EXECUTIONS: ContextVar[Optional[dict[str, dict[str, object]]]] = ContextVar("cf_executions", default=None)
 
@@ -88,6 +89,85 @@ def run_command(
     if cache is not None and result["status"] == "ok":
         cache[key] = result
     return result
+
+
+def hash_worktree_paths(project_root: str, paths: Sequence[str]) -> Optional[list]:
+    """Batch-hash worktree file contents (single `git hash-object` process)."""
+    if not paths:
+        return []
+    completed = subprocess.run(
+        ("git", "-C", project_root, "hash-object", "--stdin-paths"),
+        input="\n".join(paths) + "\n", text=True, capture_output=True,
+    )
+    if completed.returncode != 0:
+        return None
+    hashes = completed.stdout.splitlines()
+    if len(hashes) != len(paths):
+        return None
+    return [(path, sha.strip()) for path, sha in zip(paths, hashes)]
+
+
+def worktree_fingerprint(project_root: str, untracked_filter: Optional[Callable[[str], bool]] = None,
+                         include_untracked: bool = True) -> str:
+    """Content-addressed fingerprint of the working tree, ignoring `.code-flow`.
+
+    Committed content uses blob SHAs; modified/untracked files are hashed from
+    the worktree. Git-ignored files never participate, so build artifacts do
+    not invalidate caches. `untracked_filter` optionally narrows which
+    untracked paths count (validators filter by trigger; acceptance scenarios
+    pass `include_untracked=False` because the workflow commits before gates
+    run and test artifacts must not invalidate evidence).
+    Returns "" when identity cannot be proven (callers must disable reuse).
+    """
+    def _git(*arguments: str) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            ("git", "-C", project_root, *arguments),
+            text=True, encoding="utf-8", capture_output=True, check=False,
+        )
+
+    tree = _git("ls-tree", "-r", "HEAD")
+    status = _git("status", "--porcelain", "--untracked-files=all")
+    if tree.returncode != 0 or status.returncode != 0:
+        return ""
+    contents: dict[str, str] = {}
+    for line in tree.stdout.splitlines():
+        meta, _, path = line.partition("\t")
+        fields = meta.split()
+        if path and len(fields) >= 3 and not path.startswith(".code-flow/"):
+            contents[path] = fields[2]
+    changed: list[str] = []
+    deleted: list[str] = []
+    for line in status.stdout.splitlines():
+        code, path = line[:2], line[3:].strip()
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1].strip()
+        if not path or path.startswith(".code-flow/"):
+            continue
+        if path.startswith('"'):
+            return ""  # quoted/escaped path: fail closed instead of mis-hashing
+        if code.strip() == "??":
+            if include_untracked and (untracked_filter is None or untracked_filter(path)):
+                changed.append(path)
+        elif "D" in code:
+            contents.pop(path, None)
+            deleted.append(path)
+        else:
+            changed.append(path)
+    hashed = hash_worktree_paths(project_root, changed)
+    if hashed is None:
+        return ""
+    for path, sha in hashed:
+        contents[path] = sha
+    digest = hashlib.sha256()
+    for path in sorted(contents):
+        digest.update(path.encode())
+        digest.update(b"\0")
+        digest.update(contents[path].encode())
+        digest.update(b"\n")
+    for path in sorted(deleted):
+        digest.update(f"deleted:{path}".encode())
+        digest.update(b"\n")
+    return digest.hexdigest()
 
 
 def _execute(argv: Sequence[str], cwd: str, timeout: float, deadline: Optional[float]) -> dict[str, object]:

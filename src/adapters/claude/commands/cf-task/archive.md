@@ -55,7 +55,7 @@
 - 来源 design 含结构化 S-/E-/B- 场景时，逐项对照 `## Acceptance Coverage`，P0/P1 场景以及 RULE/高影响 RISK 映射场景必须全部存在且状态为 `verified`
 - 每个负责任务的 `Acceptance-Refs`、`Acceptance Contract`、`Acceptance Evidence` 必须闭合，不得残留 `planned` / `pending` / `TBD`
 - 测试层级不得低于 design；E2E 的真实边界和关键断言必须有文件/用例位置与 fixture/构造证据
-- 先用 `cf_acceptance_manifest.py --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json" --verify-plan` 校验基线，再用 `cf_acceptance_runner.py --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --include-e2e --write-evidence` 统一复验。相同 argv、cwd、timeout 的命令在单次运行内复用结果；跨运行不复用，依赖步骤不跨状态屏障复用。测试未收集、未执行或失败均为 FAIL
+- 先用 `cf_acceptance_manifest.py --verify-plan --task-dir "<需求目录>" --task-file "<任务文件>"` 校验基线，再用 `cf_acceptance_runner.py --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --include-e2e --write-evidence` 统一复验。相同 argv/cwd/timeout 且工作树内容指纹未变的已通过场景跨运行复用（不重复执行 E2E）；内容变化、带依赖步骤或失败场景必须重跑，`--no-cache` 可强制全量。测试未收集、未执行或失败均为 FAIL
 - `manual` 场景必须有用户确认和可复核记录。旧 design 没有结构化场景时注明“不适用”，不得伪造覆盖
 
 **一致性**：

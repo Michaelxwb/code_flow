@@ -61,6 +61,22 @@ class ContextError(ValueError):
         return {"code": self.code, "field": self.field, "message": self.message, "path": self.path}
 
 
+def error_payload(exc: Exception) -> Optional[dict]:
+    """Duck-typed ContextError recognition across duplicate module instances.
+
+    Direct script execution (`python3 cf_spec_context.py`) can make lazy
+    `import cf_spec_context` calls inside sibling modules load a second copy,
+    so `isinstance(exc, ContextError)` fails even though the error contract is
+    identical. Recognize it structurally instead of masking it as
+    `internal_error`.
+    """
+    to_dict = getattr(exc, "to_dict", None)
+    if not callable(to_dict) or not isinstance(getattr(exc, "code", None), str):
+        return None
+    payload = to_dict()
+    return payload if isinstance(payload, dict) else None
+
+
 @dataclass(frozen=True)
 class ContextSource:
     type: str
@@ -415,11 +431,21 @@ def resync_active_hash(root: str, task_dir: str, current_sha256: str) -> bool:
     """Re-sync the active marker's context hash after toolchain-initiated
     context edits (bind/decision/refresh) so they never surface as
     unrecoverable active_context_drift. No-op without an active marker or when
-    the hash already matches; never raises on a missing marker."""
+    the hash already matches; never raises on a missing marker.
+
+    Only the active demand may re-sync: editing another demand's context must
+    never overwrite the marker hash (cross-demand drift).
+    """
     marker = Path(root) / ".code-flow" / ".active-task.json"
     if not marker.exists():
         return False
     active = load_active_task(root)
+    requested = Path(task_dir)
+    requested = (Path(root) / requested if not requested.is_absolute() else requested).resolve()
+    active_dir = Path(active.task_dir)
+    active_dir = (Path(root) / active_dir if not active_dir.is_absolute() else active_dir).resolve()
+    if active_dir != requested:
+        return False
     if active.context_sha256 == current_sha256:
         return False
     save_active_task(root, replace(active, context_sha256=current_sha256))
@@ -1431,7 +1457,20 @@ def _decision_command(args: argparse.Namespace, payload: Mapping[str, object]) -
     )
     save_context(str(context_path), context)
     _resync_after_save(args, context_path)
-    return {"ok": True, "status": context.bindings[0].rules[0].stage_status[_string(payload.get("stage"), "stage", "")].status}
+    # Report the status of the rule the decision targeted, not the first binding
+    # (bindings[0].rules[0] previously returned an unrelated rule).
+    spec_id = _string(payload.get("spec_id"), "spec_id", "")
+    rule_ref = _string(payload.get("rule_ref"), "rule_ref", "")
+    stage = _string(payload.get("stage"), "stage", "")
+    status = "unknown"
+    for binding in context.bindings:
+        if binding.spec_id != spec_id:
+            continue
+        for rule in binding.rules:
+            if rule.ref == rule_ref:
+                stage_status = rule.stage_status.get(stage)
+                status = stage_status.status if stage_status is not None else "missing"
+    return {"ok": True, "status": status}
 
 
 def _bind_command(args: argparse.Namespace, payload: Mapping[str, object]) -> dict[str, object]:
@@ -1737,6 +1776,11 @@ def main(argv: Optional[Sequence[str]] = None, stdin: IO[str] = sys.stdin, stdou
         stdout.write(json.dumps({"ok": False, "error": exc.to_dict()}, ensure_ascii=False))
         return 3
     except Exception as exc:
+        payload = error_payload(exc)
+        if payload is not None:
+            # Same error contract, different module instance (direct script run).
+            stdout.write(json.dumps({"ok": False, "error": payload}, ensure_ascii=False))
+            return 3
         sys.stderr.write(f"cf_spec_context unexpected error: {exc}\n")
         stdout.write(json.dumps({"ok": False, "error": {"code": "internal_error"}}, ensure_ascii=False))
         return 2

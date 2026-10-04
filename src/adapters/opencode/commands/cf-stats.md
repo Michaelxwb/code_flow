@@ -6,14 +6,14 @@ description: 统计规范体系的 token 使用情况
 
 统计规范体系的 token 使用情况（各文件分布、预算利用率、压缩与 quality_loop 健康度）；`--audit` 附带规范质量审计。
 
-> 原 `cf-scan` 已并入本命令：质量审计（冗长/冗余/过时/缺描述 + 待复审清单）改用 `/project:cf-stats --audit`。
+> 原 `cf-scan` 已并入本命令：质量审计（冗长/冗余/过时/缺描述 + 待复审清单）改用 `/cf-stats --audit`。
 
 ## 输入
 
-- `/project:cf-stats` — 完整统计
-- `/project:cf-stats --human` — 人类可读格式
-- `/project:cf-stats --domain=frontend` — 仅统计指定领域
-- `/project:cf-stats --audit` — 附带规范质量审计（冗长/冗余/过时/缺描述）与待复审清单
+- `/cf-stats` — 完整统计
+- `/cf-stats --human` — 人类可读格式
+- `/cf-stats --domain=frontend` — 仅统计指定领域
+- `/cf-stats --audit` — 附带规范质量审计（冗长/冗余/过时/缺描述）与待复审清单
 
 ## 执行步骤
 
@@ -86,5 +86,5 @@ COMPRESSION: 1820 → 1580 (-13.2%)
 
 ## 异常处理
 
-- `.code-flow/` 不存在 → 提示运行 `/project:cf-init`
+- `.code-flow/` 不存在 → 提示运行 `/cf-init`
 - Python 脚本执行失败 → 输出错误信息，建议检查 Python 环境

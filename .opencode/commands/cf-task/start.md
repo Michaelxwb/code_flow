@@ -34,7 +34,7 @@ description: 激活子任务并开始编码
 
 **#NOTES 检查**：扫描该子任务段落全文（Description、Checklist 等）
 - 如果存在 `#NOTES` 标记，说明用户 review 时留下了未讨论的问题，拒绝启动
-- 输出：`前置检查失败：以下 #NOTES 未解决\n- 密码加密存储  #NOTES 用 bcrypt 还是 argon2？\n- ...\n请先运行 /project:cf-task:note <file> TASK-xxx 讨论并解决`
+- 输出：`前置检查失败：以下 #NOTES 未解决\n- 密码加密存储  #NOTES 用 bcrypt 还是 argon2？\n- ...\n请先运行 /cf-task:note <file> TASK-xxx 讨论并解决`
 
 **依赖检查**：读取 `Depends` 字段
 - 对每个依赖的 TASK-ID，在同文件中查找其 Status
@@ -66,7 +66,7 @@ description: 激活子任务并开始编码
 
 在改状态或生产代码前，顺序固定且不得跳步：
 
-1. 调用 `cf_spec_context.py start --task-dir ... --root ... --task ... --task-file ... --json`，由单个进程按 refresh → active start → session 顺序执行 Start Gate；stdin JSON 传入逐路径确认的 `owned_paths`。stale/conflict、依赖未闭合、已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。前置硬门禁（blocked / #NOTES / 依赖）由 workflow service 在改状态前强制执行。用户已确认内容时，Design/Plan 的 pending 不单独阻止激活；不新增阶段状态门禁。
+1. 调用 `cf_spec_context.py start --task-dir ... --root ... --task ... --task-file ... --json`，由单个进程按 refresh → active start → session 顺序执行 Start Gate；stdin JSON 的 `owned_paths` 只填启动前已存在的未提交改动（逐路径确认归属），不是计划要改的文件；干净工作区传空数组（提交后的改动由基线并集自动纳入）。stale/conflict、依赖未闭合、已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。前置硬门禁（blocked / #NOTES / 依赖）由 workflow service 在改状态前强制执行。用户已确认内容时，Design/Plan 的 pending 不单独阻止激活；不新增阶段状态门禁。
 2. 从命令返回值读取 refresh 后的 Context hash、active 状态和 session 输出路径；该命令只根据当前 TASK 的 `Spec-Refs`、Source 与 Acceptance Contract 覆盖写入 `.code-flow/specs/_session/task-<name>.md`，禁止重新 catalog 或猜测规则。
 3. Start 返回成功时，workflow service 已通过可恢复事务同步 Status、started log 和 active marker；不要再手动改状态。失败保留原状态，按返回原因恢复。
 4. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令（E2E 只登记，不在本阶段执行）
@@ -214,7 +214,8 @@ python3 .code-flow/scripts/cf_task_parallel.py prepare --root "$PWD" \
 2. 按本命令"单任务模式"步骤 1-4 完成该 TASK：`cf_spec_context.py start` → functional RED → 实现 → functional GREEN（E2E 只登记）→ `cf_task_workflow.py finish --root "<worktree>"`。
 3. 平台 hook 注入绑定主工作区；子 agent 必须显式读取 Spec Session（路径取 start 返回的 `session_output`，默认 `.code-flow/specs/_session/task-<任务文件stem>.md`）与详设章节，不得依赖自动注入。
 4. 完成时在 worktree 内提交全部改动（含任务文件 Checklist/Evidence/Status 更新），提交信息 `cf-task(<TASK-ID>): <标题>`。
-5. 返回摘要：TASK-ID、Status、验收命令及结果、提交 SHA、遗留问题。
+5. `finish` 返回 `decision: block` 时不得提交：保留现场，原样回报阻断原因（如 scope expansion 新增 required Spec、验收失败）与 `cf_spec_context.py status --json` 输出，由主 agent 决定局部 Plan/Align、修复后重派或接管；不得自行 resume 绕过门禁。
+6. 返回摘要：TASK-ID、Status、验收命令及结果、提交 SHA、遗留问题。
 
 标准 worker prompt 模板（替换占位符后派发）：
 
@@ -247,30 +248,19 @@ python3 .code-flow/scripts/cf_task_parallel.py collect --root "$PWD" --run-id <r
 
 #### 4.4 回并主分支
 
-按 TASK-ID 先后顺序逐个回并；先 rebase 再合并，让冲突只在任务自己的 worktree 内解决。
-
-1. 取主工作区当前分支名（主工作区执行 `git rev-parse --abbrev-ref HEAD`，记为 <主分支>），在任务 worktree 内对齐：
+按 TASK-ID 先后顺序回并。统一入口自动完成：worktree 内 rebase → 状态文件冲突按确定性并集规则解决 → 主工作区 `--no-ff` 合并 → `cf_spec_context.py refresh` 收敛 hash：
 
 ```bash
-cd <worktree> && git rebase <主分支>
+python3 .code-flow/scripts/cf_task_parallel.py merge --root "$PWD" --run-id <run_id> --json
 ```
 
-- rebase 冲突：读取冲突现场 + 本任务详设章节与 Acceptance Contract，合并双方意图（不是二选一）；无法调和（设计要求互斥）→ `git rebase --abort`，保留现场与分支，列出矛盾点叫停交用户决策，不得擅自删除一方实现。
-- rebase 成功后重跑该任务的 functional 验收命令（E2E 留给 verify-e2e）；失败则在 worktree 内修复并提交，再执行 4.3 collect 复核。
-
-2. 回到主工作区合并（此时应无冲突）：
-
-```bash
-git merge --no-ff -m "merge cf-task <TASK-ID>" <branch>
-```
-
-- 仍出现冲突（主区期间有新合并）：按双方意图解决并重跑双方 functional 验收；通过后提交 merge。
-- 状态文件冲突（`spec-context.yml` / 任务 md 的覆盖状态列 / `.acceptance-manifest.json`）按确定性优先级解决：覆盖状态列取并集（两边各自 verified 的行保留 verified）；`spec-context.yml` 取已包含全量规则证据的一侧；manifest 多数情况按行自动合并，冲突时以任务文件为准重建后重跑 functional 场景。解决后必须 `cf_spec_context.py refresh` 收敛 hash，并重跑合并双方的 functional 验收与 `cf_spec_gate --stage code --json`，通过后提交 merge。
-- 合并后验收失败：记录合并前 HEAD 并 `git reset --hard <合并前HEAD>`（分支与 worktree 原样保留），回到 4.2 让对应子 agent 修复后重新 collect / rebase / 合并。
-
-3. 全部任务合并完成后进入 4.5 清理。
-
+- 返回 `ok: true` 才继续；`already_merged` 表示该任务已并入（幂等，可重跑）；任一任务失败即停止，修复后重跑 merge 续跑。
+- `code_conflict`：代码文件冲突无法程序化合并（返回冲突文件列表，rebase 已中止、主工作区未受影响）。人工读取冲突现场 + 本任务详设章节与 Acceptance Contract，合并双方意图（不是二选一）；无法调和（设计要求互斥）→ 保留现场与分支，列出矛盾点叫停交用户决策，不得擅自删除一方实现。解决后重跑 merge。
+- 状态文件冲突（任务 md 覆盖状态列 / `spec-context.yml` / `.acceptance-manifest.json`）由 merge 自动按确定性并集规则处理，无需手工编辑：覆盖状态列两边各自 verified 的行均保留；`spec-context.yml` 取证据并集、verified 优先；manifest 按 verified/revision 合并。
+- merge 成功后自动执行 `refresh` 并在结果中返回 `pass` / `block: ...`；随后重跑合并双方的 functional 验收与 `cf_spec_gate --stage code --json`，失败则记录合并前 HEAD 并 `git reset --hard <合并前HEAD>`（分支与 worktree 原样保留），回到 4.2 让对应子 agent 修复后重新 collect / merge。
 - E2E 验收留给 verify-e2e，不在本步骤执行。
+
+全部任务合并完成后进入 4.5 清理。
 
 #### 4.5 清理
 

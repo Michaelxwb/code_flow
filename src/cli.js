@@ -129,11 +129,38 @@ function maskFencedCode(text) {
   return text.replace(/```[\s\S]*?```/g, block => block.replace(/[^\n]/g, ' '));
 }
 
+// A managed HTML marker (`<!-- code-flow:... start -->`) directly above a
+// section heading is part of that section. Slicing from the heading line
+// dropped the start marker, leaving an unpaired end marker that both blocked
+// future migrations (cf_spec_migrate needs both) and appended duplicate blocks.
+function managedSliceStart(masked, index) {
+  const before = masked.slice(0, index);
+  const marker = before.match(/<!-- code-flow:[\w-]+ schema=\d+ start -->[ \t]*\n$/);
+  return marker ? index - marker[0].length : index;
+}
+
+function repairManagedStartMarker(srcText, destText, destFile) {
+  // dest may already contain the managed section from an older merge that
+  // dropped the start marker. Restore it before the section heading so
+  // cf_spec_migrate._replace_managed can recognize the block again.
+  const srcStart = srcText.match(/<!-- code-flow:[\w-]+ schema=\d+ start -->/);
+  if (!srcStart || destText.includes(srcStart[0])) return [];
+  const endMatch = /<!-- code-flow:[\w-]+ schema=\d+ end -->/.exec(destText);
+  if (!endMatch) return [];
+  const headingAt = destText.lastIndexOf('\n## ', endMatch.index);
+  const insertAt = headingAt === -1 ? destText.lastIndexOf('\n', endMatch.index) + 1 : headingAt + 1;
+  const repaired = destText.slice(0, insertAt) + srcStart[0] + '\n' + destText.slice(insertAt);
+  fs.writeFileSync(destFile, repaired);
+  return ['repaired managed block start marker'];
+}
+
 function mergeClaudeMd(srcFile, destFile) {
   const srcText = fs.readFileSync(srcFile, 'utf8');
   const destText = fs.readFileSync(destFile, 'utf8');
+  const repaired = repairManagedStartMarker(srcText, destText, destFile);
+  const baseText = repaired.length > 0 ? fs.readFileSync(destFile, 'utf8') : destText;
   const srcMasked = maskFencedCode(srcText);
-  const destMasked = maskFencedCode(destText);
+  const destMasked = maskFencedCode(baseText);
 
   const sectionRegex = /^## .+$/gm;
   const srcSections = [];
@@ -149,20 +176,37 @@ function mergeClaudeMd(srcFile, destFile) {
   }
 
   const missing = srcSections.filter(s => !destSectionSet.has(s.heading));
-  if (missing.length === 0) return [];
+  if (missing.length === 0) return repaired;
 
   const additions = [];
   for (const { heading, index } of missing) {
-    // Find next real section heading using the masked text, then slice the
-    // original text by that offset so we keep any code-block content intact.
+    // Slice so a managed marker directly above the heading belongs to this
+    // section, and the marker above the NEXT heading does not leak into this
+    // section's tail (that produced duplicate start markers).
+    const start = managedSliceStart(srcMasked, index);
     const nextRel = srcMasked.slice(index + heading.length).search(/^## /m);
-    const end = nextRel === -1 ? srcText.length : index + heading.length + nextRel;
-    additions.push(srcText.slice(index, end).trimEnd());
+    const end = nextRel === -1
+      ? srcText.length
+      : managedSliceStart(srcMasked, index + heading.length + nextRel);
+    additions.push(srcText.slice(start, end).trimEnd());
   }
 
-  const merged = destText.trimEnd() + '\n\n' + additions.join('\n\n') + '\n';
+  const merged = baseText.trimEnd() + '\n\n' + additions.join('\n\n') + '\n';
   fs.writeFileSync(destFile, merged);
-  return missing.map(m => m.heading);
+  return [...repaired, ...missing.map(m => m.heading)];
+}
+
+// Managed hook scripts from older releases that are no longer shipped. Hook
+// registration is additive (user commands are never removed), so these stale
+// managed commands would otherwise keep firing on every event forever.
+const RETIRED_HOOK_SCRIPTS = [
+  'cf_inject_hook.py',
+  'cf_session_hook.py',
+  'cf_codex_user_prompt_hook.py',
+];
+
+function isManagedCommand(command) {
+  return typeof command === 'string' && RETIRED_HOOK_SCRIPTS.some(name => command.includes(name));
 }
 
 // Deep-merge a single hook event array. Each item has shape
@@ -171,9 +215,9 @@ function mergeClaudeMd(srcFile, destFile) {
 // dest items; for existing items we union the inner hooks array by command
 // string. User-added items / commands are never removed or rewritten — the
 // merge is purely additive, in line with cli/code-standards.md "合并策略
-// 必须保证用户自定义内容不被覆盖".
-// If a future release changes a managed hook command string, add an explicit
-// migration before merging; otherwise old and new commands will both run.
+// 必须保证用户自定义内容不被覆盖". The one exception is managed hook entries
+// for scripts that no longer exist: those are replaced by the current template
+// command for the same event/matcher (RETIRED_HOOK_SCRIPTS whitelist).
 function mergeHookEventArray(srcArr, destArr, eventName, added) {
   if (!Array.isArray(srcArr) || !Array.isArray(destArr)) return;
   for (const srcItem of srcArr) {
@@ -190,6 +234,15 @@ function mergeHookEventArray(srcArr, destArr, eventName, added) {
       continue;
     }
     if (!Array.isArray(destItem.hooks)) destItem.hooks = [];
+    const retired = destItem.hooks.filter(h => h && isManagedCommand(h.command));
+    if (retired.length > 0) {
+      destItem.hooks = destItem.hooks.filter(h => !(h && isManagedCommand(h.command)));
+      for (const name of RETIRED_HOOK_SCRIPTS) {
+        if (retired.some(h => String(h.command).includes(name))) {
+          added.push(`hook: ${eventName} -retired ${name}`);
+        }
+      }
+    }
     const destCmds = new Set(
       destItem.hooks.map(h => (h && typeof h.command === 'string' ? h.command : ''))
     );
@@ -394,6 +447,8 @@ function collectFiles(dir, base) {
   if (!fs.existsSync(dir)) return results;
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
+    // OS metadata junk must never be deployed into user projects.
+    if (entry.name === '.DS_Store' || entry.name === 'Thumbs.db') continue;
     const rel = path.join(base, entry.name);
     if (entry.isDirectory()) {
       results.push(...collectFiles(path.join(dir, entry.name), rel));
@@ -408,6 +463,7 @@ function copyDirRecursive(srcDir, destDir, overwrite) {
   fs.mkdirSync(destDir, { recursive: true });
   const entries = fs.readdirSync(srcDir, { withFileTypes: true });
   for (const entry of entries) {
+    if (entry.name === '.DS_Store' || entry.name === 'Thumbs.db') continue;
     const srcPath = path.join(srcDir, entry.name);
     const destPath = path.join(destDir, entry.name);
     if (entry.isDirectory()) {
@@ -512,9 +568,59 @@ const MANAGED_LEGACY_SKILL_NAMES = new Set([
   'cf-validate.md',
 ]);
 
-// --- pyyaml dependency: probe first, fall back through PEP 668 strategies ---
+// Runtime ignore list for the managed `.code-flow/.gitignore`.
+// npm never ships `.gitignore` files in tarballs, so `src/core/code-flow/.gitignore`
+// cannot reach `code-flow init` from a published package. The content is embedded
+// here and written on init when missing; a test keeps it aligned with the
+// source-tree template so both paths stay in sync.
+const RUNTIME_GITIGNORE = [
+  '# >>> code-flow:runtime schema=1',
+  '.active-task.json',
+  '.active-task.lock',
+  '.catalog-state.json',
+  '.session-state.json',
+  '.task-projection-state.json',
+  'migrations/',
+  'backups/',
+  '.debug.log',
+  '.session-log.jsonl',
+  '.check-state.json',
+  'sessions/',
+  'specs/_session/',
+  'worktrees/',
+  '.validation-cache.json',
+  '.artifact-hash-cache.json',
+  '.verifier-cache.json',
+  '# <<< code-flow:runtime schema=1',
+  '',
+].join('\n');
+
+function ensureRuntimeGitignore(cwd, results) {
+  const dest = path.join(cwd, '.code-flow', '.gitignore');
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, RUNTIME_GITIGNORE);
+    results.created.push('.code-flow/.gitignore');
+    return;
+  }
+  // Existing managed block: add runtime entries introduced by later releases.
+  // Files without our markers are user-owned and left untouched.
+  const text = fs.readFileSync(dest, 'utf8');
+  const endMarker = '# <<< code-flow:runtime schema=1';
+  if (!text.includes('# >>> code-flow:runtime schema=1') || !text.includes(endMarker)) return;
+  const lines = text.split('\n');
+  const missing = RUNTIME_GITIGNORE.split('\n').filter(
+    line => line && !line.startsWith('#') && !lines.includes(line)
+  );
+  if (missing.length === 0) return;
+  const at = lines.indexOf(endMarker);
+  lines.splice(at, 0, ...missing);
+  fs.writeFileSync(dest, lines.join('\n'));
+  results.merged.push(`.code-flow/.gitignore — added: ${missing.join(', ')}`);
+}
 
 // --- pyyaml dependency: probe first, fall back through PEP 668 strategies ---
+
 // Bounded waits: each attempt carries its own timeout inside a total budget,
 // with progress on stderr. spawnFn/logFn/nowFn are injectable for tests.
 const PIP_PER_ATTEMPT_MS = 60000;
@@ -553,10 +659,26 @@ function ensurePyYaml(spawnFn, logFn, nowFn) {
 
 // --- Adapter file installer: shared by every platform branch ---
 
+// Run a merge function with a clear, actionable error instead of a raw stack
+// trace. A corrupt destination file must not abort init silently mid-way; the
+// operator gets the file name and the recovery step.
+function runMerge(mergeFn, src, dest, label) {
+  try {
+    return mergeFn(src, dest);
+  } catch (error) {
+    const message = error && error.message ? error.message : String(error);
+    throw new Error(
+      `${label}: merge failed (${message}). Fix or delete the file, then re-run init.`
+    );
+  }
+}
+
 // Install one adapter file with the standard create / force / upgrade /
-// skip semantics. `mergeFn` is consulted only on upgrade for `merge`-class
-// files; pass null for `tool`-class files (overwrite on upgrade) or for
-// fresh-only files (skip on upgrade).
+// skip semantics. `mergeFn` is consulted on upgrade for `merge`-class files
+// and also in fresh mode when the destination already exists (a pre-existing
+// AGENTS.md/CLAUDE.md must still receive the managed sections instead of
+// being silently skipped — otherwise the Spec Workflow protocol never lands).
+// Pass null for `tool`-class files or fresh-only files.
 function installAdapterFile(opts) {
   const { src, dest, label, mode, mergeFn, toolOnUpgrade, results } = opts;
   if (!fs.existsSync(dest)) {
@@ -570,6 +692,15 @@ function installAdapterFile(opts) {
     fs.copyFileSync(src, dest);
     return;
   }
+  if (mode === 'fresh' && mergeFn) {
+    const added = runMerge(mergeFn, src, dest, label);
+    if (added.length > 0) {
+      results.merged.push(`${label} — added: ${added.join(', ')}`);
+    } else {
+      results.skipped.push(label);
+    }
+    return;
+  }
   if (mode === 'upgrade') {
     if (toolOnUpgrade) {
       results.updated.push(label);
@@ -577,7 +708,7 @@ function installAdapterFile(opts) {
       return;
     }
     if (mergeFn) {
-      const added = mergeFn(src, dest);
+      const added = runMerge(mergeFn, src, dest, label);
       if (added.length > 0) {
         results.merged.push(`${label} — added: ${added.join(', ')}`);
       } else {
@@ -691,6 +822,9 @@ function runInit(force, platform, opts) {
 
   // Process .code-flow/ (core)
   processDir(path.join(coreDir, 'code-flow'), path.join(cwd, '.code-flow'), '.code-flow', mode);
+  // npm tarballs never include .gitignore, so the published package must write
+  // the runtime ignore list itself (or extend it on upgrade).
+  ensureRuntimeGitignore(cwd, results);
 
   // Process Claude adapter
   if (platform === 'claude') {
@@ -971,7 +1105,7 @@ function runMigrate(values) {
     if (actions[0] === '--apply') {
       const plan = argumentValue(values, '--plan');
       if (!plan) fail('Error: --apply requires --plan <path>.');
-      result = specWorkflowMigration.apply(path.resolve(plan));
+      result = specWorkflowMigration.apply(path.resolve(plan), { projectRoot: process.cwd() });
     }
     if (actions[0] === '--rollback') {
       const id = argumentValue(values, '--rollback');
@@ -1005,7 +1139,14 @@ if (args[0] === 'init') {
   if (platform !== 'claude' && platform !== 'codex' && platform !== 'costrict' && platform !== 'opencode') {
     fail(`Error: --platform must be "claude", "codex", "costrict", or "opencode", got "${platform}".`);
   }
-  runInit(force, platform, { backupDir: parseStringFlag(args, 'backup-dir') });
+  try {
+    runInit(force, platform, { backupDir: parseStringFlag(args, 'backup-dir') });
+  } catch (error) {
+    // Report merge/IO failures as a readable error, never a raw JS stack.
+    const message = error && error.message ? error.message : String(error);
+    process.stderr.write(`Error: init failed — ${message}\n`);
+    process.exit(1);
+  }
 }
 
 if (args[0] === 'migrate') {

@@ -133,6 +133,8 @@ def _normalize_binding_tokens(text: str) -> str:
     text = re.sub(r"^---\n.*?\n---\n", "", text, count=1, flags=re.DOTALL)
     text = text.replace("AGENTS.md", "CLAUDE.md")
     text = text.replace("/project:cf-learn", "cf-learn")
+    # opencode uses the bare `/cf-learn` invocation (no `/project:` namespace)
+    text = text.replace("/cf-learn", "cf-learn")
     text = text.replace("用 `apply_patch` 追加", "追加")
     return text.strip()
 
@@ -166,7 +168,9 @@ def test_cf_learn_platform_global_targets_are_correct() -> None:
 
     assert "`/project:cf-learn`" in claude
     assert "`/project:cf-learn`" in costrict
-    assert "`/project:cf-learn`" in opencode
+    # OpenCode commands are invoked bare (`/cf-learn`) — `/project:` would name a
+    # command that does not exist there.
+    assert "`/cf-learn`" in opencode and "`/project:cf-learn`" not in opencode
     assert "`cf-learn`" in codex
 
     # apply_patch 是 codex 的编辑机制；opencode 用自身编辑工具，不应残留 apply_patch

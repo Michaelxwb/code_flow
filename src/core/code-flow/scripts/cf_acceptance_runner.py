@@ -9,9 +9,59 @@ from pathlib import Path
 import sys
 from typing import IO, Mapping, Optional, Sequence
 
-from cf_exec_base import execution_key, run_command, invalidate_executions
+from cf_exec_base import execution_key, run_command, invalidate_executions, worktree_fingerprint
 from cf_acceptance_schema import load_manifest, validate_execution_baseline
 from cf_acceptance_evidence import persist_results
+
+
+def _scenario_cwd(root: Path, item: Mapping[str, object]) -> str:
+    cwd = item.get("cwd", ".") if isinstance(item.get("cwd", "."), str) else "."
+    return str(root / cwd)
+
+
+def _scenario_timeout(item: Mapping[str, object]) -> float:
+    timeout = item.get("timeout", 60)
+    return float(timeout) if isinstance(timeout, (int, float)) else 60.0
+
+
+def _included(item: Mapping[str, object], include_e2e: bool, only_e2e: bool) -> bool:
+    """Whether the scenario would actually execute under the current flags."""
+    kind = str(item.get("kind", "functional"))
+    if kind == "manual":
+        return False
+    if only_e2e:
+        return kind == "e2e"
+    if kind == "e2e":
+        return include_e2e
+    return True
+
+
+def _reusable(row: Optional[Mapping[str, object]], item: Mapping[str, object], fingerprint: str) -> bool:
+    """A verified scenario whose stored evidence matches current identity+content.
+
+    Reuse is content-addressed (like the validation cache): same command/cwd/
+    timeout AND unchanged non-ignored worktree. Scenarios with `depends_on`
+    never reuse (dependency side effects are not captured by the fingerprint),
+    failures are never stored, and `--no-cache` disables reuse entirely.
+    """
+    if not fingerprint or not isinstance(row, Mapping):
+        return False
+    if item.get("depends_on"):
+        return False
+    if row.get("status") != "verified":
+        return False
+    evidence = row.get("evidence")
+    if not isinstance(evidence, Mapping):
+        return False
+    if evidence.get("status") != "passed" or evidence.get("exit_code") != 0:
+        return False
+    if evidence.get("fingerprint") != fingerprint:
+        return False
+    if evidence.get("command") != item.get("command"):
+        return False
+    if str(evidence.get("cwd", ".")) != str(item.get("cwd", ".")):
+        return False
+    return float(evidence.get("timeout", 60)) == _scenario_timeout(item)
 
 
 def _run(
@@ -29,8 +79,7 @@ def _run(
     command = item.get("command")
     if not isinstance(command, list) or not command or not all(isinstance(value, str) for value in command):
         return {"id": scenario_id, "kind": kind, "status": "not_configured"}
-    timeout = item.get("timeout", 60)
-    timeout_value = float(timeout) if isinstance(timeout, (int, float)) else 60.0
+    timeout_value = _scenario_timeout(item)
     cwd = item.get("cwd", ".") if isinstance(item.get("cwd", "."), str) else "."
     outcome = run_command(command, str(root / cwd), timeout_value, deadline)
     if outcome["status"] == "deadline_exceeded":
@@ -109,9 +158,17 @@ def _owned(items: list[Mapping[str, object]], owner: str) -> list[Mapping[str, o
 
 def _run_unique(
     ordered: list[Mapping[str, object]], root: Path, include_e2e: bool, deadline: Optional[float] = None,
-    only_e2e: bool = False,
+    only_e2e: bool = False, rows: Optional[Mapping[str, Mapping[str, object]]] = None,
+    fingerprint: str = "", use_cache: bool = True,
 ) -> list[dict[str, object]]:
-    """Reuse identical execution semantics within a dependency-free batch."""
+    """Reuse identical execution semantics within a dependency-free batch.
+
+    Cross-run reuse: a scenario already verified with matching command identity
+    and an unchanged worktree fingerprint is reported `passed` with
+    `cache_reused: true` instead of re-executing. This is what keeps repeated
+    verify-e2e / archive / confirm-manual checkpoints from paying the E2E cost
+    again; any content change invalidates it.
+    """
     cache: dict[str, Mapping[str, object]] = {}
     results: list[dict[str, object]] = []
     for item in ordered:
@@ -124,6 +181,17 @@ def _run_unique(
         if item.get("depends_on"):
             cache.clear()
             invalidate_executions()
+        if use_cache and key is not None and rows is not None and _included(item, include_e2e, only_e2e) and _reusable(
+            rows.get(scenario_id), item, fingerprint
+        ):
+            results.append({
+                "id": scenario_id,
+                "kind": str(item.get("kind", "functional")),
+                "status": "passed",
+                "exit_code": 0,
+                "cache_reused": True,
+            })
+            continue
         if key is not None and key in cache:
             shared = dict(cache[key])
             shared["id"] = scenario_id
@@ -144,16 +212,28 @@ def run_manifest(
     owner: str = "",
     deadline: Optional[float] = None,
     only_e2e: bool = False,
+    use_cache: bool = True,
 ) -> dict[str, object]:
     data = load_manifest(Path(manifest_file))
     validate_execution_baseline(Path(manifest_file), data)
     scenarios = data["scenarios"]
     _ordered(scenarios)  # Validate the complete DAG before owner filtering.
     items = _owned(scenarios, owner)
+    if owner and not items:
+        # TASK 无自有场景（Acceptance-Refs: N/A / 场景全归他人）：本任务执行验收
+        # 视为空集通过；"零可执行场景"阻断只针对整体无场景的 manifest。
+        return {"decision": "pass", "results": [], "reason": "no_owned_scenarios"}
     ordered = _ordered(items)
-    results = _run_unique(ordered, Path(root), include_e2e or only_e2e, deadline, only_e2e)
+    rows = {
+        str(row.get("id")): row
+        for row in scenarios
+        if isinstance(row, Mapping) and isinstance(row.get("id"), str)
+    }
+    fingerprint = worktree_fingerprint(str(root)) if use_cache else ""
+    results = _run_unique(ordered, Path(root), include_e2e or only_e2e, deadline, only_e2e,
+                          rows=rows, fingerprint=fingerprint, use_cache=use_cache)
     if write_evidence:
-        persist_results(Path(manifest_file), data, results)
+        persist_results(Path(manifest_file), data, results, fingerprint=fingerprint)
     if not _executable(items):
         return {"decision": "block", "results": results, "error": "no_executable_scenarios"}
     allowed = ("passed", "manual_pending", "e2e_deferred", "not_included")
@@ -178,9 +258,11 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--only-e2e", action="store_true", help="Execute only E2E scenarios; functional/manual are reported not_included")
     parser.add_argument("--owner", default="", help="Only execute scenarios owned by this TASK (plus ownerless legacy ones)")
     parser.add_argument("--deadline", type=float, default=0.0, help="Absolute monotonic deadline propagated from the entry gate (0 = unbounded)")
+    parser.add_argument("--no-cache", action="store_true", help="Force execution; skip content-fingerprint reuse of already-verified scenarios")
     args = parser.parse_args(argv)
     try:
-        result = run_manifest(args.manifest, args.root, args.write_evidence, args.include_e2e, args.owner, args.deadline or None, args.only_e2e)
+        result = run_manifest(args.manifest, args.root, args.write_evidence, args.include_e2e, args.owner,
+                              args.deadline or None, args.only_e2e, use_cache=not args.no_cache)
         stdout.write(json.dumps(result, ensure_ascii=False))
         return 0 if result["decision"] == "pass" else 3
     except (OSError, ValueError, json.JSONDecodeError) as exc:

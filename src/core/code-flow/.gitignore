@@ -3,13 +3,16 @@
 .active-task.lock
 .catalog-state.json
 .session-state.json
+.task-projection-state.json
 migrations/
+backups/
 .debug.log
 .session-log.jsonl
 .check-state.json
 sessions/
 specs/_session/
 worktrees/
-.task-projection-state.json
 .validation-cache.json
+.artifact-hash-cache.json
+.verifier-cache.json
 # <<< code-flow:runtime schema=1

@@ -7,6 +7,8 @@
   prepare  预检（git 仓库 / worktree 忽略规则 / 无 active marker / tracked 干净）
            → 自动提交仅位于需求目录内的流程产物 → 校验任务可并行 → 建 worktree+分支
   collect  回并前校验：改动已提交、Status 已 done/verified、marker 已清理
+  merge    按 TASK-ID 顺序回并：worktree 内 rebase → 状态文件冲突按确定性并集规则
+           解决 → 主区 --no-ff 合并 → refresh 收敛；代码文件冲突保留人工（fail-closed）
   cleanup  合并完成后移除 worktree；已合入的分支一并删除，未合入的保留可追溯
 
 协议（详见 cf-task:start 命令正文）：
@@ -31,6 +33,9 @@ from typing import IO, Optional, Sequence
 
 from cf_task_index import parse_task_file
 from cf_task_index import task_batches
+from cf_task_merge import merge_context_text
+from cf_task_merge import merge_manifest_text
+from cf_task_merge import merge_task_markdown
 from cf_task_state import FINISHED_STATUSES
 
 
@@ -107,12 +112,14 @@ def _require_no_active(root: Path) -> None:
 
 
 def _commit_task_dir(root: Path, task_file: str) -> Optional[str]:
-    task_dir = Path(task_file).parent
+    # Git porcelain emits forward-slash paths; compare in POSIX form so
+    # Windows backslash paths are not all classified as "outside".
+    task_dir = Path(task_file).parent.as_posix()
     entries = _status_paths(root)
     outside = [
         path
         for path in entries
-        if not (path == str(task_dir) or path.startswith(f"{task_dir}/"))
+        if not (path == task_dir or path.startswith(f"{task_dir}/"))
     ]
     if outside:
         sample = ", ".join(outside[:8]) + (" ..." if len(outside) > 8 else "")
@@ -168,17 +175,38 @@ def _run_id() -> str:
     return datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
+def _unique_run_id(root: Path) -> str:
+    """Second-precision run ids collide when two batches are dispatched in the
+    same second; that overwrote run.json and orphaned the first run's worktrees.
+    Suffix -2, -3, … until the run directory is free."""
+    base = _run_id()
+    identifier = base
+    counter = 1
+    while (root / WORKTREES_DIR / identifier).exists() or not _RUN_ID.match(identifier):
+        counter += 1
+        identifier = f"{base}-{counter}"
+    return identifier
+
+
 def _write_run_meta(run_dir: Path, payload: dict[str, object]) -> None:
     run_dir.mkdir(parents=True, exist_ok=True)
-    (run_dir / "run.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    meta = run_dir / "run.json"
+    if meta.exists():
+        raise ParallelError("run_id_conflict", f"run 记录已存在: {meta}")
+    temporary = meta.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(meta)
 
 
 def _read_run_meta(root: Path, run_id: str) -> dict[str, object]:
     meta = root / WORKTREES_DIR / run_id / "run.json"
     try:
-        return json.loads(meta.read_text(encoding="utf-8"))
+        data = json.loads(meta.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ParallelError("run_not_found", f"找不到并行记录 {meta}: {exc}") from exc
+    if not isinstance(data, dict) or not isinstance(data.get("base_head"), str) or not isinstance(data.get("task_file"), str):
+        raise ParallelError("run_corrupt", f"并行记录损坏（缺 base_head/task_file）: {meta}")
+    return data
 
 
 def _create_worktrees(root: Path, task_file: str, tasks: Sequence[str], run_id: str) -> dict[str, object]:
@@ -210,9 +238,11 @@ def _branch_exists(root: Path, branch: str) -> bool:
     return result.returncode == 0
 
 
-def _delete_branch(root: Path, branch: str) -> bool:
+def _delete_branch(root: Path, branch: str, force: bool = False) -> bool:
+    # 默认 -d 只删已合入分支；--force 表示用户明确接受未合入分支的删除。
+    flag = "-D" if force else "-d"
     result = subprocess.run(
-        ("git", "branch", "-d", branch), cwd=str(root), capture_output=True, check=False,
+        ("git", "branch", flag, branch), cwd=str(root), capture_output=True, check=False,
     )
     return result.returncode == 0
 
@@ -229,7 +259,7 @@ def _relative_task_file(root: Path, task_file: str) -> str:
     candidate = Path(task_file)
     absolute = candidate if candidate.is_absolute() else root / candidate
     try:
-        return str(absolute.resolve().relative_to(root))
+        return absolute.resolve().relative_to(root).as_posix()
     except ValueError as exc:
         raise ParallelError("task_file_outside_root", f"任务文件不在仓库内: {task_file}") from exc
 
@@ -240,9 +270,14 @@ def prepare(root: Path, task_file: str, tasks: Sequence[str], run_id: Optional[s
     task_file = _relative_task_file(root, task_file)
     _require_ignored(root)
     _require_no_active(root)
-    identifier = run_id or _run_id()
+    identifier = run_id or _unique_run_id(root)
     if not _RUN_ID.match(identifier):
         raise ParallelError("invalid_run_id", f"run-id 非法: {identifier}")
+    if (root / WORKTREES_DIR / identifier / "run.json").exists():
+        raise ParallelError(
+            "run_id_conflict",
+            f"run 记录已存在: {identifier}。请清理后重试（cleanup）或使用新的 run-id。",
+        )
     if not tasks:
         raise ParallelError("no_tasks", "未指定并行 TASK")
     if len(set(tasks)) != len(tasks):
@@ -317,6 +352,200 @@ def collect(root: Path, run_id: str, tasks: Optional[Sequence[str]], commit: boo
     return {"ok": ok, "action": "collect", "run_id": run_id, "results": results}
 
 
+# --- merge: rebase + deterministic state-file resolution + --no-ff back-merge ---
+
+_MAX_CONFLICT_ROUNDS = 8
+_STATE_MERGE_NAMES = ("spec-context.yml", ".acceptance-manifest.json")
+
+
+def _git_try(root: Path, arguments: Sequence[str]) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ("git", *arguments), cwd=str(root), text=True, encoding="utf-8", capture_output=True, check=False
+    )
+
+
+def _output_tail(result: subprocess.CompletedProcess) -> str:
+    text = (result.stderr or result.stdout or "").strip()
+    return text[-300:]
+
+
+def _abort_git(root: Path, *arguments: str) -> None:
+    subprocess.run(("git", *arguments), cwd=str(root), capture_output=True, check=False)
+
+
+def _unmerged_files(root: Path) -> list[str]:
+    result = _git_try(root, ("diff", "--name-only", "--diff-filter=U"))
+    return [line for line in result.stdout.splitlines() if line.strip()]
+
+
+def _git_show(root: Path, stage: int, relative: str) -> str:
+    result = _git_try(root, ("show", f":{stage}:{relative}"))
+    if result.returncode != 0:
+        raise ParallelError("conflict_stage_missing", f"{relative}: 缺少冲突 stage {stage}")
+    return result.stdout
+
+
+def _is_state_file(relative: str, task_file: str) -> bool:
+    name = Path(relative).name
+    if name in _STATE_MERGE_NAMES:
+        return True
+    parent = Path(task_file).parent.as_posix()
+    return name.endswith(".md") and Path(relative).parent.as_posix() == parent
+
+
+def _resolve_state_file(workdir: Path, relative: str, task: str) -> None:
+    ours = _git_show(workdir, 2, relative)
+    theirs = _git_show(workdir, 3, relative)
+    name = Path(relative).name
+    try:
+        if name == "spec-context.yml":
+            merged = merge_context_text(ours, theirs)
+        elif name == ".acceptance-manifest.json":
+            merged = merge_manifest_text(ours, theirs)
+        elif "## TASK-" in ours or "## TASK-" in theirs:
+            merged = merge_task_markdown(ours, theirs, task)
+        else:
+            raise ParallelError("state_file_unresolvable", f"{relative}: 非任务状态文件，需人工解决")
+    except ValueError as exc:
+        raise ParallelError("state_file_parse_error", f"{relative}: {exc}") from exc
+    (workdir / relative).write_text(merged, encoding="utf-8")
+    _run_git(workdir, ("add", "--", relative))
+
+
+def _resolve_conflicts(workdir: Path, task: str, task_file: str, resolved: list[str]) -> None:
+    unresolved = _unmerged_files(workdir)
+    if not unresolved:
+        raise ParallelError("conflict_state_lost", "冲突状态已丢失，无法自动解决")
+    for relative in unresolved:
+        if not _is_state_file(relative, task_file):
+            raise ParallelError(
+                "code_conflict",
+                f"代码文件冲突需人工解决（状态文件已按并集规则自动处理）: {', '.join(unresolved)}",
+            )
+        _resolve_state_file(workdir, relative, task)
+        if relative not in resolved:
+            resolved.append(relative)
+
+
+def _rebase_onto_main(path: Path, main_branch: str, task: str, task_file: str, resolved: list[str]) -> None:
+    result = _git_try(path, ("rebase", main_branch))
+    rounds = 0
+    while result.returncode != 0 and rounds < _MAX_CONFLICT_ROUNDS:
+        if not _unmerged_files(path):
+            _abort_git(path, "rebase", "--abort")
+            raise ParallelError("rebase_failed", f"{task}: git rebase 失败: {_output_tail(result)}")
+        try:
+            _resolve_conflicts(path, task, task_file, resolved)
+        except ParallelError:
+            _abort_git(path, "rebase", "--abort")
+            raise
+        result = _git_try(path, ("-c", "core.editor=true", "rebase", "--continue"))
+        if result.returncode != 0:
+            combined = (result.stdout or "") + (result.stderr or "")
+            if "rebase --skip" in combined or "is now empty" in combined:
+                result = _git_try(path, ("rebase", "--skip"))
+        rounds += 1
+    if result.returncode != 0:
+        _abort_git(path, "rebase", "--abort")
+        raise ParallelError("rebase_failed", f"{task}: git rebase 失败: {_output_tail(result)}")
+
+
+def _merge_branch(root: Path, branch: str, task: str, task_file: str, resolved: list[str]) -> None:
+    result = _git_try(root, ("merge", "--no-ff", "-m", f"merge cf-task {task}", branch))
+    rounds = 0
+    while result.returncode != 0 and rounds < _MAX_CONFLICT_ROUNDS:
+        if not _unmerged_files(root):
+            _abort_git(root, "merge", "--abort")
+            raise ParallelError("merge_failed", f"{task}: git merge 失败: {_output_tail(result)}")
+        try:
+            _resolve_conflicts(root, task, task_file, resolved)
+        except ParallelError:
+            _abort_git(root, "merge", "--abort")
+            raise
+        result = _git_try(root, ("commit", "--no-edit"))
+        rounds += 1
+    if result.returncode != 0:
+        _abort_git(root, "merge", "--abort")
+        raise ParallelError("merge_failed", f"{task}: git merge 失败: {_output_tail(result)}")
+
+
+def _branch_is_ancestor(root: Path, ancestor: str) -> bool:
+    return _git_try(root, ("merge-base", "--is-ancestor", ancestor, "HEAD")).returncode == 0
+
+
+def _merge_one(root: Path, main_branch: str, entry: dict, task_file: str) -> dict[str, object]:
+    task = str(entry.get("task", ""))
+    path = Path(str(entry.get("path", "")))
+    branch = str(entry.get("branch", ""))
+    if not path.is_dir():
+        raise ParallelError("worktree_missing", f"{task}: worktree 不存在: {path}")
+    if (path / MARKER).exists():
+        raise ParallelError("active_marker_present", f"{task}: marker 未清理，finish 未完成")
+    try:
+        nodes = parse_task_file(str(path / task_file))
+    except ValueError as exc:
+        raise ParallelError("task_parse_error", f"{task}: {exc}") from exc
+    status = next((node.status for node in nodes if node.task_id == task), None)
+    if status not in FINISHED_STATUSES:
+        raise ParallelError("task_not_finished", f"{task}: Status 为 {status}，未通过 Done Gate")
+    if _status_paths(path):
+        raise ParallelError("worktree_dirty", f"{task}: worktree 有未提交改动，先运行 collect")
+    if _branch_is_ancestor(root, branch):
+        return {"task": task, "ok": True, "status": "already_merged"}
+    resolved: list[str] = []
+    _rebase_onto_main(path, main_branch, task, task_file, resolved)
+    _merge_branch(root, branch, task, task_file, resolved)
+    return {
+        "task": task, "ok": True, "status": "merged", "resolved": sorted(set(resolved)),
+        "commit": _run_git(root, ("rev-parse", "HEAD")).strip(),
+    }
+
+
+def _refresh_demand(root: Path, task_file: str) -> str:
+    demand = root / Path(task_file).parent
+    script = root / ".code-flow" / "scripts" / "cf_spec_context.py"
+    result = subprocess.run(
+        (sys.executable, str(script), "refresh", "--task-dir", str(demand), "--root", str(root), "--json"),
+        cwd=str(root), text=True, encoding="utf-8", capture_output=True, check=False,
+    )
+    if result.returncode == 0:
+        return "pass"
+    detail = (result.stdout or result.stderr or "").strip()
+    return f"block: {detail[-200:]}"
+
+
+def merge(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, object]:
+    root = root.resolve()
+    _assert_repo(root)
+    meta = _read_run_meta(root, run_id)
+    main_branch = _run_git(root, ("rev-parse", "--abbrev-ref", "HEAD")).strip()
+    if main_branch == "HEAD":
+        raise ParallelError("detached_head", "主工作区处于 detached HEAD，无法回并")
+    wanted = set(tasks) if tasks else None
+    entries = [item for item in meta.get("worktrees", []) if isinstance(item, dict)]
+    if wanted:
+        entries = [item for item in entries if item.get("task") in wanted]
+    entries.sort(key=lambda item: str(item.get("task", "")))
+    task_file = str(meta["task_file"])
+    results: list[dict[str, object]] = []
+    for entry in entries:
+        try:
+            results.append(_merge_one(root, main_branch, entry, task_file))
+        except ParallelError as exc:
+            results.append(
+                {"task": str(entry.get("task", "")), "ok": False, "code": exc.code, "message": exc.message}
+            )
+            break
+    ok = bool(results) and all(item.get("ok") for item in results)
+    payload: dict[str, object] = {
+        "ok": ok, "action": "merge", "run_id": run_id,
+        "main_branch": main_branch, "results": results,
+    }
+    if ok and (root / Path(task_file).parent / "spec-context.yml").is_file():
+        payload["refresh"] = _refresh_demand(root, task_file)
+    return payload
+
+
 def cleanup(root: Path, run_id: str, force: bool) -> dict[str, object]:
     root = root.resolve()
     meta = _read_run_meta(root, run_id)
@@ -332,7 +561,7 @@ def cleanup(root: Path, run_id: str, force: bool) -> dict[str, object]:
             _require_clean_for_removal(path, force)
             _remove_worktree(root, path, force)
             branch = str(item.get("branch", ""))
-            merged = _delete_branch(root, branch) if branch else False
+            merged = _delete_branch(root, branch, force) if branch else False
             results.append({"task": item.get("task"), "removed": True, "branch_deleted": merged})
         except ParallelError as exc:
             results.append({"task": item.get("task"), "removed": False, "code": exc.code, "message": exc.message})
@@ -360,7 +589,7 @@ def _emit(payload: dict[str, object], stdout: IO[str]) -> None:
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
     parser = argparse.ArgumentParser(prog="cf_task_parallel.py")
     sub = parser.add_subparsers(dest="action", required=True)
-    for name in ("prepare", "collect", "cleanup"):
+    for name in ("prepare", "collect", "cleanup", "merge"):
         command = sub.add_parser(name)
         command.add_argument("--root", default=".")
         command.add_argument("--json", action="store_true")
@@ -368,11 +597,12 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     prepare_parser.add_argument("--task-file", required=True)
     prepare_parser.add_argument("--tasks", required=True)
     prepare_parser.add_argument("--run-id", default="")
-    for name in ("collect", "cleanup"):
+    for name in ("collect", "cleanup", "merge"):
         sub.choices[name].add_argument("--run-id", required=True)
     sub.choices["collect"].add_argument("--tasks", default="")
     sub.choices["collect"].add_argument("--no-commit", action="store_true")
     sub.choices["cleanup"].add_argument("--force", action="store_true")
+    sub.choices["merge"].add_argument("--tasks", default="")
     args = parser.parse_args(argv)
     root = Path(args.root).resolve()
     try:
@@ -382,6 +612,9 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
         elif args.action == "collect":
             tasks = [item.strip() for item in args.tasks.split(",") if item.strip()] or None
             payload = collect(root, args.run_id, tasks, commit=not args.no_commit)
+        elif args.action == "merge":
+            tasks = [item.strip() for item in args.tasks.split(",") if item.strip()] or None
+            payload = merge(root, args.run_id, tasks)
         else:
             payload = cleanup(root, args.run_id, args.force)
     except ParallelError as exc:

@@ -13,6 +13,13 @@ from cf_exec_base import execution_session
 from cf_spec_context import _git_changes, current_owned_paths, load_active_task
 
 
+_MANAGED_PREFIXES = (".code-flow/", ".claude/", ".codex/", ".costrict/", ".opencode/", ".agents/")
+
+
+def _is_managed(path: str) -> bool:
+    return path.startswith(_MANAGED_PREFIXES)
+
+
 def validation_scope(root: str, files: Sequence[str] = ()) -> tuple[str, ...]:
     base = Path(root).resolve()
     if files:
@@ -21,11 +28,19 @@ def validation_scope(root: str, files: Sequence[str] = ()) -> tuple[str, ...]:
             path = (base / name).resolve()
             if base not in path.parents:
                 raise ValueError(f"validation path outside project: {name}")
-            selected.append(path.relative_to(base).as_posix())
+            relative = path.relative_to(base).as_posix()
+            if _is_managed(relative):
+                continue
+            selected.append(relative)
         return tuple(sorted(set(selected)))
+    # Tool-managed trees (deployed hooks/commands/plugins) are not project
+    # source: validating them makes template validators (eslint/vitest/mypy)
+    # fire on every install and blocks verify-e2e for unrelated stacks.
     if (base / ".code-flow/.active-task.json").exists():
-        return current_owned_paths(str(base), load_active_task(str(base)))
-    return tuple(sorted(_git_changes(str(base))))
+        scoped = current_owned_paths(str(base), load_active_task(str(base)))
+    else:
+        scoped = tuple(sorted(_git_changes(str(base))))
+    return tuple(sorted(item for item in scoped if not _is_managed(item)))
 
 
 def _validators(root: str) -> list[dict[str, object]]:
@@ -44,7 +59,7 @@ def _validators(root: str) -> list[dict[str, object]]:
 
 
 def validate_files(root: str, files: Sequence[str] = (), budget: Optional[float] = None,
-                   include_heavy: bool = True) -> dict[str, object]:
+                   include_heavy: bool = True, use_cache: bool = True) -> dict[str, object]:
     from cf_stop_hook import run_validators
     selected = validation_scope(root, files)
     validators = _validators(root)
@@ -60,7 +75,7 @@ def validate_files(root: str, files: Sequence[str] = (), budget: Optional[float]
         raise ValueError("validation budget must be finite and positive")
     with execution_session():
         failures, truncated, reused = run_validators(root, validators, list(selected), "cf-validate",
-                                                    maximum, strict=True)
+                                                    maximum, strict=True, cache=use_cache)
     return {"decision": "block" if failures or truncated else "pass", "files": selected,
             "failures": failures, "incomplete": truncated, "reused": reused}
 
@@ -71,12 +86,14 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--files", nargs="*", default=[])
     parser.add_argument("--budget", type=float)
     parser.add_argument("--no-heavy", action="store_true", help="Skip heavy validators (task-level finish scope)")
+    parser.add_argument("--no-cache", action="store_true", help="Force validators to run; skip content-fingerprint reuse")
     parser.add_argument("--scope-only", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
         result = ({"files": validation_scope(args.root, args.files)} if args.scope_only
-                  else validate_files(args.root, args.files, args.budget, include_heavy=not args.no_heavy))
+                  else validate_files(args.root, args.files, args.budget, include_heavy=not args.no_heavy,
+                                      use_cache=not args.no_cache))
         stdout.write(json.dumps(result, ensure_ascii=False))
         return 3 if result.get("decision") == "block" else 0
     except (OSError, ValueError) as exc:

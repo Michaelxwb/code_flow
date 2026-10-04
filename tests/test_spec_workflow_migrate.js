@@ -121,3 +121,25 @@ test("EXDEV fails closed and rolls back without copy-delete commit fallback", ()
   const restored = snapshot(root);
   for (const [relative, digest] of Object.entries(original)) assert.equal(restored[relative], digest);
 });
+
+test("re-apply after rollback succeeds (staging is reset)", () => {
+  const root = project();
+  const prepared = migrate.prepare(root);
+  const failed = migrate.apply(prepared.plan, { failAfter: 1 });
+  assert.equal(failed.status, "rolled_back");
+  const retried = migrate.apply(prepared.plan);
+  assert.equal(retried.status, "committed", retried);
+  assert.equal(fs.readFileSync(path.join(root, ".code-flow/.version"), "utf8"), "0.6.0");
+});
+
+test("apply refuses a plan whose project_root differs from cwd", () => {
+  const root = project();
+  const prepared = migrate.prepare(root);
+  const other = project();
+  assert.throws(
+    () => migrate.apply(prepared.plan, { projectRoot: other }),
+    /migration plan targets/,
+  );
+  // 目标项目未被触碰
+  assert.equal(fs.readFileSync(path.join(other, ".code-flow/.version"), "utf8"), "0.5.2");
+});

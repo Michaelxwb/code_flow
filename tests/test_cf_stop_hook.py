@@ -28,6 +28,31 @@ def test_expand_braces():
     assert expand_braces("**/*.py") == ["**/*.py"]
 
 
+def test_malformed_stdin_degrades_silently():
+    """坏 JSON 不能变成 block（否则同一坏输入会反复循环阻断）。"""
+    with tempfile.TemporaryDirectory() as root:
+        _make_project(root, [PASS_V])
+        with mock.patch("sys.stdin", io.StringIO("{not json")), \
+                mock.patch("sys.stdout", io.StringIO()) as out, \
+                mock.patch("os.getcwd", return_value=root):
+            cf_stop_hook.main()
+        assert out.getvalue() == ""
+
+
+def test_early_failure_still_blocks_in_required_mode():
+    """config 解析前的异常也必须 fail-closed（旧实现依赖 locals() 探测会静默）。"""
+    with tempfile.TemporaryDirectory() as root:
+        _make_project(root, [PASS_V])
+        with mock.patch("sys.stdin", io.StringIO('{"session_id": "s1"}')), \
+                mock.patch("sys.stdout", io.StringIO()) as out, \
+                mock.patch("os.getcwd", return_value=root), \
+                mock.patch("cf_stop_hook.load_config", side_effect=RuntimeError("boom")):
+            cf_stop_hook.main()
+        payload = json.loads(out.getvalue())
+        assert payload["decision"] == "block"
+        assert "SPEC_WORKFLOW_BLOCKED" in payload["reason"]
+
+
 def test_trigger_matches_root_and_nested():
     assert trigger_matches("**/*.py", "src/a.py")
     assert trigger_matches("**/*.py", "a.py")          # **/ 根文件兜底

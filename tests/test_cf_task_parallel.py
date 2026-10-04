@@ -15,7 +15,7 @@ import pytest  # noqa: E402
 SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from cf_task_parallel import ParallelError, cleanup, collect, main, prepare  # noqa: E402
+from cf_task_parallel import ParallelError, cleanup, collect, main, merge, prepare  # noqa: E402
 
 
 TASK_FILE = ".code-flow/tasks/2026-09-29/demo/demo.md"
@@ -29,6 +29,7 @@ TASK_BODY = """# 并行演示
 | 场景ID | 状态 |
 |--------|------|
 | S-01 | planned |
+| S-02 | planned |
 
 ---
 
@@ -267,3 +268,139 @@ def test_cli_prepare_emits_json_and_exit_codes(tmp_path: Path) -> None:
     )
     assert code == 2
     assert json.loads(bad.getvalue())["code"] == "task_not_ready"
+
+
+def test_prepare_without_run_id_never_reuses_run_directory(tmp_path: Path) -> None:
+    """同一秒内两次 prepare 必须得到不同的 run-id，不能覆盖 run.json。"""
+    root = _repo(tmp_path)
+    first = prepare(root, TASK_FILE, ["TASK-001"], None)
+    second = prepare(root, TASK_FILE, ["TASK-002"], None)
+    assert first["run_id"] != second["run_id"], "同秒 prepare 必须生成唯一 run-id"
+    first_meta = json.loads(
+        (root / f".code-flow/worktrees/{first['run_id']}/run.json").read_text(encoding="utf-8")
+    )
+    assert first_meta["run_id"] == first["run_id"]
+    assert [item["task"] for item in first_meta["worktrees"]] == ["TASK-001"]
+    assert (root / f".code-flow/worktrees/{first['run_id']}/TASK-001").is_dir(), "第一批 worktree 不得被遗弃"
+    assert (root / f".code-flow/worktrees/{second['run_id']}/TASK-002").is_dir()
+
+
+def test_collect_reports_corrupt_run_meta_as_json(tmp_path: Path) -> None:
+    """run.json 损坏时必须给 run_corrupt JSON 错误，不能堆栈崩溃。"""
+    root = _repo(tmp_path)
+    run_dir = root / ".code-flow/worktrees/run-x"
+    run_dir.mkdir(parents=True)
+    (run_dir / "run.json").write_text('{"version": 1}', encoding="utf-8")
+    stdout = io.StringIO()
+    code = main(["collect", "--root", str(root), "--run-id", "run-x", "--json"], stdout=stdout)
+    assert code == 2
+    payload = json.loads(stdout.getvalue())
+    assert payload["ok"] is False and payload["code"] == "run_corrupt"
+
+
+def test_prepare_explicit_run_id_conflict_does_not_leak_worktrees(tmp_path: Path) -> None:
+    """显式 run-id 已存在时提前拒绝，不得先建 worktree 再覆盖记录。"""
+    root = _repo(tmp_path)
+    prepare(root, TASK_FILE, ["TASK-001"], "run-fixed")
+    before = sorted(item.name for item in (root / ".code-flow/worktrees/run-fixed").iterdir())
+    with pytest.raises(ParallelError) as exc:
+        prepare(root, TASK_FILE, ["TASK-002"], "run-fixed")
+    assert exc.value.code == "run_id_conflict"
+    after = sorted(item.name for item in (root / ".code-flow/worktrees/run-fixed").iterdir())
+    assert before == after, "冲突时不得追加/覆盖第一批 worktree"
+    branches = _git(root, "branch", "--list", "cf-task/*")
+    assert branches.count("TASK-002") == 0
+
+
+def _finish_parallel(root: Path, run: str, task: str, scenario: str) -> Path:
+    """模拟 finish 回写：实现文件 + 任务区 Status + 覆盖状态列，然后提交。"""
+    worktree = root / f".code-flow/worktrees/{run}" / task
+    (worktree / f"impl-{task}.txt").write_text(task, encoding="utf-8")
+    _set_status(worktree, task, "done")
+    task_path = worktree / TASK_FILE
+    lines = task_path.read_text(encoding="utf-8").splitlines()
+    for position, line in enumerate(lines):
+        if line.strip().startswith(f"| {scenario} "):
+            lines[position] = line.replace("planned", "verified")
+    task_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    _git(worktree, "add", "-A")
+    _git(worktree, "commit", "-q", "-m", f"cf-task({task}): finish 回写")
+    return worktree
+
+
+def test_merge_resolves_shared_state_files_then_cleanup_deletes_branches(tmp_path: Path) -> None:
+    """状态文件冲突（覆盖状态列）由 merge 自动并集，无需人工 rebase。"""
+    root = _repo(tmp_path)
+    prepare(root, TASK_FILE, ["TASK-001", "TASK-002"], "run-1")
+    _finish_parallel(root, "run-1", "TASK-001", "S-01")
+    _finish_parallel(root, "run-1", "TASK-002", "S-02")
+
+    result = merge(root, "run-1", None)
+
+    assert result["ok"] is True, result
+    assert [item["status"] for item in result["results"]] == ["merged", "merged"]
+    assert result["results"][1]["resolved"] == [TASK_FILE]
+    text = (root / TASK_FILE).read_text(encoding="utf-8")
+    assert "| S-01 | verified |" in text
+    assert "| S-02 | verified |" in text
+    assert "## TASK-001: A" in text and "- **Status**: done" in text
+    assert "<<<<<<<" not in text
+
+    again = merge(root, "run-1", None)
+    assert again["ok"] is True
+    assert [item["status"] for item in again["results"]] == ["already_merged", "already_merged"]
+
+    cleaned = cleanup(root, "run-1", force=False)
+    assert cleaned["ok"] is True
+    assert all(item["branch_deleted"] for item in cleaned["results"])
+
+
+def test_merge_reports_code_conflict_and_keeps_main_intact(tmp_path: Path) -> None:
+    """代码文件冲突保留人工解决：中止 rebase，主工作区不受影响。"""
+    root = _repo(tmp_path)
+    (root / "shared.txt").write_text("base\n", encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "shared")
+    prepare(root, TASK_FILE, ["TASK-001", "TASK-002"], "run-1")
+    for task, marker in (("TASK-001", "alpha"), ("TASK-002", "beta")):
+        worktree = root / ".code-flow/worktrees/run-1" / task
+        (worktree / "shared.txt").write_text(marker + "\n", encoding="utf-8")
+        _set_status(worktree, task, "done")
+        _git(worktree, "add", "-A")
+        _git(worktree, "commit", "-q", "-m", f"cf-task({task}): shared")
+    _finish_parallel(root, "run-1", "TASK-001", "S-01")
+    _finish_parallel(root, "run-1", "TASK-002", "S-02")
+
+    result = merge(root, "run-1", None)
+
+    assert result["ok"] is False
+    assert result["results"][0]["status"] == "merged"
+    failed = result["results"][1]
+    assert failed["code"] == "code_conflict" and "shared.txt" in failed["message"]
+    assert (root / "shared.txt").read_text(encoding="utf-8") == "alpha\n"
+    worktree = root / ".code-flow/worktrees/run-1/TASK-002"
+    assert _git(worktree, "status", "--porcelain").strip() == ""
+    assert "TASK-002" in _git(root, "branch", "--list", "cf-task/*")
+
+
+def test_cleanup_force_deletes_unmerged_branches(tmp_path: Path) -> None:
+    """--force 表示用户明确接受删除未合入分支（保留排查是默认行为）。"""
+    root = _repo(tmp_path)
+    prepare(root, TASK_FILE, ["TASK-001"], "run-1")
+    _finish_task(root, "TASK-001")
+    result = cleanup(root, "run-1", force=True)
+    assert result["ok"] is True
+    assert result["results"][0]["branch_deleted"] is True
+    assert _git(root, "branch", "--list", "cf-task/*").strip() == ""
+
+
+def test_cli_merge_emits_json(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    prepare(root, TASK_FILE, ["TASK-001"], "run-cli-merge")
+    _finish_parallel(root, "run-cli-merge", "TASK-001", "S-01")
+    stdout = io.StringIO()
+    code = main(["merge", "--root", str(root), "--run-id", "run-cli-merge", "--json"], stdout=stdout)
+    assert code == 0
+    payload = json.loads(stdout.getvalue())
+    assert payload["ok"] is True
+    assert payload["results"][0]["status"] == "merged"

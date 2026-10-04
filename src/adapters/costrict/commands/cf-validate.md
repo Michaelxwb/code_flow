@@ -46,7 +46,7 @@ validators:
 python3 .code-flow/scripts/cf_validation.py --root "$PWD" --json
 ```
 
-显式范围追加 `--files "src/a.py" "src/b.py"`。程序匹配 trigger、解析 argv 并展开 `{files}`，不拼接 shell 命令；同一运行内相同 argv/cwd/timeout 去重，跨运行不复用。删除文件仍触发全局测试，但不传给文件级编译器。每条 timeout 仍按配置的毫秒值生效，总预算耗尽返回 incomplete/block。
+显式范围追加 `--files "src/a.py" "src/b.py"`。程序匹配 trigger、解析 argv 并展开 `{files}`，不拼接 shell 命令；通过结果按工作树内容指纹跨运行复用（失败永不缓存，`--no-cache` 强制重跑），同一运行内相同 argv/cwd/timeout 去重。删除文件仍触发全局测试，但不传给文件级编译器。每条 timeout 仍按配置的毫秒值生效，总预算耗尽返回 incomplete/block。
 
 ### 4. 汇总结果
 
