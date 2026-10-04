@@ -9,6 +9,7 @@ Exit codes: 0 = recorded / 1 = usage error / 2 = unknown check id.
 stdout: one JSON line {"check_id", "fp_count", "hit_count", "disabled"}.
 """
 import json
+import argparse
 import os
 import sys
 
@@ -17,7 +18,7 @@ from cf_core import build_effective_mapping, load_config, normalize_spec_entry
 from cf_log import append_event
 
 
-def known_check_ids(project_root: str) -> set:
+def known_check_ids(project_root: str) -> set[str]:
     """All check ids: declared in any configured spec, or already in state."""
     ids = set(load_check_state(project_root).keys())
     config = load_config(project_root)
@@ -35,11 +36,11 @@ def known_check_ids(project_root: str) -> set:
     return ids
 
 
-def main(argv: list) -> int:
-    if len(argv) != 2 or argv[0] != "ignore":
-        sys.stderr.write("usage: cf_feedback.py ignore <check-id>\n")
-        return 1
-    check_id = argv[1]
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND", "cf_feedback.py"))
+    parser.add_argument("action", choices=("ignore",), metavar=os.environ.get("CF_RUNTIME_ACTION") or None)
+    parser.add_argument("check_id")
+    check_id = parser.parse_args(argv).check_id
     project_root = os.getcwd()
     if check_id not in known_check_ids(project_root):
         sys.stderr.write(f"unknown check id: {check_id}\n")

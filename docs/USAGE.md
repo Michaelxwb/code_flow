@@ -72,7 +72,7 @@ your-project/
 │   ├── scripts/                # Python 运行时脚本
 │   │   ├── cf_core.py                    # 核心工具库
 │   │   ├── cf_pre_tool_hook.py           # PreToolUse Hook：Context/scope 检查（替代旧 cf_inject_hook）
-│   │   ├── cf_user_prompt_hook.py        # UserPromptSubmit Hook（Claude/Codex/Costrict/OpenCode 四端通用）
+│   │   ├── cf_user_prompt_hook.py        # prompt 路由服务及 Claude/Costrict 入口
 │   │   ├── cf_spec_session.py            # 会话状态管理（替代旧 cf_session_hook）
 │   │   ├── cf_post_hook.py               # PostToolUse Hook：合规反馈（v0.5）
 │   │   ├── cf_stop_hook.py               # Stop Hook：收尾守门（v0.5）
@@ -135,7 +135,7 @@ CLAUDE.md                  # L0 全局指令（Costrict 与 Claude Code 同用 C
 .opencode/
 ├── commands/                    # OpenCode 命令文件（含 cf-task/）
 │   cf-init.md、cf-learn.md、cf-stats.md、cf-task/{prd,align,plan,...}.md
-└── plugins/code-flow/           # OpenCode v2 插件（session.prompt hook 转发到 cf_user_prompt_hook.py）
+└── plugins/code-flow/           # OpenCode v2 原生插件（事件调用 cf_opencode_event.py）
     ├── index.js                 # ESM 插件入口（默认导出 { id, setup }）
     └── package.json             # `"type": "module"`
 opencode.json                    # OpenCode 配置（仅 `$schema`；`.opencode/plugins/` 自动发现，无需注册键）
@@ -256,9 +256,9 @@ AI 调用 Edit/Write → Hook 拦截（文件路径）
 **OpenCode**：通过 `.opencode/plugins/code-flow/` 插件介入（v2 hooks）：
 
 ```
-用户消息 → plugin 的 session.prompt hook → 调用 cf_user_prompt_hook.py
-  → 收到 hook JSON → 缓存 additionalContext
-  → session.context hook 阶段 push 到 system prompt（SystemPart）
+用户消息 → 原生 session.prompt hook → cf_opencode_event.py → 共享 prompt 服务
+  → 原生 RPC 返回 context/blocked → 当前插件按 sessionID 排队
+  → session.context hook 将反馈注入 system（SystemPart）
 ```
 
 四者效果一致，用户无需手动操作，整个过程透明。Hook 输出 JSON 用 `ensure_ascii=False`，避免中文 spec 被 escape 后吃掉 token 预算。
@@ -309,7 +309,7 @@ checks 字段：`id`（kebab-case 唯一）、`type`（当前支持 regex；ast/
 反馈出现误报时直接告诉 AI"这是误报"，它会代为执行：
 
 ```bash
-python3 .code-flow/scripts/cf_feedback.py ignore <check-id>
+code-flow feedback ignore <check-id>
 ```
 
 同一规则误报 ≥3 次或误报率 >10% 自动停用并在 `cf-stats` 标注；`cf-stats --audit` 输出待复审清单（长期未命中 / 已停用 / 反复误报的规范），处置后加入 `.check-state.json` 的 `_review_exempt` 列表即不再提示。
@@ -493,8 +493,8 @@ JSON 输出（默认模式）会包含 `missing_specs` 字段，可用于自动�
 一键检查/同步 canonical 源与部署副本（`src/core/code-flow` ↔ `.code-flow`、四平台适配器 ↔ 运行目录），防止"测试通过但 live 行为不变"。
 
 ```
-python3 .code-flow/scripts/cf_sync.py check   # 检查漂移（默认）
-python3 .code-flow/scripts/cf_sync.py sync    # canonical → 部署副本
+code-flow sync check   # 检查漂移（默认）
+code-flow sync apply    # canonical → 部署副本
 ```
 
 项目自有内容（`specs/`、`tasks/`、`config.yml`、`settings.local.json`）不在同步范围；部署侧独有文件不会被删除。
@@ -954,14 +954,16 @@ Claude Code 的 Hook 配置。code-flow 自动生成以下 Hook：
 
 ### `.codex/hooks.json`
 
-Codex CLI 的 Hook 配置。code-flow 自动生成以下 Hook：
+Codex 四个事件统一调用原生入口 `cf_codex_hook.py`。编辑事件匹配器为 `^apply_patch$`，补丁来自 `tool_input.command`，会话目录和身份来自 `cwd` / `session_id`。
 
-| Hook 事件 | 触发时机 | 脚本 | 作用 |
-|-----------|---------|------|------|
-| UserPromptSubmit | 每次提交 prompt 前 | `cf_user_prompt_hook.py` | Spec Catalog / 直注（含路径与关键词提取）+ 纠正句式采集 |
-| PreToolUse | AI 调用 Edit/Write/MultiEdit | `cf_pre_tool_hook.py` | Context/scope 检查、按匹配注入 specs |
-| PostToolUse | AI 编辑完成后 | `cf_post_hook.py` | frontmatter checks 合规反馈（v0.5） |
-| Stop | 会话收尾 | `cf_stop_hook.py` | validation.yml 收尾守门（v0.5） |
+| Hook 事件 | 作用 |
+|-----------|------|
+| UserPromptSubmit | Context-first 路由与纠正句式采集 |
+| PreToolUse | 解析新增、修改、删除、移动及多文件补丁，逐文件检查 scope |
+| PostToolUse | 确认补丁成功后记录编辑，并检查现存文件的合规性 |
+| Stop | 在会话项目内执行收尾校验 |
+
+平台入口调用共享业务服务，不转换为其他平台的工具事件。安装清单验证受管理脚本、Skill、命令契约和 Hook 定义；用户自定义 Hook 不计入受管理定义。
 
 ### `.costrict/settings.local.json`
 
@@ -971,13 +973,17 @@ Costrict 的 Hook 配置，与 Claude Code 完全一致（PreToolUse / PostToolU
 
 OpenCode v2 的插件目录，放在 `.opencode/plugins/` 下即自动发现，无需在 `opencode.json` 中注册。等价于其他平台的 Hook 配置：
 
-| 插件 hook / 事件 | 触发时机 | 调用脚本 | 作用 |
+| 原生 API / 事件 | 触发时机 | 处理路径 | 作用 |
 |---------|---------|---------|------|
-| `session.prompt` | 用户提交消息 | `cf_user_prompt_hook.py` | Spec Catalog / 直注，缓存到下一轮 context |
-| `tool.execute.after` | AI 编辑完成后 | `cf_post_hook.py` | 合规反馈（v0.5，反馈经下一轮 context 注入） |
-| `session.context` | 模型请求组装阶段 | （插件内联） | 把缓存的 context push 到 system（`{ type: "text", text }`） |
-| `event.subscribe` → `session.created` | 新会话开始 | （插件内联） | 清理该会话的缓存反馈 |
-| `event.subscribe` → `session.idle` | 会话空闲 | `cf_stop_hook.py` | 收尾守门（v0.5，未过项排队到下一轮） |
+| `session.hook("prompt")` | 用户提交消息 | `cf_opencode_event.py` → 共享 prompt 服务 | Context / Catalog 注入 |
+| `tool.hook("execute.before")` | 编辑前 | 原生 `input.path/patchText` → 共享编辑服务 | 路径/安装/Spec 范围检查 |
+| `tool.hook("execute.after")` | 工具返回后 | 原生 `status: completed/error` → 共享编辑服务 | 成功编辑证据及合规反馈；失败写 degrade |
+| `session.hook("context")` | 模型请求前 | 插件内按会话消费反馈 | 注入 `{ type: "text", text }` |
+| `event.subscribe()` → `session.idle` | 会话空闲 | `cf_opencode_event.py` → 共享收尾服务 | 校验失败进入下轮 context；没有阻断 idle 的 API |
+
+新增路径引入未绑定的 required Spec 时，三端均提示先 refresh Context / Plan，允许本次编辑；上下文损坏或漂移仍按 required 模式阻断。提示不替代阶段门禁的 Spec 校验。
+
+会话目录取自 `ctx.session.get({ sessionID }).location.directory`，插件状态按实例隔离。同目录子会话不运行主任务 Done gate；独立工作区子会话检查自己的任务。清理插件时取消事件订阅和在途子进程。
 
 > OpenCode v2 插件入口需默认导出 `{ id, setup }`（或 `Plugin.define`），入口名 `index.js`，`package.json` 含 `"type": "module"`；`code-flow init --platform=opencode` 会一并部署。
 
@@ -1131,7 +1137,7 @@ code-flow 通过 Codex 的 `UserPromptSubmit` Hook 在 prompt 提交前注入规
   → 规范内容注入到本次 prompt 上下文
 ```
 
-**四端差异**：Claude/Costrict 在"提交 prompt（UserPromptSubmit）"、"编辑前（PreToolUse）"、"编辑后（PostToolUse 合规反馈）"、"收尾（Stop 守门）"四个时机介入；Codex 同样四时机（hooks.json 注册）；OpenCode 经 v2 插件 hooks 等价转发（`session.prompt` / `tool.execute.after` / `session.idle`，反馈延迟一轮经 context 注入）。四端的 prompt 阶段都共用 `cf_user_prompt_hook.py`，session_id 由 `resolve_session_id()` 统一解析，PreToolUse 与 UserPromptSubmit 共享 `injected_version` 版本键不会重复注入。Hook stdout 统一用 `json.dumps(payload, ensure_ascii=False)`，避免中文 spec 被 escape 后 token 预算翻倍。
+**四端差异**：Claude/Costrict 在"提交 prompt（UserPromptSubmit）"、"编辑前（PreToolUse）"、"编辑后（PostToolUse 合规反馈）"、"收尾（Stop 守门）"四个时机介入；Codex 同样四时机（hooks.json 注册）；OpenCode 使用原生 v2 prompt / tool-before / tool-after / context / idle API；反馈经 context 注入，idle 无 Stop 阻断接口。Codex 原生入口与其余平台入口共用 prompt 路由服务，session_id 由 `resolve_session_id()` 统一解析，PreToolUse 与 UserPromptSubmit 共享 `injected_version` 版本键不会重复注入。Hook stdout 统一用 `json.dumps(payload, ensure_ascii=False)`，避免中文 spec 被 escape 后 token 预算翻倍。
 
 ### 质量闭环 Hook（v0.5）
 
@@ -1164,19 +1170,17 @@ AI 调用 Edit("src/api/users.py", ...)
 
 ### OpenCode 工作原理
 
-OpenCode 不通过原生 Hook，而是通过 `.opencode/plugins/code-flow/` 插件介入消息流（v2 hooks）：
+OpenCode v2 插件使用原生事件接口，调用独立的 `cf_opencode_event.py`，直接复用共享业务服务：
 
-```
-用户消息 "修改 @src/api/users.py 的权限验证逻辑"
-  → OpenCode 触发 plugin 的 session.prompt hook
-  → plugin 将 promptText + sessionID spawn 给 cf_user_prompt_hook.py
-  → cf_user_prompt_hook.py 复用与 Codex/Claude 相同的提取与匹配逻辑
-  → plugin 缓存返回的 additionalContext（按 sessionID 索引）
-  → session.context hook 阶段把缓存内容 push 到 system（SystemPart）
-  → 缓存随即清空，避免重复注入
+```text
+session.prompt → 原生 prompt/sessionID → 共享路由服务
+execute.before → edit/write 的 input.path、patch 的 input.patchText → 范围检查
+execute.after → status=completed 才记录 edit 与运行合规检查
+session.context → 等待该会话的在途事件 → 注入排队反馈
+session.idle → 从会话 API 获取实际目录 → 校验该工作区的任务
 ```
 
-调试日志开关 `CF_DEBUG=1`，写入 `.code-flow/.debug.log`，与其他平台一致。
+已在 OpenCode v2.0.15 实机验证插件发现和 prompt 事件；原生编辑工具是 `edit/write/patch`，不提供 v1 工具字段别名或 Claude 协议转换。RPC 错误、超时和非法输出显式记录，并向模型反馈。idle 校验失败通过下一轮 context 提示，任务 Finish / verify-e2e 门禁仍须通过。
 
 ### 标签提取逻辑
 
@@ -1209,12 +1213,14 @@ CF_DEBUG=1 printf '%s' '{"session_id":"test-session","prompt":"修改 @src/api/u
 CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"/path/to/src/api/users.py","old_string":"x","new_string":"y"}}' | python3 .code-flow/scripts/cf_pre_tool_hook.py
 ```
 
-**OpenCode Hook**（与 Codex Hook 相同——本质是 plugin 转发到 `cf_user_prompt_hook.py`）：
+**OpenCode v2 原生接入验证**（在本仓库执行）：
 
 ```bash
-CF_DEBUG=1 printf '%s' '{"session_id":"test","prompt":"修改 @src/api/users.py 注意性能"}' | python3 .code-flow/scripts/cf_user_prompt_hook.py
+node tests/test_opencode_plugin.js
+python3 -m pytest -q tests/test_opencode_native.py
 ```
 
+第二项在安装了 `opencode2` 时启动隔离的真实 v2 服务，验证插件加载和原生 prompt；不使用账号或付费模型。
 调试输出会包含 `debug` 字段，显示匹配到的域、标签和 specs。
 
 ### 会话状态
@@ -1250,19 +1256,11 @@ CF_DEBUG=1 printf '%s' '{"session_id":"test","prompt":"修改 @src/api/users.py 
 
 ### Hook 未触发（Codex CLI）
 
-**现象**：提交 prompt 时没有看到规范注入。
-
-**排查步骤**：
-
-1. 检查 `.codex/hooks.json` 是否存在且结构正确（3 层：`hooks → event → [{hooks:[{type,command}]}]`），且 command 指向 `cf_user_prompt_hook.py`（老版本旧名 `cf_codex_user_prompt_hook.py` 已在 upgrade 时自动清理）
-2. 检查 `.codex/config.toml` 中 `features.hooks = true` 是否已启用（旧版本为 codex_hooks）
-3. 检查 prompt 中是否包含可识别的文件引用（`@path`、反引号或含 `/` 的路径），或包含中英文关键词（如"性能"/performance、"接口"/api 等，详见 `cf_core.py:_TAG_ALIASES`）
-4. 手动运行 Hook 测试：
-   ```bash
-   printf '%s' '{"session_id":"test","prompt":"修改 @src/api/users.py 注意性能"}' | python3 .code-flow/scripts/cf_user_prompt_hook.py
-   ```
-5. 若 prompt 中既无文件引用也无关键词命中，Hook fallback 仅注入所有域的 Tier 0 导航地图；Tier 1 约束规范必须通过标签交集命中，不会 fallback 批量注入
-6. `CF_DEBUG=1` 时会把 prompt_tags 命中、最终注入 spec、fallback 触发等关键节点写入 `.code-flow/.debug.log`，建议把它加入 `.gitignore`
+1. 检查 `.codex/config.toml` 中 `features.hooks = true`，并在 Codex `/hooks` 中信任当前定义。
+2. 检查 `.codex/hooks.json` 的四个事件是否调用 `cf_codex_hook.py`，编辑事件 matcher 是否为 `^apply_patch$`。
+3. 执行 `code-flow spec validate --help` 检查公开命令与安装完整性。
+4. 安装损坏或版本不一致时，执行 `code-flow migrate --runtime --dry-run` 查看范围，再执行 `code-flow migrate --runtime --apply`。迁移会备份受影响文件并更新全部已安装平台。
+5. 没有 active TASK、没有显式文件路径时只注入 Spec Catalog；这是 Context-first 路由的正常行为。
 
 ### Codex 命令不可用
 
@@ -1306,8 +1304,8 @@ CF_DEBUG=1 printf '%s' '{"session_id":"test","prompt":"修改 @src/api/users.py 
 
 1. 运行 `opencode plugin list`，确认 `code-flow` 以 `local` 来源出现在 `.opencode/plugins/code-flow/index.js`；若 ID 显示为 `-` 说明加载失败，查看 `~/.local/share/opencode/log/opencode.log`（v2 自动发现，不需要 `opencode.json` 注册；若配置里残留 v1 `plugin` 键，删除后重新 init）
 2. 检查 `.opencode/plugins/code-flow/package.json` 是否存在且包含 `"type": "module"`（ESM 入口必需，缺失会导致插件加载失败）
-3. 检查 `.opencode/plugins/code-flow/index.js` 是否完整（默认导出 `{ id, setup }`，注册 `session.prompt`、`tool.execute.after`、`session.context` hooks 并订阅 `session.idle` 事件）
-4. `CF_DEBUG=1` 启动 OpenCode，查看 `.code-flow/.debug.log` 中是否有 `[opencode] prompt ...` 与 `[opencode] context — injected ...` 行
+3. 检查 `.opencode/plugins/code-flow/index.js` 是否完整（默认导出 `{ id, setup }`，注册 prompt/context、execute.before/after 并订阅 session.idle）
+4. 查看 OpenCode 服务日志中的 `code-flow OpenCode` / `native runtime` 错误，以及 `.code-flow/.session-log.jsonl` 中的 inject/edit/degrade 事件；插件在工作区激活后才进入 active 列表
 5. 手动测试 hook 脚本（与 Codex 相同）：
    ```bash
    printf '%s' '{"session_id":"test","prompt":"修改 @src/api/users.py 注意性能"}' | python3 .code-flow/scripts/cf_user_prompt_hook.py
@@ -1353,3 +1351,7 @@ python3 -m pip install pyyaml pytest
 - 删除冗余规则（多个 spec 重复的内容）
 - 精简过长的 spec 文件（单文件 > 500 tokens 会被标记）
 - 调整 `config.yml` 中的预算上限
+
+## 0.7.0 运行时命令契约
+
+Agent 使用 `code-flow spec/task/acceptance/validate/stats/sync` 正式入口；Python 文件是内部实现。参数帮助来自实际运行时解析器，例如 `code-flow spec validate --help`。旧安装需执行显式事务迁移，见 [0.7.0 迁移说明](migrations/runtime-0.7.0.md)。

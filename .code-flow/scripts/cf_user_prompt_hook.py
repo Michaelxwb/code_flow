@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """UserPromptSubmit hook for the Context-first three-branch router."""
 
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -20,7 +22,7 @@ from cf_core import (
 )
 from cf_session_state import load_session_state, save_session_state
 from cf_spec_context import injection_version
-from cf_spec_router import RouterError, route_prompt
+from cf_spec_router import RouterError, RouteResult, route_prompt
 
 
 _PATH_RE = re.compile(r'[@`]?([a-zA-Z0-9_.][a-zA-Z0-9_./\\\-]*\.[a-zA-Z]{1,6})(?![a-zA-Z0-9_])')
@@ -89,93 +91,100 @@ def _session_reminder(root: str, sid: str) -> str:
     return reminder
 
 
-def _route_with_enforcement(root: str, paths: list[str], sid: str, enforcement: str) -> tuple[object, object]:
+def _route_with_enforcement(root: str, paths: list[str], sid: str, enforcement: str) -> tuple[RouteResult | None, str | None]:
     """Route with enforcement-aware failure handling.
 
     required — fail closed with the SPEC_WORKFLOW_BLOCKED message;
     warn    — degrade to a short advisory message;
     inject  — degrade silently.
-    Returns (result, error_payload); exactly one is not None.
+    Returns domain routing result or an enforcement diagnostic.
     """
     try:
         return route_prompt(root, paths, sid), None
     except RouterError as exc:
         if enforcement == "required":
             message = f"SPEC_WORKFLOW_BLOCKED [{exc.code}]: {exc}. Run cf-spec doctor before continuing."
-            return None, _payload(message, "blocked")
+            return None, message
         if enforcement == "warn":
-            return None, _payload(_WARN_TEXT.format(message=str(exc)), "warn")
+            return None, _WARN_TEXT.format(message=str(exc))
         return None, None
+
+
+def _deduplicated_text(root: str, sid: str, result: RouteResult, config: dict[str, object]) -> str:
+    text = result.text
+    if result.mode == "task" and result.context_sha256:
+        # Dedup: inject once per session/task/contract version, refreshing
+        # at the compress cadence so long sessions do not re-pay 12k chars
+        # on every prompt. The key covers task_id and the TASK contract
+        # digest (not just the Context hash) so switching TASKs on a
+        # shared Context always re-injects the new contract.
+        state = load_session_state(root)
+        count = int(state.get("prompt_count", 0))
+        dirty = False
+        if not (config and resolve_quality_loop(config)["compress_reminder"]):
+            # compress_reminder off → _session_reminder never bumps the
+            # counter; maintain the cadence here so the periodic refresh
+            # still fires after compaction.
+            count += 1
+            state["prompt_count"] = count
+            dirty = True
+        version = injection_version(root, sid, result.context_sha256)
+        injected = state.get("injected_version")
+        last_inject = int(state.get("last_inject_prompt", 0))
+        if injected == version and count - last_inject < _REINJECT_INTERVAL:
+            text = ""
+        else:
+            state["injected_version"] = version
+            state["last_inject_prompt"] = count
+            dirty = True
+        if dirty:
+            save_session_state(root, state)
+    return text
+
+
+def build_prompt_context(prompt: str, sid: str, root: str) -> tuple[str, str]:
+    if not prompt.strip():
+        return "", ""
+    config = load_config(root)
+    enforcement = resolve_enforcement(config) if config else "required"
+    paths = extract_paths_from_prompt(prompt)
+    _record_correction(root, prompt, paths, sid)
+    result, error = _route_with_enforcement(root, paths, sid, enforcement)
+    if error is not None:
+        return error, "blocked" if enforcement == "required" else "warn"
+    if result is None:
+        return "", ""
+    reminder = _session_reminder(root, sid) if config and resolve_quality_loop(config)["compress_reminder"] else ""
+    text = _deduplicated_text(root, sid, result, config)
+    if text:
+        cf_log.append_event(root, "inject", {"specs": list(result.specs), "mode": result.mode, "source": result.mode}, sid)
+    mode = result.mode if text else "reminder"
+    return "\n\n".join(part.rstrip() for part in (text, reminder) if part), mode
+
+
+def process_prompt(data: dict[str, object], root: str) -> None:
+    try:
+        prompt = data.get("prompt", "")
+        if not isinstance(prompt, str) or not prompt.strip():
+            return
+        text, mode = build_prompt_context(prompt, resolve_session_id(data), root)
+        if text:
+            sys.stdout.write(json.dumps(_payload(text, mode), ensure_ascii=False))
+    except (json.JSONDecodeError, UnicodeError, OSError, ValueError) as exc:
+        _log(f"cf_user_prompt_hook error: {exc}")
 
 
 def main() -> None:
     try:
         ensure_utf8_io()
         if sys.stdin.isatty():
-            # 手动运行且未用管道喂事件：hook 协议要求 stdin JSON，直接退出避免永久阻塞
-            print("cf_user_prompt_hook: 缺少 stdin 事件（手动运行？），跳过。", file=sys.stderr)
+            _log("cf_user_prompt_hook.py: missing stdin event")
             return
         raw = sys.stdin.read()
-        if not raw.strip():
-            return
-        data = json.loads(raw)
-        prompt = data.get("prompt", "")
-        if not isinstance(prompt, str) or not prompt.strip():
-            return
-        root = os.getcwd()
-        sid = resolve_session_id(data)
-        config = load_config(root)
-        enforcement = resolve_enforcement(config) if config else "required"
-        paths = extract_paths_from_prompt(prompt)
-        _record_correction(root, prompt, paths, sid)
-        result, error_payload = _route_with_enforcement(root, paths, sid, enforcement)
-        if error_payload is not None:
-            sys.stdout.write(json.dumps(error_payload, ensure_ascii=False))
-            return
-        if result is None:
-            return
-        reminder = ""
-        if config and resolve_quality_loop(config)["compress_reminder"]:
-            reminder = _session_reminder(root, sid)
-        text = result.text
-        if result.mode == "task" and result.context_sha256:
-            # Dedup: inject once per session/task/contract version, refreshing
-            # at the compress cadence so long sessions do not re-pay 12k chars
-            # on every prompt. The key covers task_id and the TASK contract
-            # digest (not just the Context hash) so switching TASKs on a
-            # shared Context always re-injects the new contract.
-            state = load_session_state(root)
-            count = int(state.get("prompt_count", 0))
-            dirty = False
-            if not (config and resolve_quality_loop(config)["compress_reminder"]):
-                # compress_reminder off → _session_reminder never bumps the
-                # counter; maintain the cadence here so the periodic refresh
-                # still fires after compaction.
-                count += 1
-                state["prompt_count"] = count
-                dirty = True
-            version = injection_version(root, sid, result.context_sha256)
-            injected = state.get("injected_version")
-            last_inject = int(state.get("last_inject_prompt", 0))
-            if injected == version and count - last_inject < _REINJECT_INTERVAL:
-                text = ""
-            else:
-                state["injected_version"] = version
-                state["last_inject_prompt"] = count
-                dirty = True
-            if dirty:
-                save_session_state(root, state)
-        if not text and not reminder:
-            return
-        if text:
-            cf_log.append_event(root, "inject", {"specs": list(result.specs), "mode": result.mode, "source": result.mode}, sid)
-        if text and reminder:
-            text = text.rstrip() + "\n\n" + reminder
-        elif reminder:
-            text = reminder
-        sys.stdout.write(json.dumps(_payload(text, result.mode if text else "reminder"), ensure_ascii=False))
-    except (json.JSONDecodeError, UnicodeError, OSError, ValueError) as exc:
-        _log(f"cf_user_prompt_hook error: {exc}")
+        if raw.strip():
+            process_prompt(json.loads(raw), os.getcwd())
+    except (json.JSONDecodeError, OSError, ValueError) as exc:
+        _log(f"cf_user_prompt_hook.py bad_stdin_json: {exc}")
 
 
 if __name__ == "__main__":

@@ -153,9 +153,7 @@ CLAUDE.md 的完整内容由适配器模板统一定义，`code-flow init` 已�
 
 ### 6. 生成 .costrict/settings.local.json Hook 配置
 
-检查 `.costrict/settings.local.json` 是否存在。如果不存在，按当前适配器模板创建，必须包含 `PreToolUse`、`PostToolUse`、`UserPromptSubmit`、`Stop` 四类 hook，并使用 guarded project root 定位脚本路径。
-
-如果文件已存在，只合并缺失的 hook 事件、matcher 或 command，保留用户已有 permissions、settings 和自定义 hooks，不得整文件覆盖。
+执行 `code-flow init --platform=costrict`，由适配器模板统一生成/合并 `PreToolUse`、`PostToolUse`、`UserPromptSubmit`、`Stop` 四类 Hook，保留用户已有 permissions、settings 和自定义 hooks，不得整文件覆盖。不得手工拼装受管理 Hook；旧安装或清单校验失败时通过 `code-flow migrate --runtime --dry-run` / `--apply` 修复。
 
 ### 7. 安装 pyyaml
 

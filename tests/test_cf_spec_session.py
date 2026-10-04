@@ -140,7 +140,7 @@ def test_start_workflow_refreshes_before_hash_bound_activation() -> None:
         ROOT / "src/adapters/opencode/commands/cf-task/start.md",
     ):
         text = path.read_text(encoding="utf-8")
-        refresh = text.index("cf_spec_context.py start")
+        refresh = text.index("code-flow task start")
         active = text.index("active start", refresh)
         session = text.index("session 输出路径", active)
         progress = text.index("in-progress", session)

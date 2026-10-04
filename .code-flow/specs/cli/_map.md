@@ -47,3 +47,6 @@ Node.js CLI，负责四个 AI 平台适配器的初始化与版本升级。`code
 - 改合并策略 → 三个 `mergeXxx()` 之一
 - 新增平台 → `runInit()` 加 `if (platform === '...')` 分支 + `fileCategory` 加路径前缀 + `parsePlatform` 校验集合
 - 新增 CLI 参数 → 文件末尾 args 解析区
+
+- 公开运行时命令：`src/runtime.js` + `src/core/code-flow/runtime-commands.json`；技能示例生成：`src/render-runtime-contract.js`
+- 原生运行时事务迁移：`src/migrate/runtime.js`（四平台暂存、安装校验、回滚、中断恢复）

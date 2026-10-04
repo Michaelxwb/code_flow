@@ -55,7 +55,7 @@ def _make_project(root: Path) -> Path:
     scripts.mkdir(parents=True)
     for name in (
         "cf_pre_tool_hook.py", "cf_user_prompt_hook.py",
-        "cf_post_hook.py", "cf_stop_hook.py",
+        "cf_post_hook.py", "cf_stop_hook.py", "cf_codex_hook.py",
     ):
         (scripts / name).write_text(STUB, encoding="utf-8")
     return root
@@ -71,10 +71,39 @@ def _command_for(template_path: Path, script_name: str) -> str:
 def test_templates_are_valid_json_with_guarded_commands() -> None:
     for platform, path in TEMPLATES.items():
         for cmd in _commands(path):
-            assert "CLAUDE_PROJECT_DIR" in cmd, f"{platform}: missing env var resolution"
-            assert "git rev-parse --show-toplevel" in cmd, f"{platform}: missing git fallback"
+            if platform == "codex":
+                assert 'd="$PWD"' in cmd and 'dirname "$d"' in cmd
+                assert "CLAUDE_PROJECT_DIR" not in cmd
+            else:
+                assert "CLAUDE_PROJECT_DIR" in cmd, f"{platform}: missing env var resolution"
+                assert "git rev-parse --show-toplevel" in cmd, f"{platform}: missing git fallback"
             assert 'if [ -f "$f" ]' in cmd, f"{platform}: missing existence guard"
-            assert 'cd "$d"' in cmd, f"{platform}: missing cd to project root"
+            if platform != "codex":
+                assert 'cd "$d"' in cmd, f"{platform}: missing cd to project root"
+
+
+def test_codex_windows_override_resolves_ancestors_and_preserves_stdin() -> None:
+    import sys
+    hooks = json.loads(TEMPLATES["codex"].read_text())["hooks"]
+    with tempfile.TemporaryDirectory(prefix="windows hook spaces ") as tmp:
+        root = _make_project(Path(tmp))
+        script = root / ".code-flow/scripts/cf_codex_hook.py"
+        script.write_text("import sys\nsys.stdout.write(sys.stdin.read())\n")
+        nested = root / "src/nested"
+        nested.mkdir(parents=True)
+        for groups in hooks.values():
+            for group in groups:
+                for hook in group["hooks"]:
+                    command = hook["commandWindows"]
+                    assert command.startswith('py -3 -c "') and command.endswith('"')
+                    code = command[len('py -3 -c "'):-1]
+                    result = subprocess.run([sys.executable, "-c", code], cwd=nested, input='{"native":true}',
+                                            capture_output=True, text=True, timeout=10)
+                    assert result.returncode == 0, result.stderr
+                    assert result.stdout == '{"native":true}'
+                    result = subprocess.run([sys.executable, "-c", code], cwd=root.parent, input="{}",
+                                            capture_output=True, text=True, timeout=10)
+                    assert result.returncode == 0 and result.stdout == "", result.stderr
 
 
 def test_noop_outside_any_project() -> None:
@@ -121,7 +150,7 @@ def test_resolves_via_git_toplevel_without_env() -> None:
         )
         subdir = project / "src" / "deep"
         subdir.mkdir(parents=True)
-        cmd = _command_for(TEMPLATES["codex"], "cf_user_prompt_hook.py")
+        cmd = _command_for(TEMPLATES["claude"], "cf_user_prompt_hook.py")
         result = _run(cmd, str(subdir), env)
         assert result.returncode == 0, result.stderr
         payload = json.loads(result.stdout)

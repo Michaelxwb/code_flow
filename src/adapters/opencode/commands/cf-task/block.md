@@ -24,7 +24,7 @@ description: 标记子任务为阻塞状态
 3. 调用统一 workflow service 入口（与 active block 同一状态机），不要先编辑状态或 marker：
 
 ```bash
-python3 .code-flow/scripts/cf_task_workflow.py block --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --reason "<阻塞原因>" --json
+code-flow task block --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --reason "<阻塞原因>" --json
 ```
 
 命令同时更新 Status、阻塞原因、Log、Updated 和匹配的 marker；无 marker 的 draft 任务只改变任务文档。仅在返回成功后确认阻塞；其他需求的 marker 不得改动。
@@ -34,7 +34,18 @@ python3 .code-flow/scripts/cf_task_workflow.py block --root "$PWD" --task-dir "<
 先解决 Notes 或外部依赖，再执行：
 
 ```bash
-python3 .code-flow/scripts/cf_task_workflow.py resume --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json
+code-flow task resume --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json
 ```
 
 resume 会检查未解决的 #NOTES 和依赖，原子同步任务与 marker。未激活的 blocked 任务恢复 draft；已有匹配 marker 的任务恢复 in-progress。失败时保留阻塞状态，不通过手动改 Status 绕过。
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow task block --help
+code-flow task resume --help
+```
+
+<!-- code-flow:runtime-commands end -->

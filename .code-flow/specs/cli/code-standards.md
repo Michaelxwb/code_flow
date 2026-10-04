@@ -54,6 +54,16 @@ verifiers:
     config:
       argv: [node, tests/test_spec_workflow_migrate.js]
       timeout: 30
+  - rule: RULE-cli-opencode-native-001
+    type: test
+    files:
+      - tests/test_opencode_plugin.js
+      - tests/test_opencode_native.mjs
+      - src/adapters/opencode/*
+      - src/core/code-flow/scripts/*.py
+    config:
+      argv: [node, tests/test_opencode_plugin.js]
+      timeout: 30
 ---
 
 # CLI Code Standards
@@ -80,6 +90,7 @@ await fs.promises.readFile(srcPath);     // CLI 不需要
 - [RULE-cli-platform-parity-001] Claude, Codex, Costrict, and OpenCode adapters must retain normalized command content and canonical/deployed parity.
 - [RULE-cli-hook-guard-001] Installed hook commands must resolve the project safely and remain no-op outside a code-flow project.
 - [RULE-cli-migration-transaction-001] The breaking migration must provide dry-run, backup, journaled apply, rollback, idempotence, and version-last commit semantics.
+- [RULE-cli-opencode-native-001] OpenCode v2 callbacks must consume native event fields, isolate feedback by instance/session/location, and expose runtime failures without translating another platform's hook protocol.
 
 ## Guidance
 - 双副本同步：`src/core/code-flow/`↔`.code-flow/`、`src/adapters/<p>/`↔`.<platform>/` 必须同步提交，只改模板源或部署副本一侧 = 测试通过但 live 行为不变
@@ -87,7 +98,7 @@ await fs.promises.readFile(srcPath);     // CLI 不需要
 - 善用平台特有能力（子代理、并行工具等）必须**可选 + 优雅降级**：缺该能力的平台回退基线流程且产出质量不变，绝不让任一平台拿到降级版行为；默认优先平台中立写法，仅当收益显著且回退干净时才加平台增强
 - canonical 源 + 适配白名单：claude 版本是 cf-* 命令的内容 canonical 源；各平台只允许这些适配，**不得借适配删内容**——codex（`Glob`/`Read`/`Write`→`rg`/「读取」/「写入」等通用动词、命令 token `/project:cf-x`→`cf-x`、`apply_patch` 措辞、frontmatter）、opencode（`CLAUDE.md`→`AGENTS.md`、`Hook`→`插件`、frontmatter）、costrict（`.claude`→`.costrict`、`--platform`）。示例块、错误信息示例、步骤说明在任何平台都必须保留；发现某平台被砍即视为 bug，从 claude 回填
 - cli.js 零外部依赖，仅使用 Node.js 内置模块（fs/path/child_process/os）
-- hook command 模板必须用守卫写法：`$CLAUDE_PROJECT_DIR` 优先 → git toplevel 回退 → `[ -f ]` 存在性守卫 → `cd` 后执行；禁止依赖运行时 cwd 的裸路径（repo 外触发 exit 2 会阻断用户 prompt）
+- Claude/Costrict hook command 使用 `$CLAUDE_PROJECT_DIR` 与 git 回退及文件守卫；Codex 从运行目录逐级定位原生入口，由事件 cwd 决定项目和 worktree。项目外必须静默 no-op，禁止裸相对脚本路径。
 - 所有文件操作使用同步 API（fs.readFileSync 等），CLI 场景无需异步
 - 文件分类必须通过 fileCategory() 集中管理，禁止在其他位置硬编码分类逻辑
 - 合并策略（merge 类文件）必须保证用户自定义内容不被覆盖
@@ -107,3 +118,6 @@ await fs.promises.readFile(srcPath);     // CLI 不需要
 - 禁止在 CLI 中引入 npm 外部依赖
 - 禁止在合并逻辑中覆盖用户已有内容
 - 禁止在不同平台适配器分支（claude/codex/costrict/opencode）之间共享局部变量（各分支自包含）
+
+- `.code-flow/runtime-commands.json` 是公开命令到业务模块的唯一映射；帮助和参数验证来自实际解析器，CLI 不添加参数容错或旧入口别名。
+- 运行时迁移使用备份、暂存校验、日志、互斥锁和显式中断恢复，更新全部已安装平台；受管理文件和 Hook 定义必须通过安装清单校验，版本最后提交。

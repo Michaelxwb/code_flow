@@ -7,11 +7,10 @@ prefix list. Project-owned trees (specs/, tasks/) and merge-managed files
 opencode.json, config.yml, validation.yml) are upgraded by `code-flow init`
 with additive merges, not by byte-sync:
 
-  src/core/code-flow         → .code-flow        (scripts/, config.yml, .version, validation.yml, .gitignore)
-  src/adapters/claude        → .claude           (commands/, settings.local.json)
-  src/adapters/codex         → .codex            (hooks.json)
+  src/core/code-flow         → .code-flow        (scripts/, runtime-commands.json, .version, .gitignore)
+  src/adapters/claude        → .claude           (commands/)
   src/adapters/codex/skills  → .agents/skills    (everything)
-  src/adapters/costrict      → .costrict         (commands/, settings.local.json)
+  src/adapters/costrict      → .costrict         (commands/)
   src/adapters/opencode      → .opencode         (commands/, plugins/)
 
 `check` (default) reports drift; `sync` copies canonical → deploy. Deploy-only
@@ -20,18 +19,16 @@ longer contains them within the include prefixes).
 """
 
 import argparse
-import filecmp
+import json
 import os
 from pathlib import Path
-import shutil
 import sys
 from typing import IO, Optional, Sequence
 
 
 PAIRS = (
-    ("src/core/code-flow", ".code-flow", ("scripts/", ".version", ".gitignore")),
+    ("src/core/code-flow", ".code-flow", ("scripts/", "runtime-commands.json", ".version", ".gitignore")),
     ("src/adapters/claude", ".claude", ("commands/",)),
-    ("src/adapters/codex", ".codex", ("hooks.json",)),
     ("src/adapters/codex/skills", ".agents/skills", ("*",)),
     ("src/adapters/costrict", ".costrict", ("commands/",)),
     ("src/adapters/opencode", ".opencode", ("commands/", "plugins/")),
@@ -58,6 +55,14 @@ def _relative(relative: str) -> str:
     return relative.replace("\\", "/")
 
 
+def _canonical_bytes(root: Path, source: Path) -> bytes:
+    if source == root / "src/adapters/opencode/plugins/code-flow/package.json":
+        data = json.loads(source.read_text(encoding="utf-8"))
+        data["version"] = json.loads((root / "package.json").read_text(encoding="utf-8"))["version"]
+        return (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    return source.read_bytes()
+
+
 def _pair_diffs(root: Path, source_rel: str, deploy_rel: str, prefixes: Sequence[str]) -> tuple[list[str], list[str], list[str]]:
     """Return (differ, missing_in_deploy, deploy_only_within_prefixes)."""
     source = root / source_rel
@@ -71,7 +76,7 @@ def _pair_diffs(root: Path, source_rel: str, deploy_rel: str, prefixes: Sequence
         deploy_file = deploy / relative
         if not deploy_file.exists():
             missing.append(relative)
-        elif not filecmp.cmp(source_file, deploy_file, shallow=False):
+        elif _canonical_bytes(root, source_file) != deploy_file.read_bytes():
             differ.append(relative)
     deploy_only: list[str] = []
     if deploy.is_dir():
@@ -110,17 +115,18 @@ def _sync(root: Path, stdout: IO[str]) -> int:
                 continue
             source_file = source / relative
             deploy_file = deploy / relative
-            if deploy_file.exists() and filecmp.cmp(source_file, deploy_file, shallow=False):
+            content = _canonical_bytes(root, source_file)
+            if deploy_file.exists() and content == deploy_file.read_bytes():
                 continue
             deploy_file.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source_file, deploy_file)
+            deploy_file.write_bytes(content)
             stdout.write(f"sync  {deploy_rel}/{relative}\n")
             copied += 1
     return copied
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
-    parser = argparse.ArgumentParser(prog="cf_sync.py")
+    parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND", "cf_sync.py"))
     parser.add_argument("action", choices=("check", "sync"), nargs="?", default="check")
     parser.add_argument("--root", default=".")
     parser.add_argument("--verbose", action="store_true")
@@ -129,7 +135,7 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     if args.action == "check":
         drift = _report(stdout, root, args.verbose)
         if drift:
-            stdout.write(f"{drift} file(s) drifted; run `cf_sync.py sync` to deploy.\n")
+            stdout.write(f"{drift} file(s) drifted; run `code-flow sync apply` to deploy.\n")
             return 1
         stdout.write("all pairs in sync.\n")
         return 0

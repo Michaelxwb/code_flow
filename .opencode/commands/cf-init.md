@@ -171,8 +171,8 @@ OpenCode v2 会自动加载 `.opencode/plugins/` 下的插件目录，无需在 
 - 不要向 `plugins` 写入 `.opencode/plugins/code-flow`（自动发现已覆盖，显式声明会导致重复加载或包解析告警）。
 
 确保 `.opencode/plugins/code-flow/` 已存在且为 v2 形态（默认导出 `{ id: "code-flow", setup }`，不依赖 `@opencode/plugin` 包），
-注册 `session.prompt` / `tool.execute.after` / `session.context` hooks + `event.subscribe` 订阅 `session.idle`）。
-OpenCode 通过插件转发用户 prompt 并经 context hook 注入 specs，不需要生成 Claude/Costrict 风格的 settings 文件。
+注册 `session.prompt` / `tool.execute.before` / `tool.execute.after` / `session.context` hooks，并通过 `event.subscribe` 订阅 `session.idle` 和 `session.deleted`。
+插件直接调用原生 RPC 入口 `cf_opencode_event.py`，使用 OpenCode 的 sessionID、input.path 和 input.patchText，经 context hook 注入 specs。
 
 ### 7. 安装 pyyaml
 

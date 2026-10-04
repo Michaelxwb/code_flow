@@ -8,10 +8,16 @@ const { spawnSync } = require('child_process');
 
 const pkg = require('../package.json');
 const specWorkflowMigration = require('./migrate/spec-workflow');
+const runtime = require('./runtime');
+const runtimeMigration = require('./migrate/runtime');
+const commandRegistry = JSON.parse(fs.readFileSync(path.join(__dirname, 'core/code-flow/runtime-commands.json'), 'utf8'));
+const runtimeFamilies = [...new Set(Object.keys(commandRegistry.commands).map(command => command.split(' ')[0]))];
 
 const usage = [
   'Usage: code-flow init [--force] [--platform=<claude|codex|costrict|opencode>] [--backup-dir=<path>]',
   '       code-flow migrate --spec-workflow <--dry-run|--prepare|--apply --plan <path>|--rollback <id>>',
+  '       code-flow migrate --runtime <--dry-run|--apply|--rollback <id>>',
+  `       code-flow <${runtimeFamilies.join('|')}> [action] [options]`,
   '       code-flow -v | --version',
   '       code-flow -h | --help'
 ].join('\n');
@@ -45,6 +51,7 @@ function fileCategory(relPath) {
   if (p.startsWith('.agents/skills/')) return 'tool';
   if (p.startsWith('.opencode/commands/')) return 'tool';
   if (p.startsWith('.code-flow/scripts/')) return 'tool';
+  if (p === '.code-flow/runtime-commands.json') return 'tool';
   if (p === 'CLAUDE.md') return 'merge';
   if (p === 'AGENTS.md') return 'merge';
   if (p === '.claude/settings.local.json') return 'merge';
@@ -288,6 +295,19 @@ function mergeSettingsJson(srcFile, destFile) {
     fs.writeFileSync(destFile, JSON.stringify(dest, null, 2) + '\n');
   }
   return added;
+}
+
+function mergeCodexHooksJson(srcFile, destFile) {
+  const dest = JSON.parse(fs.readFileSync(destFile, 'utf8'));
+  const managed = /\.code-flow\/scripts\/cf_(?:pre_tool_hook|post_hook|user_prompt_hook|stop_hook|codex_hook)\.py/;
+  for (const groups of Object.values(dest.hooks || {})) {
+    for (const group of groups) group.hooks = (group.hooks || []).filter(hook => !managed.test(hook.command || ''));
+  }
+  for (const event of Object.keys(dest.hooks || {})) {
+    dest.hooks[event] = dest.hooks[event].filter(group => group.hooks.length);
+  }
+  fs.writeFileSync(destFile, JSON.stringify(dest, null, 2) + '\n');
+  return mergeSettingsJson(srcFile, destFile);
 }
 
 // OpenCode v2 merge: migrate the v1 `plugin` key to `plugins`, drop the
@@ -590,6 +610,8 @@ const RUNTIME_GITIGNORE = [
   'worktrees/',
   '.validation-cache.json',
   '.artifact-hash-cache.json',
+  '.runtime-install.json',
+  '.runtime-migration.lock/',
   '.verifier-cache.json',
   '# <<< code-flow:runtime schema=1',
   '',
@@ -751,6 +773,11 @@ function runInit(force, platform, opts) {
   const cwd = process.cwd();
   const options = opts || {};
   const installedVersion = readInstalledVersion(cwd);
+  if (!options.runtimeMigration && installedVersion && compareVersions(installedVersion, '0.6.0') >= 0 &&
+      !fs.existsSync(path.join(cwd, '.code-flow/runtime-commands.json'))) {
+    process.stdout.write(`${JSON.stringify({ status: 'migration_required', command: 'code-flow migrate --runtime --dry-run' })}\n`);
+    process.exit(3);
+  }
   if (installedVersion && compareVersions(installedVersion, '0.4.2') >= 0 && compareVersions(installedVersion, '0.6.0') < 0) {
     process.stdout.write(`${JSON.stringify({ status: 'migration_required', version: installedVersion, command: 'code-flow migrate --spec-workflow --dry-run' })}\n`);
     process.exit(3);
@@ -765,13 +792,15 @@ function runInit(force, platform, opts) {
   // platform additionally resolves its own mode from per-platform records so
   // upgrading one platform can never mask another platform's staleness.
   // A global upgrade also refreshes the selected platform (previous behavior).
-  const mode = modeFor(installedVersion, force);
+  const mode = options.runtimeMigration ? 'upgrade' : modeFor(installedVersion, force);
   const adapterVersions = readAdapterVersions(cwd);
   const adapterPrev = typeof adapterVersions.adapters[platform] === 'string'
     ? adapterVersions.adapters[platform]
     : null;
   let platformMode;
-  if (force) {
+  if (options.runtimeMigration) {
+    platformMode = 'upgrade';
+  } else if (force) {
     platformMode = 'force';
   } else if (!adapterPrev && !platformFilesExist(cwd, platform)) {
     platformMode = 'fresh';
@@ -803,6 +832,8 @@ function runInit(force, platform, opts) {
       const dest = path.join(destDir, rel);
       const label = path.join(prefix, rel);
       const cat = fileCategory(label);
+
+      if (options.runtimeMigration && cat === 'user' && !fs.existsSync(dest)) continue;
 
       if (!fs.existsSync(dest)) {
         created.push(label);
@@ -903,7 +934,7 @@ function runInit(force, platform, opts) {
       dest: path.join(cwd, '.codex', 'hooks.json'),
       label: '.codex/hooks.json',
       mode: platformMode,
-      mergeFn: mergeSettingsJson,
+      mergeFn: mergeCodexHooksJson,
       toolOnUpgrade: false,
       results,
     });
@@ -974,7 +1005,7 @@ function runInit(force, platform, opts) {
   // Merge config.yml on upgrade
   const configSrc = path.join(coreDir, 'code-flow', 'config.yml');
   const configDest = path.join(cwd, '.code-flow', 'config.yml');
-  if (mode === 'upgrade' && fs.existsSync(configDest) && fs.existsSync(configSrc)) {
+  if (mode === 'upgrade' && !options.runtimeMigration && fs.existsSync(configDest) && fs.existsSync(configSrc)) {
     const added = mergeConfigYml(configSrc, configDest);
     if (added.length > 0) {
       // Replace the skipped entry with merged
@@ -996,10 +1027,11 @@ function runInit(force, platform, opts) {
   ensurePyYaml();
 
   // Write version (legacy global file kept for compatibility) + per-platform records
-  writeVersion(cwd, pkg.version);
   adapterVersions.adapters[platform] = pkg.version;
   adapterVersions.core = pkg.version;
   writeAdapterVersions(cwd, adapterVersions);
+  runtime.writeInstall(cwd, Object.keys(adapterVersions.adapters));
+  writeVersion(cwd, pkg.version);
 
   // Output summary
   if (mode === 'upgrade') {
@@ -1082,6 +1114,10 @@ function runInit(force, platform, opts) {
 
 const args = process.argv.slice(2);
 
+if (runtimeFamilies.includes(args[0])) {
+  process.exit(runtime.run(args));
+}
+
 function argumentValue(values, name) {
   const index = values.indexOf(name);
   return index >= 0 ? values[index + 1] || '' : '';
@@ -1140,7 +1176,9 @@ if (args[0] === 'init') {
     fail(`Error: --platform must be "claude", "codex", "costrict", or "opencode", got "${platform}".`);
   }
   try {
-    runInit(force, platform, { backupDir: parseStringFlag(args, 'backup-dir') });
+    const staging = process.env.CODE_FLOW_RUNTIME_STAGE === process.cwd() &&
+      fs.existsSync(path.join(process.cwd(), '.runtime-stage.json'));
+    runInit(force, platform, { backupDir: parseStringFlag(args, 'backup-dir'), runtimeMigration: staging });
   } catch (error) {
     // Report merge/IO failures as a readable error, never a raw JS stack.
     const message = error && error.message ? error.message : String(error);
@@ -1150,6 +1188,16 @@ if (args[0] === 'init') {
 }
 
 if (args[0] === 'migrate') {
+  if (args[1] === '--runtime') {
+    try {
+      const result = runtimeMigration.run(process.cwd(), args.slice(2));
+      process.stdout.write(`${JSON.stringify(result)}\n`);
+      process.exit(result.status === 'rolled_back' ? 4 : 0);
+    } catch (error) {
+      process.stdout.write(`${JSON.stringify({ status: 'blocked', error: error.message })}\n`);
+      process.exit(3);
+    }
+  }
   runMigrate(args.slice(1));
 }
 

@@ -169,7 +169,7 @@ def test_prd_workflow_documents_required_context_first_contract() -> None:
         assert "Existing Spec Constraints" in text
         assert "code-only" in text
         assert "Agent 不得代确认" in text
-        assert "cf_spec_gate.py" in text
+        assert "code-flow spec gate" in text
     assert "## 8. Existing Spec Constraints" in template
     assert "对范围/验收的影响" in template
 

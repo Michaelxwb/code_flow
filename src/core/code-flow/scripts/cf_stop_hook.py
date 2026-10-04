@@ -402,95 +402,87 @@ def _reason_text(failures: list, truncated: bool) -> str:
     return "\n".join(lines)
 
 
-def _main() -> None:
-    # Fail-closed default: an exception before config resolution must still
-    # block in required mode (locals() probing made early failures silent).
+def _active_stop_scope(root: str, sid: str, enforcement: str, deadline: float) -> tuple[list[str], dict[str, str]]:
+    try:
+        active = load_active_task(root)
+        remaining = deadline - time.monotonic()
+        done = run_done_gate(root, os.path.join(root, active.task_dir), cheap=True,
+                             budget=min(GATE_BUDGET_SECONDS, max(remaining, 0.01)))
+    except (OSError, ValueError) as exc:
+        if enforcement == "required":
+            return [], {"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: active task is invalid: {exc}"}
+        cf_log.append_event(root, "stop_check", {"gate": "invalid_active_nonfatal", "error": str(exc)}, sid)
+        return [], {}
+    if done.decision != "pass":
+        reason = done.message or "当前 TASK required Spec verifier/Evidence 未通过；修复或重新对齐后再 Done。"
+        if any(item.get("error_code") == "verifier_budget_exhausted" for item in done.evidence):
+            reason += "（验证预算不足，部分 verifier 未运行，请拆分 TASK 或减少验证命令）"
+        if enforcement == "required":
+            return [], {"decision": "block", "reason": reason}
+        cf_log.append_event(root, "stop_check", {"gate": "blocked_nonfatal", "reason": reason}, sid)
+    return list(done.files), {}
+
+
+def _stop_feedback(root: str, sid: str, files: list[str], enforcement: str, deadline: float) -> dict[str, str]:
+    if not files:
+        return {}
+    acceptance_failures = task_acceptance_failures(root, files)
+    validators = _stop_validators(root)
+    failures, truncated, _reused = run_validators(root, validators, files, sid, deadline=deadline) if validators else ([], False, 0)
+    failures = acceptance_failures + failures
+    if not failures:
+        return {}
+    if enforcement == "warn":
+        cf_log.append_event(root, "stop_check", {"failures": [item["name"] for item in failures], "nonfatal": True}, sid)
+        return {}
+    return {"decision": "block", "reason": _reason_text(failures, truncated)}
+
+
+def build_stop_result(project_root: str, sid: str) -> dict[str, str]:
     enforcement = "required"
+    try:
+        config = load_config(project_root)
+        if not config:
+            return {}
+        enforcement = resolve_enforcement(config)
+        if enforcement == "inject":
+            return {}
+        deadline = time.monotonic() + TOTAL_BUDGET_SECONDS
+        active = os.path.exists(os.path.join(project_root, ".code-flow/.active-task.json"))
+        files, payload = _active_stop_scope(project_root, sid, enforcement, deadline) if active else ([], {})
+        if not payload and resolve_quality_loop(config)["stop_check"]:
+            if not active:
+                files = _root_scoped_files(project_root, session_edited_files(project_root, sid))
+            payload = _stop_feedback(project_root, sid, files, enforcement, deadline)
+        return payload
+    except Exception as exc:
+        _log(f"cf_stop_hook error: {exc}")
+        return {"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: {exc}"} if enforcement == "required" else {}
+
+
+def process_stop(data: dict[str, object], project_root: str) -> None:
+    try:
+        if data.get("stop_hook_active"):
+            return
+        payload = build_stop_result(project_root, resolve_session_id(data))
+        if payload:
+            sys.stdout.write(json.dumps(payload, ensure_ascii=False))
+    except Exception as exc:
+        _log(f"cf_stop_hook error: {exc}")
+        sys.stdout.write(json.dumps({"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: {exc}"}, ensure_ascii=False))
+
+
+def _main() -> None:
     try:
         ensure_utf8_io()
         if sys.stdin.isatty():
-            # 手动运行且未用管道喂事件：hook 协议要求 stdin JSON，直接退出避免永久阻塞
-            print("cf_stop_hook: 缺少 stdin 事件（手动运行？），跳过。", file=sys.stderr)
+            _log("cf_stop_hook.py: missing stdin event")
             return
         raw = sys.stdin.read()
-        if not raw.strip():
-            return
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            # Host sent malformed JSON; nothing to check and a block would loop
-            # on the same bad input. Degrade silently like the other hooks.
-            _log(f"cf_stop_hook bad_stdin_json: {exc}")
-            return
-        if data.get("stop_hook_active"):
-            return  # 已因本 hook 续跑过一轮，避免循环
-        project_root = os.getcwd()
-        sid = resolve_session_id(data)
-        config = load_config(project_root)
-        if not config:
-            return
-        enforcement = resolve_enforcement(config)
-        if enforcement == "inject":
-            return  # 轻量模式：只注入不门禁，停止会话不受限
-        marker = os.path.join(project_root, ".code-flow", ".active-task.json")
-        has_active = os.path.exists(marker)
-        files = []
-        # Single entry deadline constrains the whole chain (Done + validators),
-        # so long checks end as `incomplete` instead of being killed by the
-        # host without a verdict.
-        deadline = time.monotonic() + TOTAL_BUDGET_SECONDS
-        if has_active:
-            try:
-                active = load_active_task(project_root)
-                task_dir = os.path.join(project_root, active.task_dir)
-                gate_remaining = deadline - time.monotonic()
-                done = run_done_gate(project_root, task_dir, cheap=True, budget=min(GATE_BUDGET_SECONDS, max(gate_remaining, 0.01)))
-            except (OSError, ValueError) as exc:
-                if enforcement == "required":
-                    payload = {"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: active task is invalid: {exc}"}
-                    sys.stdout.write(json.dumps(payload, ensure_ascii=False))
-                    return
-                cf_log.append_event(project_root, "stop_check", {"gate": "invalid_active_nonfatal", "error": str(exc)}, sid)
-                files = []
-            else:
-                if done.decision != "pass":
-                    reason = done.message or "当前 TASK required Spec verifier/Evidence 未通过；修复或重新对齐后再 Done。"
-                    if any(item.get("error_code") == "verifier_budget_exhausted" for item in done.evidence):
-                        reason += "（验证预算不足，部分 verifier 未运行，请拆分 TASK 或减少验证命令）"
-                    if enforcement == "required":
-                        payload = {"decision": "block", "reason": reason}
-                        sys.stdout.write(json.dumps(payload, ensure_ascii=False))
-                        return
-                    cf_log.append_event(project_root, "stop_check", {"gate": "blocked_nonfatal", "reason": reason}, sid)
-                files = list(done.files)
-        if not resolve_quality_loop(config)["stop_check"]:
-            return
-        if not has_active:
-            files = _root_scoped_files(project_root, session_edited_files(project_root, sid))
-        if not files:
-            return
-        acceptance_failures = task_acceptance_failures(project_root, files)
-        validators = _stop_validators(project_root)
-        failures, truncated, _reused = run_validators(
-            project_root, validators, files, sid, deadline=deadline
-        ) if validators else ([], False, 0)
-        failures = acceptance_failures + failures
-        if not failures:
-            return  # 全过或无 validation.yml 且无验收缺口时静默
-        if enforcement == "warn":
-            cf_log.append_event(
-                project_root, "stop_check",
-                {"failures": [item["name"] for item in failures], "nonfatal": True},
-                sid,
-            )
-            return
-        payload = {"decision": "block", "reason": _reason_text(failures, truncated)}
-        sys.stdout.write(json.dumps(payload, ensure_ascii=False))
-    except Exception as exc:
-        _log(f"cf_stop_hook error: {exc}")
-        if enforcement == "required":
-            sys.stdout.write(json.dumps({"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: {exc}"}, ensure_ascii=False))
-        return
+        if raw.strip():
+            process_stop(json.loads(raw), os.getcwd())
+    except (json.JSONDecodeError, OSError, ValueError) as exc:
+        _log(f"cf_stop_hook.py bad_stdin_json: {exc}")
 
 
 def main() -> None:

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import json
 from pathlib import Path
 import sys
@@ -250,7 +251,7 @@ def run_manifest(
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND") or None)
     parser.add_argument("--manifest", required=True)
     parser.add_argument("--root", required=True)
     parser.add_argument("--write-evidence", action="store_true")

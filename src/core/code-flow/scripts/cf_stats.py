@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import argparse
 import os
 import sys
 from typing import Optional
@@ -277,229 +278,179 @@ def collect_domain_items(
     return items, missing
 
 
-def main() -> None:
-    project_root = os.getcwd()
-    config = load_config(project_root)
-    budget_cfg = config.get("budget") or {}
+def _arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND", "cf_stats.py"))
+    formats = parser.add_mutually_exclusive_group()
+    formats.add_argument("--human", action="store_true")
+    formats.add_argument("--json", action="store_true")
+    parser.add_argument("--audit", action="store_true")
+    parser.add_argument("--domain", default=None)
+    parser.add_argument("--platform", choices=("claude", "codex", "costrict", "opencode"), default="")
+    return parser.parse_args()
 
-    human_output = "--human" in sys.argv
-    json_output = not human_output
-    audit_mode = "--audit" in sys.argv
-    domain_filter = None
-    for arg in sys.argv[1:]:
-        if arg.startswith("--domain="):
-            domain_filter = arg.split("=", 1)[1]
 
-    l0_budget = budget_cfg.get("l0_max", 800)
-    l1_budget = budget_cfg.get("l1_max", 1700)
-    total_budget = budget_cfg.get("total", l0_budget + l1_budget)
-
+def _budget_number(config: dict[str, object], key: str, default: int) -> int:
     try:
-        l0_budget = int(l0_budget)
-    except Exception:
-        l0_budget = 800
-    try:
-        total_budget = int(total_budget)
-    except Exception:
-        total_budget = l0_budget + l1_budget
+        return int(config.get(key, default))
+    except (TypeError, ValueError) as exc:
+        sys.stderr.write(f"cf-stats invalid {key}: {exc}; using {default}\n")
+        return default
 
-    platform = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--platform=")), "")
-    instruction_file = project_instruction_file(project_root, platform)
-    claude_path = os.path.join(project_root, instruction_file)
-    l0_tokens = 0
-    if os.path.exists(claude_path):
-        l0_tokens = estimate_tokens(read_text(claude_path))
 
-    l1 = {}
-    total_tokens = l0_tokens
-    templates_tokens = 0
-    specs_root = os.path.join(project_root, ".code-flow", "specs")
-    spec_domain_map = {}
-    missing_specs = []
-    domains_with_no_loaded_specs = []
+def _domain_usage(root: str, config: dict[str, object], domain_filter: Optional[str]) -> dict[str, object]:
+    specs_root = os.path.join(root, ".code-flow/specs")
     discovered = discover_specs(specs_root)
-    domains = resolve_domains(config, discovered, domain_filter)
-    config_fallback_mode = not discovered
-
-    effective_mapping = build_effective_mapping(
-        project_root, config.get("path_mapping") or {}
-    )
-    excluded_specs = non_injectable_specs(effective_mapping)
-
-    for domain in domains:
+    mapping = build_effective_mapping(root, config.get("path_mapping") or {})
+    excluded = non_injectable_specs(mapping)
+    l1, spec_domains, missing_specs, empty_domains = {}, {}, [], []
+    for domain in resolve_domains(config, discovered, domain_filter):
         configured = configured_specs(config, domain)
         discovered_paths = discovered.get(domain, [])
         items, missing = collect_domain_items(specs_root, domain, configured, discovered_paths)
-
-        for rel in configured:
-            if not rel:
-                continue
-            spec_domain_map[rel] = domain
-        for rel in discovered_paths:
-            spec_domain_map[rel] = domain
-
+        for relative in configured + discovered_paths:
+            if relative:
+                spec_domains[relative] = domain
         missing_specs.extend(missing)
-
         for item in items:
-            item["injectable"] = item["path"] not in excluded_specs
+            item["injectable"] = item["path"] not in excluded
         if items:
             l1[domain] = items
-            total_tokens += sum(i["tokens"] for i in items if i["injectable"])
-            templates_tokens += sum(i["tokens"] for i in items if not i["injectable"])
-        elif configured and (config_fallback_mode or discovered_paths):
-            domains_with_no_loaded_specs.append(domain)
+        elif configured and (not discovered or discovered_paths):
+            empty_domains.append(domain)
+    tokens = sum(item["tokens"] for items in l1.values() for item in items if item["injectable"])
+    templates = sum(item["tokens"] for items in l1.values() for item in items if not item["injectable"])
+    return {"l1": l1, "tokens": tokens, "template_tokens": templates, "excluded": sorted(excluded),
+            "missing_specs": missing_specs, "empty_domains": empty_domains, "spec_domain_map": spec_domains}
 
-    utilization = "0%"
-    if total_budget:
-        utilization = f"{round(total_tokens * 100 / total_budget)}%"
 
+def _compression_usage(l1: dict[str, list[dict[str, object]]]) -> dict[str, object]:
+    items = [item for values in l1.values() for item in values if item.get("injectable", True)]
+    raw = sum(item.get("tokens_raw", item["tokens"]) for item in items)
+    compressed = sum(item.get("tokens_compressed", item["tokens"]) for item in items)
+    return {"total_raw": raw, "total_compressed": compressed,
+            "total_saved_pct": round((raw - compressed) * 100 / raw, 1) if raw else 0.0}
+
+
+def _usage_warnings(l0_tokens: int, l0_budget: int, l1_budget: int, total: int,
+                    total_budget: int, usage: dict[str, object]) -> list[str]:
     warnings = []
-    if l0_tokens > l0_budget:
-        warnings.append("L0 超出预算")
-    l1_tokens = total_tokens - l0_tokens
-    if l1_tokens > l1_budget:
-        warnings.append("L1 超出预算")
-    if total_tokens > total_budget:
-        warnings.append("总预算超出")
-    if missing_specs:
-        warnings.append(f"配置的 spec 文件缺失: {len(missing_specs)} 个")
-    if domains_with_no_loaded_specs:
-        domains_text = ", ".join(sorted(set(domains_with_no_loaded_specs)))
-        warnings.append(f"以下域未加载到任何 L1 spec: {domains_text}")
+    for exceeded, message in ((l0_tokens > l0_budget, "L0 超出预算"),
+                              (total - l0_tokens > l1_budget, "L1 超出预算"),
+                              (total > total_budget, "总预算超出")):
+        if exceeded:
+            warnings.append(message)
+    if usage["missing_specs"]:
+        warnings.append(f"配置的 spec 文件缺失: {len(usage['missing_specs'])} 个")
+    if usage["empty_domains"]:
+        domains = ", ".join(sorted(set(usage["empty_domains"])))
+        warnings.append(f"以下域未加载到任何 L1 spec: {domains}")
+    return warnings
 
-    total_raw = sum(
-        item.get("tokens_raw", item["tokens"])
-        for items in l1.values()
-        for item in items
-        if item.get("injectable", True)
-    )
-    total_compressed = sum(
-        item.get("tokens_compressed", item["tokens"])
-        for items in l1.values()
-        for item in items
-        if item.get("injectable", True)
-    )
-    total_saved_pct = (
-        round((total_raw - total_compressed) * 100 / total_raw, 1)
-        if total_raw
-        else 0.0
-    )
-    compression_summary = {
-        "total_raw": total_raw,
-        "total_compressed": total_compressed,
-        "total_saved_pct": total_saved_pct,
+
+def _catalog_usage(root: str, config: dict[str, object], budget: dict[str, object]) -> dict[str, object]:
+    maximum = _budget_number(budget, "catalog_max", 200)
+    mapping = build_effective_mapping(root, config.get("path_mapping") or {})
+    text = build_spec_catalog(root, mapping, maximum)
+    return {"mode": "context_first", "tokens": estimate_tokens(text), "budget": maximum,
+            "entries": text.count("\n- `")}
+
+
+def _stats_report(root: str, args: argparse.Namespace) -> dict[str, object]:
+    config = load_config(root)
+    budget = config.get("budget") or {}
+    l0_budget = _budget_number(budget, "l0_max", 800)
+    l1_budget = _budget_number(budget, "l1_max", 1700)
+    total_budget = _budget_number(budget, "total", l0_budget + l1_budget)
+    instruction = project_instruction_file(root, args.platform)
+    instruction_path = os.path.join(root, instruction)
+    l0_tokens = estimate_tokens(read_text(instruction_path)) if os.path.exists(instruction_path) else 0
+    usage = _domain_usage(root, config, args.domain)
+    total = l0_tokens + usage["tokens"]
+    report = {
+        "l0": {"file": instruction, "tokens": l0_tokens, "budget": l0_budget},
+        "l1": usage["l1"], "total_tokens": total, "total_budget": total_budget,
+        "utilization": f"{round(total * 100 / total_budget)}%" if total_budget else "0%",
+        "warnings": _usage_warnings(l0_tokens, l0_budget, l1_budget, total, total_budget, usage),
+        "spec_domain_map": usage["spec_domain_map"], "missing_specs": usage["missing_specs"],
+        "compression_summary": _compression_usage(usage["l1"]), "catalog": _catalog_usage(root, config, budget),
+        "quality_loop": quality_loop_summary(root, config), "spec_workflow": spec_workflow_summary(root),
+        "templates": {"tokens": usage["template_tokens"], "files": usage["excluded"],
+                      "note": "tags:[] 命令专用模板，永不自动注入，不计预算"},
     }
-
-    try:
-        catalog_max = int(budget_cfg.get("catalog_max", 200))
-    except (TypeError, ValueError):
-        catalog_max = 200
-    catalog_text = build_spec_catalog(project_root, effective_mapping, catalog_max)
-    catalog_summary = {
-        "mode": "context_first",
-        "tokens": estimate_tokens(catalog_text),
-        "budget": catalog_max,
-        "entries": catalog_text.count("\n- `"),
-    }
-
-    ql_summary = quality_loop_summary(project_root, config)
-    workflow_summary = spec_workflow_summary(project_root)
-
-    output = {
-        "l0": {"file": instruction_file, "tokens": l0_tokens, "budget": l0_budget},
-        "l1": l1,
-        "total_tokens": total_tokens,
-        "total_budget": total_budget,
-        "utilization": utilization,
-        "warnings": warnings,
-        "spec_domain_map": spec_domain_map,
-        "missing_specs": missing_specs,
-        "compression_summary": compression_summary,
-        "catalog": catalog_summary,
-        "quality_loop": ql_summary,
-        "spec_workflow": workflow_summary,
-        "templates": {
-            "tokens": templates_tokens,
-            "files": sorted(excluded_specs),
-            "note": "tags:[] 命令专用模板，永不自动注入，不计预算",
-        },
-    }
-    if audit_mode:
+    if args.audit:
         from cf_scan import build_report
-        scan = build_report(project_root, platform)
-        output["audit"] = {
-            "files": [e for e in scan["files"] if e.get("issues")],
-            "review": scan["review"],
-        }
+        scan = build_report(root, args.platform)
+        report["audit"] = {"files": [entry for entry in scan["files"] if entry.get("issues")], "review": scan["review"]}
+    return report
 
-    if json_output:
-        print(json.dumps(output, ensure_ascii=False))
-        return
 
-    print(f"L0 ({instruction_file}):", f"{l0_tokens} / {l0_budget}")
-    for domain, items in l1.items():
-        total_domain = sum(i["tokens"] for i in items if i.get("injectable", True))
-        print(f"L1 {domain}:", total_domain)
+def _print_domains(report: dict[str, object]) -> None:
+    for domain, items in report["l1"].items():
+        print(f"L1 {domain}:", sum(item["tokens"] for item in items if item.get("injectable", True)))
         for item in items:
-            raw = item.get("tokens_raw", item["tokens"])
-            compressed = item.get("tokens_compressed", item["tokens"])
-            saved = item.get("saved_pct", 0.0)
+            raw, compressed = item.get("tokens_raw", item["tokens"]), item.get("tokens_compressed", item["tokens"])
             suffix = "" if item.get("injectable", True) else "（模板，不计预算）"
-            print(" -", item["path"], item["tokens"],
-                  f"(raw={raw}→compressed={compressed}, -{saved}%)" + suffix)
-    if templates_tokens:
-        print("TEMPLATES (非注入):", f"{templates_tokens} tokens，不计预算")
-    if missing_specs:
+            print(" -", item["path"], item["tokens"], f"(raw={raw}→compressed={compressed}, -{item.get('saved_pct', 0.0)}%)" + suffix)
+    if report["templates"]["tokens"]:
+        print("TEMPLATES (非注入):", f"{report['templates']['tokens']} tokens，不计预算")
+    if report["missing_specs"]:
         print("MISSING SPECS:")
-        for item in missing_specs:
+        for item in report["missing_specs"]:
             print(" -", item["domain"], item["path"])
-    print("TOTAL:", f"{total_tokens} / {total_budget}")
-    print("UTILIZATION:", utilization)
-    print(
-        "COMPRESSION:",
-        f"{total_raw} → {total_compressed} (-{total_saved_pct}%)",
-    )
-    print(
-        "CATALOG:",
-        "mode=context_first,",
-        f"{catalog_summary['tokens']} / {catalog_max} tokens,",
-        f"{catalog_summary['entries']} entries",
-    )
-    switches = ql_summary["switches"]
-    print("QUALITY-LOOP:", "enabled" if switches["enabled"] else "disabled")
-    if ql_summary.get("note"):
-        print(" -", ql_summary["note"])
-    else:
-        print(
-            " - violations:", ql_summary.get("violation_total", 0),
-            "| fix_rate:", ql_summary.get("fix_rate", "n/a"),
-        )
-        for item in ql_summary.get("top_violations", [])[:5]:
-            print("   ·", item["rule"], item["count"])
-        for cid, info in ql_summary.get("checks", {}).items():
-            if info["disabled"] or info["fp_count"]:
-                print(
-                    f"   · {cid}: hits={info['hit_count']} fp={info['fp_count']}"
-                    + (f" DISABLED({info['disabled_reason']})" if info["disabled"] else "")
-                )
-        for component, info in ql_summary.get("degraded", {}).items():
-            print(f"   · degraded {component}: {info['count']} ({info['last_error']})")
-    if warnings:
-        print("WARNINGS:", "; ".join(warnings))
 
-    if audit_mode:
-        audit = output["audit"]
-        print("AUDIT (规范质量):")
-        if not audit["files"] and not audit["review"]:
-            print(" - 无问题")
-        for entry in audit["files"]:
-            print(" -", entry["path"], "|", " / ".join(entry["issues"]))
-        if audit["review"]:
-            print(" REVIEW (待复审):")
-            for item in audit["review"]:
-                print(f"   · {item['item']}: {item['reason']}")
+
+def _print_quality(summary: dict[str, object]) -> None:
+    print("QUALITY-LOOP:", "enabled" if summary["switches"]["enabled"] else "disabled")
+    if summary.get("note"):
+        print(" -", summary["note"])
+        return
+    print(" - violations:", summary.get("violation_total", 0), "| fix_rate:", summary.get("fix_rate", "n/a"))
+    for item in summary.get("top_violations", [])[:5]:
+        print("   ·", item["rule"], item["count"])
+    for check_id, info in summary.get("checks", {}).items():
+        if info["disabled"] or info["fp_count"]:
+            suffix = f" DISABLED({info['disabled_reason']})" if info["disabled"] else ""
+            print(f"   · {check_id}: hits={info['hit_count']} fp={info['fp_count']}" + suffix)
+    for component, info in summary.get("degraded", {}).items():
+        print(f"   · degraded {component}: {info['count']} ({info['last_error']})")
+
+
+def _print_audit(audit: Optional[dict[str, object]]) -> None:
+    if audit is None:
+        print("AUDIT: 运行 code-flow stats --audit 查看规范质量问题与待复审清单")
+        return
+    print("AUDIT (规范质量):")
+    if not audit["files"] and not audit["review"]:
+        print(" - 无问题")
+    for entry in audit["files"]:
+        print(" -", entry["path"], "|", " / ".join(entry["issues"]))
+    if audit["review"]:
+        print(" REVIEW (待复审):")
+        for item in audit["review"]:
+            print(f"   · {item['item']}: {item['reason']}")
+
+
+def _print_stats(report: dict[str, object]) -> None:
+    l0, compression, catalog = report["l0"], report["compression_summary"], report["catalog"]
+    print(f"L0 ({l0['file']}):", f"{l0['tokens']} / {l0['budget']}")
+    _print_domains(report)
+    print("TOTAL:", f"{report['total_tokens']} / {report['total_budget']}")
+    print("UTILIZATION:", report["utilization"])
+    print("COMPRESSION:", f"{compression['total_raw']} → {compression['total_compressed']} (-{compression['total_saved_pct']}%)")
+    print("CATALOG:", "mode=context_first,", f"{catalog['tokens']} / {catalog['budget']} tokens,", f"{catalog['entries']} entries")
+    _print_quality(report["quality_loop"])
+    if report["warnings"]:
+        print("WARNINGS:", "; ".join(report["warnings"]))
+    _print_audit(report.get("audit"))
+
+
+def main() -> None:
+    args = _arguments()
+    report = _stats_report(os.getcwd(), args)
+    if args.human:
+        _print_stats(report)
     else:
-        print("AUDIT: 运行 cf-stats --audit 查看规范质量问题与待复审清单")
+        sys.stdout.write(json.dumps(report, ensure_ascii=False) + "\n")
 
 
 if __name__ == "__main__":

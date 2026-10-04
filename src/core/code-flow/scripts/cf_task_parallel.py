@@ -23,6 +23,7 @@ stdout 始终为 JSON：{"ok": true, ...} 或 {"ok": false, "code": ..., "messag
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import re
 import subprocess
@@ -37,6 +38,7 @@ from cf_task_merge import merge_context_text
 from cf_task_merge import merge_manifest_text
 from cf_task_merge import merge_task_markdown
 from cf_task_state import FINISHED_STATUSES
+from cf_runtime_install import verify_install
 
 
 WORKTREES_DIR = ".code-flow/worktrees"
@@ -209,6 +211,19 @@ def _read_run_meta(root: Path, run_id: str) -> dict[str, object]:
     return data
 
 
+def _install_worktree_manifest(root: Path, worktree: Path) -> None:
+    source = root / ".code-flow/.runtime-install.json"
+    if not source.is_file():
+        return  # Core-only repositories have no installed platform runtime.
+    try:
+        verify_install(str(root))
+        target = worktree / ".code-flow/.runtime-install.json"
+        target.write_bytes(source.read_bytes())
+        verify_install(str(worktree))
+    except (OSError, ValueError) as exc:
+        raise ParallelError("worktree_runtime_invalid", f"worktree 运行时安装校验失败: {exc}") from exc
+
+
 def _create_worktrees(root: Path, task_file: str, tasks: Sequence[str], run_id: str) -> dict[str, object]:
     created: list[tuple[Path, str]] = []
     base_head = _run_git(root, ("rev-parse", "HEAD")).strip()
@@ -219,9 +234,10 @@ def _create_worktrees(root: Path, task_file: str, tasks: Sequence[str], run_id: 
                 raise ParallelError("worktree_exists", f"{task} 的 worktree 或分支已存在: {branch}")
             path.parent.mkdir(parents=True, exist_ok=True)
             _run_git(root, ("worktree", "add", "-b", branch, str(path), "HEAD"))
+            created.append((path, branch))
             if not (path / task_file).is_file():
                 raise ParallelError("task_file_missing", f"{task}: worktree 内缺少 {task_file}（需先提交任务文件）")
-            created.append((path, branch))
+            _install_worktree_manifest(root, path)
     except ParallelError:
         for path, branch in created:
             _remove_worktree(root, path, force=True)
@@ -587,7 +603,7 @@ def _emit(payload: dict[str, object], stdout: IO[str]) -> None:
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
-    parser = argparse.ArgumentParser(prog="cf_task_parallel.py")
+    parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND", "cf_task_parallel.py"))
     sub = parser.add_subparsers(dest="action", required=True)
     for name in ("prepare", "collect", "cleanup", "merge"):
         command = sub.add_parser(name)

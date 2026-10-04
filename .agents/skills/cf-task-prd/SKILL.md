@@ -40,7 +40,7 @@ description: Generate a Product Requirements Document (PRD) from a one-liner req
 在开始写需求内容前，先确定 Step 5 的需求目录和预计涉及路径，再执行：
 
 ```bash
-python3 .code-flow/scripts/cf_spec_context.py catalog --stage prd --root "$PWD" --paths <预计路径...> --json
+code-flow spec catalog --stage prd --root "$PWD" --paths <预计路径...> --json
 ```
 
 1. 必须检查完整 `candidates`，不得按展示条数截断；只消费 resolver 返回的 `stages` 含 `prd` 的产品、安全、兼容、业务约束，`code-only` Spec 不得进入 PRD。
@@ -137,7 +137,7 @@ python3 .code-flow/scripts/cf_spec_context.py catalog --stage prd --root "$PWD" 
 写入后必须完成 Context 回填和 PRD Gate：
 
 1. 再次调用 `bind --stage prd`，`selections` 可为空，`applications` 为每条已承接 Rule 写入 `artifact`、`section_id`、`item_id`；artifact 必须指向本需求目录内 PRD，由脚本计算 `artifact_sha256`。
-2. 执行 `python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage prd --json`。
+2. 执行 `code-flow spec gate --task-dir <需求目录> --stage prd --json`。
 3. 只有 `decision=pass` 才能把 PRD 标为可评审并输出下一步；pending/conflict/stale、缺少范围/验收落点或无有效用户确认的 N/A 均保持阻断。
 
 **文件位置说明**：PRD、设计简报（`<name>.frontend.design.md` / `<name>.backend.design.md`）、任务文件（`<name>.md`）同放**需求目录** `.code-flow/tasks/<日期>/<name>/`，`cf-task-archive` 按整个需求目录归档。
@@ -161,3 +161,14 @@ python3 .code-flow/scripts/cf_spec_context.py catalog --stage prd --root "$PWD" 
   - 推进设计: cf-task-align .code-flow/tasks/<日期>/<name>/<name>.prd.md
     （align 将从 PRD 派生设计简报，继承目标/用户/功能/范围，只需补技术维度）
 ```
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow spec catalog --help
+code-flow spec gate --help
+```
+
+<!-- code-flow:runtime-commands end -->

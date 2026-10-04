@@ -303,7 +303,7 @@ TASK-002: <标题> [P1]
 写入后用 `bind --stage plan` 的 `applications` 将每条 required Rule 指向任务文件内唯一 TASK item，并执行：
 
 ```bash
-python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage plan --artifact <任务文件> --json
+code-flow spec gate --task-dir <需求目录> --stage plan --artifact <任务文件> --json
 ```
 
 只有 Context Plan 状态与任务结构校验都 `decision=pass` 才输出 Start 下一步；缺唯一 owner、`verifier_ref`、测试层级或真实边界时必须回到拆解修复。
@@ -329,3 +329,13 @@ python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage pla
   - 添加批注: cf-task-note auth-module TASK-001 "批注内容"
   - 开始编码: cf-task-start auth-module
 ```
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow spec gate --help
+```
+
+<!-- code-flow:runtime-commands end -->

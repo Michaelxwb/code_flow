@@ -19,7 +19,7 @@ description: Show token usage statistics for the spec system (per-file breakdown
 用 shell 命令执行：
 
 ```bash
-python3 .code-flow/scripts/cf_stats.py [--human] [--domain=frontend] [--audit]
+code-flow stats [--human] [--domain=frontend] [--audit]
 ```
 
 将用户传入的参数原样透传。
@@ -85,3 +85,13 @@ COMPRESSION: 1820 → 1580 (-13.2%)
 
 - `.code-flow/` 不存在 → 提示运行 `cf-init`
 - Python 脚本执行失败 → 输出错误信息，建议检查 Python 环境
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow stats --help
+```
+
+<!-- code-flow:runtime-commands end -->

@@ -119,7 +119,7 @@ PRD 已覆盖的维度如无需调整，将直接使用。
 
 进入技术讨论前先定位需求目录中的 `spec-context.yml`：
 
-1. PRD 派生/恢复模式必须执行 `python3 .code-flow/scripts/cf_spec_context.py refresh --task-dir <需求目录> --root "$PWD" --json`；missing/stale/conflict 必须先处理。
+1. PRD 派生/恢复模式必须执行 `code-flow spec refresh --task-dir <需求目录> --root "$PWD" --json`；missing/stale/conflict 必须先处理。
 2. 已有 binding 必须从 PRD Context 原样继承，**不得重新选择**、降级 enforcement 或清空 PRD 阶段 refs/decision/evidence。根据预计实现路径运行 `catalog --stage design`，只对新增 design-stage 候选做增量 bind，并记录 reason。
 3. 为每条 design-stage required Rule 预建 `Spec Compliance Matrix` 行：`Spec/Rule`、enforcement、设计影响、具体设计落点、验证场景/verifier、状态或 N/A 理由。
 4. required Rule 没有具体 heading/item 和验证方式时不得进入可评审状态；只写“遵循规范”无效。
@@ -288,7 +288,7 @@ CLI 场景：
 写入后，对 Matrix 每一行调用 `bind --stage design` 的 `applications` 回填 design artifact、`section_id`、稳定 `item_id` 和脚本计算的 hash；随后执行：
 
 ```bash
-python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage design --json
+code-flow spec gate --task-dir <需求目录> --stage design --json
 ```
 
 只有 Design Gate `decision=pass` 才能输出 Plan 下一步。缺 Matrix 行、artifact ref、验证方式、用户确认或发生 drift 时保留草稿并修复，不得推迟到 Coding/Done 才发现。
@@ -312,3 +312,14 @@ python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage des
   - 标注问题: 在文件中添加 #NOTES，然后 /cf-task:note <name>.design
   - 生成任务: /cf-task:plan <完整路径>
 ```
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
+code-flow spec gate --help
+```
+
+<!-- code-flow:runtime-commands end -->

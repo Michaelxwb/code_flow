@@ -2,24 +2,26 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit",
+        "matcher": "^apply_patch$",
         "hooks": [
           {
             "type": "command",
-            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_pre_tool_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
-            "timeout": 5
+            "command": "d=\"$PWD\"; while [ ! -f \"$d/.code-flow/scripts/cf_codex_hook.py\" ] && [ \"$d\" != / ]; do d=\"$(dirname \"$d\")\"; done; f=\"$d/.code-flow/scripts/cf_codex_hook.py\"; if [ -f \"$f\" ]; then python3 \"$f\"; fi",
+            "timeout": 5,
+            "commandWindows": "py -3 -c \"import pathlib,runpy,sys; roots=(pathlib.Path.cwd(), *pathlib.Path.cwd().parents); script=next((root/'.code-flow/scripts/cf_codex_hook.py' for root in roots if (root/'.code-flow/scripts/cf_codex_hook.py').is_file()), None); sys.path.insert(0,str(script.parent)) if script else None; runpy.run_path(str(script),run_name='__main__') if script else None\""
           }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit",
+        "matcher": "^apply_patch$",
         "hooks": [
           {
             "type": "command",
-            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_post_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
-            "timeout": 5
+            "command": "d=\"$PWD\"; while [ ! -f \"$d/.code-flow/scripts/cf_codex_hook.py\" ] && [ \"$d\" != / ]; do d=\"$(dirname \"$d\")\"; done; f=\"$d/.code-flow/scripts/cf_codex_hook.py\"; if [ -f \"$f\" ]; then python3 \"$f\"; fi",
+            "timeout": 5,
+            "commandWindows": "py -3 -c \"import pathlib,runpy,sys; roots=(pathlib.Path.cwd(), *pathlib.Path.cwd().parents); script=next((root/'.code-flow/scripts/cf_codex_hook.py' for root in roots if (root/'.code-flow/scripts/cf_codex_hook.py').is_file()), None); sys.path.insert(0,str(script.parent)) if script else None; runpy.run_path(str(script),run_name='__main__') if script else None\""
           }
         ]
       }
@@ -29,8 +31,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_user_prompt_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
-            "timeout": 5
+            "command": "d=\"$PWD\"; while [ ! -f \"$d/.code-flow/scripts/cf_codex_hook.py\" ] && [ \"$d\" != / ]; do d=\"$(dirname \"$d\")\"; done; f=\"$d/.code-flow/scripts/cf_codex_hook.py\"; if [ -f \"$f\" ]; then python3 \"$f\"; fi",
+            "timeout": 5,
+            "commandWindows": "py -3 -c \"import pathlib,runpy,sys; roots=(pathlib.Path.cwd(), *pathlib.Path.cwd().parents); script=next((root/'.code-flow/scripts/cf_codex_hook.py' for root in roots if (root/'.code-flow/scripts/cf_codex_hook.py').is_file()), None); sys.path.insert(0,str(script.parent)) if script else None; runpy.run_path(str(script),run_name='__main__') if script else None\""
           }
         ]
       }
@@ -40,8 +43,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_stop_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
-            "timeout": 35
+            "command": "d=\"$PWD\"; while [ ! -f \"$d/.code-flow/scripts/cf_codex_hook.py\" ] && [ \"$d\" != / ]; do d=\"$(dirname \"$d\")\"; done; f=\"$d/.code-flow/scripts/cf_codex_hook.py\"; if [ -f \"$f\" ]; then python3 \"$f\"; fi",
+            "timeout": 35,
+            "commandWindows": "py -3 -c \"import pathlib,runpy,sys; roots=(pathlib.Path.cwd(), *pathlib.Path.cwd().parents); script=next((root/'.code-flow/scripts/cf_codex_hook.py' for root in roots if (root/'.code-flow/scripts/cf_codex_hook.py').is_file()), None); sys.path.insert(0,str(script.parent)) if script else None; runpy.run_path(str(script),run_name='__main__') if script else None\""
           }
         ]
       }

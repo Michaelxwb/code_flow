@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from dataclasses import dataclass
 import json
 from pathlib import Path
@@ -92,7 +93,7 @@ def project_task_session(
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="cf_spec_session.py")
+    parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND", "cf_spec_session.py"))
     parser.add_argument("--task-dir", required=True)
     parser.add_argument("--task-file", required=True)
     parser.add_argument("--task", required=True)

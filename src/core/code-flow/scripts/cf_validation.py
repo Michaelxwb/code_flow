@@ -81,7 +81,7 @@ def validate_files(root: str, files: Sequence[str] = (), budget: Optional[float]
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND") or None)
     parser.add_argument("--root", default=os.getcwd())
     parser.add_argument("--files", nargs="*", default=[])
     parser.add_argument("--budget", type=float)

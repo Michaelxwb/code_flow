@@ -1,6 +1,6 @@
 {
   "name": "@michaelxwb/code-flow",
-  "version": "0.6.11",
+  "version": "0.7.0",
   "description": "Initialize and manage AI coding workflow specs (Claude Code / Codex / Costrict / OpenCode)",
   "license": "UNLICENSED",
   "bin": {
@@ -11,10 +11,12 @@
   },
   "files": [
     "src/cli.js",
+    "src/runtime.js",
     "src/migrate/**",
     "src/core/**",
     "src/adapters/**",
-    "docs/migrations/spec-workflow-0.6.0.md"
+    "docs/migrations/spec-workflow-0.6.0.md",
+    "docs/migrations/runtime-0.7.0.md"
   ],
   "dependencies": {
     "@ccusage/codex": "^18.0.10"

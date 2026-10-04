@@ -1680,7 +1680,7 @@ def _status_text(data: dict[str, object]) -> str:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="cf_spec_context.py")
+    parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND", "cf_spec_context.py"))
     commands = parser.add_subparsers(dest="command", required=True)
     catalog = commands.add_parser("catalog")
     catalog.add_argument("--root", required=True)

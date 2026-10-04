@@ -44,8 +44,8 @@ def test_codex_init_deploys_skills_and_upgrade_overwrites_tool_files(tmp_path: P
     assert {"PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop"} <= set(hooks)
     assert "SessionStart" not in hooks
     pre_tool = hooks["PreToolUse"][0]
-    assert pre_tool["matcher"] == "Edit|Write|MultiEdit"
-    assert "cf_pre_tool_hook.py" in pre_tool["hooks"][0]["command"]
+    assert pre_tool["matcher"] == "^apply_patch$"
+    assert "cf_codex_hook.py" in pre_tool["hooks"][0]["command"]
 
     cf_init_skill.write_text("SENTINEL\n", encoding="utf-8")
     version_file = tmp_path / ".code-flow" / ".version"
@@ -127,7 +127,7 @@ custom_feature = true
 
     hooks_text = hooks_path.read_text(encoding="utf-8")
     assert "echo user-custom" in hooks_text
-    assert "cf_user_prompt_hook.py" in hooks_text
+    assert "cf_codex_hook.py" in hooks_text
     assert "cf_session_hook.py" not in hooks_text
     assert '"userSetting": true' in hooks_text
 

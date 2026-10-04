@@ -35,11 +35,11 @@ description: Archive a completed task file after completeness, correctness, trac
 
 **Spec Context / 终验与 Gate（先于四维校验）**：
 
-- 需求目录必须存在 `spec-context.yml`；执行 `python3 .code-flow/scripts/cf_spec_context.py refresh --task-dir <需求目录> --root "$PWD" --json`
-- 执行 review 终验：`python3 .code-flow/scripts/cf_task_workflow.py verify-e2e --task-dir <需求目录> --root "$PWD" --json`（全量聚合需求目录全部 task context 的 required verifier——code 延后项 + `stage: review` 层——与 acceptance E2E，按 spec/rule 去重执行一次并写回证据）；`decision=pass` 才继续，失败保持阻断。返回 `manual_confirmation_required` 时，先按 verify-e2e 的「人工验收确认」流程取得用户确认并执行 `confirm-manual`，再重跑
-- 执行 `python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage code --json`；required Rule 的 stale/pending/conflict/unverified 任一存在即 FAIL。**必须在 verify-e2e 之后**：任务层延后（deferred_to_review）与 refresh 转 stale 的规则由终验全量补跑翻牌
-- 执行 `python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage review --json`；required Rule 存在 unverified review 证据即 FAIL（先完成 review 终验）
-- 若 `.code-flow/.active-task.json` 仍指向本需求，先执行 `python3 .code-flow/scripts/cf_task_workflow.py finish --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json`，通过后再 verify-e2e；不得自报 gate_passed 或通过归档绕过 active 状态
+- 需求目录必须存在 `spec-context.yml`；执行 `code-flow spec refresh --task-dir <需求目录> --root "$PWD" --json`
+- 执行 review 终验：`code-flow task verify-e2e --task-dir <需求目录> --root "$PWD" --json`（全量聚合需求目录全部 task context 的 required verifier——code 延后项 + `stage: review` 层——与 acceptance E2E，按 spec/rule 去重执行一次并写回证据）；`decision=pass` 才继续，失败保持阻断。返回 `manual_confirmation_required` 时，先按 verify-e2e 的「人工验收确认」流程取得用户确认并执行 `confirm-manual`，再重跑
+- 执行 `code-flow spec gate --task-dir <需求目录> --stage code --json`；required Rule 的 stale/pending/conflict/unverified 任一存在即 FAIL。**必须在 verify-e2e 之后**：任务层延后（deferred_to_review）与 refresh 转 stale 的规则由终验全量补跑翻牌
+- 执行 `code-flow spec gate --task-dir <需求目录> --stage review --json`；required Rule 存在 unverified review 证据即 FAIL（先完成 review 终验）
+- 若 `.code-flow/.active-task.json` 仍指向本需求，先执行 `code-flow task finish --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json`，通过后再 verify-e2e；不得自报 gate_passed 或通过归档绕过 active 状态
 - Context 与 Evidence 随需求目录一并归档，`_session` 仅是可重建投影，不是事实源
 
 所有子任务 verified 后，执行四维校验：
@@ -49,14 +49,14 @@ description: Archive a completed task file after completeness, correctness, trac
 - 全文无残留的 `#NOTES` 标记
 
 **正确性**：
-- 执行 `python3 .code-flow/scripts/cf_validation.py --root "$PWD" --json`；归档时任务已无 marker，须补充本需求基线至当前的变更路径作为 `--files` 参数，不能把工作区干净误认为本需求无需验证。验证结果按工作树内容指纹缓存：verify-e2e 已执行且内容未变时直接复用（不重复跑全量），只对变更内容增量重跑；只做快速自查时用 `--no-heavy`
+- 执行 `code-flow validate --root "$PWD" --json`；归档时任务已无 marker，须补充本需求基线至当前的变更路径作为 `--files` 参数，不能把工作区干净误认为本需求无需验证。验证结果按工作树内容指纹缓存：verify-e2e 已执行且内容未变时直接复用（不重复跑全量），只对变更内容增量重跑；只做快速自查时用 `--no-heavy`
 - 检查本次变更涉及的文件是否通过 lint/type check
 
 **验收追溯**：
 - 来源 design 含结构化 S-/E-/B- 场景时，逐项对照 `## Acceptance Coverage`，P0/P1 场景以及 RULE/高影响 RISK 映射场景必须全部存在且状态为 `verified`
 - 每个负责任务的 `Acceptance-Refs`、`Acceptance Contract`、`Acceptance Evidence` 必须闭合，不得残留 `planned` / `pending` / `TBD`
 - 测试层级不得低于 design；E2E 的真实边界和关键断言必须有文件/用例位置与 fixture/构造证据
-- 先用 `cf_acceptance_manifest.py --verify-plan --task-dir "<需求目录>" --task-file "<任务文件>"` 校验基线，再用 `cf_acceptance_runner.py --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --include-e2e --write-evidence` 统一复验。相同 argv/cwd/timeout 且工作树内容指纹未变的已通过场景跨运行复用（不重复执行 E2E）；内容变化、带依赖步骤或失败场景必须重跑，`--no-cache` 可强制全量。测试未收集、未执行或失败均为 FAIL
+- 先用 `code-flow acceptance manifest --verify-plan --task-dir "<需求目录>" --task-file "<任务文件>"` 校验基线，再用 `code-flow acceptance run --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --include-e2e --write-evidence` 统一复验。相同 argv/cwd/timeout 且工作树内容指纹未变的已通过场景跨运行复用（不重复执行 E2E）；内容变化、带依赖步骤或失败场景必须重跑，`--no-cache` 可强制全量。测试未收集、未执行或失败均为 FAIL
 - `manual` 场景必须有用户确认和可复核记录。旧 design 没有结构化场景时注明“不适用”，不得伪造覆盖
 
 **一致性**：
@@ -110,7 +110,7 @@ mv .code-flow/tasks/<日期>/<需求>/ .code-flow/tasks/archived/<日期>/<需�
 3. 复查归档目标存在、原任务/需求路径不存在；如果源日期目录仍存在但为空，视为归档未完成，立即删除后再继续。
 4. 源日期目录包含其他条目时不得删除，摘要明确写“保留（仍有 N 个条目）”。
 
-**临时约束清理（FEAT-08）**：执行 `python3 .code-flow/scripts/cf_task_workflow.py cleanup-session --task-dir <需求目录> --root "$PWD" --json`，逐个任务文件删除 `specs/_session/task-<任务文件stem>.md` 投影（finish 已清理的显示 absent）。该文件由 cf-task-start 生成，归档后不得残留。
+**临时约束清理（FEAT-08）**：执行 `code-flow task cleanup-session --task-dir <需求目录> --root "$PWD" --json`，逐个任务文件删除 `specs/_session/task-<任务文件stem>.md` 投影（finish 已清理的显示 absent）。该文件由 cf-task-start 生成，归档后不得残留。
 
 ### 4. Spec 更新提示
 
@@ -160,3 +160,20 @@ Spec 同步建议:
   - 校验: 4/4 PASS
   - 源日期目录: 已删除（为空）/ 已保留（仍有 N 个条目）
 ```
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
+code-flow task finish --task-dir "<需求目录>" --task TASK-001 --root "$PWD" --json
+code-flow task verify-e2e --task-dir "<需求目录>" --root "$PWD" --json
+code-flow task cleanup-session --help
+code-flow spec gate --help
+code-flow acceptance manifest --help
+code-flow acceptance run --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --write-evidence
+code-flow validate --root "$PWD" --json
+```
+
+<!-- code-flow:runtime-commands end -->

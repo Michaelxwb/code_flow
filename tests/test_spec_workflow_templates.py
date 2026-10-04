@@ -76,6 +76,7 @@ def test_project_specs_use_atomic_automated_required_rules() -> None:
         "RULE-cli-platform-parity-001",
         "RULE-cli-hook-guard-001",
         "RULE-cli-migration-transaction-001",
+        "RULE-cli-opencode-native-001",
     }
     assert script_rules == {
         "RULE-scripts-no-print-debug-001",

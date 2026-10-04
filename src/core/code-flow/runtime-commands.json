@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "commands": {
+    "spec catalog": {
+      "module": "cf_spec_context",
+      "prefix": [
+        "catalog"
+      ],
+      "example_args": "--help"
+    },
+    "spec decision": {
+      "module": "cf_spec_context",
+      "prefix": [
+        "decision"
+      ],
+      "example_args": "--help"
+    },
+    "spec bind": {
+      "module": "cf_spec_context",
+      "prefix": [
+        "bind"
+      ],
+      "example_args": "--help"
+    },
+    "spec validate": {
+      "module": "cf_spec_context",
+      "prefix": [
+        "validate"
+      ],
+      "example_args": "--task-dir \"<需求目录>\" --json"
+    },
+    "spec status": {
+      "module": "cf_spec_context",
+      "prefix": [
+        "status"
+      ],
+      "example_args": "--task-dir \"<需求目录>\" --root \"$PWD\" --json"
+    },
+    "spec refresh": {
+      "module": "cf_spec_context",
+      "prefix": [
+        "refresh"
+      ],
+      "example_args": "--task-dir \"<需求目录>\" --root \"$PWD\" --json"
+    },
+    "spec refresh-missing": {
+      "module": "cf_spec_context",
+      "prefix": [
+        "refresh-missing"
+      ],
+      "example_args": "--help"
+    },
+    "spec active": {
+      "module": "cf_spec_context",
+      "prefix": [
+        "active"
+      ],
+      "example_args": "--help"
+    },
+    "task start": {
+      "module": "cf_spec_context",
+      "prefix": [
+        "start"
+      ],
+      "example_args": "--task-dir \"<需求目录>\" --task-file \"<任务文件>\" --task TASK-001 --root \"$PWD\" --json"
+    },
+    "task finish": {
+      "module": "cf_task_workflow",
+      "prefix": [
+        "finish"
+      ],
+      "example_args": "--task-dir \"<需求目录>\" --task TASK-001 --root \"$PWD\" --json"
+    },
+    "task block": {
+      "module": "cf_task_workflow",
+      "prefix": [
+        "block"
+      ],
+      "example_args": "--help"
+    },
+    "task resume": {
+      "module": "cf_task_workflow",
+      "prefix": [
+        "resume"
+      ],
+      "example_args": "--help"
+    },
+    "task verify-e2e": {
+      "module": "cf_task_workflow",
+      "prefix": [
+        "verify-e2e"
+      ],
+      "example_args": "--task-dir \"<需求目录>\" --root \"$PWD\" --json"
+    },
+    "task confirm-manual": {
+      "module": "cf_task_workflow",
+      "prefix": [
+        "confirm-manual"
+      ],
+      "example_args": "--help"
+    },
+    "task cleanup-session": {
+      "module": "cf_task_workflow",
+      "prefix": [
+        "cleanup-session"
+      ],
+      "example_args": "--help"
+    },
+    "spec gate": {
+      "module": "cf_spec_gate",
+      "prefix": [],
+      "example_args": "--help"
+    },
+    "spec session": {
+      "module": "cf_spec_session",
+      "prefix": [],
+      "example_args": "--help"
+    },
+    "task index": {
+      "module": "cf_task_index",
+      "prefix": [],
+      "example_args": "--help"
+    },
+    "task parallel": {
+      "module": "cf_task_parallel",
+      "prefix": [],
+      "example_args": "--help"
+    },
+    "acceptance manifest": {
+      "module": "cf_acceptance_manifest",
+      "prefix": [],
+      "example_args": "--help"
+    },
+    "acceptance run": {
+      "module": "cf_acceptance_runner",
+      "prefix": [],
+      "example_args": "--manifest \"<需求目录>/.acceptance-manifest.json\" --root \"$PWD\" --write-evidence"
+    },
+    "validate": {
+      "module": "cf_validation",
+      "prefix": [],
+      "example_args": "--root \"$PWD\" --json"
+    },
+    "stats": {
+      "module": "cf_stats",
+      "prefix": [],
+      "example_args": "--help"
+    },
+    "feedback ignore": {
+      "module": "cf_feedback",
+      "prefix": [
+        "ignore"
+      ],
+      "example_args": "--help"
+    },
+    "sync check": {
+      "module": "cf_sync",
+      "prefix": [
+        "check"
+      ],
+      "example_args": "--help"
+    },
+    "sync apply": {
+      "module": "cf_sync",
+      "prefix": [
+        "sync"
+      ],
+      "example_args": "--help"
+    }
+  }
+}

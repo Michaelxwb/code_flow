@@ -29,11 +29,14 @@ verifiers:
       - tests/test_hook_command_robustness.py
       - tests/test_cf_user_prompt_hook.py
       - tests/test_cf_post_hook.py
+      - tests/test_codex_native_hook.py
+      - tests/test_opencode_native.py
+      - tests/test_runtime_contract.py
       - src/core/code-flow/scripts/*.py
       - .code-flow/scripts/*.py
       - src/adapters/*
     config:
-      argv: [python3, -m, pytest, -q, tests/test_hook_command_robustness.py, tests/test_cf_user_prompt_hook.py, tests/test_cf_post_hook.py]
+      argv: [python3, -m, pytest, -q, tests/test_hook_command_robustness.py, tests/test_cf_user_prompt_hook.py, tests/test_cf_post_hook.py, tests/test_codex_native_hook.py, tests/test_opencode_native.py, tests/test_runtime_contract.py]
       timeout: 60
   - rule: RULE-scripts-context-gate-001
     type: test
@@ -97,13 +100,14 @@ except:
 - [RULE-scripts-no-bare-except-001] Python modules must not use a bare except clause that silently erases failure context.
 - [RULE-scripts-hook-protocol-001] Installed hooks must keep guarded project resolution, valid JSON output, silent no-op behavior, and explicit stderr diagnostics.
 - [RULE-scripts-context-gate-001] Spec Context refresh, scope expansion, verifier Evidence, and required Stage Gates must remain deterministic and fail-closed.
+  编辑前发现新增路径引入未绑定 required Spec 时，Claude、Codex、OpenCode 均提示先 refresh Context / Plan，不单独拒绝编辑；损坏或漂移的 Context 和 required Stage Gates 继续阻断。
 - [RULE-scripts-canonical-parity-001] Canonical Python runtime, live deployment, templates, and platform adapters must remain synchronized without legacy runtime residue.
 
 ## Guidance
 - 双副本同步：`src/core/code-flow/scripts/` 与 `.code-flow/scripts/` 必须同步修改，只改一侧 = 测试通过但 live 行为不变
 - 所有函数必须有 type hints（参数和返回值）
 - Hook 脚本（stdin→stdout）必须捕获异常并输出到 stderr，禁止静默吞掉
-- Hook stdout 必须是合法 JSON，且包含 `hookSpecificOutput.additionalContext` 字段
+- Hook stdout 必须遵循对应事件的 JSON 协议；上下文使用 `hookSpecificOutput.additionalContext`，诊断使用 `systemMessage`，Stop 使用 decision/reason
 - Hook 在 no-op 场景（空输入、未命中、配置缺失）必须直接返回，不输出额外 stdout 噪音
 - 配置文件解析使用 mtime 缓存，避免重复 IO
 - 外部依赖仅限 pyyaml，其他功能用标准库实现
@@ -125,7 +129,7 @@ except:
 - 新增 Codex Hook → 在 hooks.json 模板中注册（3 层结构：event → [{hooks:[{type,command}]}]），脚本放在 scripts/ 目录
 - Codex prompt 路径提取同时支持裸路径、`@path`、反引号路径，并在注入前做去重与噪音过滤（需至少一个斜杠或有效代码扩展名）
 - 测试 → tests/ 目录，使用 pytest，覆盖 happy path / fail-closed / 空输入
-- PreToolUse Hook 仅 `Edit/Write/MultiEdit` 工具触发 Context/scope 检查，`Read/Bash` 等不触发（`cf_pre_tool_hook.py`）
+- Claude/Costrict 编辑入口接受原生 `Edit/Write/MultiEdit`；Codex 原生入口严格接受 `apply_patch` 与 `tool_input.command`，按补丁中的每个文件操作调用共享服务；工具协议不得互相伪装。
 - 路径提取正则 `_PATH_RE` 支持裸路径/`@path`/反引号路径，需至少一个斜杠或代码扩展名（`cf_user_prompt_hook.py`）
 - 测试 fixture 模式：`_make_project() + tempfile.TemporaryDirectory() + mock stdin/stdout`（tests/test_cf_*.py）
 - 测试取 fixture 数据按名称选择而非列表索引，结构扩展不连带断（test_hook_command_robustness::_command_for）
@@ -136,3 +140,8 @@ except:
 - 禁止在 extract_context_tags() 中使用 naive 字符串操作去复数（如直接去 's'）
 - 禁止在 Codex UserPromptSubmit Hook 中用 os.getpid() 作为 session_id
 - 禁止用 `dir/**/*.ext` 写 fnmatch 匹配模式——fnmatch 的 `**` 非递归语义，该写法要求至少一层子目录、静默漏掉直系文件；用 `dir/*.ext`（`*` 跨 `/`）。本陷阱在 config patterns 与 checks files 缺省值上各踩中一次
+
+- Agent 通过正式 `code-flow` 命令调用运行时；模块文件名只用于内部开发，禁止猜测入口、添加错误入口别名或静默接受未知参数。
+- Codex 入口验证 cwd/session_id 和安装完整性；PostToolUse 只有确认补丁成功才写 edit Evidence，删除和移动源路径必须参与任务范围校验。
+
+- OpenCode v2 原生入口接收 sessionID、input.path/patchText、completed/error；RPC 只返回业务 context/blocked/error，禁止构造 Claude 工具字段或解析 hookSpecificOutput。会话 API 的 location.directory 决定工作区。

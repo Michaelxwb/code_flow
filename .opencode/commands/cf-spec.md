@@ -35,14 +35,14 @@ description: 管理 Spec Context、漂移恢复与一次性迁移
 
 1. 读取并展示 `spec-context.yml` 的 bindings、Rule stage status、artifact refs、Evidence 与 drift。
 2. 执行：
-   `python3 .code-flow/scripts/cf_spec_context.py validate --task-dir <目录> --json`
+   `code-flow spec validate --task-dir <目录> --json`
 3. Context 缺失、schema/hash 无效时 fail-closed，不回退 Catalog。
 
 ## refresh
 
 执行：
 
-`python3 .code-flow/scripts/cf_spec_context.py refresh --task-dir <目录> --root "$PWD" --json`
+`code-flow spec refresh --task-dir <目录> --root "$PWD" --json`
 
 - changed required Rule 标为 stale，关联 stage Gate 必须阻断。
 - missing/conflict 不自动降级；回 Align 或 Plan 更新承接后再继续。
@@ -57,3 +57,14 @@ description: 管理 Spec Context、漂移恢复与一次性迁移
    - **marker 损坏或归属无法证明**：向用户说明影响，仅在用户明确确认放弃该 TASK 后执行 `active doctor --abandon`，随后重新规划该任务。
 3. `active doctor` 返回 `recovery_required`（退出码 3）是诊断结果而非崩溃：按第 2 步选择 refresh / `--resync` / `--abandon`，不要用 `--help` 探测或反复重试。
 4. 输出明确修复命令。不得删除损坏 marker、越过 required Gate 或静默切换到无任务模式。
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow spec validate --task-dir "<需求目录>" --json
+code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
+```
+
+<!-- code-flow:runtime-commands end -->

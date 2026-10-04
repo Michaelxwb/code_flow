@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import hashlib
 import json
 import shlex
@@ -328,7 +329,7 @@ def _sync_task_evidence(task_file: Path, scenario_id: str, confirmed_by: str, ev
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND") or None)
     parser.add_argument("--task-file", required=True)
     parser.add_argument("--output", default="")
     parser.add_argument("--verify-plan", action="store_true")

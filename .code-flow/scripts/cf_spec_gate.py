@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
@@ -246,7 +247,7 @@ def _merge_results(first: GateResult, second: GateResult) -> GateResult:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="cf_spec_gate.py")
+    parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND", "cf_spec_gate.py"))
     parser.add_argument("--task-dir", required=True)
     parser.add_argument("--stage", required=True)
     parser.add_argument("--task", default="")

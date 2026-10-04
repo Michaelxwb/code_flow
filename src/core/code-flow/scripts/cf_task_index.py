@@ -10,6 +10,7 @@ single-active constraint stays per worktree.
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import re
 import sys
@@ -122,7 +123,7 @@ def index_data(task_file: str) -> dict[str, object]:
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
-    parser = argparse.ArgumentParser(prog="cf_task_index.py")
+    parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND", "cf_task_index.py"))
     parser.add_argument("--task-file", required=True)
     parser.add_argument("--dag", action="store_true", help="输出拓扑批次与独立分组")
     parser.add_argument("--json", action="store_true")

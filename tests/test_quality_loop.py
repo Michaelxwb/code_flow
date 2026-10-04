@@ -146,8 +146,11 @@ def test_feedback_unknown_check_exit_2():
 
 
 def test_feedback_usage_exit_1():
-    assert cf_feedback.main([]) == 1
-    assert cf_feedback.main(["delete", "x"]) == 1
+    import pytest
+    for args in ([], ["delete", "x"]):
+        with pytest.raises(SystemExit) as exc:
+            cf_feedback.main(args)
+        assert exc.value.code == 2
 
 
 # --- hook 埋点 (TASK-003) ---

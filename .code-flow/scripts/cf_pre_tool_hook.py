@@ -1,106 +1,32 @@
 #!/usr/bin/env python3
-"""PreToolUse hook: advisory Context/scope guidance on Edit/Write/MultiEdit.
-
-Hot-path policy: never deny the tool; inject context or guidance instead.
-Hard enforcement lives at the checkpoints (start / done / stop), not here.
-"""
-
+"""Claude-style PreToolUse protocol entry; edit rules live in cf_edit_service."""
 import json
 import os
-from pathlib import Path
 import sys
 
-import cf_log
-from cf_core import (
-    _log,
-    effective_project_root,
-    ensure_utf8_io,
-    load_config,
-    normalize_path,
-    resolve_enforcement,
-    resolve_session_id,
-    timing_log,
-)
-from cf_session_state import load_session_state, save_session_state
-from cf_spec_context import injection_version, load_active_task, load_context
-from cf_spec_resolver import resolve_candidate_headers
-from cf_spec_router import RouterError, route_prompt
-
-_WARN_TEXT = "⚠ Spec Workflow 校验未通过（warn 模式）：{message} — 建议运行 cf-spec doctor 检查。"
-
-
-def _active_expansion(root: str, relative: str) -> tuple[str, ...]:
-    marker = Path(root) / ".code-flow/.active-task.json"
-    if not marker.exists():
-        return ()
-    active = load_active_task(root)
-    context = load_context(str(Path(root) / active.task_dir / "spec-context.yml"))
-    bound = {item.spec_id for item in context.bindings}
-    return tuple(
-        item.spec_id for item in resolve_candidate_headers(root, "code", (relative,))
-        if item.spec_id not in bound and item.enforcement == "required"
-        and getattr(item, "scope", "path") != "unmatched"
-    )
-
-
-def _inject(text: str) -> dict[str, object]:
-    return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": text}}
+from cf_core import _log, ensure_utf8_io, resolve_session_id, timing_log
+from cf_edit_service import before_edit
 
 
 def main() -> None:
     try:
         ensure_utf8_io()
         if sys.stdin.isatty():
-            # 手动运行且未用管道喂事件：hook 协议要求 stdin JSON，直接退出避免永久阻塞
-            print("cf_pre_tool_hook: 缺少 stdin 事件（手动运行？），跳过。", file=sys.stderr)
+            _log("cf_pre_tool_hook.py: missing stdin event")
             return
         raw = sys.stdin.read()
         if not raw.strip():
             return
         data = json.loads(raw)
-        tool_name = data.get("tool_name", "")
-        file_path = (data.get("tool_input") or {}).get("file_path", "")
-        if tool_name not in {"Edit", "Write", "MultiEdit"} or not isinstance(file_path, str) or not file_path:
+        tool = data.get("tool_name", "")
+        path = (data.get("tool_input") or {}).get("file_path", "")
+        if tool not in {"Edit", "Write", "MultiEdit"} or not isinstance(path, str) or not path:
             return
-        session_root = os.getcwd()
-        absolute = file_path if os.path.isabs(file_path) else os.path.join(session_root, file_path)
-        # 并行子 agent 在 .code-flow/worktrees/... 内编辑时路由到该 worktree 的上下文
-        root = effective_project_root(session_root, absolute)
-        sid = resolve_session_id(data)
-        config = load_config(root)
-        enforcement = resolve_enforcement(config) if config else "required"
-        relative = normalize_path(os.path.relpath(absolute, root))
-        try:
-            expanded = _active_expansion(root, relative)
-            result = route_prompt(root, (relative,), sid)
-        except RouterError as exc:
-            if enforcement == "required":
-                sys.stdout.write(json.dumps(_inject(f"SPEC_WORKFLOW_BLOCKED [{exc.code}]: {exc}. Run cf-spec doctor before continuing."), ensure_ascii=False))
-            elif enforcement == "warn":
-                sys.stdout.write(json.dumps(_inject(_WARN_TEXT.format(message=str(exc))), ensure_ascii=False))
-            return
-        if expanded:
-            message = f"⚠ 该路径引入未绑定 required Spec：{', '.join(expanded)} — 建议先 refresh Context / Plan 再继续编辑。"
-            sys.stdout.write(json.dumps(_inject(message), ensure_ascii=False))
-            return
-        text = result.text
-        if result.mode == "task" and result.context_sha256:
-            # The projection is already in context from the prompt route unless
-            # the session/task/contract version changed; skip per-edit
-            # re-injection. Same version key as the prompt hook so a TASK
-            # switch re-injects here too.
-            state = load_session_state(root)
-            version = injection_version(root, sid, result.context_sha256)
-            if state.get("injected_version") == version:
-                text = ""
-            else:
-                state["injected_version"] = version
-                save_session_state(root, state)
+        text = before_edit(os.getcwd(), path, resolve_session_id(data), tool)
         if text:
-            sys.stdout.write(json.dumps(_inject(text), ensure_ascii=False))
-        cf_log.append_event(root, "edit_intent", {"file": relative, "tool": tool_name, "specs": list(result.specs)}, sid)
-    except (json.JSONDecodeError, OSError, ValueError) as exc:
-        _log(f"cf_pre_tool_hook error: {exc}")
+            sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": text}}, ensure_ascii=False))
+    except Exception as exc:
+        _log(f"cf_pre_tool_hook.py error: {exc}")
 
 
 if __name__ == "__main__":

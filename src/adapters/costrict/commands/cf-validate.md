@@ -15,7 +15,7 @@
 用 Bash 执行：
 
 ```bash
-python3 .code-flow/scripts/cf_validation.py --root "$PWD" --scope-only --json
+code-flow validate --root "$PWD" --scope-only --json
 ```
 
 有 active TASK 时使用冻结基线以来的全部任务变更（含已提交文件）；无 active TASK 时包含暂存、未暂存和未跟踪文件。用户指定路径时用 `--files "src/a.py" "src/b.py"` 原样传递；若结果确实为空才输出“无变更需要验证”。
@@ -43,7 +43,7 @@ validators:
 执行统一验证入口：
 
 ```bash
-python3 .code-flow/scripts/cf_validation.py --root "$PWD" --json
+code-flow validate --root "$PWD" --json
 ```
 
 显式范围追加 `--files "src/a.py" "src/b.py"`。程序匹配 trigger、解析 argv 并展开 `{files}`，不拼接 shell 命令；通过结果按工作树内容指纹跨运行复用（失败永不缓存，`--no-cache` 强制重跑），同一运行内相同 argv/cwd/timeout 去重。删除文件仍触发全局测试，但不传给文件级编译器。每条 timeout 仍按配置的毫秒值生效，总预算耗尽返回 incomplete/block。
@@ -73,3 +73,13 @@ python3 .code-flow/scripts/cf_validation.py --root "$PWD" --json
 - 命令执行超时 → 输出超时提示，建议增大 timeout 或缩小验证范围
 - 命令不存在或配置无效 → 返回 block 并提示所缺依赖，不当作验证通过
 - 无变更文件 → 输出"无变更需要验证"
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow validate --root "$PWD" --json
+```
+
+<!-- code-flow:runtime-commands end -->

@@ -82,7 +82,7 @@ def test_platform_specific_cf_init_sections_match_adapter_contracts() -> None:
     assert ".codex/hooks.json" in codex
     assert ".codex/config.toml" in codex
     assert "hooks = true" in codex
-    assert "codex_hooks = true" in codex
+    assert "codex_hooks = true" not in codex
     assert "/hooks" in codex
     assert "PreToolUse" in codex
     assert "PostToolUse" in codex
@@ -95,6 +95,8 @@ def test_platform_specific_cf_init_sections_match_adapter_contracts() -> None:
     assert ".opencode/plugins/code-flow/" in opencode
     assert "自动加载 `.opencode/plugins/`" in opencode
     assert "session.prompt" in opencode
+    for native_entry in ("tool.execute.before", "tool.execute.after", "session.context", "cf_opencode_event.py"):
+        assert native_entry in opencode
     assert "默认导出" in opencode
     assert ".claude/settings.local.json" not in opencode
     assert "CLAUDE.md" not in opencode
@@ -106,6 +108,17 @@ def test_installed_cf_init_docs_match_adapter_templates() -> None:
         template = template_path.read_text(encoding="utf-8")
         installed = installed_path.read_text(encoding="utf-8")
         assert installed == template, platform
+
+
+def test_sync_docs_describe_actual_pairs_and_merge_managed_hooks() -> None:
+    for platform, init_path in CF_INIT_DOCS.items():
+        sync_path = (init_path.parent / "cf-sync.md" if platform != "codex"
+                     else init_path.parent.parent / "cf-sync" / "SKILL.md")
+        content = sync_path.read_text(encoding="utf-8")
+        assert "`runtime-commands.json`" in content, platform
+        assert "| `src/adapters/codex` | `.codex` |" not in content, platform
+        assert "`.codex/hooks.json` 由 init" in content, platform
+        assert "`cf-sync sync`" not in content, platform
 
 
 def test_cf_init_docs_do_not_embed_full_l0_template() -> None:

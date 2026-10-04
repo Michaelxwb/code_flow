@@ -36,7 +36,7 @@ BINDINGS = {
     "block": (PLATFORMS, "active block"),
     "verify-e2e": (PLATFORMS, "--only-e2e"),
     "archive": (PLATFORMS, "verified"),
-    "graph": (PLATFORMS, "cf_task_index"),
+    "graph": (PLATFORMS, "code-flow task index"),
 }
 
 
@@ -60,9 +60,9 @@ def test_verify_e2e_present_on_all_platforms() -> None:
 def test_parallel_batch_protocol_present_on_all_platforms() -> None:
     """start 的并行批次协议（worktree 编排 + 自动回并 + 串行回退）必须四平台源/部署一致存在。"""
     phrases = (
-        "cf_task_parallel.py prepare",
-        "cf_task_parallel.py collect",
-        "cf_task_parallel.py merge",
+        "code-flow task parallel prepare",
+        "code-flow task parallel collect",
+        "code-flow task parallel merge",
         "code_conflict",
         "--serial",
     )

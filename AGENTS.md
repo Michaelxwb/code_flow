@@ -33,3 +33,12 @@ Do NOT ask the user which Specs to load—the Context-first router is authoritat
 - 一个需求的 prd / design / tasks 同放需求目录 `.code-flow/tasks/<日期>/<需求>/`；全栈需求可有 `<需求>.frontend.design.md` + `<需求>.backend.design.md`，`/cf-task:plan <需求目录>` 合并拆解，`/cf-task:archive` 按整个需求目录归档（旧扁平布局仍兼容）
 - Workflow: `/cf-task:prd` → `.prd.md` → `/cf-task:align <.prd.md>` → `.design.md`(s) → `/cf-task:plan <需求目录>` → tasks
 - Templates are read by the commands themselves; you do not need to pre-load them
+
+## 合规反馈协议（quality_loop）
+
+1. 编辑代码后收到 **Spec 合规反馈 (auto-check)** 时，先按提示修正违规，再继续当前任务
+2. 用户表示某条反馈是误报（"这是误报"/"忽略这个检查"）时，代为执行：
+   `code-flow feedback ignore <check-id>`
+   （check-id 见反馈中的 `规则: <spec>#<check-id>`；同一规则误报达阈值会自动停用）
+3. 会话收尾被校验拦回（cf-stop 反馈未过项）时，修复后再结束；不要绕过
+4. 新增/修改规范时优先用 ✅/❌ 代码对照示例表达（见 spec 模板 Examples 段）

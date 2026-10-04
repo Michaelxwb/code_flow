@@ -158,11 +158,9 @@ AGENTS.md 的完整内容由适配器模板统一定义，`code-flow init` 已�
 
 ### 6. 生成 .codex/hooks.json 和 .codex/config.toml
 
-检查 `.codex/hooks.json` 是否存在。如果不存在，用 apply_patch 创建，结构必须是三层：event → [{ hooks: [{ type, command }] }]，并包含 `PreToolUse`、`PostToolUse`、`UserPromptSubmit`、`Stop`。`PreToolUse` 必须沿用适配器 `hooks.json` 中的写文件 matcher，并调用 `cf_pre_tool_hook.py`；不要在技能正文重复其他平台的工具名。
+安装 Hook 和配置必须执行 `code-flow init --platform=codex`，由适配器模板统一生成/合并，保留用户配置。`PreToolUse`、`PostToolUse`、`UserPromptSubmit`、`Stop` 四个事件调用 `cf_codex_hook.py`，配置启用 `[features] hooks = true`，保留用户模型、sandbox、approval 设置，不得整文件覆盖；写文件 matcher 为 `^apply_patch$`，输入来自 `tool_input.command`、`cwd`、`session_id`。不得手工拼装或修改受管理 Hook。
 
-如果 `.codex/hooks.json` 已存在，只合并缺失事件或 command，保留用户自定义 hooks，不得整文件覆盖。
-
-检查 `.codex/config.toml`。如果缺少 `[features] hooks = true`，只补这一项；若存在旧版 `codex_hooks = true`，迁移为 `hooks = true`；保留用户已有模型、sandbox、approval 等配置。
+旧安装或清单校验失败时执行 `code-flow migrate --runtime --dry-run` 查看范围，再执行 `code-flow migrate --runtime --apply` 更新全部已安装平台。
 
 Codex 会要求 review/trust 非 managed command hooks。生成或更新 hook 后，提醒用户在 Codex CLI 中运行 `/hooks` 并信任 code-flow hooks。
 
@@ -271,3 +269,5 @@ Token 估算: ...
 ## v0.5 质量闭环部署说明
 
 init/upgrade 后新增：PostToolUse / Stop hook 注册（合规反馈与收尾守门）、`.code-flow/.gitignore`（运行时数据不入库）。运行时数据 `.session-log.jsonl` / `.check-state.json` 首次使用自动创建，仅存本地。规范写作建议：frontmatter 加 `description`（Spec Catalog 行）与 `checks`（机检标注），规则优先用 ✅/❌ Examples 段表达（cf-learn 候选自动生成草稿）。
+
+安装产物由 `code-flow init --platform=codex` 统一部署。脚本、Skill、Hook 的完整性由安装清单校验；损坏时执行 `code-flow migrate --runtime --dry-run` 查看修复范围，再执行 `code-flow migrate --runtime --apply`。不得凭技能名猜 Python 脚本入口。

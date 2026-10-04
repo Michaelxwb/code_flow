@@ -62,7 +62,7 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 
 在改状态或生产代码前，顺序固定且不得跳步：
 
-1. 调用 `cf_spec_context.py start --task-dir ... --root ... --task ... --task-file ... --json`，由单个进程按 refresh → active start → session 顺序执行 Start Gate；stdin JSON 的 `owned_paths` 只填启动前已存在的未提交改动（逐路径确认归属），不是计划要改的文件；干净工作区传空数组（提交后的改动由基线并集自动纳入）。stale/conflict、依赖未闭合、已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。前置硬门禁（blocked / #NOTES / 依赖）由 workflow service 在改状态前强制执行。用户已确认内容时，Design/Plan 的 pending 不单独阻止激活；不新增阶段状态门禁。
+1. 调用 `code-flow task start --task-dir ... --root ... --task ... --task-file ... --json`，由单个进程按 refresh → active start → session 顺序执行 Start Gate；stdin JSON 的 `owned_paths` 只填启动前已存在的未提交改动（逐路径确认归属），不是计划要改的文件；干净工作区传空数组（提交后的改动由基线并集自动纳入）。stale/conflict、依赖未闭合、已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。前置硬门禁（blocked / #NOTES / 依赖）由 workflow service 在改状态前强制执行。用户已确认内容时，Design/Plan 的 pending 不单独阻止激活；不新增阶段状态门禁。
 2. 从命令返回值读取 refresh 后的 Context hash、active 状态和 session 输出路径；该命令只根据当前 TASK 的 `Spec-Refs`、Source 与 Acceptance Contract 覆盖写入 `.code-flow/specs/_session/task-<name>.md`，禁止重新 catalog 或猜测规则。
 3. Start 返回成功时，workflow service 已通过可恢复事务同步 Status、started log 和 active marker；不要再手动改状态。失败保留原状态，按返回原因恢复。
 4. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令（E2E 只登记，不在本阶段执行）
@@ -114,7 +114,7 @@ RED 证据写入 `Acceptance Evidence`：
 满足后，执行唯一收尾入口：
 
 ```bash
-python3 .code-flow/scripts/cf_task_workflow.py finish --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json
+code-flow task finish --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json
 ```
 
 该命令先校验完整任务身份与锁定 manifest，再执行 Done Gate：本任务范围（`Spec-Refs` ∪ 改动路径命中）的 code verifier + 本任务 acceptance 场景 + 轻量 validation.yml（不含 heavy）；范围外/超预算的 verifier 标记 `deferred_to_review`、`heavy: true` validator 标记 `deferred_heavy`，都不阻塞本任务，统一在需求级 verify-e2e / 归档全量补跑；通过后以可恢复事务更新 done、Log、Updated 并清理 marker。只有 `decision=pass` 才输出完成并启动下一 TASK。禁止手动设置 done 或传入自报的 gate_passed 绕过验证。
@@ -195,7 +195,7 @@ Spec 同步提示:
 #### 4.1 并行预检与 worktree 准备
 
 ```bash
-python3 .code-flow/scripts/cf_task_parallel.py prepare --root "$PWD" \
+code-flow task parallel prepare --root "$PWD" \
   --task-file "<任务文件相对路径>" --tasks TASK-001,TASK-003 --json
 ```
 
@@ -207,10 +207,10 @@ python3 .code-flow/scripts/cf_task_parallel.py prepare --root "$PWD" \
 若当前平台提供子 agent/Task 派发能力，为本批次每个 TASK 各派发一个子 agent（同一批并发不超过 3，超出时按 TASK 顺序拆成多轮）。子 agent prompt 必须包含 worktree 绝对路径、TASK-ID、任务文件相对路径，并声明以下硬性要求：
 
 1. 进入 worktree：所有命令 `cd <worktree>` 执行，文件读写使用该 worktree 内路径。
-2. 按上文"单任务模式"步骤 1-4 完成该 TASK：`cf_spec_context.py start` → functional RED → 实现 → functional GREEN（E2E 只登记）→ `cf_task_workflow.py finish --root "<worktree>"`。
+2. 按上文"单任务模式"步骤 1-4 完成该 TASK：`code-flow task start` → functional RED → 实现 → functional GREEN（E2E 只登记）→ `code-flow task finish --root "<worktree>"`。
 3. 平台 hook 注入绑定主工作区；子 agent 必须显式读取 Spec Session（路径取 start 返回的 `session_output`，默认 `.code-flow/specs/_session/task-<任务文件stem>.md`）与详设章节，不得依赖自动注入。
 4. 完成时在 worktree 内提交全部改动（含任务文件 Checklist/Evidence/Status 更新），提交信息 `cf-task(<TASK-ID>): <标题>`。
-5. `finish` 返回 `decision: block` 时不得提交：保留现场，原样回报阻断原因（如 scope expansion 新增 required Spec、验收失败）与 `cf_spec_context.py status --json` 输出，由主 agent 决定局部 Plan/Align、修复后重派或接管；不得自行 resume 绕过门禁。
+5. `finish` 返回 `decision: block` 时不得提交：保留现场，原样回报阻断原因（如 scope expansion 新增 required Spec、验收失败）与 `code-flow spec status --json` 输出，由主 agent 决定局部 Plan/Align、修复后重派或接管；不得自行 resume 绕过门禁。
 6. 返回摘要：TASK-ID、Status、验收命令及结果、提交 SHA、遗留问题。
 
 标准 worker prompt 模板（替换占位符后派发）：
@@ -218,8 +218,8 @@ python3 .code-flow/scripts/cf_task_parallel.py prepare --root "$PWD" \
 ```
 你在隔离 worktree 中执行 <TASK-ID>：<worktree 绝对路径>。
 1) cd 到 worktree；先读 Spec Session（start 返回的 session_output，默认 .code-flow/specs/_session/task-<任务文件stem>.md）、任务文件的当前 TASK 段落与 design 来源章节；
-2) cf_spec_context.py start → 写验收测试记录 RED → 实现 → GREEN；
-3) 运行 cf_task_workflow.py finish --root "$PWD" --task <TASK-ID> --json；decision=pass 后【再】提交全部改动（含 finish 回写的 Evidence/状态）：git add -A && git commit -m "cf-task(<TASK-ID>): <标题>"；
+2) code-flow task start → 写验收测试记录 RED → 实现 → GREEN；
+3) 运行 code-flow task finish --root "$PWD" --task <TASK-ID> --json；decision=pass 后【再】提交全部改动（含 finish 回写的 Evidence/状态）：git add -A && git commit -m "cf-task(<TASK-ID>): <标题>"；
 4) 返回摘要：TASK-ID、Status、验收命令与结果、commit SHA、遗留问题。
 ```
 
@@ -235,7 +235,7 @@ python3 .code-flow/scripts/cf_task_parallel.py prepare --root "$PWD" \
 #### 4.3 收集与校验
 
 ```bash
-python3 .code-flow/scripts/cf_task_parallel.py collect --root "$PWD" --run-id <run_id> --json
+code-flow task parallel collect --root "$PWD" --run-id <run_id> --json
 ```
 
 - 每个任务必须 `ok: true`（改动已提交、Status 为 done/verified、marker 已清理、有提交）。
@@ -244,10 +244,10 @@ python3 .code-flow/scripts/cf_task_parallel.py collect --root "$PWD" --run-id <r
 
 #### 4.4 回并主分支
 
-按 TASK-ID 先后顺序回并。统一入口自动完成：worktree 内 rebase → 状态文件冲突按确定性并集规则解决 → 主工作区 `--no-ff` 合并 → `cf_spec_context.py refresh` 收敛 hash：
+按 TASK-ID 先后顺序回并。统一入口自动完成：worktree 内 rebase → 状态文件冲突按确定性并集规则解决 → 主工作区 `--no-ff` 合并 → `code-flow spec refresh` 收敛 hash：
 
 ```bash
-python3 .code-flow/scripts/cf_task_parallel.py merge --root "$PWD" --run-id <run_id> --json
+code-flow task parallel merge --root "$PWD" --run-id <run_id> --json
 ```
 
 - 返回 `ok: true` 才继续；`already_merged` 表示该任务已并入（幂等，可重跑）；任一任务失败即停止，修复后重跑 merge 续跑。
@@ -261,7 +261,7 @@ python3 .code-flow/scripts/cf_task_parallel.py merge --root "$PWD" --run-id <run
 #### 4.5 清理
 
 ```bash
-python3 .code-flow/scripts/cf_task_parallel.py cleanup --root "$PWD" --run-id <run_id> --json
+code-flow task parallel cleanup --root "$PWD" --run-id <run_id> --json
 ```
 
 清理 worktree；已合入的分支自动删除，未合入的保留供排查。worktree 存在未提交改动时 cleanup 会拒绝，先人工确认再决定处理方式。全部批次完成后进入步骤 5。
@@ -295,3 +295,17 @@ Spec 同步提示:
 ```
 
 3. 若需求目录已无 `draft` / `in-progress` / `blocked` 子任务，提示：运行 `cf-task-verify-e2e <需求目录>` 执行延迟的 E2E 终验。
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow spec status --task-dir "<需求目录>" --root "$PWD" --json
+code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
+code-flow task start --task-dir "<需求目录>" --task-file "<任务文件>" --task TASK-001 --root "$PWD" --json
+code-flow task finish --task-dir "<需求目录>" --task TASK-001 --root "$PWD" --json
+code-flow task parallel --help
+```
+
+<!-- code-flow:runtime-commands end -->

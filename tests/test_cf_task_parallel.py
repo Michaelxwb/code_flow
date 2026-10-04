@@ -127,6 +127,27 @@ def test_prepare_creates_worktrees_and_main_stays_clean(tmp_path: Path) -> None:
     assert len(meta["worktrees"]) == 2
 
 
+def test_invalid_worktree_runtime_removes_created_worktree_and_branch(tmp_path: Path) -> None:
+    import hashlib
+    root = _repo(tmp_path)
+    owned = root / ".code-flow/runtime-commands.json"
+    owned.write_text("committed runtime")
+    (root / ".code-flow/.version").write_text("0.7.0")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "runtime")
+    owned.write_text("locally changed runtime")
+    manifest = {"schema_version": 1, "version": "0.7.0", "files": {
+        ".code-flow/runtime-commands.json": hashlib.sha256(owned.read_bytes()).hexdigest()}}
+    (root / ".code-flow/.runtime-install.json").write_text(json.dumps(manifest))
+    from cf_task_parallel import _create_worktrees
+    with pytest.raises(ParallelError) as error:
+        _create_worktrees(root, TASK_FILE, ["TASK-001"], "invalid-runtime")
+    assert error.value.code == "worktree_runtime_invalid"
+    assert len(_git(root, "worktree", "list", "--porcelain").split("worktree ")) == 2
+    assert not (root / ".code-flow/worktrees/invalid-runtime/TASK-001").exists()
+    assert "invalid-runtime" not in _git(root, "branch", "--list")
+
+
 def test_prepare_auto_commits_task_artifacts_only(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     task_path = root / TASK_FILE

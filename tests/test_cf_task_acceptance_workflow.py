@@ -57,7 +57,7 @@ def test_start_requires_test_first_and_verified_evidence() -> None:
             "### 3.2 GREEN 与验收证据",
             "Acceptance Evidence",
             "不能标记为 `done`",
-            "cf_task_workflow.py finish",
+            "code-flow task finish",
             "e2e_deferred",
             "禁止手动设置 done",
         ):
@@ -70,7 +70,7 @@ def test_archive_blocks_traceability_gaps_and_cleans_empty_date_dir() -> None:
         for phrase in (
             "执行四维校验",
             "**验收追溯**",
-            "cf_acceptance_runner.py",
+            "code-flow acceptance run",
             "--include-e2e --write-evidence",
             "--verify-plan",
             "归档后统一收尾（布局 A/B 都必须执行）",

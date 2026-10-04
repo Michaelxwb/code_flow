@@ -14,5 +14,7 @@ specs/_session/
 worktrees/
 .validation-cache.json
 .artifact-hash-cache.json
+.runtime-install.json
+.runtime-migration.lock/
 .verifier-cache.json
 # <<< code-flow:runtime schema=1

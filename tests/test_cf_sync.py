@@ -12,6 +12,25 @@ sys.path.insert(0, str(SCRIPTS))
 from cf_sync import _included, main
 
 
+def test_sync_renders_plugin_version_and_preserves_merge_managed_hooks(tmp_path: Path) -> None:
+    import json
+    (tmp_path / "package.json").write_text('{"version":"0.7.0"}')
+    source = tmp_path / "src/adapters/opencode/plugins/code-flow/package.json"
+    source.parent.mkdir(parents=True)
+    source.write_text('{"name":"code-flow-opencode","type":"module"}')
+    hooks = tmp_path / ".codex/hooks.json"
+    hooks.parent.mkdir()
+    hooks.write_text('{"hooks":{},"user":"keep"}')
+    canonical = tmp_path / "src/adapters/codex/hooks.json"
+    canonical.parent.mkdir(parents=True)
+    canonical.write_text('{"hooks":{}}')
+    main(["sync", "--root", str(tmp_path)], stdout=io.StringIO())
+    deployed = tmp_path / ".opencode/plugins/code-flow/package.json"
+    assert json.loads(deployed.read_text())["version"] == "0.7.0"
+    assert json.loads(hooks.read_text())["user"] == "keep"
+    assert main(["check", "--root", str(tmp_path)], stdout=io.StringIO()) == 0
+
+
 def _repo(tmp_path: Path) -> Path:
     core = tmp_path / "src/core/code-flow"
     (core / "scripts").mkdir(parents=True)
