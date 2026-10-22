@@ -148,6 +148,13 @@
       "prefix": [],
       "example_args": "--manifest \"<需求目录>/.acceptance-manifest.json\" --root \"$PWD\" --write-evidence"
     },
+    "evidence import": {
+      "module": "cf_evidence_import",
+      "prefix": [
+        "import"
+      ],
+      "example_args": "--format junit --file \"<report.xml>\" --commit \"$(git rev-parse HEAD)\" --run-url \"<ci-run-url>\" --json"
+    },
     "validate": {
       "module": "cf_validation",
       "prefix": [],

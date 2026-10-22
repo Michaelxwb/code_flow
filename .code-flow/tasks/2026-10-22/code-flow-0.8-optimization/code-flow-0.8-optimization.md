@@ -30,7 +30,7 @@
 | S-07 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实批次 worktree + shared env | TASK-011 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"] |
 | S-08 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 plan 模板 + 任务文件 | TASK-012 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"] |
 | S-09 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 design + manifest + evidence | TASK-015 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"] |
-| S-10 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 JUnit/Playwright 报告 | TASK-016 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"] |
+| S-10 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 JUnit/Playwright 报告 | TASK-016 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"] |
 | S-11 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实四平台安装产物 | TASK-017 | planned | ["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"] |
 | E-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 preflight + 服务探测 | TASK-008 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "env_blocked"] |
 | E-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + manifest | TASK-010 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "check_conflict"] |
@@ -45,6 +45,7 @@
 > 本表覆盖 design §2.5 全部 S/E/B 场景；每个场景唯一 owner。执行命令为计划命令，TASK-001 先建立对应测试文件。
 
 ---
+
 
 ## TASK-001: 基线 fixture 与性能指标
 
@@ -775,7 +776,7 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ## TASK-016: CI 证据导入（JUnit / Playwright）
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-005,TASK-008
 - **Source**: code-flow-0.8-optimization.design.md#3.4 接口设计, code-flow-0.8-optimization.design.md#3.3.2 Evidence sidecar
@@ -790,25 +791,33 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ### Checklist
 
-- [ ] 实现 evidence import --format junit|playwright。
-- [ ] 校验 commit、exit_code、input_hash、source=ci。
-- [ ] 失败用例正确映射 failed。
-- [ ] 导入证据可用于 archive。
-- [ ] [S-10][integration] 编写/更新验收测试（真实边界：真实 JUnit/Playwright 报告）；断言：证据映射到 check/scenario；commit/exit_code/source 校验
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 实现 evidence import --format junit|playwright。
+- [x] 校验 commit、exit_code、input_hash、source=ci。
+- [x] 失败用例正确映射 failed。
+- [x] 导入证据可用于 archive。
+- [x] [S-10][integration] 编写/更新验收测试（真实边界：真实 JUnit/Playwright 报告）；断言：证据映射到 check/scenario；commit/exit_code/source 校验
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-10 | integration | 真实 JUnit/Playwright 报告 | 证据映射到 check/scenario；commit/exit_code/source 校验 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"] | planned |
+| S-10 | integration | 真实 JUnit/Playwright 报告 | 证据映射到 check/scenario；commit/exit_code/source 校验 | `test_s10_ci_import_junit_maps_checks_and_feeds_verify`、`test_s10_ci_import_playwright_failures_and_commit_mismatch`、`test_s10_ci_import_rejects_missing_provenance_and_unmapped_cases` | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-10 | `python3 -m pytest -q tests/test_cf_evidence_store.py -k ci_import` → **4 failed**：`cf_evidence_import.py` 不存在、`evidence import` 未注册、unmapped 用例未被拒绝 | 同命令 → **4 passed**；相关回归 `tests/test_cf_evidence_store.py tests/test_cf_acceptance_runner.py` → **30 passed** | `test_s10_ci_import_junit_maps_checks_and_feeds_verify`、`test_s10_ci_import_playwright_failures_and_commit_mismatch`、`test_s10_ci_import_rejects_missing_provenance_and_unmapped_cases`、`test_ci_import_runtime_command_registry_entry` | 真实临时 git 仓库 + 真实 JUnit XML / Playwright JSON 报告 + 真实 `cf_acceptance_runner` 复用；central sidecar 记录 `source=ci`、`commit`、`run_url`、`input_hash`、`exit_code` | verified |
+- S-10: verified — automated command passed; run_id=e833572ad8d948308a1b7a52b0dca31f (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] implemented `evidence import` (JUnit/Playwright), CI provenance validation and central-store consumption
+- [2026-10-22] TASK-016 GREEN：4 passed；相关回归 30 passed。
+- [2026-10-22] started
+- [2026-10-22] completed (done)
 
 ---
 
