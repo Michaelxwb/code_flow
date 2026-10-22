@@ -57,11 +57,41 @@ def validate_scenarios(value: object) -> list[dict[str, object]]:
     return value
 
 
+def validate_checks(value: object) -> list[dict[str, object]]:
+    """Validate the manifest v3 checks array (execution identity)."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise ValueError("invalid manifest checks: expected list")
+    seen: set[str] = set()
+    for item in value:
+        if not isinstance(item, dict):
+            raise ValueError("invalid check: expected object")
+        check_id = item.get("id")
+        if not isinstance(check_id, str) or not check_id.strip():
+            raise ValueError("check id missing")
+        if check_id in seen:
+            raise ValueError(f"duplicate check id: {check_id}")
+        seen.add(check_id)
+        command = item.get("command")
+        if not isinstance(command, list) or not command or not all(isinstance(x, str) for x in command):
+            raise ValueError(f"invalid check {check_id}:command")
+        cwd = item.get("cwd", ".")
+        if not isinstance(cwd, str):
+            raise ValueError(f"invalid check {check_id}:cwd")
+        timeout = item.get("timeout", 60)
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError(f"invalid check {check_id}:timeout")
+    return value
+
+
 def load_manifest(path: Path) -> dict[str, object]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError("invalid acceptance manifest: expected object")
     validate_scenarios(data.get("scenarios"))
+    if "checks" in data:
+        validate_checks(data.get("checks"))
     if "task_file" in data and not isinstance(data["task_file"], str):
         raise ValueError("invalid acceptance manifest: task_file")
     return data

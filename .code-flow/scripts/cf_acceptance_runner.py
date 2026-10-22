@@ -205,6 +205,36 @@ def _run_unique(
     return results
 
 
+def _check_summary(checks: Sequence[Mapping[str, object]], scenarios: Sequence[Mapping[str, object]],
+                   results: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
+    """Roll scenario results up to their executable checks (v3 manifests)."""
+    if not checks:
+        return []
+    by_id = {str(item.get("id")): item for item in results}
+    grouped: dict[str, list[str]] = {}
+    for scenario in scenarios:
+        check_id = scenario.get("check")
+        if isinstance(check_id, str):
+            grouped.setdefault(check_id, []).append(str(scenario.get("id")))
+    summary: list[dict[str, object]] = []
+    for check in checks:
+        check_id = str(check.get("id", ""))
+        scenario_ids = grouped.get(check_id, [])
+        statuses = [str(by_id.get(scenario_id, {}).get("status", "not_included")) for scenario_id in scenario_ids]
+        if not statuses:
+            status = "not_included"
+        elif all(value == "passed" for value in statuses):
+            status = "passed"
+        elif any(value in ("failed", "incomplete", "not_configured") for value in statuses):
+            status = "failed"
+        elif any(value == "e2e_deferred" for value in statuses):
+            status = "deferred"
+        else:
+            status = "included"
+        summary.append({"id": check_id, "status": status, "scenarios": scenario_ids})
+    return summary
+
+
 def run_manifest(
     manifest_file: str,
     root: str,
@@ -245,6 +275,9 @@ def run_manifest(
         failed = sorted({str(item["id"]) for item in results if item["status"] not in (*allowed, "incomplete")})
         error = ",".join((["incomplete:" + ",".join(pending)] if pending else []) + (["failed:" + ",".join(failed)] if failed else [])) or "acceptance scenario failed"
     outcome: dict[str, object] = {"decision": decision, "results": results}
+    checks = data.get("checks")
+    if isinstance(checks, list) and checks:
+        outcome["checks"] = _check_summary(checks, items, results)
     if error:
         outcome["error"] = error
     return outcome

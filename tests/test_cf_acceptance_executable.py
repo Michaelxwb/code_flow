@@ -57,7 +57,8 @@ def test_registered_commands_pass_and_execute_once(tmp_path: Path) -> None:
     )
     manifest = tmp_path / ".acceptance-manifest.json"
     data = write_manifest(str(task), str(manifest))
-    assert data["schema"] == 2
+    assert data["schema"] == 3
+    assert len(data["checks"]) == 1
     assert all(isinstance(item["command"], list) for item in data["scenarios"])
     result = run_manifest(str(manifest), str(tmp_path))
     assert result["decision"] == "pass"

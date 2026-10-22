@@ -184,3 +184,35 @@ def test_only_e2e_does_not_reuse_functional_not_included_result(tmp_path: Path) 
     assert statuses["S-01"] == "not_included"
     assert statuses["E-01"] == "failed"
     assert result["decision"] == "block"
+
+
+def test_runner_executes_each_check_once_and_reports_checks(tmp_path: Path) -> None:
+    """[S-03] v3 manifest：3 个场景共享 2 个 check，命令只执行 2 次。"""
+    root = tmp_path
+    (root / "src").mkdir()
+    (root / "src/app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    marker = root / "runs.txt"
+    command = [sys.executable, "-c",
+               f"from pathlib import Path; p=Path({str(marker)!r}); "
+               "p.write_text((p.read_text() if p.exists() else '') + 'x')"]
+    manifest = root / ".acceptance-manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [
+            {"id": "CHK-A", "command": command, "cwd": ".", "timeout": 30},
+            {"id": "CHK-B", "command": command + ["--other"], "cwd": ".", "timeout": 30},
+        ],
+        "scenarios": [
+            {"id": "S-01", "kind": "functional", "check": "CHK-A", "command": command,
+             "cwd": ".", "timeout": 30, "depends_on": [], "status": "planned"},
+            {"id": "S-02", "kind": "functional", "check": "CHK-A", "command": command,
+             "cwd": ".", "timeout": 30, "depends_on": [], "status": "planned"},
+            {"id": "S-03", "kind": "functional", "check": "CHK-B", "command": command + ["--other"],
+             "cwd": ".", "timeout": 30, "depends_on": [], "status": "planned"},
+        ],
+    }), encoding="utf-8")
+    result = run_manifest(str(manifest), str(root))
+    assert result["decision"] == "pass"
+    assert marker.read_text(encoding="utf-8") == "xx", "每个 check 只执行一次"
+    assert len(result["checks"]) == 2
+    assert [item["status"] for item in result["checks"]] == ["passed", "passed"]

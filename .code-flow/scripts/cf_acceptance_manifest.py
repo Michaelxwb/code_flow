@@ -13,12 +13,13 @@ import re
 import sys
 from typing import IO, Callable, Mapping, Optional, Sequence
 
-from cf_acceptance_schema import load_manifest, validate_scenarios
+from cf_acceptance_schema import load_manifest, validate_checks, validate_scenarios
 
 
 _ROW_RE = re.compile(r"^\|\s*([SEB]-\d+)\s*\|(.+?)\|$")
 
-_MANIFEST_SCHEMA = 2
+_MANIFEST_SCHEMA = 3
+_LEGACY_MANIFEST_SCHEMAS = (2,)
 
 
 def _kind(level: str) -> str:
@@ -122,6 +123,37 @@ def _contract_commands(text: str) -> dict[str, str]:
     return commands
 
 
+def _check_id(command: list[str], cwd: str, timeout: float) -> str:
+    payload = json.dumps([command, cwd, timeout], ensure_ascii=False, sort_keys=True).encode("utf-8")
+    return "CHK-" + hashlib.sha256(payload).hexdigest()[:12]
+
+
+def _derive_checks(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Derive executable checks from scenario command identity (stable IDs)."""
+    by_id: dict[str, dict[str, object]] = {}
+    for row in rows:
+        command = row.get("command")
+        if not isinstance(command, list) or not command:
+            continue
+        cwd = str(row.get("cwd", "."))
+        timeout = float(row.get("timeout", 60))
+        check_id = _check_id(command, cwd, timeout)
+        row["check"] = check_id
+        by_id.setdefault(check_id, {
+            "id": check_id,
+            "command": list(command),
+            "cwd": cwd,
+            "timeout": timeout,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": True,
+            "profile": "changed",
+            "inputs": [],
+            "preflight": [],
+        })
+    return list(by_id.values())
+
+
 def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallback: bool = True) -> dict[str, object]:
     path = Path(task_file)
     text = path.read_text(encoding="utf-8")
@@ -164,7 +196,9 @@ def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallba
     if not rows:
         raise ValueError("Acceptance Coverage 缺失或为空")
     validate_scenarios(rows)
-    return {"schema": _MANIFEST_SCHEMA, "task_file": str(path), "task_sha256": _manifest_hash(rows), "scenarios": rows}
+    checks = _derive_checks(rows)
+    return {"schema": _MANIFEST_SCHEMA, "task_file": str(path), "task_sha256": _manifest_hash(rows),
+            "checks": checks, "scenarios": rows}
 
 
 def extract_manifest(task_file: str, kind_fn: Callable[[str], str] = _kind,
@@ -221,7 +255,7 @@ def _preserve_runtime_state(task_file: str, target: Path, manifest: dict[str, ob
 
 
 _IMMUTABLE_SCENARIO_FIELDS = (
-    "id", "source", "level", "kind", "boundary", "owner", "command", "cwd", "timeout", "depends_on",
+    "id", "source", "level", "kind", "boundary", "owner", "command", "cwd", "timeout", "depends_on", "check",
 )
 
 
@@ -258,7 +292,8 @@ def validate_manifest(task_file: str, manifest_file: str) -> tuple[bool, str]:
         expected = extract_manifest(task_file)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         return False, f"acceptance_manifest_invalid: {exc}"
-    if manifest.get("schema") != _MANIFEST_SCHEMA:
+    schema = manifest.get("schema")
+    if schema != _MANIFEST_SCHEMA and schema not in _LEGACY_MANIFEST_SCHEMAS:
         return False, "acceptance_manifest_drift"
     if manifest.get("task_sha256") != expected["task_sha256"]:
         # 旧版规则（无 Contract 回退 + _kind 精确匹配）锁定的 manifest：兼容升级。
@@ -271,6 +306,15 @@ def validate_manifest(task_file: str, manifest_file: str) -> tuple[bool, str]:
         return False, "acceptance_manifest_task_mismatch"
     if not isinstance(manifest.get("scenarios"), list):
         return False, "acceptance_manifest_scenarios_changed"
+    if schema == _MANIFEST_SCHEMA:
+        checks = manifest.get("checks")
+        try:
+            validate_checks(checks)
+        except ValueError as exc:
+            return False, f"acceptance_manifest_checks_invalid: {exc}"
+        expected_checks = {item["id"]: item for item in expected.get("checks", [])}
+        if {item.get("id") for item in checks if isinstance(item, Mapping)} != set(expected_checks):
+            return False, "acceptance_manifest_checks_changed"
     stored = {
         item.get("id"): item
         for item in manifest["scenarios"]
@@ -282,6 +326,8 @@ def validate_manifest(task_file: str, manifest_file: str) -> tuple[bool, str]:
     for item in expected["scenarios"]:
         current = stored[item["id"]]
         for field in _IMMUTABLE_SCENARIO_FIELDS:
+            if field == "check" and schema != _MANIFEST_SCHEMA and "check" not in current:
+                continue
             if current.get(field) != item.get(field):
                 return False, f"acceptance_manifest_field_changed:{item['id']}:{field}"
     text = Path(task_file).read_text(encoding="utf-8")

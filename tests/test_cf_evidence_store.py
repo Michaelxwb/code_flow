@@ -162,14 +162,15 @@ def test_s05_relock_compaction_keeps_evidence_across_worktrees_and_bounds_contex
     assert first["decision"] == "pass", first
 
     store = EvidenceStore(repo, "demo")
-    latest = store.read_latest("S-01")
+    check_id = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"][0]["check"]
+    latest = store.read_latest(check_id)
     assert latest is not None
     assert latest["status"] == "passed"
-    assert latest["check_id"] == "S-01"
+    assert latest["check_id"] == check_id
     assert latest["source"] == "local"
     assert len(latest["commit"]) == 40
     # The sidecar is central: a linked worktree resolves the same git common dir.
-    assert EvidenceStore(linked, "demo").read_latest("S-01") == latest
+    assert EvidenceStore(linked, "demo").read_latest(check_id) == latest
     assert evidence_root(linked, "demo") == evidence_root(repo, "demo")
     assert store.directory == repo / ".git" / "code-flow" / "evidence" / "demo"
 
@@ -177,7 +178,7 @@ def test_s05_relock_compaction_keeps_evidence_across_worktrees_and_bounds_contex
     write_manifest(str(task_dir / "demo.md"), str(manifest))
     relocked = json.loads(manifest.read_text(encoding="utf-8"))
     assert relocked["scenarios"][0]["status"] == "verified"
-    assert store.read_latest("S-01")["run_id"] == latest["run_id"]
+    assert store.read_latest(check_id)["run_id"] == latest["run_id"]
 
     context = _large_context()
     compacted = compact_context(context, root=repo, requirement="demo", max_history=DEFAULT_HISTORY_LIMIT)
@@ -263,9 +264,10 @@ def test_b02_non_git_fallback_store_and_runner(tmp_path: Path) -> None:
     _, manifest = _locked_manifest(root, task_dir)
     result = run_manifest(str(manifest), str(root), write_evidence=True)
     assert result["decision"] == "pass", result
-    latest = store.read_latest("S-01")
+    check_id = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"][0]["check"]
+    latest = store.read_latest(check_id)
     assert latest is not None and latest["status"] == "passed"
-    assert latest["check_id"] == "S-01"
+    assert latest["check_id"] == check_id
 
 
 def test_spec_verifier_evidence_can_be_persisted_as_central_runs(tmp_path: Path) -> None:

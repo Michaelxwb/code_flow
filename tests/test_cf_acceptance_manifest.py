@@ -116,3 +116,47 @@ def test_manual_evidence_syncs_to_owning_task_section(tmp_path: Path) -> None:
     before, after = text.split("## TASK-002:", 1)
     assert "S-01: verified" not in before
     assert "S-01: verified" in "## TASK-002:" + after
+
+
+def test_checks_scenarios_manifest_v3_groups(tmp_path: Path) -> None:
+    """[S-03] 同一命令的多个场景共享一个 check；不同命令生成不同 check。"""
+    task = tmp_path / "demo.md"
+    manifest = tmp_path / ".acceptance-manifest.json"
+    task.write_text(
+        "# Tasks\n\n## Acceptance Coverage\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n"
+        "|--------|---------|---------|-------------|---------|------|---------|\n"
+        '| S-01 | design#1 | integration | runner | TASK-001 | planned | ["python3", "-c", "pass"] |\n'
+        '| S-02 | design#1 | integration | runner | TASK-001 | planned | ["python3", "-c", "pass"] |\n'
+        '| S-03 | design#1 | integration | runner | TASK-001 | planned | ["python3", "-c", "print(1)"] |\n\n'
+        "## TASK-001: Demo\n- **Status**: draft\n- **Acceptance-Refs**: S-01, S-02, S-03\n",
+        encoding="utf-8",
+    )
+    locked = write_manifest(str(task), str(manifest))
+    assert locked["schema"] == 3
+    assert len(locked["checks"]) == 2
+    by_id = {item["id"]: item for item in locked["scenarios"]}
+    assert by_id["S-01"]["check"] == by_id["S-02"]["check"]
+    assert by_id["S-01"]["check"] != by_id["S-03"]["check"]
+    assert validate_manifest(str(task), str(manifest)) == (True, "")
+
+
+def test_schema2_compat_manifest_remains_readable(tmp_path: Path) -> None:
+    """[B-01] 旧 schema2 manifest 没有 checks/check 字段，仍可校验与运行。"""
+    task = tmp_path / "demo.md"
+    manifest = tmp_path / ".acceptance-manifest.json"
+    task.write_text(
+        "# Tasks\n\n## Acceptance Coverage\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n"
+        "|--------|---------|---------|-------------|---------|------|---------|\n"
+        '| S-01 | design#1 | integration | runner | TASK-001 | planned | ["python3", "-c", "pass"] |\n\n'
+        "## TASK-001: Demo\n- **Status**: draft\n- **Acceptance-Refs**: S-01\n",
+        encoding="utf-8",
+    )
+    locked = write_manifest(str(task), str(manifest))
+    legacy = {key: value for key, value in locked.items() if key != "checks"}
+    legacy["schema"] = 2
+    for scenario in legacy["scenarios"]:
+        scenario.pop("check", None)
+    manifest.write_text(json.dumps(legacy, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    assert validate_manifest(str(task), str(manifest)) == (True, "")

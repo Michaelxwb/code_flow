@@ -1,7 +1,407 @@
 {
-  "schema": 2,
+  "schema": 3,
   "task_file": "code-flow-0.8-optimization.md",
   "task_sha256": "c678d9b9163b50d26c3865eba0a393b29797c4d911f2f2cf1d83a0ef6548cd99",
+  "checks": [
+    {
+      "id": "CHK-194fbb44494e",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_workflow_scale.py",
+        "-k",
+        "truthful_gate"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-cad7b4b58d31",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_verify_layers.py",
+        "-k",
+        "layers"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-cb16094d5b32",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_acceptance_manifest.py",
+        "-k",
+        "checks_scenarios"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-dc460227a549",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_acceptance_runner.py",
+        "-k",
+        "resume"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-ddd41865d26c",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_evidence_store.py",
+        "-k",
+        "relock_compaction"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-8002880aa03d",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_parallel.py",
+        "-k",
+        "central_evidence"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-98f5eb66c5ee",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_parallel.py",
+        "-k",
+        "batch_smoke"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-4c3fbedcfd3c",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_plan.py",
+        "-k",
+        "capability_budget"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-9b173136f0a4",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_audit.py",
+        "-k",
+        "invariants"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-66220de35ac7",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_evidence_store.py",
+        "-k",
+        "ci_import"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-b35dacdfee1b",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_adapter_parity.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-89bc50164962",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_acceptance_runner.py",
+        "-k",
+        "env_blocked"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-e97dc962bbf1",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_merge.py",
+        "-k",
+        "check_conflict"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-5a0b89051cb7",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_parallel.py",
+        "-k",
+        "provisional_collect"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-f08e456c05c5",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_workflow_service.py",
+        "-k",
+        "doc_state_drift"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-11b3baa5cfa8",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_merge.py",
+        "-k",
+        "stale_after_merge"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-d3b44d8881e9",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_acceptance_manifest.py",
+        "-k",
+        "schema2_compat"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-bedc598fe542",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_evidence_store.py",
+        "-k",
+        "non_git"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-4f253028f29e",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_verify_layers.py",
+        "-k",
+        "empty_noop"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    },
+    {
+      "id": "CHK-3702c63dc631",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_acceptance_runner.py",
+        "-k",
+        "deadline_incomplete"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": true,
+      "profile": "changed",
+      "inputs": [],
+      "preflight": []
+    }
+  ],
   "scenarios": [
     {
       "id": "S-01",
@@ -23,6 +423,7 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
+      "check": "CHK-194fbb44494e",
       "revision": 1,
       "evidence": {
         "id": "S-01",
@@ -88,7 +489,8 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-cad7b4b58d31"
     },
     {
       "id": "S-03",
@@ -97,7 +499,7 @@
       "kind": "functional",
       "boundary": "真实 manifest + subprocess",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -109,7 +511,53 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-cb16094d5b32",
+      "revision": 1,
+      "evidence": {
+        "id": "S-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "5a55278553174b2680c25e417e976f82",
+        "executed_at": "2026-10-22T05:43:36.671525+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_acceptance_manifest.py",
+          "-k",
+          "checks_scenarios"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "380c884d059d0e3b176fed87b1f0211a3342e3bf03319ab97fb40077561e70ba"
+      },
+      "runs": [
+        {
+          "id": "S-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "5a55278553174b2680c25e417e976f82",
+          "executed_at": "2026-10-22T05:43:36.671525+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_acceptance_manifest.py",
+            "-k",
+            "checks_scenarios"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "380c884d059d0e3b176fed87b1f0211a3342e3bf03319ab97fb40077561e70ba"
+        }
+      ]
     },
     {
       "id": "S-04",
@@ -130,7 +578,8 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-dc460227a549"
     },
     {
       "id": "S-05",
@@ -152,6 +601,7 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
+      "check": "CHK-ddd41865d26c",
       "revision": 1,
       "evidence": {
         "id": "S-05",
@@ -217,7 +667,8 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-8002880aa03d"
     },
     {
       "id": "S-07",
@@ -238,7 +689,8 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-98f5eb66c5ee"
     },
     {
       "id": "S-08",
@@ -260,6 +712,7 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
+      "check": "CHK-4c3fbedcfd3c",
       "revision": 1,
       "evidence": {
         "id": "S-08",
@@ -325,7 +778,8 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-9b173136f0a4"
     },
     {
       "id": "S-10",
@@ -346,7 +800,8 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-66220de35ac7"
     },
     {
       "id": "S-11",
@@ -365,7 +820,8 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-b35dacdfee1b"
     },
     {
       "id": "E-01",
@@ -386,7 +842,8 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-89bc50164962"
     },
     {
       "id": "E-02",
@@ -407,7 +864,8 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-e97dc962bbf1"
     },
     {
       "id": "E-03",
@@ -428,7 +886,8 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-5a0b89051cb7"
     },
     {
       "id": "E-04",
@@ -450,6 +909,7 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
+      "check": "CHK-f08e456c05c5",
       "revision": 1,
       "evidence": {
         "id": "E-04",
@@ -515,7 +975,8 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-11b3baa5cfa8"
     },
     {
       "id": "B-01",
@@ -524,7 +985,7 @@
       "kind": "functional",
       "boundary": "真实 schema2 manifest",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -536,7 +997,53 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-d3b44d8881e9",
+      "revision": 1,
+      "evidence": {
+        "id": "B-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "5a55278553174b2680c25e417e976f82",
+        "executed_at": "2026-10-22T05:43:36.671525+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_acceptance_manifest.py",
+          "-k",
+          "schema2_compat"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "380c884d059d0e3b176fed87b1f0211a3342e3bf03319ab97fb40077561e70ba"
+      },
+      "runs": [
+        {
+          "id": "B-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "5a55278553174b2680c25e417e976f82",
+          "executed_at": "2026-10-22T05:43:36.671525+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_acceptance_manifest.py",
+            "-k",
+            "schema2_compat"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "380c884d059d0e3b176fed87b1f0211a3342e3bf03319ab97fb40077561e70ba"
+        }
+      ]
     },
     {
       "id": "B-02",
@@ -558,6 +1065,7 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
+      "check": "CHK-bedc598fe542",
       "revision": 1,
       "evidence": {
         "id": "B-02",
@@ -623,7 +1131,8 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-4f253028f29e"
     },
     {
       "id": "B-04",
@@ -644,7 +1153,8 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "check": "CHK-3702c63dc631"
     }
   ]
 }
