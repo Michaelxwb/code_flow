@@ -33,10 +33,10 @@
 | S-10 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 JUnit/Playwright 报告 | TASK-016 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"] |
 | S-11 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实四平台安装产物 | TASK-017 | planned | ["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"] |
 | E-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 preflight + 服务探测 | TASK-008 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "env_blocked"] |
-| E-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + manifest | TASK-010 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "check_conflict"] |
+| E-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + manifest | TASK-010 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "check_conflict"] |
 | E-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 collect | TASK-009 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "provisional_collect"] |
 | E-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 task md + spec-context | TASK-002 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_service.py", "-k", "doc_state_drift"] |
-| E-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + input_hash | TASK-010 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "stale_after_merge"] |
+| E-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + input_hash | TASK-010 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "stale_after_merge"] |
 | B-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 schema2 manifest | TASK-005 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "schema2_compat"] |
 | B-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 非 git 项目 | TASK-004 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "non_git"] |
 | B-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 空需求 | TASK-006 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "empty_noop"] |
@@ -502,7 +502,7 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 ## TASK-010: 并行 merge：checks/context 确定性合并
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-009
 - **Source**: code-flow-0.8-optimization.design.md#7.2 规则, code-flow-0.8-optimization.design.md#3.5.2 并发与原子性
@@ -517,27 +517,35 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 ### Checklist
 
-- [ ] checks 按 ID union；同 ID 字段冲突 fail closed。
-- [ ] scenario→check 映射冲突 fail closed。
-- [ ] spec-context 只合并最新状态；不再 union evidence。
-- [ ] merge 后重算 input_hash，旧 verified 降 stale。
-- [ ] [E-02][integration] 编写/更新验收测试（真实边界：真实 merge + manifest）；断言：两个 worktree 修改同一 check command；merge fail closed；列出冲突 check 与字段
-- [ ] [E-05][integration] 编写/更新验收测试（真实边界：真实 merge + input_hash）；断言：merge 后代码变化；旧 verified 降为 stale；changed 重跑受影响 check
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] checks 按 ID union；同 ID 字段冲突 fail closed。
+- [x] scenario→check 映射冲突 fail closed。
+- [x] spec-context 只合并最新状态；不再 union evidence。
+- [x] merge 后重算 input_hash，旧 verified 降 stale。
+- [x] [E-02][integration] 编写/更新验收测试（真实边界：真实 merge + manifest）；断言：两个 worktree 修改同一 check command；merge fail closed；列出冲突 check 与字段
+- [x] [E-05][integration] 编写/更新验收测试（真实边界：真实 merge + input_hash）；断言：merge 后代码变化；旧 verified 降为 stale；changed 重跑受影响 check
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| E-02 | integration | 真实 merge + manifest | 两个 worktree 修改同一 check command；merge fail closed；列出冲突 check 与字段 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "check_conflict"] | planned |
-| E-05 | integration | 真实 merge + input_hash | merge 后代码变化；旧 verified 降为 stale；changed 重跑受影响 check | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "stale_after_merge"] | planned |
+| E-02 | integration | 真实 merge + manifest | 两个 worktree 修改同一 check command；merge fail closed；列出冲突 check 与字段 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "check_conflict"] | verified |
+| E-05 | integration | 真实 merge + input_hash | merge 后代码变化；旧 verified 降为 stale；changed 重跑受影响 check | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "stale_after_merge"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| E-02 | `python3 -m pytest -q tests/test_cf_task_merge.py -k check_conflict` → collection error（`MergeConflictError` 未实现） | 同命令 → **2 passed**；相关回归 **50 passed** | `test_check_conflict_fails_closed_and_lists_check_and_fields`、`test_check_conflict_blocks_real_merge_and_lists_check_and_field` | 真实 git 仓库 + 两个 `git worktree`；双方修改同一 `CHK-01.command`；`merge` 返回 `check_conflict`，`conflicts[0].fields` 含 `command`，worktree 保留 | verified |
+| E-05 | `python3 -m pytest -q tests/test_cf_task_merge.py -k stale_after_merge` → collection error（`MergeConflictError` 未实现） | 同命令 → **1 passed**；全仓 **621 passed** | `test_context_input_hash_change_downgrades_verified_to_stale`、`test_stale_after_merge_downgrades_verified_and_changed_reruns` | 真实 git 仓库 + `prepare`/`merge` + manifest runner；merge 前后 `worktree_fingerprint` 变化，旧 rule `verified → stale`（evidence 保留）；`changed` 再次执行 check 而非 `cache_reused` | verified |
+- E-02: verified — automated command passed; run_id=b09af688ee2a478cb5613e2c06a29fd7 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=b09af688ee2a478cb5613e2c06a29fd7 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] TASK-010 GREEN：checks 按 ID union + 5 字段冲突 fail closed；scenario→check 冲突 fail closed；spec-context 每 rule 仅保留最新 evidence；merge 后 fingerprint 变化旧 verified 降 stale；相关回归 50 passed，全仓 621 passed。
+- [2026-10-22] completed (done)
 
 ---
 

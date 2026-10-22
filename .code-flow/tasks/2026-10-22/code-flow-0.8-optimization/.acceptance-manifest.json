@@ -1095,7 +1095,7 @@
       "kind": "functional",
       "boundary": "真实 merge + manifest",
       "owner": "TASK-010",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -1108,7 +1108,52 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "check": "CHK-e97dc962bbf1"
+      "check": "CHK-e97dc962bbf1",
+      "revision": 1,
+      "evidence": {
+        "id": "E-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "b09af688ee2a478cb5613e2c06a29fd7",
+        "executed_at": "2026-10-22T06:11:02.446044+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_task_merge.py",
+          "-k",
+          "check_conflict"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "9b44750b5d8a14d3b74bb3f480daeb59a4a24e04d0f3e532e67107a7029fd9c9"
+      },
+      "runs": [
+        {
+          "id": "E-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "b09af688ee2a478cb5613e2c06a29fd7",
+          "executed_at": "2026-10-22T06:11:02.446044+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_task_merge.py",
+            "-k",
+            "check_conflict"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "9b44750b5d8a14d3b74bb3f480daeb59a4a24e04d0f3e532e67107a7029fd9c9"
+        }
+      ]
     },
     {
       "id": "E-03",
@@ -1272,7 +1317,7 @@
       "kind": "functional",
       "boundary": "真实 merge + input_hash",
       "owner": "TASK-010",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -1285,7 +1330,52 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "check": "CHK-11b3baa5cfa8"
+      "check": "CHK-11b3baa5cfa8",
+      "revision": 1,
+      "evidence": {
+        "id": "E-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "b09af688ee2a478cb5613e2c06a29fd7",
+        "executed_at": "2026-10-22T06:11:02.446044+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_task_merge.py",
+          "-k",
+          "stale_after_merge"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "9b44750b5d8a14d3b74bb3f480daeb59a4a24e04d0f3e532e67107a7029fd9c9"
+      },
+      "runs": [
+        {
+          "id": "E-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "b09af688ee2a478cb5613e2c06a29fd7",
+          "executed_at": "2026-10-22T06:11:02.446044+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_task_merge.py",
+            "-k",
+            "stale_after_merge"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "9b44750b5d8a14d3b74bb3f480daeb59a4a24e04d0f3e532e67107a7029fd9c9"
+        }
+      ]
     },
     {
       "id": "B-01",
