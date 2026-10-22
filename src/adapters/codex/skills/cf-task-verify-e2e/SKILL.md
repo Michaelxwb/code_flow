@@ -3,6 +3,11 @@ name: cf-task-verify-e2e
 description: Execute deferred E2E scenarios after all functional tests pass
 ---
 
+## 验证子动作（0.8）
+
+- `code-flow task verify --checks` — 等价于 `--layers validators`，是 `cf-validate` 的 0.8 入口。
+- `cf-validate` 保留为兼容别名，0.9.0 移除。
+
 ## 使用场景
 
 本命令是**需求级终验**入口，在所有子任务的 functional 测试通过后统一执行：

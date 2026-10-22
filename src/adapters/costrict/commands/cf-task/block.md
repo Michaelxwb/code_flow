@@ -1,5 +1,7 @@
 # cf-task:block
 
+> **命令面状态（0.8）**：alias — 等价于 `cf-task-status --block`；保留一个 minor，0.9.0 移除。
+
 标记子任务为阻塞状态。
 
 ## 输入

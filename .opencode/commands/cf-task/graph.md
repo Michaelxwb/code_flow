@@ -4,6 +4,9 @@ description: 可视化子任务依赖关系 DAG
 
 # cf-task:graph
 
+
+> **命令面状态（0.8）**：alias — 等价于 `cf-task-status --graph`；保留一个 minor，0.9.0 移除。
+
 可视化子任务的依赖关系 DAG，识别可并行执行的任务组。
 
 ## 输入

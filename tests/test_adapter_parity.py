@@ -8,10 +8,12 @@
 - 部署副本必须与适配器源同步。
 """
 
+import json
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+CATALOG = ROOT / "src/adapters/commands.json"
 
 CF_TASK = ["align", "archive", "block", "graph", "note", "plan", "prd", "start", "status", "verify-e2e"]
 
@@ -100,6 +102,62 @@ def test_four_platform_spec_workflow_entrypoints_and_deploy_copies() -> None:
         assert all(item in source_text for item in required)
     for root in ("src/adapters", ".claude", ".costrict", ".opencode", ".agents"):
         assert not [path for path in (ROOT / root).rglob("*cf-inject*") if path.is_file()]
+
+
+def _catalog() -> dict:
+    return json.loads(CATALOG.read_text(encoding="utf-8"))
+
+
+def _surface_ids(platform: str, installed: bool = False) -> set[str]:
+    if platform == "codex":
+        base = ROOT / (".agents/skills" if installed else "src/adapters/codex/skills")
+        return {path.parent.name for path in base.glob("*/SKILL.md")}
+    base = ROOT / (f".{platform}/commands" if installed else f"src/adapters/{platform}/commands")
+    ids: set[str] = set()
+    for path in base.rglob("*.md"):
+        relative = path.relative_to(base).as_posix()
+        if relative.startswith("cf-task/"):
+            ids.add(f"cf-task-{Path(relative).stem}")
+        elif "/" not in relative:
+            ids.add(Path(relative).stem)
+    return ids
+
+
+def test_s11_command_surface_converges_to_9_to_11_user_commands() -> None:
+    """[S-11] 用户命令 9-11 条；note/block/graph/validate 保留为别名，sync 为 internal。"""
+    entries = _catalog()["commands"]
+    users = [item["id"] for item in entries if item["kind"] == "user"]
+    aliases = {item["id"]: item for item in entries if item["kind"] == "alias"}
+    internal = [item["id"] for item in entries if item["kind"] == "internal"]
+    assert 9 <= len(users) <= 11, f"用户命令应为 9-11 条，实际 {len(users)}"
+    assert set(users) == {
+        "cf-init", "cf-learn", "cf-spec", "cf-stats", "cf-task-prd", "cf-task-align",
+        "cf-task-plan", "cf-task-start", "cf-task-status", "cf-task-archive",
+        "cf-task-verify-e2e",
+    }
+    assert set(aliases) == {"cf-task-note", "cf-task-block", "cf-task-graph", "cf-validate"}
+    assert aliases["cf-task-note"]["alias_of"] == "cf-task-status"
+    assert aliases["cf-validate"]["alias_of"] == "cf-task-verify-e2e"
+    assert internal == ["cf-sync"]
+    assert len(entries) == len(users) + len(aliases) + len(internal) == 16
+
+
+def test_s11_four_platform_install_surface_matches_catalog() -> None:
+    """[S-11] 四平台安装产物命令集一致；旧别名文件仍可调用。"""
+    expected = {item["id"] for item in _catalog()["commands"]}
+    for platform in ("claude", "codex", "costrict", "opencode"):
+        assert _surface_ids(platform) == expected, f"{platform} 源命令集漂移"
+        assert _surface_ids(platform, installed=True) == expected, f"{platform} 部署命令集漂移"
+    for platform in ("claude", "codex", "costrict", "opencode"):
+        for alias in ("cf-task-note", "cf-task-block", "cf-task-graph", "cf-validate"):
+            if platform == "codex":
+                path = ROOT / f".agents/skills/{alias}/SKILL.md"
+            else:
+                name = alias.removeprefix("cf-task-")
+                relative = f"cf-task/{name}.md" if alias.startswith("cf-task-") else f"{alias}.md"
+                path = ROOT / f".{platform}/commands/{relative}"
+            assert path.is_file(), f"{platform} 缺旧别名 {alias}"
+            assert "0.9.0" in path.read_text(encoding="utf-8")
 
 
 def test_opencode_core_task_workflow_has_all_context_gates() -> None:

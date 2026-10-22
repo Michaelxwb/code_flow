@@ -3,6 +3,8 @@ name: cf-task-block
 description: Mark a subtask as blocked with a reason. Use when a task cannot proceed due to external dependency, missing information, pending design decision, or unresolved question.
 ---
 
+> **命令面状态（0.8）**：alias — 等价于 `cf-task-status --block`；保留一个 minor，0.9.0 移除。
+
 ## 输入
 
 - `cf-task-block <file> TASK-001 "阻塞原因"`

@@ -254,6 +254,22 @@ def test_empty_noop_manifest_without_e2e_scenarios(tmp_path: Path) -> None:
     assert not marker.exists(), "无 E2E 场景不得执行 functional"
 
 
+def test_checks_flag_runs_validators_only_as_cf_validate_alias(tmp_path: Path) -> None:
+    """[S-11] `task verify --checks` 是 cf-validate 的 0.8 等价入口，只跑 validators。"""
+    fixture = _requirement(tmp_path)
+
+    completed = _cli(fixture, "verify", "--task-dir", str(fixture["req"]), "--checks", "--json")
+
+    assert completed.returncode == 0, completed.stderr + completed.stdout
+    result = json.loads(completed.stdout)
+    assert result["selected_layers"] == ["validators"]
+    assert set(result["layers"]) == {"validators"}
+    assert fixture["validator_marker"].is_file(), "validators 必须真实执行"
+    assert not fixture["review_marker"].exists(), "--checks 不得触发 review"
+    assert not fixture["e2e_marker"].exists(), "--checks 不得触发 e2e"
+    assert not fixture["functional_marker"].exists(), "--checks 不得触发 functional"
+
+
 def test_layers_runtime_contract_alias_and_four_platform_docs() -> None:
     """运行时契约暴露 task verify 并保留 verify-e2e 别名，四平台文档同步。"""
     canonical = json.loads((ROOT / "src/core/code-flow/runtime-commands.json").read_text(encoding="utf-8"))

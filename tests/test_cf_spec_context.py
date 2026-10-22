@@ -20,6 +20,7 @@ sys.path.insert(0, str(SCRIPTS))
 from cf_spec_context import (
     DEFAULT_ACTIVE_EXCLUDES,
     _business_changes,
+    _doctor_command,
     _git_changes,
     _start_command,
     _status_command,
@@ -41,6 +42,7 @@ from cf_spec_context import (
     refresh_missing_specs,
     refresh_context,
     RuleStageStatus,
+    save_active_task,
     save_context,
     start_active_task,
 )
@@ -779,3 +781,40 @@ def test_status_cli_human_and_json(tmp_path: Path) -> None:
     assert parsed["marker"]["hash_match"] is True
     assert parsed["gate"]["decision"] in ("pass", "block")
     assert parsed["bindings"][0]["spec_id"] == "scripts-rules"
+
+
+def test_s11_spec_doctor_reports_healthy_context(tmp_path: Path) -> None:
+    """[S-11] `spec doctor` 对健康 Context 返回 pass，并给出 marker/runtime 诊断。"""
+    root, context_path = _active_repo(tmp_path)
+
+    report = _doctor_command(argparse.Namespace(task_dir=str(context_path.parent), root=str(root)))
+
+    assert report["decision"] == "pass"
+    assert report["task"] == "context-test"
+    assert report["marker"]["exists"] is True
+    assert report["marker"]["hash_match"] is True
+    assert report["runtime"]["installed"] is False
+    assert not [item for item in report["findings"] if item["severity"] == "block"]
+
+
+def test_s11_spec_doctor_blocks_marker_and_runtime_drift(tmp_path: Path) -> None:
+    """[S-11] marker hash/task 漂移与 runtime manifest 版本漂移必须 fail closed。"""
+    root, context_path = _active_repo(tmp_path)
+    save_context(str(context_path), replace(load_context(str(context_path)), task="context-renamed"))
+    save_active_task(
+        str(root),
+        replace(load_active_task(str(root)), task_dir=str(root / "elsewhere")),
+    )
+    (root / ".code-flow/.version").write_text("0.8.0\n", encoding="utf-8")
+    (root / ".code-flow/.runtime-install.json").write_text(
+        json.dumps({"schema_version": 1, "version": "0.7.0",
+                    "files": {"missing.py": "0" * 64}, "platforms": ["claude"]}),
+        encoding="utf-8",
+    )
+
+    report = _doctor_command(argparse.Namespace(task_dir=str(context_path.parent), root=str(root)))
+
+    assert report["decision"] == "block"
+    codes = {item["code"] for item in report["findings"]}
+    assert {"marker_hash_drift", "marker_task_mismatch", "runtime_version_drift"} <= codes
+    assert all(item["fix"] for item in report["findings"]), "诊断必须给出修复命令"

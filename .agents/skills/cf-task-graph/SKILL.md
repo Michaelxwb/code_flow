@@ -3,6 +3,8 @@ name: cf-task-graph
 description: Visualize task dependency DAG, identify parallelizable task groups and critical path. Use when planning execution order, understanding task dependencies, or deciding which tasks can run concurrently.
 ---
 
+> **命令面状态（0.8）**：alias — 等价于 `cf-task-status --graph`；保留一个 minor，0.9.0 移除。
+
 ## 输入
 
 - `cf-task-graph <file>` — 显示指定文件的依赖图

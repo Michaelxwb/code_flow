@@ -5,6 +5,12 @@ globs: []
 
 # cf-task:verify-e2e
 
+
+## 验证子动作（0.8）
+
+- `code-flow task verify --checks` — 等价于 `--layers validators`，是 `cf-validate` 的 0.8 入口。
+- `cf-validate` 保留为兼容别名，0.9.0 移除。
+
 执行需求目录下被延迟的 E2E 验收场景。
 
 ## 使用场景

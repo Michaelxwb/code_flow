@@ -3,6 +3,18 @@ name: cf-task-status
 description: "Show task status overview: subtask states, progress percentages, blocked items, and overall completion. Use when checking task progress, what's done, what's blocked, or what needs to be done next."
 ---
 
+## 命令面（0.8）
+
+`cf-task-status` 收敛了原先三个独立命令；旧命令保留一个 minor（0.9.0 移除）：
+
+| 子动作 | 等价旧命令 | 用途 |
+|--------|-----------|------|
+| `--notes` | `cf-task-note` | 讨论并收敛 `#NOTES` |
+| `--block` | `cf-task-block` | 标记阻塞并记录原因 |
+| `--graph` | `cf-task-graph` | 依赖 DAG 与并行批次 |
+
+带上述参数时，按对应旧命令章节的步骤执行；不带参数时行为不变。
+
 ## 输入
 
 - `cf-task-status` — 显示所有活跃 task 文件的状态

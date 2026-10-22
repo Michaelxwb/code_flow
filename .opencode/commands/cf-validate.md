@@ -4,6 +4,9 @@ description: 根据变更文件自动匹配并执行验证规则
 
 # cf-validate
 
+
+> **命令面状态（0.8）**：alias — 等价于 `cf-task-verify-e2e --checks`（运行时 `code-flow task verify --checks`）；保留一个 minor，0.9.0 移除。
+
 根据变更文件自动匹配并执行验证规则（测试、类型检查、lint），失败时自动尝试修复。
 
 ## 输入
@@ -83,6 +86,7 @@ code-flow validate --root "$PWD" --json
 运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
 
 ```bash
+code-flow task verify --task-dir "<需求目录>" --layers validators,review,e2e --profile changed --root "$PWD" --json
 code-flow validate --root "$PWD" --json
 ```
 
