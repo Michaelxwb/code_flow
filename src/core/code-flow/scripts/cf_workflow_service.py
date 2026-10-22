@@ -67,6 +67,30 @@ def section_status(section: str) -> str:
     return match.group(1).strip() if match else "draft"
 
 
+def task_truth_issues(task_file: str, task_id: str, context: SpecContext) -> tuple[str, ...]:
+    """Return required Rule refs whose status contradicts the Markdown claim.
+
+    The Markdown is a view. A TASK claiming done/verified while its required
+    code (or, for verified, review) Rules are not verified is a documentation
+    lie; archive/verify callers must fail closed instead of trusting the prose.
+    """
+    section = read_task_section(task_file, task_id)
+    status = section_status(section)
+    if status not in FINISHED_STATUSES:
+        return ()
+    stages = ("code", "review") if status == "verified" else ("code",)
+    issues: list[str] = []
+    for binding in context.bindings:
+        for rule in binding.rules:
+            if rule.enforcement != "required" or rule.verifier_stage not in stages:
+                continue
+            stage_status = rule.stage_status.get(rule.verifier_stage)
+            actual = stage_status.status if stage_status is not None else "missing"
+            if actual != "verified":
+                issues.append(f"{binding.spec_id}#{rule.ref}: {actual}")
+    return tuple(sorted(set(issues)))
+
+
 def section_depends(section: str) -> tuple[str, ...]:
     match = re.search(r"(?m)^- \*\*Depends\*\*:[ \t]*([^\n]*)", section)
     if match is None:

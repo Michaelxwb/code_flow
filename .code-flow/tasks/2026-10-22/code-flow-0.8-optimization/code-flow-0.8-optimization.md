@@ -21,26 +21,26 @@
 
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |
 |--------|---------|---------|-------------|---------|------|---------|
-| S-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 task md + spec-context + runner | TASK-003 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_scale.py", "-k", "truthful_gate"]` |
-| S-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 verify runner + manifest | TASK-006 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "layers"]` |
-| S-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 manifest + subprocess | TASK-005 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "checks_scenarios"]` |
-| S-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 runner + checkpoint | TASK-007 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "resume"]` |
-| S-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree + sidecar | TASK-004 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "relock_compaction"]` |
-| S-06 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree ×3 | TASK-009 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "central_evidence"]` |
-| S-07 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实批次 worktree + shared env | TASK-011 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"]` |
-| S-08 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 plan 模板 + 任务文件 | TASK-012 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"]` |
-| S-09 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 design + manifest + evidence | TASK-015 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"]` |
-| S-10 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 JUnit/Playwright 报告 | TASK-016 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"]` |
-| S-11 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实四平台安装产物 | TASK-017 | planned | `["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"]` |
-| E-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 preflight + 服务探测 | TASK-008 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "env_blocked"]` |
-| E-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + manifest | TASK-010 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "check_conflict"]` |
-| E-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 collect | TASK-009 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "provisional_collect"]` |
-| E-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 task md + spec-context | TASK-002 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_service.py", "-k", "doc_state_drift"]` |
-| E-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + input_hash | TASK-010 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "stale_after_merge"]` |
-| B-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 schema2 manifest | TASK-005 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "schema2_compat"]` |
-| B-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 非 git 项目 | TASK-004 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "non_git"]` |
-| B-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 空需求 | TASK-006 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "empty_noop"]` |
-| B-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 deadline | TASK-007 | planned | `["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "deadline_incomplete"]` |
+| S-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 task md + spec-context + runner | TASK-003 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_scale.py", "-k", "truthful_gate"] |
+| S-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 verify runner + manifest | TASK-006 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "layers"] |
+| S-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 manifest + subprocess | TASK-005 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "checks_scenarios"] |
+| S-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 runner + checkpoint | TASK-007 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "resume"] |
+| S-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree + sidecar | TASK-004 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "relock_compaction"] |
+| S-06 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree ×3 | TASK-009 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "central_evidence"] |
+| S-07 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实批次 worktree + shared env | TASK-011 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"] |
+| S-08 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 plan 模板 + 任务文件 | TASK-012 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"] |
+| S-09 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 design + manifest + evidence | TASK-015 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"] |
+| S-10 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 JUnit/Playwright 报告 | TASK-016 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"] |
+| S-11 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实四平台安装产物 | TASK-017 | planned | ["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"] |
+| E-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 preflight + 服务探测 | TASK-008 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "env_blocked"] |
+| E-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + manifest | TASK-010 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "check_conflict"] |
+| E-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 collect | TASK-009 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "provisional_collect"] |
+| E-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 task md + spec-context | TASK-002 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_service.py", "-k", "doc_state_drift"] |
+| E-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + input_hash | TASK-010 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "stale_after_merge"] |
+| B-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 schema2 manifest | TASK-005 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "schema2_compat"] |
+| B-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 非 git 项目 | TASK-004 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "non_git"] |
+| B-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 空需求 | TASK-006 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "empty_noop"] |
+| B-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 deadline | TASK-007 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "deadline_incomplete"] |
 
 > 本表覆盖 design §2.5 全部 S/E/B 场景；每个场景唯一 owner。执行命令为计划命令，TASK-001 先建立对应测试文件。
 
@@ -92,7 +92,7 @@
 
 ## TASK-002: 任务/场景状态机与状态渲染
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: code-flow-0.8-optimization.design.md#3.5.1 状态机与门禁, code-flow-0.8-optimization.design.md#3.5.4 错误与安全
@@ -107,29 +107,38 @@
 
 ### Checklist
 
-- [ ] 定义 draft/in-progress/provisional/done/verified/blocked 的合法转换。
-- [ ] 定义 scenario/check 状态：aspirational/designed/executed_pass/verified/executed_fail/env_blocked/accepted_risk/deferred。
-- [ ] 实现 runner 渲染/校验任务 Status；手写 verified 与 spec-context 冲突时拒绝。
-- [ ] 适配 archive、collect、FINISHED_STATUSES。
-- [ ] 实现并运行 verifier cli-code-standards#RULE-cli-hook-guard-001：真实 Hook 入口 no-op 安全与 JSON 协议。
-- [ ] 实现并运行 verifier scripts-code-standards#RULE-scripts-no-print-debug-001：新增/修改 Python 文件无 print 调试。
-- [ ] 实现并运行 verifier scripts-code-standards#RULE-scripts-no-bare-except-001：异常显式捕获与记录。
-- [ ] 实现并运行 verifier scripts-code-standards#RULE-scripts-hook-protocol-001：Hook stdout 始终合法 JSON。
-- [ ] [E-04][integration] 编写/更新验收测试（真实边界：真实 task md + spec-context）；断言：文档写 verified、状态 unverified；写入/归档拒绝；报字段与规则 ID
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 定义 draft/in-progress/provisional/done/verified/blocked 的合法转换。
+- [x] 定义 scenario/check 状态：aspirational/designed/executed_pass/verified/executed_fail/env_blocked/accepted_risk/deferred。
+- [x] 实现 runner 渲染/校验任务 Status；手写 verified 与 spec-context 冲突时拒绝。
+- [x] 适配 archive、collect、FINISHED_STATUSES。
+- [x] 实现并运行 verifier cli-code-standards#RULE-cli-hook-guard-001：真实 Hook 入口 no-op 安全与 JSON 协议。
+- [x] 实现并运行 verifier scripts-code-standards#RULE-scripts-no-print-debug-001：新增/修改 Python 文件无 print 调试。
+- [x] 实现并运行 verifier scripts-code-standards#RULE-scripts-no-bare-except-001：异常显式捕获与记录。
+- [x] 实现并运行 verifier scripts-code-standards#RULE-scripts-hook-protocol-001：Hook stdout 始终合法 JSON。
+- [x] [E-04][integration] 编写/更新验收测试（真实边界：真实 task md + spec-context）；断言：文档写 verified、状态 unverified；写入/归档拒绝；报字段与规则 ID
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| E-04 | integration | 真实 task md + spec-context | 文档写 verified、状态 unverified；写入/归档拒绝；报字段与规则 ID | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_service.py", "-k", "doc_state_drift"]` | planned |
+| E-04 | integration | 真实 task md + spec-context | 文档写 verified、状态 unverified；写入/归档拒绝；报字段与规则 ID | `tests/test_cf_workflow_service.py::test_doc_state_drift` | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_service.py", "-k", "doc_state_drift"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| E-04 | `python3 -m pytest -q tests/test_cf_workflow_service.py -k doc_state_drift` → 1 failed（`task_truth_issues` 尚未实现） | 同命令 → **1 passed**；相关回归 **143 passed in 13.90s** | `test_doc_state_drift`；`tests/test_cf_task_state.py` 五条状态机断言；`task_truth_issues` 在 `verify_e2e` 前置检查中调用 | 真实 task markdown + 真实 `SpecContext`（无 mock）；required code rule pending 时返回 `spec#RULE-code-001: pending` | verified |
+
+verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_prompt_hook.py`、`tests/test_cf_post_hook.py`、`tests/test_codex_native_hook.py`、`tests/test_opencode_native.py`、`tests/test_runtime_contract.py`、`tests/test_cf_spec_context.py`、`tests/test_cf_spec_gate.py`、`tests/test_cf_task_runtime.py`、`tests/test_cf_workflow_service.py`、`tests/test_cf_task_state.py` → **143 passed**。
+- E-04: failed — automated command failed; run_id=b4c77cbaa1d74da7947bb570acd5ee14 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=f3e4eb2fa85849849776a5142ce12c6c (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] TASK-002 GREEN：143 passed；provisional 状态、scenario/check 状态、task_truth_issues、verify_e2e 漂移前置检查落地。
+- [2026-10-22] completed (done)
 
 ---
 
@@ -162,7 +171,7 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-01 | integration | 真实 task md + spec-context + runner | required code check 未执行 → provisional；任务不得 done；输出缺失检查与下一步 | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_scale.py", "-k", "truthful_gate"]` | planned |
+| S-01 | integration | 真实 task md + spec-context + runner | required code check 未执行 → provisional；任务不得 done；输出缺失检查与下一步 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_scale.py", "-k", "truthful_gate"] | planned |
 
 ### Acceptance Evidence
 
@@ -203,8 +212,8 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-05 | integration | 真实 git worktree + sidecar | 重锁 plan 后证据仍可读；context <100 KB；旧 verified 不被清空 | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "relock_compaction"]` | planned |
-| B-02 | integration | 非 git 项目 | 无 .git 时回落 .code-flow/evidence/；功能不降级 | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "non_git"]` | planned |
+| S-05 | integration | 真实 git worktree + sidecar | 重锁 plan 后证据仍可读；context <100 KB；旧 verified 不被清空 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "relock_compaction"] | planned |
+| B-02 | integration | 非 git 项目 | 无 .git 时回落 .code-flow/evidence/；功能不降级 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "non_git"] | planned |
 
 ### Acceptance Evidence
 
@@ -245,8 +254,8 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-03 | integration | 真实 manifest + subprocess | 62 场景映射 7 命令；7 条命令各执行一次；scenario 状态由结果派生 | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "checks_scenarios"]` | planned |
-| B-01 | integration | 真实 schema2 manifest | 自动归并 checks；输出 schema2_compat；旧证据可读 | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "schema2_compat"]` | planned |
+| S-03 | integration | 真实 manifest + subprocess | 62 场景映射 7 命令；7 条命令各执行一次；scenario 状态由结果派生 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "checks_scenarios"] | planned |
+| B-01 | integration | 真实 schema2 manifest | 自动归并 checks；输出 schema2_compat；旧证据可读 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "schema2_compat"] | planned |
 
 ### Acceptance Evidence
 
@@ -287,8 +296,8 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-02 | integration | 真实 verify runner + manifest | 只执行 e2e 层；返回该层 decision/计数；不触发 validators | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "layers"]` | planned |
-| B-03 | integration | 空需求 | 无 required 检查/无 E2E 时 nothing_to_verify pass；不伪造执行 | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "empty_noop"]` | planned |
+| S-02 | integration | 真实 verify runner + manifest | 只执行 e2e 层；返回该层 decision/计数；不触发 validators | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "layers"] | planned |
+| B-03 | integration | 空需求 | 无 required 检查/无 E2E 时 nothing_to_verify pass；不伪造执行 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "empty_noop"] | planned |
 
 ### Acceptance Evidence
 
@@ -328,8 +337,8 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-04 | integration | 真实 runner + checkpoint | 10 个 check 执行到第 5 个中断；resume 从第 6 个继续；已完成 check 复用 | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "resume"]` | planned |
-| B-04 | integration | 真实 deadline | 全局 deadline 到期返回 incomplete；不标 failed/verified | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "deadline_incomplete"]` | planned |
+| S-04 | integration | 真实 runner + checkpoint | 10 个 check 执行到第 5 个中断；resume 从第 6 个继续；已完成 check 复用 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "resume"] | planned |
+| B-04 | integration | 真实 deadline | 全局 deadline 到期返回 incomplete；不标 failed/verified | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "deadline_incomplete"] | planned |
 
 ### Acceptance Evidence
 
@@ -368,7 +377,7 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| E-01 | integration | 真实 preflight + 服务探测 | 返回 env_blocked，列出缺失项和 owner；不写 verified；不记产品 failed | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "env_blocked"]` | planned |
+| E-01 | integration | 真实 preflight + 服务探测 | 返回 env_blocked，列出缺失项和 owner；不写 verified；不记产品 failed | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "env_blocked"] | planned |
 
 ### Acceptance Evidence
 
@@ -408,8 +417,8 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-06 | integration | 真实 git worktree ×3 | 3 worker 并行同一 check；证据集中无冲突；任务 done；批次 smoke 待执行 | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "central_evidence"]` | planned |
-| E-03 | integration | 真实 collect | worktree 返回 provisional；collect 拒绝；提示先补 required 检查 | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "provisional_collect"]` | planned |
+| S-06 | integration | 真实 git worktree ×3 | 3 worker 并行同一 check；证据集中无冲突；任务 done；批次 smoke 待执行 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "central_evidence"] | planned |
+| E-03 | integration | 真实 collect | worktree 返回 provisional；collect 拒绝；提示先补 required 检查 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "provisional_collect"] | planned |
 
 ### Acceptance Evidence
 
@@ -449,8 +458,8 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| E-02 | integration | 真实 merge + manifest | 两个 worktree 修改同一 check command；merge fail closed；列出冲突 check 与字段 | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "check_conflict"]` | planned |
-| E-05 | integration | 真实 merge + input_hash | merge 后代码变化；旧 verified 降为 stale；changed 重跑受影响 check | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "stale_after_merge"]` | planned |
+| E-02 | integration | 真实 merge + manifest | 两个 worktree 修改同一 check command；merge fail closed；列出冲突 check 与字段 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "check_conflict"] | planned |
+| E-05 | integration | 真实 merge + input_hash | merge 后代码变化；旧 verified 降为 stale；changed 重跑受影响 check | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "stale_after_merge"] | planned |
 
 ### Acceptance Evidence
 
@@ -489,7 +498,7 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-07 | integration | 真实批次 worktree + shared env | 3 个任务合并；shared E2E 只执行一次；失败保留 worktree | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"]` | planned |
+| S-07 | integration | 真实批次 worktree + shared env | 3 个任务合并；shared E2E 只执行一次；失败保留 worktree | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"] | planned |
 
 ### Acceptance Evidence
 
@@ -528,7 +537,7 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-08 | integration | 真实 plan 模板 + 任务文件 | 任务数 ≤25 或明确预算警告；每任务有可演示能力 | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"]` | planned |
+| S-08 | integration | 真实 plan 模板 + 任务文件 | 任务数 ≤25 或明确预算警告；每任务有可演示能力 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"] | planned |
 
 ### Acceptance Evidence
 
@@ -644,7 +653,7 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-09 | integration | 真实 design + manifest + evidence | 增删场景/规则后计数自动变化；owner 来自字段；无硬编码 | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"]` | planned |
+| S-09 | integration | 真实 design + manifest + evidence | 增删场景/规则后计数自动变化；owner 来自字段；无硬编码 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"] | planned |
 
 ### Acceptance Evidence
 
@@ -683,7 +692,7 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-10 | integration | 真实 JUnit/Playwright 报告 | 证据映射到 check/scenario；commit/exit_code/source 校验 | -k | `["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"]` | planned |
+| S-10 | integration | 真实 JUnit/Playwright 报告 | 证据映射到 check/scenario；commit/exit_code/source 校验 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"] | planned |
 
 ### Acceptance Evidence
 
@@ -728,7 +737,7 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-11 | integration | 真实四平台安装产物 | 9-11 用户命令；四平台内容一致；旧别名可用 | planned | `["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"]` | planned |
+| S-11 | integration | 真实四平台安装产物 | 9-11 用户命令；四平台内容一致；旧别名可用 | planned | ["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"] | planned |
 
 ### Acceptance Evidence
 

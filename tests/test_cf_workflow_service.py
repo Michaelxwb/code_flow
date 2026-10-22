@@ -218,3 +218,27 @@ def test_remove_and_cleanup_session_projections(tmp_path: Path) -> None:
     assert result["absent"] == [".code-flow/specs/_session/task-a.md"]
     assert not (session / "task-b.md").exists()
     assert (session / "task-foreign.md").exists(), "不得碰其他需求的投影"
+
+
+def test_doc_state_drift(tmp_path: Path) -> None:
+    """[E-04] 文档写 verified，但 required code Rule 未 verified → 必须报漂移。"""
+    from cf_spec_context import RuleBinding, RuleStageStatus, SpecBinding, SpecContext
+    from cf_spec_metadata import SpecHashes
+    from cf_workflow_service import task_truth_issues
+
+    task = tmp_path / "demo.md"
+    task.write_text(
+        "# Tasks\n\n## TASK-001: Demo\n- **Status**: verified\n- **Acceptance-Refs**: S-01\n",
+        encoding="utf-8",
+    )
+    rule = RuleBinding(
+        "RULE-code-001", "code rule", "a" * 64, "required", "spec#RULE-code-001",
+        {"code": RuleStageStatus("pending", (), None, ()), "review": RuleStageStatus("pending", (), None, ())},
+        verifier_stage="code",
+    )
+    binding = SpecBinding(
+        "spec", "spec/rules.md", SpecHashes("b" * 64, "c" * 64, "d" * 64),
+        "design", "drift fixture", "required", ("design", "plan", "code", "review"), (rule,),
+    )
+    context = SpecContext(1, "demo", "required", "2026-10-22T00:00:00+00:00", (), (binding,))
+    assert task_truth_issues(str(task), "TASK-001", context) == ("spec#RULE-code-001: pending",)

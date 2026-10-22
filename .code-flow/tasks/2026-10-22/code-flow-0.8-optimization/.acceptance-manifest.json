@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "task_file": "code-flow-0.8-optimization.md",
-  "task_sha256": "8dec0f42d86d7f55030bf6d1d54a7229cd6ba92e80cfb6191d865f6e185d4e90",
+  "task_sha256": "c678d9b9163b50d26c3865eba0a393b29797c4d911f2f2cf1d83a0ef6548cd99",
   "scenarios": [
     {
       "id": "S-01",
@@ -12,13 +12,13 @@
       "owner": "TASK-003",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_workflow_scale.py,",
-        "-k,",
-        "truthful_gate]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_workflow_scale.py",
+        "-k",
+        "truthful_gate"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -33,13 +33,13 @@
       "owner": "TASK-006",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_verify_layers.py,",
-        "-k,",
-        "layers]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_verify_layers.py",
+        "-k",
+        "layers"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -54,13 +54,13 @@
       "owner": "TASK-005",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_acceptance_manifest.py,",
-        "-k,",
-        "checks_scenarios]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_acceptance_manifest.py",
+        "-k",
+        "checks_scenarios"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -75,13 +75,13 @@
       "owner": "TASK-007",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_acceptance_runner.py,",
-        "-k,",
-        "resume]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_acceptance_runner.py",
+        "-k",
+        "resume"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -96,13 +96,13 @@
       "owner": "TASK-004",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_evidence_store.py,",
-        "-k,",
-        "relock_compaction]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_evidence_store.py",
+        "-k",
+        "relock_compaction"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -117,13 +117,13 @@
       "owner": "TASK-009",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_task_parallel.py,",
-        "-k,",
-        "central_evidence]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_parallel.py",
+        "-k",
+        "central_evidence"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -138,13 +138,13 @@
       "owner": "TASK-011",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_task_parallel.py,",
-        "-k,",
-        "batch_smoke]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_parallel.py",
+        "-k",
+        "batch_smoke"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -159,13 +159,13 @@
       "owner": "TASK-012",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_task_plan.py,",
-        "-k,",
-        "capability_budget]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_plan.py",
+        "-k",
+        "capability_budget"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -180,13 +180,13 @@
       "owner": "TASK-015",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_audit.py,",
-        "-k,",
-        "invariants]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_audit.py",
+        "-k",
+        "invariants"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -201,13 +201,13 @@
       "owner": "TASK-016",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_evidence_store.py,",
-        "-k,",
-        "ci_import]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_evidence_store.py",
+        "-k",
+        "ci_import"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -222,11 +222,11 @@
       "owner": "TASK-017",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_adapter_parity.py]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_adapter_parity.py"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -241,13 +241,13 @@
       "owner": "TASK-008",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_acceptance_runner.py,",
-        "-k,",
-        "env_blocked]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_acceptance_runner.py",
+        "-k",
+        "env_blocked"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -262,13 +262,13 @@
       "owner": "TASK-010",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_task_merge.py,",
-        "-k,",
-        "check_conflict]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_merge.py",
+        "-k",
+        "check_conflict"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -283,13 +283,13 @@
       "owner": "TASK-009",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_task_parallel.py,",
-        "-k,",
-        "provisional_collect]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_parallel.py",
+        "-k",
+        "provisional_collect"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -302,19 +302,64 @@
       "kind": "functional",
       "boundary": "真实 task md + spec-context",
       "owner": "TASK-002",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_workflow_service.py,",
-        "-k,",
-        "doc_state_drift]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_workflow_service.py",
+        "-k",
+        "doc_state_drift"
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "f3e4eb2fa85849849776a5142ce12c6c",
+        "executed_at": "2026-10-22T05:18:27.428432+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_workflow_service.py",
+          "-k",
+          "doc_state_drift"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6e1f9a0978b29ce20d1a449bd8784f5b92dd8f8697cbaf222368f8deea4c17bd"
+      },
+      "runs": [
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "f3e4eb2fa85849849776a5142ce12c6c",
+          "executed_at": "2026-10-22T05:18:27.428432+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_workflow_service.py",
+            "-k",
+            "doc_state_drift"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6e1f9a0978b29ce20d1a449bd8784f5b92dd8f8697cbaf222368f8deea4c17bd"
+        }
+      ]
     },
     {
       "id": "E-05",
@@ -325,13 +370,13 @@
       "owner": "TASK-010",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_task_merge.py,",
-        "-k,",
-        "stale_after_merge]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_task_merge.py",
+        "-k",
+        "stale_after_merge"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -346,13 +391,13 @@
       "owner": "TASK-005",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_acceptance_manifest.py,",
-        "-k,",
-        "schema2_compat]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_acceptance_manifest.py",
+        "-k",
+        "schema2_compat"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -367,13 +412,13 @@
       "owner": "TASK-004",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_evidence_store.py,",
-        "-k,",
-        "non_git]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_evidence_store.py",
+        "-k",
+        "non_git"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -388,13 +433,13 @@
       "owner": "TASK-006",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_verify_layers.py,",
-        "-k,",
-        "empty_noop]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_verify_layers.py",
+        "-k",
+        "empty_noop"
       ],
       "cwd": ".",
       "timeout": 60.0,
@@ -409,13 +454,13 @@
       "owner": "TASK-007",
       "status": "planned",
       "command": [
-        "`[python3,",
-        "-m,",
-        "pytest,",
-        "-q,",
-        "tests/test_cf_acceptance_runner.py,",
-        "-k,",
-        "deadline_incomplete]`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_acceptance_runner.py",
+        "-k",
+        "deadline_incomplete"
       ],
       "cwd": ".",
       "timeout": 60.0,

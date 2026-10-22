@@ -23,7 +23,7 @@ from cf_task_runtime import _apply_evidence, _evidence_data, run_done_gate
 from cf_workflow_service import (FINISHED_STATUSES, _require_marker_task,
                                  _sync_markdown, block_task, cleanup_session_projections,
                                  complete_task, locate_task_file, remove_session_projection,
-                                 resume_task)
+                                 resume_task, task_truth_issues)
 from cf_workflow_transaction import recover_transition
 
 
