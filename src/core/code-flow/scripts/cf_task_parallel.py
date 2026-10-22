@@ -34,9 +34,11 @@ from typing import IO, Mapping, Optional, Sequence
 
 from cf_task_index import parse_task_file
 from cf_task_index import task_batches
+from cf_task_merge import MergeConflictError
 from cf_task_merge import merge_context_text
 from cf_task_merge import merge_manifest_text
 from cf_task_merge import merge_task_markdown
+from cf_task_merge import stale_context_text
 from cf_task_state import FINISHED_STATUSES
 from cf_acceptance_schema import load_manifest
 from cf_evidence_store import EvidenceStore
@@ -54,10 +56,12 @@ _TASK_ID = re.compile(r"^TASK-\d+$")
 class ParallelError(ValueError):
     """Precondition or protocol violation with a stable machine code."""
 
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(self, code: str, message: str,
+                 details: Optional[Mapping[str, object]] = None) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
+        self.details = dict(details) if details else {}
 
 
 class ParallelEvidenceError(ParallelError):
@@ -606,6 +610,12 @@ def _resolve_state_file(workdir: Path, relative: str, task: str) -> None:
             merged = merge_task_markdown(ours, theirs, task)
         else:
             raise ParallelError("state_file_unresolvable", f"{relative}: 非任务状态文件，需人工解决")
+    except MergeConflictError as exc:
+        raise ParallelError(
+            exc.code,
+            f"{relative}: {exc}",
+            {"conflicts": list(exc.conflicts)},
+        ) from exc
     except ValueError as exc:
         raise ParallelError("state_file_parse_error", f"{relative}: {exc}") from exc
     (workdir / relative).write_text(merged, encoding="utf-8")
@@ -701,6 +711,38 @@ def _merge_one(root: Path, main_branch: str, entry: dict, task_file: str) -> dic
     }
 
 
+def _context_files(root: Path, task_file: str) -> list[Path]:
+    demand = root / Path(task_file).parent
+    return sorted(demand.rglob("spec-context.yml")) if demand.is_dir() else []
+
+
+def _write_text_atomic(path: Path, text: str) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(text, encoding="utf-8")
+    temporary.replace(path)
+
+
+def _stale_after_merge(root: Path, task_file: str, input_hash: str) -> list[dict[str, object]]:
+    """Downgrade verified rules whose merge-time input hash changed.
+
+    The old evidence stays in place for audit; only the rule state becomes
+    stale so the next changed-profile run re-executes it instead of reusing a
+    green result from the pre-merge tree.
+    """
+    changed: list[dict[str, object]] = []
+    for path in _context_files(root, task_file):
+        try:
+            text = path.read_text(encoding="utf-8")
+            merged, stale = stale_context_text(text, input_hash)
+        except (OSError, ValueError) as exc:
+            raise ParallelError("stale_context_failed", f"{path}: {exc}") from exc
+        if not stale:
+            continue
+        _write_text_atomic(path, merged)
+        changed.append({"path": path.relative_to(root).as_posix(), "rules": stale})
+    return changed
+
+
 def _refresh_demand(root: Path, task_file: str) -> str:
     demand = root / Path(task_file).parent
     script = root / ".code-flow" / "scripts" / "cf_spec_context.py"
@@ -727,22 +769,31 @@ def merge(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, 
         entries = [item for item in entries if item.get("task") in wanted]
     entries.sort(key=lambda item: str(item.get("task", "")))
     task_file = str(meta["task_file"])
+    before_hash = worktree_fingerprint(str(root))
     results: list[dict[str, object]] = []
     for entry in entries:
         try:
             results.append(_merge_one(root, main_branch, entry, task_file))
         except ParallelError as exc:
-            results.append(
-                {"task": str(entry.get("task", "")), "ok": False, "code": exc.code, "message": exc.message}
-            )
+            failure = {
+                "task": str(entry.get("task", "")), "ok": False,
+                "code": exc.code, "message": exc.message,
+            }
+            failure.update(exc.details)
+            results.append(failure)
             break
     ok = bool(results) and all(item.get("ok") for item in results)
     payload: dict[str, object] = {
         "ok": ok, "action": "merge", "run_id": run_id,
         "main_branch": main_branch, "results": results,
     }
-    if ok and (root / Path(task_file).parent / "spec-context.yml").is_file():
-        payload["refresh"] = _refresh_demand(root, task_file)
+    if ok:
+        after_hash = worktree_fingerprint(str(root))
+        if before_hash and after_hash and before_hash != after_hash:
+            payload["input_hash"] = after_hash
+            payload["stale"] = _stale_after_merge(root, task_file, after_hash)
+        if (root / Path(task_file).parent / "spec-context.yml").is_file():
+            payload["refresh"] = _refresh_demand(root, task_file)
     return payload
 
 
@@ -819,6 +870,7 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
             payload = cleanup(root, args.run_id, args.force)
     except ParallelError as exc:
         payload = {"ok": False, "action": args.action, "code": exc.code, "message": exc.message}
+        payload.update(exc.details)
     _emit(payload, stdout)
     return 0 if payload.get("ok") else 2
 
