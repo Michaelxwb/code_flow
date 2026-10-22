@@ -139,6 +139,7 @@ verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_
 - E-04: verified — automated command passed; run_id=7f9aa0d409ea44a4a3b724594a0ca75d (confirmed_by: runner)
 - E-04: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - E-04: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -190,6 +191,7 @@ verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_
 - S-01: verified — automated command passed; run_id=7f9aa0d409ea44a4a3b724594a0ca75d (confirmed_by: runner)
 - S-01: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - S-01: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -250,6 +252,8 @@ verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_
 - B-02: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - S-05: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -313,6 +317,8 @@ verifier `cli-code-standards#RULE-cli-user-content-preservation-001`：`node tes
 - B-01: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - S-03: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
 - B-01: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -376,6 +382,8 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 - B-03: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - S-02: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
 - B-03: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -438,6 +446,8 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 - B-04: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - S-04: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
 - B-04: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -490,6 +500,7 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 - E-01: verified — automated command passed; run_id=7f9aa0d409ea44a4a3b724594a0ca75d (confirmed_by: runner)
 - E-01: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - E-01: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -555,6 +566,8 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 - E-03: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - S-06: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
 - E-03: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -616,6 +629,8 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 - E-05: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - E-02: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
 - E-05: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -666,6 +681,7 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 - S-07: verified — automated command passed; run_id=7f9aa0d409ea44a4a3b724594a0ca75d (confirmed_by: runner)
 - S-07: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - S-07: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -719,6 +735,7 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 - S-08: verified — automated command passed; run_id=7f9aa0d409ea44a4a3b724594a0ca75d (confirmed_by: runner)
 - S-08: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - S-08: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -862,6 +879,7 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 - S-09: verified — automated command passed; run_id=7f9aa0d409ea44a4a3b724594a0ca75d (confirmed_by: runner)
 - S-09: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - S-09: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -913,6 +931,7 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 - S-10: verified — automated command passed; run_id=7f9aa0d409ea44a4a3b724594a0ca75d (confirmed_by: runner)
 - S-10: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - S-10: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -972,6 +991,7 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 - S-11: verified — automated command passed; run_id=7f9aa0d409ea44a4a3b724594a0ca75d (confirmed_by: runner)
 - S-11: verified — automated command passed; run_id=065c516d5fbc4050be658660c343f0a2 (confirmed_by: runner)
 - S-11: verified — automated command passed; run_id=5106d1a4ffa64acbba2de8cf359ea929 (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=e971edc3863f498c88622c7c9e1e6b40 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)

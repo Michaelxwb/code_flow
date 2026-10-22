@@ -54,7 +54,7 @@ apply 使用同一事务：备份 → staging → 校验 → journal → 写目�
 | 状态 | 含义 |
 |------|------|
 | `done` | 本任务 required code check 全部 verified |
-| `provisional` | 任一 required code check 为 deferred / env_blocked / failed |
+| `provisional` | 任一 required code check 为 deferred / env_blocked / incomplete；真实 failed 必须 block |
 | `verified` | 需求级 Gate 通过，且证据 input_hash 与当前工作区匹配 |
 | `deferred` | 仅允许 review-stage / heavy 检查延后；预算导致的延后不是合法 deferral |
 

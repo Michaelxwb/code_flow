@@ -1009,9 +1009,13 @@ def verify_layers(root: str, directory: str, layers: Optional[str] = None,
 
 
 def verify_e2e(root: str, directory: str, layers: Optional[str] = None,
-               profile: Optional[str] = None) -> dict[str, object]:
+               profile: Optional[str] = None, resume: bool = True,
+               deadline: Optional[float] = None, max_failures: int = 0,
+               fail_fast: bool = False, jobs: int = 0) -> dict[str, object]:
     """Legacy alias: all layers under the explicit full profile."""
-    result = verify_layers(root, directory, layers or ",".join(VERIFY_LAYERS), profile or "full")
+    result = verify_layers(root, directory, layers or ",".join(VERIFY_LAYERS), profile or "full",
+                           resume=resume, deadline=deadline, max_failures=max_failures,
+                           fail_fast=fail_fast, jobs=jobs)
     layer_map = result.get("layers", {})
     if "review" in layer_map:
         review = layer_map["review"]
@@ -1142,7 +1146,7 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
                         help="alias for --layers validators (cf-validate compatible entry)")
     parser.add_argument("--profile", default="", help="verify profile: smoke,changed,full (default changed)")
     parser.add_argument("--resume", action="store_true", default=False, help="resume from the first unfinished check")
-    parser.add_argument("--deadline", type=float, default=0.0, help="absolute monotonic deadline (0 = unbounded)")
+    parser.add_argument("--deadline", type=float, default=0.0, help="deadline in seconds from now (0 = unbounded)")
     parser.add_argument("--max-failures", type=int, default=0, help="stop after N failed checks (0 = unlimited)")
     parser.add_argument("--fail-fast", action="store_true", default=False, help="stop after the first failed check")
     parser.add_argument("--jobs", type=int, default=0, help="parallel check workers (0 = automatic)")
@@ -1171,7 +1175,11 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
                 max_failures=args.max_failures, fail_fast=args.fail_fast, jobs=args.jobs,
             )
         elif args.action == "verify-e2e":
-            result = verify_e2e(root, directory, args.layers or None, args.profile or None)
+            result = verify_e2e(
+                root, directory, args.layers or None, args.profile or None,
+                resume=args.resume, deadline=(time.monotonic() + args.deadline) if args.deadline else None,
+                max_failures=args.max_failures, fail_fast=args.fail_fast, jobs=args.jobs,
+            )
         elif args.action == "cleanup-session":
             result = cleanup_session_projections(root, directory)
         elif args.action == "confirm-manual":
