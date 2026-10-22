@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+"""Canonical acceptance scenario source (`<requirement>.scenarios.md`).
+
+Scenarios are user journeys, not frontend/backend design sections. This module
+parses the single source, validates it, merges multi-design references by
+global ID, and derives scenario state from executable checks.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+from pathlib import Path
+from typing import IO, Mapping, Optional, Sequence
+
+import yaml
+
+
+SCHEMA_VERSION = 1
+SCENARIO_ID = re.compile(r"^[SEB]-\d+$")
+PRIORITIES = ("P0", "P1", "P2")
+LEVELS = ("unit", "integration", "e2e", "manual")
+EXEC_MODES = ("auto", "deferred", "manual", "aspirational")
+
+
+class ScenarioError(ValueError):
+    """Stable parse/merge failure with a machine-readable code."""
+
+    def __init__(self, code: str, message: str, details: Optional[Mapping[str, object]] = None) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.details = dict(details) if details else {}
+
+
+def _frontmatter(text: str) -> str:
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        if end != -1:
+            return text[3:end]
+    return text
+
+
+def _mapping(value: object, field: str) -> Mapping[str, object]:
+    if not isinstance(value, Mapping):
+        raise ScenarioError("invalid_scenario_source", f"{field} 必须是 mapping")
+    return value
+
+
+def _string_list(value: object, field: str) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ScenarioError("invalid_scenario_source", f"{field} 必须是字符串列表")
+    return tuple(item.strip() for item in value if item.strip())
+
+
+def _validate_one(item: Mapping[str, object]) -> dict[str, object]:
+    scenario_id = item.get("id")
+    if not isinstance(scenario_id, str) or not SCENARIO_ID.fullmatch(scenario_id):
+        raise ScenarioError("invalid_scenario_id", f"非法场景 ID: {scenario_id!r}")
+    priority = item.get("priority", "P1")
+    if priority not in PRIORITIES:
+        raise ScenarioError("invalid_priority", f"{scenario_id}: priority 非法: {priority!r}")
+    level = str(item.get("level", "integration")).lower()
+    if level not in LEVELS:
+        raise ScenarioError("invalid_level", f"{scenario_id}: level 非法: {level!r}")
+    exec_mode = str(item.get("exec", "auto")).lower()
+    if exec_mode not in EXEC_MODES:
+        raise ScenarioError("invalid_exec", f"{scenario_id}: exec 非法: {exec_mode!r}")
+    return {
+        "id": scenario_id,
+        "title": str(item.get("title", "")).strip(),
+        "priority": priority,
+        "level": level,
+        "exec": exec_mode,
+        "env": str(item.get("env", "none")),
+        "components": list(_string_list(item.get("components"), f"{scenario_id}.components")),
+        "boundary": str(item.get("boundary", "")).strip(),
+        "preconditions": list(_string_list(item.get("preconditions"), f"{scenario_id}.preconditions")),
+        "steps": list(_string_list(item.get("steps"), f"{scenario_id}.steps")),
+        "expected": list(_string_list(item.get("expected"), f"{scenario_id}.expected")),
+        "design_refs": list(_string_list(item.get("design_refs"), f"{scenario_id}.design_refs")),
+        "rules": list(_string_list(item.get("rules"), f"{scenario_id}.rules")),
+        "checks": list(_string_list(item.get("checks"), f"{scenario_id}.checks")),
+        "sources": list(_string_list(item.get("sources"), f"{scenario_id}.sources")),
+    }
+
+
+def parse_scenarios(path: object) -> dict[str, object]:
+    """Parse and validate one scenarios source file."""
+    target = Path(path)
+    try:
+        text = target.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise ScenarioError("scenario_source_unreadable", str(exc), {"path": str(target)}) from exc
+    try:
+        data = yaml.safe_load(_frontmatter(text))
+    except yaml.YAMLError as exc:
+        raise ScenarioError("scenario_source_invalid_yaml", str(exc), {"path": str(target)}) from exc
+    document = _mapping(data, "scenarios")
+    if document.get("schema") not in (None, SCHEMA_VERSION):
+        raise ScenarioError("unsupported_scenario_schema", str(document.get("schema")))
+    raw = document.get("scenarios")
+    if not isinstance(raw, list) or not raw:
+        raise ScenarioError("scenarios_missing", "scenarios 必须是非空列表")
+    seen: set[str] = set()
+    scenarios: list[dict[str, object]] = []
+    for item in raw:
+        scenario = _validate_one(_mapping(item, "scenarios[]"))
+        if scenario["id"] in seen:
+            raise ScenarioError("duplicate_scenario_id", str(scenario["id"]))
+        seen.add(scenario["id"])
+        scenarios.append(scenario)
+    return {
+        "schema": SCHEMA_VERSION,
+        "requirement": str(document.get("requirement", target.parent.name)),
+        "source": str(target),
+        "scenarios": scenarios,
+    }
+
+
+def _definition(scenario: Mapping[str, object]) -> dict[str, object]:
+    fields = ("title", "priority", "level", "exec", "env", "components", "boundary",
+              "preconditions", "steps", "expected", "rules")
+    return {field: scenario.get(field) for field in fields}
+
+
+def merge_scenarios(sets: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
+    """Union scenario sets by global ID; reject conflicting definitions."""
+    merged: dict[str, dict[str, object]] = {}
+    for source in sets:
+        for raw in source.get("scenarios", []) or []:
+            scenario = _validate_one(_mapping(raw, "scenarios[]"))
+            current = merged.get(str(scenario["id"]))
+            if current is None:
+                merged[str(scenario["id"])] = scenario
+                continue
+            if _definition(current) != _definition(scenario):
+                fields = [key for key in _definition(current) if _definition(current)[key] != _definition(scenario)[key]]
+                raise ScenarioError(
+                    "design_scenario_conflict",
+                    f"{scenario['id']} 定义冲突: {', '.join(fields)}",
+                    {"scenario": scenario["id"], "fields": fields},
+                )
+            current["sources"] = sorted(set(current.get("sources", [])) | set(scenario.get("sources", [])))
+            current["design_refs"] = sorted(set(current.get("design_refs", [])) | set(scenario.get("design_refs", [])))
+            current["checks"] = sorted(set(current.get("checks", [])) | set(scenario.get("checks", [])))
+    return [merged[key] for key in sorted(merged)]
+
+
+def scenario_status(scenario: Mapping[str, object], checks: Mapping[str, str]) -> str:
+    """Derive scenario state from all required checks (AND semantics)."""
+    required = [str(item) for item in scenario.get("checks", [])]
+    if not required:
+        return "aspirational" if scenario.get("exec") == "aspirational" else "designed"
+    states = [checks.get(check_id, "designed") for check_id in required]
+    for bad in ("failed", "env_blocked", "incomplete"):
+        if bad in states:
+            return bad
+    if all(state in ("passed", "verified") for state in states):
+        return "verified"
+    return "designed"
+
+
+def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
+    parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND") or None)
+    sub = parser.add_subparsers(dest="action", required=True)
+    for name in ("parse", "merge"):
+        command = sub.add_parser(name)
+        command.add_argument("--file", action="append", required=True)
+        command.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        sets = [parse_scenarios(path) for path in args.file]
+        if args.action == "parse" and len(sets) > 1:
+            raise ScenarioError("invalid_action", "parse 只接受一个文件；多文件用 merge")
+        result = sets[0] if args.action == "parse" else {"schema": SCHEMA_VERSION, "scenarios": merge_scenarios(sets)}
+        stdout.write(json.dumps(result, ensure_ascii=False))
+        return 0
+    except ScenarioError as exc:
+        stdout.write(json.dumps({"ok": False, "code": exc.code, "message": exc.message, "details": exc.details}, ensure_ascii=False))
+        return 3
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

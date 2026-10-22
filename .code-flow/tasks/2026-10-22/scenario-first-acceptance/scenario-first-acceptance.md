@@ -20,17 +20,17 @@
 
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |
 |---|---|---|---|---|---|---|
-| S-01 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 真实 scenarios.md + parser | TASK-001 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "parse"] |
-| S-02 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 两份 design 引用同一全局 ID | TASK-001 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "merge_conflict"] |
+| S-01 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 真实 scenarios.md + parser | TASK-001 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "parse"] |
+| S-02 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 两份 design 引用同一全局 ID | TASK-001 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "merge_conflict"] |
 | S-03 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 真实 plan + coverage | TASK-002 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "scenario_owner"] |
-| S-04 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 真实 manifest + 多 check | TASK-001 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "multi_check"] |
+| S-04 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 真实 manifest + 多 check | TASK-001 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "multi_check"] |
 | S-05 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 真实 design + scenarios + manifest | TASK-003 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "scenario_source"] |
 | S-06 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 无 scenarios.md 的 0.8 需求 | TASK-003 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "fallback"] |
 | E-01 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 新需求缺少 scenarios.md | TASK-002 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "missing_scenarios"] |
 | E-02 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | Coverage 引用未知场景 | TASK-003 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "unknown_scenario"] |
-| E-03 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 同一 ID 两份冲突定义 | TASK-001 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "definition_conflict"] |
+| E-03 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 同一 ID 两份冲突定义 | TASK-001 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "definition_conflict"] |
 | B-01 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 0.8 旧需求 | TASK-003 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "migrate_legacy"] |
-| B-02 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 单域需求（仅后端） | TASK-001 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "single_domain"] |
+| B-02 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 单域需求（仅后端） | TASK-001 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "single_domain"] |
 
 > 本表覆盖 design §2.5 全部场景；每个场景唯一 owner。
 
@@ -38,7 +38,7 @@
 
 ## TASK-001: 场景源模型：解析、合并、多 check 派生
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: 无
 - **Source**: scenario-first-acceptance.design.md#3.3 数据设计, scenario-first-acceptance.design.md#3.5 质量实现
@@ -53,39 +53,56 @@
 
 ### Checklist
 
-- [ ] 定义 scenarios.md schema：id/title/priority/level/exec/env/components/boundary/preconditions/steps/expected/design_refs/rules/checks。
-- [ ] 实现 parse/validate：缺 ID、重复 ID、非法字段、未知 check 都报错。
-- [ ] 实现多 design 合并：同 ID 定义一致合并，不一致 `design_scenario_conflict`。
-- [ ] 实现场景→check 状态派生：所有 required check verified 才 verified；任一 failed/env_blocked 则不通过。
-- [ ] 支持单域需求（只有后端或只有前端 design）。
-- [ ] 实现并运行 verifier scripts-code-standards#RULE-scripts-no-print-debug-001。
-- [ ] 实现并运行 verifier scripts-code-standards#RULE-scripts-no-bare-except-001。
-- [ ] 实现并运行 verifier scripts-code-standards#RULE-scripts-hook-protocol-001。
-- [ ] 实现并运行 verifier scripts-code-standards#RULE-scripts-context-gate-001。
-- [ ] 实现并运行 verifier cli-code-standards#RULE-cli-hook-guard-001。
-- [ ] [S-01][integration] 编写/更新验收测试（真实边界：真实 scenarios.md + parser）
-- [ ] [S-02][integration] 编写/更新验收测试（真实边界：两份 design 引用同一全局 ID）
-- [ ] [S-04][integration] 编写/更新验收测试（真实边界：真实 manifest + 多 check）
-- [ ] [E-03][integration] 编写/更新验收测试（真实边界：同一 ID 两份冲突定义）
-- [ ] [B-02][integration] 编写/更新验收测试（真实边界：单域需求（仅后端））
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 定义 scenarios.md schema：id/title/priority/level/exec/env/components/boundary/preconditions/steps/expected/design_refs/rules/checks。
+- [x] 实现 parse/validate：缺 ID、重复 ID、非法字段、未知 check 都报错。
+- [x] 实现多 design 合并：同 ID 定义一致合并，不一致 `design_scenario_conflict`。
+- [x] 实现场景→check 状态派生：所有 required check verified 才 verified；任一 failed/env_blocked 则不通过。
+- [x] 支持单域需求（只有后端或只有前端 design）。
+- [x] 实现并运行 verifier scripts-code-standards#RULE-scripts-no-print-debug-001。
+- [x] 实现并运行 verifier scripts-code-standards#RULE-scripts-no-bare-except-001。
+- [x] 实现并运行 verifier scripts-code-standards#RULE-scripts-hook-protocol-001。
+- [x] 实现并运行 verifier scripts-code-standards#RULE-scripts-context-gate-001。
+- [x] 实现并运行 verifier cli-code-standards#RULE-cli-hook-guard-001。
+- [x] [S-01][integration] 编写/更新验收测试（真实边界：真实 scenarios.md + parser）
+- [x] [S-02][integration] 编写/更新验收测试（真实边界：两份 design 引用同一全局 ID）
+- [x] [S-04][integration] 编写/更新验收测试（真实边界：真实 manifest + 多 check）
+- [x] [E-03][integration] 编写/更新验收测试（真实边界：同一 ID 两份冲突定义）
+- [x] [B-02][integration] 编写/更新验收测试（真实边界：单域需求（仅后端））
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 执行命令 | 状态 |
 |---|---|---|---|---|---|
-| S-01 | integration | 真实 scenarios.md + parser | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "parse"] | planned |
-| S-02 | integration | 两份 design 引用同一全局 ID | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "merge_conflict"] | planned |
-| S-04 | integration | 真实 manifest + 多 check | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "multi_check"] | planned |
-| E-03 | integration | 同一 ID 两份冲突定义 | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "definition_conflict"] | planned |
-| B-02 | integration | 单域需求（仅后端） | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "single_domain"] | planned |
+| S-01 | integration | 真实 scenarios.md + parser | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "parse"] | verified |
+| S-02 | integration | 两份 design 引用同一全局 ID | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "merge_conflict"] | verified |
+| S-04 | integration | 真实 manifest + 多 check | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "multi_check"] | verified |
+| E-03 | integration | 同一 ID 两份冲突定义 | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "definition_conflict"] | verified |
+| B-02 | integration | 单域需求（仅后端） | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "single_domain"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 RED/GREEN、断言位置与真实边界证据。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|---|---|---|---|---|---|
+| S-01 | `-k parse` 旧模块不存在 | **1 passed** | `test_parse_scenarios_reads_frontmatter` | 真实 scenarios.md frontmatter | verified |
+| S-02 | `-k merge_conflict` 无合并实现 | **1 passed** | `test_merge_identical_definitions_keeps_one_and_unions_refs` | 两份真实场景源 | verified |
+| S-04 | `-k multi_check` 无派生状态 | **1 passed** | `test_multi_check_status_is_and_semantics` | 两 check 状态矩阵 | verified |
+| E-03 | `-k definition_conflict` 无冲突检查 | **1 passed** | `test_definition_conflict_fails_closed` | 两份冲突定义 | verified |
+| B-02 | `-k single_domain` 无单域用例 | **1 passed** | `test_single_domain_scenario_source_is_valid` | 仅后端 components | verified |
+
+全量 `tests/test_cf_scenarios.py` → **6 passed**。
+- S-01: verified — automated command passed; run_id=f27bdde89e7e428a8cccc0f74808e67c (confirmed_by: runner)
+- S-02: failed — automated command failed; run_id=f27bdde89e7e428a8cccc0f74808e67c (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=f27bdde89e7e428a8cccc0f74808e67c (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=f27bdde89e7e428a8cccc0f74808e67c (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=f27bdde89e7e428a8cccc0f74808e67c (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=e204364246694b8ca7f6f6bd93b8cda7 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] TASK-001 GREEN：6 passed；场景源解析/合并/多 check 状态落地。
+- [2026-10-22] completed (done)
 
 ---
 
