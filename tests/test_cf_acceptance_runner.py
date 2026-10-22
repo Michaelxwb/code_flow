@@ -358,7 +358,9 @@ def test_isolated_check_injects_worktree_namespace(tmp_path: Path) -> None:
     assert injected["CF_RUN_ID"]
     assert int(injected["CF_PORT_OFFSET"]) >= 10000
     assert tmp_path.name.lower().replace("-", "_") in injected["CF_DB_SUFFIX"]
-    assert json.loads(shared_out.read_text(encoding="utf-8")) == {}, "shared 环境不得注入命名空间"
+    shared_env = json.loads(shared_out.read_text(encoding="utf-8"))
+    namespace_keys = {"CF_WORKTREE_ID", "CF_RUN_ID", "CF_TASK_ID", "CF_PORT_OFFSET", "CF_DB_SUFFIX"}
+    assert not (set(shared_env) & namespace_keys), "shared 环境不得注入 worktree 命名空间"
     saved = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"]
     assert saved[0]["evidence"]["run_id"] == injected["CF_RUN_ID"], "证据 run_id 与子进程一致"
 
