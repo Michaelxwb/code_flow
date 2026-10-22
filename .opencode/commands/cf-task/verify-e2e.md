@@ -17,6 +17,8 @@ globs: []
 
 失败不写 verified、不反转已 done 的任务状态；归档前必须 `decision=pass`。未声明 review verifier 且无 E2E 场景时为空操作（`reason=nothing_to_verify`）。
 
+> 0.8 分层入口：`code-flow task verify --layers validators,review,e2e --profile smoke|changed|full`。每层独立返回 `decision/executed/reused/failed/env_blocked/incomplete`，`profile` 默认 `changed`，`full` 必须显式；`task verify-e2e` 保留为兼容别名（全层 + full）。
+
 ## 调用方式
 
 ```
@@ -139,6 +141,7 @@ E2E 失败时：
 运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
 
 ```bash
+code-flow task verify --task-dir "<需求目录>" --layers validators,review,e2e --profile changed --root "$PWD" --json
 code-flow task verify-e2e --task-dir "<需求目录>" --root "$PWD" --json
 code-flow task confirm-manual --help
 code-flow acceptance run --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --write-evidence

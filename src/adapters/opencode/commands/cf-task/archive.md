@@ -172,6 +172,7 @@ Spec 同步建议:
 ```bash
 code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
 code-flow task finish --task-dir "<需求目录>" --task TASK-001 --root "$PWD" --json
+code-flow task verify --task-dir "<需求目录>" --layers validators,review,e2e --profile changed --root "$PWD" --json
 code-flow task verify-e2e --task-dir "<需求目录>" --root "$PWD" --json
 code-flow task cleanup-session --help
 code-flow spec gate --help
