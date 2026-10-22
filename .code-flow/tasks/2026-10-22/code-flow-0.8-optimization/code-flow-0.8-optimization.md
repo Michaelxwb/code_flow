@@ -52,8 +52,8 @@
 - **Priority**: P0
 - **Depends**: 无
 - **Source**: code-flow-0.8-optimization.design.md#2.5 验收条件, code-flow-0.8-optimization.design.md#3.5 质量实现方案
-- **Spec-Refs**: N/A
-- **Acceptance-Refs**: N/A
+- **Spec-Refs**:
+- **Acceptance-Refs**:
 - **Files**: `tests/test_cf_workflow_scale.py`, `docs/plans/0.8-baseline.md`
 - **Estimate**: 1d
 

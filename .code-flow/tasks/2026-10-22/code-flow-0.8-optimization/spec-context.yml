@@ -1,7 +1,7 @@
 version: 1
 task: code-flow-0.8-optimization
 enforcement: required
-updated_at: '2026-10-22T05:06:46.858081+00:00'
+updated_at: '2026-10-22T05:12:49.003349+00:00'
 sources:
 - type: cli
   ref: bind
@@ -45,7 +45,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
-          artifact_sha256: 6ba97c83aabacb81ec0039266f7c88d62daca7b4b422c4f4fba646b7f15f74f6
+          artifact_sha256: 3064197dc2ec7c3de49685c2cb42f7be1e4a5e4c393cd035a532ae84c8c4d624
         decision: null
         evidence: []
       code:
@@ -81,7 +81,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 6ba97c83aabacb81ec0039266f7c88d62daca7b4b422c4f4fba646b7f15f74f6
+          artifact_sha256: 3064197dc2ec7c3de49685c2cb42f7be1e4a5e4c393cd035a532ae84c8c4d624
         decision: null
         evidence: []
       code:
@@ -117,7 +117,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
-          artifact_sha256: 6ba97c83aabacb81ec0039266f7c88d62daca7b4b422c4f4fba646b7f15f74f6
+          artifact_sha256: 3064197dc2ec7c3de49685c2cb42f7be1e4a5e4c393cd035a532ae84c8c4d624
         decision: null
         evidence: []
       code:
@@ -153,7 +153,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 6ba97c83aabacb81ec0039266f7c88d62daca7b4b422c4f4fba646b7f15f74f6
+          artifact_sha256: 3064197dc2ec7c3de49685c2cb42f7be1e4a5e4c393cd035a532ae84c8c4d624
         decision: null
         evidence: []
       code:
@@ -189,7 +189,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
-          artifact_sha256: 6ba97c83aabacb81ec0039266f7c88d62daca7b4b422c4f4fba646b7f15f74f6
+          artifact_sha256: 3064197dc2ec7c3de49685c2cb42f7be1e4a5e4c393cd035a532ae84c8c4d624
         decision: null
         evidence: []
       code:
@@ -226,7 +226,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
-          artifact_sha256: 6ba97c83aabacb81ec0039266f7c88d62daca7b4b422c4f4fba646b7f15f74f6
+          artifact_sha256: 3064197dc2ec7c3de49685c2cb42f7be1e4a5e4c393cd035a532ae84c8c4d624
         decision: null
         evidence: []
       code:
@@ -442,7 +442,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 6ba97c83aabacb81ec0039266f7c88d62daca7b4b422c4f4fba646b7f15f74f6
+          artifact_sha256: 3064197dc2ec7c3de49685c2cb42f7be1e4a5e4c393cd035a532ae84c8c4d624
         decision: null
         evidence: []
       code:
@@ -478,7 +478,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 6ba97c83aabacb81ec0039266f7c88d62daca7b4b422c4f4fba646b7f15f74f6
+          artifact_sha256: 3064197dc2ec7c3de49685c2cb42f7be1e4a5e4c393cd035a532ae84c8c4d624
         decision: null
         evidence: []
       code:
@@ -514,7 +514,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 6ba97c83aabacb81ec0039266f7c88d62daca7b4b422c4f4fba646b7f15f74f6
+          artifact_sha256: 3064197dc2ec7c3de49685c2cb42f7be1e4a5e4c393cd035a532ae84c8c4d624
         decision: null
         evidence: []
       code:
@@ -550,7 +550,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 6ba97c83aabacb81ec0039266f7c88d62daca7b4b422c4f4fba646b7f15f74f6
+          artifact_sha256: 3064197dc2ec7c3de49685c2cb42f7be1e4a5e4c393cd035a532ae84c8c4d624
         decision: null
         evidence: []
       code:
@@ -586,7 +586,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
-          artifact_sha256: 6ba97c83aabacb81ec0039266f7c88d62daca7b4b422c4f4fba646b7f15f74f6
+          artifact_sha256: 3064197dc2ec7c3de49685c2cb42f7be1e4a5e4c393cd035a532ae84c8c4d624
         decision: null
         evidence: []
       code:
