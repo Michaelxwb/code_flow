@@ -188,3 +188,42 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def require_source(task_dir: object) -> Path:
+    """Return the single scenarios source for a requirement directory."""
+    directory = Path(task_dir)
+    matches = sorted(directory.glob("*.scenarios.md")) if directory.is_dir() else []
+    if not matches:
+        raise ScenarioError("scenario_source_missing", f"缺少 <需求>.scenarios.md: {directory}")
+    if len(matches) > 1:
+        raise ScenarioError("scenario_source_ambiguous", f"多个场景源: {', '.join(path.name for path in matches)}")
+    return matches[0]
+
+
+def reconcile_coverage(scenarios: Sequence[Mapping[str, object]],
+                       coverage: Sequence[Mapping[str, object]]) -> dict[str, object]:
+    """Reconcile canonical scenarios with Acceptance Coverage rows."""
+    by_scenario = {str(item.get("id")): item for item in scenarios}
+    owners: dict[str, list[str]] = {}
+    unknown: list[str] = []
+    for row in coverage:
+        scenario_id = row.get("scenario_id") or row.get("id")
+        if not isinstance(scenario_id, str) or not scenario_id:
+            continue
+        if scenario_id not in by_scenario:
+            unknown.append(scenario_id)
+            continue
+        owner = row.get("owner")
+        if isinstance(owner, str) and owner.strip():
+            owners.setdefault(scenario_id, []).append(owner.strip())
+    missing = sorted(set(by_scenario) - set(owners))
+    duplicate = sorted(key for key, values in owners.items() if len(set(values)) > 1)
+    unowned = sorted(set(by_scenario) - set(owners))
+    return {
+        "ok": not missing and not unknown and not duplicate and not unowned,
+        "missing": missing,
+        "unknown": sorted(unknown),
+        "duplicate_owner": duplicate,
+        "unowned": unowned,
+    }

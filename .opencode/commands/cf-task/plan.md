@@ -2,6 +2,10 @@
 
 从设计文档或设计简报拆解需求，生成结构化任务文件。
 
+## Scenario-First（0.9）
+
+若需求目录存在 `<需求>.scenarios.md`，场景只能从该文件读取并分配 owner；design 只引用场景 ID。没有场景文件时回退 0.8 双 design 逻辑合并并标记 `deprecated`。
+
 ## 输入
 
 - `/cf-task:plan <设计文档路径>` — 指定文档路径

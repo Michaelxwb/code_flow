@@ -1,7 +1,7 @@
 version: 1
 task: scenario-first-acceptance
 enforcement: required
-updated_at: '2026-10-22T13:42:37.449344+00:00'
+updated_at: '2026-10-22T13:49:47.261346+00:00'
 sources:
 - type: cli
   ref: bind
@@ -45,7 +45,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 946d744a3c11e6999d5b3ec9ba01d2ef945162d2fa20d9859e77bd629bf7d0a1
+          artifact_sha256: 37f678e86c5995705c0b7fc9c9962bc3d826574db70bf2c0ad2e1c3a6d5ce355
         decision: null
         evidence: []
       code:
@@ -104,7 +104,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 946d744a3c11e6999d5b3ec9ba01d2ef945162d2fa20d9859e77bd629bf7d0a1
+          artifact_sha256: 37f678e86c5995705c0b7fc9c9962bc3d826574db70bf2c0ad2e1c3a6d5ce355
         decision: null
         evidence: []
       code:
@@ -172,7 +172,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 946d744a3c11e6999d5b3ec9ba01d2ef945162d2fa20d9859e77bd629bf7d0a1
+          artifact_sha256: 37f678e86c5995705c0b7fc9c9962bc3d826574db70bf2c0ad2e1c3a6d5ce355
         decision: null
         evidence: []
       code:
@@ -231,7 +231,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 946d744a3c11e6999d5b3ec9ba01d2ef945162d2fa20d9859e77bd629bf7d0a1
+          artifact_sha256: 37f678e86c5995705c0b7fc9c9962bc3d826574db70bf2c0ad2e1c3a6d5ce355
         decision: null
         evidence: []
       code:
@@ -290,7 +290,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 946d744a3c11e6999d5b3ec9ba01d2ef945162d2fa20d9859e77bd629bf7d0a1
+          artifact_sha256: 37f678e86c5995705c0b7fc9c9962bc3d826574db70bf2c0ad2e1c3a6d5ce355
         decision: null
         evidence: []
       code:
@@ -379,7 +379,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 946d744a3c11e6999d5b3ec9ba01d2ef945162d2fa20d9859e77bd629bf7d0a1
+          artifact_sha256: 37f678e86c5995705c0b7fc9c9962bc3d826574db70bf2c0ad2e1c3a6d5ce355
         decision: null
         evidence: []
       code:
@@ -613,7 +613,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 946d744a3c11e6999d5b3ec9ba01d2ef945162d2fa20d9859e77bd629bf7d0a1
+          artifact_sha256: 37f678e86c5995705c0b7fc9c9962bc3d826574db70bf2c0ad2e1c3a6d5ce355
         decision: null
         evidence: []
       code:
@@ -660,7 +660,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 946d744a3c11e6999d5b3ec9ba01d2ef945162d2fa20d9859e77bd629bf7d0a1
+          artifact_sha256: 37f678e86c5995705c0b7fc9c9962bc3d826574db70bf2c0ad2e1c3a6d5ce355
         decision: null
         evidence: []
       code:
@@ -707,7 +707,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 946d744a3c11e6999d5b3ec9ba01d2ef945162d2fa20d9859e77bd629bf7d0a1
+          artifact_sha256: 37f678e86c5995705c0b7fc9c9962bc3d826574db70bf2c0ad2e1c3a6d5ce355
         decision: null
         evidence: []
       code:
@@ -771,7 +771,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 946d744a3c11e6999d5b3ec9ba01d2ef945162d2fa20d9859e77bd629bf7d0a1
+          artifact_sha256: 37f678e86c5995705c0b7fc9c9962bc3d826574db70bf2c0ad2e1c3a6d5ce355
         decision: null
         evidence: []
       code:
@@ -832,7 +832,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 946d744a3c11e6999d5b3ec9ba01d2ef945162d2fa20d9859e77bd629bf7d0a1
+          artifact_sha256: 37f678e86c5995705c0b7fc9c9962bc3d826574db70bf2c0ad2e1c3a6d5ce355
         decision: null
         evidence: []
       code:

@@ -126,3 +126,27 @@ scenarios:
 """)
     result = parse_scenarios(path)
     assert result["scenarios"][0]["components"] == ["backend"]
+
+
+def test_scenario_owner_reconciliation_requires_unique_owner() -> None:
+    from cf_scenarios import reconcile_coverage
+    scenarios = [{"id": "S-01"}, {"id": "S-02"}]
+    report = reconcile_coverage(scenarios, [
+        {"scenario_id": "S-01", "owner": "TASK-001"},
+        {"scenario_id": "S-02", "owner": "TASK-002"},
+    ])
+    assert report["ok"] is True
+    duplicate = reconcile_coverage(scenarios, [
+        {"scenario_id": "S-01", "owner": "TASK-001"},
+        {"scenario_id": "S-01", "owner": "TASK-002"},
+        {"scenario_id": "S-02", "owner": "TASK-002"},
+    ])
+    assert duplicate["ok"] is False
+    assert duplicate["duplicate_owner"] == ["S-01"]
+
+
+def test_missing_scenarios_source_blocks_plan(tmp_path: Path) -> None:
+    from cf_scenarios import require_source
+    with pytest.raises(ScenarioError) as error:
+        require_source(tmp_path)
+    assert error.value.code == "scenario_source_missing"

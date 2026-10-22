@@ -3,6 +3,10 @@ name: cf-task-align
 description: Generate a design brief (.design.md) from a requirement through structured interactive dialogue. Accepts plain text, an existing PRD (.prd.md) to derive from, or a .design.md draft to resume. Adapts to the nature of the work — feature development, refactoring, CLI tools, background jobs, performance optimization, etc.
 ---
 
+## Scenario-First（0.9）
+
+全栈用户场景统一写入 `<需求>.scenarios.md`，作为验收场景唯一源；design 文档只写实现逻辑并引用场景 ID。场景文件不存在时，新需求不得进入 plan。
+
 ## 输入
 
 - `cf-task-align "需求描述"` — 从需求描述新建设计简报

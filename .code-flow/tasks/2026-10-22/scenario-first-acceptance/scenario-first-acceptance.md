@@ -123,28 +123,33 @@ align 产出 scenarios.md；plan 只从 scenarios.md 取场景并分配唯一 ow
 
 ### Checklist
 
-- [ ] align 模板/命令增加 `<需求>.scenarios.md` 产出与校验。
-- [ ] plan 只从 scenarios.md 读取场景；不再从两份 design 解析 S/E/B 定义。
-- [ ] 每个场景分配唯一 owner，生成 Acceptance Coverage。
-- [ ] 新需求缺少 scenarios.md → block，提示先生成。
-- [ ] 四平台 plan/align 命令同步。
-- [ ] 实现并运行 verifier cli-code-standards#RULE-cli-dependency-allowlist-001。
-- [ ] 实现并运行 verifier cli-code-standards#RULE-cli-platform-parity-001。
-- [ ] 实现并运行 verifier cli-code-standards#RULE-cli-opencode-native-001。
-- [ ] [S-03][integration] 编写/更新验收测试（真实边界：真实 plan + coverage）
-- [ ] [E-01][integration] 编写/更新验收测试（真实边界：新需求缺少 scenarios.md）
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] align 模板/命令增加 `<需求>.scenarios.md` 产出与校验。
+- [x] plan 只从 scenarios.md 读取场景；不再从两份 design 解析 S/E/B 定义。
+- [x] 每个场景分配唯一 owner，生成 Acceptance Coverage。
+- [x] 新需求缺少 scenarios.md → block，提示先生成。
+- [x] 四平台 plan/align 命令同步。
+- [x] 实现并运行 verifier cli-code-standards#RULE-cli-dependency-allowlist-001。
+- [x] 实现并运行 verifier cli-code-standards#RULE-cli-platform-parity-001。
+- [x] 实现并运行 verifier cli-code-standards#RULE-cli-opencode-native-001。
+- [x] [S-03][integration] 编写/更新验收测试（真实边界：真实 plan + coverage）
+- [x] [E-01][integration] 编写/更新验收测试（真实边界：新需求缺少 scenarios.md）
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 执行命令 | 状态 |
 |---|---|---|---|---|---|
-| S-03 | integration | 真实 plan + coverage | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "scenario_owner"] | planned |
-| E-01 | integration | 新需求缺少 scenarios.md | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "missing_scenarios"] | planned |
+| S-03 | integration | 真实 plan + coverage | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "scenario_owner"] | verified |
+| E-01 | integration | 新需求缺少 scenarios.md | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "missing_scenarios"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 RED/GREEN、断言位置与真实边界证据。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|---|---|---|---|---|---|
+| S-03 | `-k scenario_owner` 无 reconcile 实现 | **1 passed** | `test_scenario_owner_reconciliation_requires_unique_owner` | scenarios + coverage rows | verified |
+| E-01 | `-k missing_scenarios` 无阻断 | **1 passed** | `test_missing_scenarios_source_blocks_plan` | 真实空任务目录 | verified |
+
+文档/模板：`specs/shared/scenarios-template.md` 新增；design 三模板 2.5 标注场景源；align/plan 四平台说明同步。全仓 **694 passed**。
 
 ### Log
 - [2026-10-22] created (draft)
