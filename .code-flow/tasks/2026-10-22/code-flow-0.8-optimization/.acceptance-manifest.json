@@ -1,0 +1,425 @@
+{
+  "schema": 2,
+  "task_file": "code-flow-0.8-optimization.md",
+  "task_sha256": "8dec0f42d86d7f55030bf6d1d54a7229cd6ba92e80cfb6191d865f6e185d4e90",
+  "scenarios": [
+    {
+      "id": "S-01",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 task md + spec-context + runner",
+      "owner": "TASK-003",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_workflow_scale.py,",
+        "-k,",
+        "truthful_gate]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-02",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 verify runner + manifest",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_verify_layers.py,",
+        "-k,",
+        "layers]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-03",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 manifest + subprocess",
+      "owner": "TASK-005",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_acceptance_manifest.py,",
+        "-k,",
+        "checks_scenarios]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-04",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 runner + checkpoint",
+      "owner": "TASK-007",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_acceptance_runner.py,",
+        "-k,",
+        "resume]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-05",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 git worktree + sidecar",
+      "owner": "TASK-004",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_evidence_store.py,",
+        "-k,",
+        "relock_compaction]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-06",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 git worktree ×3",
+      "owner": "TASK-009",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_task_parallel.py,",
+        "-k,",
+        "central_evidence]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-07",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实批次 worktree + shared env",
+      "owner": "TASK-011",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_task_parallel.py,",
+        "-k,",
+        "batch_smoke]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-08",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 plan 模板 + 任务文件",
+      "owner": "TASK-012",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_task_plan.py,",
+        "-k,",
+        "capability_budget]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-09",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 design + manifest + evidence",
+      "owner": "TASK-015",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_audit.py,",
+        "-k,",
+        "invariants]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-10",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 JUnit/Playwright 报告",
+      "owner": "TASK-016",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_evidence_store.py,",
+        "-k,",
+        "ci_import]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-11",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实四平台安装产物",
+      "owner": "TASK-017",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_adapter_parity.py]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-01",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 preflight + 服务探测",
+      "owner": "TASK-008",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_acceptance_runner.py,",
+        "-k,",
+        "env_blocked]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-02",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 merge + manifest",
+      "owner": "TASK-010",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_task_merge.py,",
+        "-k,",
+        "check_conflict]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-03",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 collect",
+      "owner": "TASK-009",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_task_parallel.py,",
+        "-k,",
+        "provisional_collect]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-04",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 task md + spec-context",
+      "owner": "TASK-002",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_workflow_service.py,",
+        "-k,",
+        "doc_state_drift]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-05",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 merge + input_hash",
+      "owner": "TASK-010",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_task_merge.py,",
+        "-k,",
+        "stale_after_merge]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-01",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 schema2 manifest",
+      "owner": "TASK-005",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_acceptance_manifest.py,",
+        "-k,",
+        "schema2_compat]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-02",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "非 git 项目",
+      "owner": "TASK-004",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_evidence_store.py,",
+        "-k,",
+        "non_git]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-03",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "空需求",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_verify_layers.py,",
+        "-k,",
+        "empty_noop]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-04",
+      "source": "code-flow-0.8-optimization.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 deadline",
+      "owner": "TASK-007",
+      "status": "planned",
+      "command": [
+        "`[python3,",
+        "-m,",
+        "pytest,",
+        "-q,",
+        "tests/test_cf_acceptance_runner.py,",
+        "-k,",
+        "deadline_incomplete]`"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    }
+  ]
+}
