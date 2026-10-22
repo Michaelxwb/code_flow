@@ -700,7 +700,7 @@
       "kind": "functional",
       "boundary": "真实 git worktree ×3",
       "owner": "TASK-009",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -713,7 +713,73 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "check": "CHK-8002880aa03d"
+      "check": "CHK-8002880aa03d",
+      "revision": 2,
+      "evidence": {
+        "id": "S-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "f26759c7b85a442facf5dff65fa54cf2",
+        "executed_at": "2026-10-22T05:55:40.740886+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_task_parallel.py",
+          "-k",
+          "central_evidence"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "8d83aa6ce29d1631c6dbd604d5de864ea8a37878465a1daff9b5d61a6f473a74"
+      },
+      "runs": [
+        {
+          "id": "S-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "25e562e9d1a440ebaf7d38572f1c7159",
+          "executed_at": "2026-10-22T05:52:36.425268+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_task_parallel.py",
+            "-k",
+            "central_evidence"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "ac70e2ad24d64750d10d54c6b781ddd4d02fcdf793431d7b8fb6054f7517eb20"
+        },
+        {
+          "id": "S-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "f26759c7b85a442facf5dff65fa54cf2",
+          "executed_at": "2026-10-22T05:55:40.740886+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_task_parallel.py",
+            "-k",
+            "central_evidence"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "8d83aa6ce29d1631c6dbd604d5de864ea8a37878465a1daff9b5d61a6f473a74"
+        }
+      ]
     },
     {
       "id": "S-07",
@@ -919,7 +985,7 @@
       "kind": "functional",
       "boundary": "真实 collect",
       "owner": "TASK-009",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -932,7 +998,73 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "check": "CHK-5a0b89051cb7"
+      "check": "CHK-5a0b89051cb7",
+      "revision": 2,
+      "evidence": {
+        "id": "E-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "f26759c7b85a442facf5dff65fa54cf2",
+        "executed_at": "2026-10-22T05:55:40.740886+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_task_parallel.py",
+          "-k",
+          "provisional_collect"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "8d83aa6ce29d1631c6dbd604d5de864ea8a37878465a1daff9b5d61a6f473a74"
+      },
+      "runs": [
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "25e562e9d1a440ebaf7d38572f1c7159",
+          "executed_at": "2026-10-22T05:52:36.425268+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_task_parallel.py",
+            "-k",
+            "provisional_collect"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "ac70e2ad24d64750d10d54c6b781ddd4d02fcdf793431d7b8fb6054f7517eb20"
+        },
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "f26759c7b85a442facf5dff65fa54cf2",
+          "executed_at": "2026-10-22T05:55:40.740886+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_task_parallel.py",
+            "-k",
+            "provisional_collect"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "8d83aa6ce29d1631c6dbd604d5de864ea8a37878465a1daff9b5d61a6f473a74"
+        }
+      ]
     },
     {
       "id": "E-04",

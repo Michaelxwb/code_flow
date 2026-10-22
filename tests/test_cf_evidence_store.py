@@ -335,3 +335,39 @@ def test_s05_deferral_does_not_clear_previous_verified_state() -> None:
     stage = updated.stage_status["code"]
     assert stage.status == "verified", "deferral must not clear old verified evidence"
     assert list(stage.evidence) == [verified]
+
+
+def test_s05_stale_verified_evidence_is_downgraded_by_deferral() -> None:
+    """A deferral must not preserve verified evidence from a different diff."""
+    from cf_task_runtime import _update_rule
+
+    verified = {
+        "verifier_ref": "demo-spec#RULE-001",
+        "status": "verified",
+        "result_sha256": "old-result",
+        "diff_sha256": "a" * 64,
+        "rule_text_sha256": "b" * 64,
+        "executed_at": "2026-10-22T00:00:00+00:00",
+    }
+    deferred = {
+        "verifier_ref": "demo-spec#RULE-001",
+        "status": "unverified",
+        "result_sha256": "deferred-result",
+        "diff_sha256": "c" * 64,
+        "rule_text_sha256": "b" * 64,
+        "executed_at": "2026-10-22T00:01:00+00:00",
+        "error_code": "deferred_to_review",
+        "details": {"reason": "out_of_task_scope", "deferred_to_review": True},
+    }
+    rule = RuleBinding(
+        ref="RULE-001",
+        summary="verified rule",
+        text_sha256="b" * 64,
+        enforcement="required",
+        verifier_ref="demo-spec#RULE-001",
+        stage_status={"code": RuleStageStatus("verified", (), None, (verified,))},
+    )
+    updated = _update_rule(rule, deferred)
+    stage = updated.stage_status["code"]
+    assert stage.status == "unverified", "stale verified evidence must not survive a new diff"
+    assert stage.evidence[-1]["error_code"] == "deferred_to_review"

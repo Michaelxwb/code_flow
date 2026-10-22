@@ -30,7 +30,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import IO, Optional, Sequence
+from typing import IO, Mapping, Optional, Sequence
 
 from cf_task_index import parse_task_file
 from cf_task_index import task_batches
@@ -38,6 +38,9 @@ from cf_task_merge import merge_context_text
 from cf_task_merge import merge_manifest_text
 from cf_task_merge import merge_task_markdown
 from cf_task_state import FINISHED_STATUSES
+from cf_acceptance_schema import load_manifest
+from cf_evidence_store import EvidenceStore
+from cf_exec_base import worktree_fingerprint
 from cf_runtime_install import verify_install
 
 
@@ -55,6 +58,21 @@ class ParallelError(ValueError):
         super().__init__(message)
         self.code = code
         self.message = message
+
+
+class ParallelEvidenceError(ParallelError):
+    """Done-Gate evidence rejection carrying machine-readable missing checks."""
+
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        missing_checks: Sequence[Mapping[str, object]] = (),
+        required_checks: Sequence[str] = (),
+    ) -> None:
+        super().__init__(code, message)
+        self.missing_checks = tuple(dict(item) for item in missing_checks)
+        self.required_checks = tuple(required_checks)
 
 
 def _run_git(root: Path, arguments: Sequence[str]) -> str:
@@ -333,6 +351,139 @@ def prepare(root: Path, task_file: str, tasks: Sequence[str], run_id: Optional[s
             "base_head": outcome["base_head"], "worktrees": worktrees}
 
 
+def _required_check_map(manifest: Mapping[str, object], task: str) -> dict[str, list[str]]:
+    """Required code checks: functional scenarios traceable to this TASK.
+
+    ``check`` is the schema3 execution identity. Schema2 manifests have no
+    scenario→check link, so evidence validation is skipped for them and the
+    status gate remains authoritative.
+    """
+    scenarios = manifest.get("scenarios")
+    if not isinstance(scenarios, list):
+        return {}
+    required: dict[str, list[str]] = {}
+    for item in scenarios:
+        if not isinstance(item, Mapping):
+            continue
+        if str(item.get("kind") or "functional") in ("manual", "e2e"):
+            continue
+        owner = item.get("owner")
+        if isinstance(owner, str) and owner and owner != task:
+            continue
+        check_id = item.get("check")
+        scenario_id = item.get("id")
+        if not isinstance(check_id, str) or not check_id.strip():
+            continue
+        if not isinstance(scenario_id, str) or not scenario_id:
+            continue
+        required.setdefault(check_id, []).append(scenario_id)
+    return required
+
+
+def _task_manifest(worktree: Path, task_file: str) -> Optional[dict[str, object]]:
+    path = worktree / Path(task_file).parent / ".acceptance-manifest.json"
+    if not path.is_file():
+        return None
+    try:
+        return load_manifest(path)
+    except (OSError, ValueError) as exc:
+        raise ParallelError("acceptance_manifest_invalid", f"acceptance manifest 无效: {exc}") from exc
+
+
+def _run_matches(run: Mapping[str, object], expected_hash: str) -> bool:
+    """A central evidence run proves this check against this worktree content."""
+    run_id = run.get("run_id")
+    return (
+        isinstance(run_id, str)
+        and bool(run_id.strip())
+        and run.get("input_hash") == expected_hash
+        and run.get("exit_code") == 0
+        and run.get("status") in ("passed", "verified")
+    )
+
+
+def _evidence_reason(runs: Sequence[Mapping[str, object]], expected_hash: str) -> str:
+    if not runs:
+        return "not_executed"
+    passed = [
+        run for run in runs
+        if run.get("exit_code") == 0 and run.get("status") in ("passed", "verified")
+    ]
+    if not passed:
+        return "nonzero_exit"
+    if any(run.get("input_hash") == expected_hash for run in passed):
+        return "missing_run_id"
+    return "input_hash_mismatch"
+
+
+def _missing_evidence(
+    worktree: Path, task: str, manifest: Mapping[str, object], task_file: str
+) -> tuple[list[dict[str, object]], list[str]]:
+    """Return checks without matching central evidence plus all required IDs."""
+    required = _required_check_map(manifest, task)
+    if not required:
+        return [], []
+    expected = worktree_fingerprint(str(worktree))
+    if not expected:
+        raise ParallelError(
+            "evidence_hash_unavailable",
+            f"{task}: 无法计算 worktree input_hash，拒绝用无法校验的旧证据放行",
+        )
+    store = EvidenceStore(worktree, requirement=Path(task_file).parent.name)
+    missing: list[dict[str, object]] = []
+    for check_id in sorted(required):
+        runs = store.list_runs(check_id)
+        if not any(_run_matches(run, expected) for run in runs):
+            missing.append({
+                "check_id": check_id,
+                "scenarios": sorted(required[check_id]),
+                "reason": _evidence_reason(runs, expected),
+                "expected_input_hash": expected,
+            })
+    return missing, sorted(required)
+
+
+def _evidence_state(
+    worktree: Path, task: str, task_file: str
+) -> tuple[list[dict[str, object]], list[str]]:
+    manifest = _task_manifest(worktree, task_file)
+    if manifest is None:
+        return [], []
+    return _missing_evidence(worktree, task, manifest, task_file)
+
+
+def _evidence_summary(missing: Sequence[Mapping[str, object]]) -> str:
+    return ", ".join(
+        f"{item.get('check_id')}({','.join(str(s) for s in item.get('scenarios', []))}: {item.get('reason')})"
+        for item in missing
+    )
+
+
+def _reject_unfinished(task: str, status: str, path: Path, task_file: str) -> None:
+    missing, required = _evidence_state(path, task, task_file)
+    detail = _evidence_summary(missing)
+    suffix = f"；先补 required 检查: {detail}" if detail else "；先补 required 检查后重新 finish"
+    raise ParallelEvidenceError(
+        f"task_{status}",
+        f"{task}: Status 为 {status}，未通过 Done Gate{suffix}",
+        missing,
+        required,
+    )
+
+
+def _require_evidence(task: str, path: Path, task_file: str) -> list[str]:
+    missing, required = _evidence_state(path, task, task_file)
+    if missing:
+        raise ParallelEvidenceError(
+            "required_evidence_missing",
+            f"{task}: required code checks 缺少匹配 input_hash 的 central evidence: "
+            f"{_evidence_summary(missing)}；先补 required 检查（在 worktree 内重跑 task finish）",
+            missing,
+            required,
+        )
+    return required
+
+
 def _collect_one(root: Path, entry: dict[str, object], base_head: str, task_file: str, commit: bool = True) -> dict[str, object]:
     task = str(entry["task"])
     path = Path(str(entry["path"]))
@@ -344,6 +495,8 @@ def _collect_one(root: Path, entry: dict[str, object], base_head: str, task_file
     except ValueError as exc:
         raise ParallelError("task_parse_error", f"{task}: {exc}") from exc
     status = next((node.status for node in nodes if node.task_id == task), None)
+    if status in ("provisional", "blocked"):
+        _reject_unfinished(task, status, path, task_file)
     if status not in FINISHED_STATUSES:
         raise ParallelError("task_not_finished", f"{task}: Status 为 {status}，未通过 Done Gate")
     if (path / MARKER).exists():
@@ -362,9 +515,11 @@ def _collect_one(root: Path, entry: dict[str, object], base_head: str, task_file
     head = _run_git(path, ("rev-parse", "HEAD")).strip()
     if head == base_head:
         raise ParallelError("no_commits", f"{task}: worktree 无新提交")
+    required = _require_evidence(task, path, task_file)
     files = _run_git(root, ("diff", "--name-only", f"{base_head}..{branch}")).splitlines()
     return {"task": task, "branch": branch, "path": str(path), "head": head,
-            "status": status, "files": sorted(item for item in files if item)}
+            "status": status, "files": sorted(item for item in files if item),
+            "evidence": {"required_checks": required, "verified_checks": required}}
 
 
 def collect(root: Path, run_id: str, tasks: Optional[Sequence[str]], commit: bool = True) -> dict[str, object]:
@@ -378,10 +533,23 @@ def collect(root: Path, run_id: str, tasks: Optional[Sequence[str]], commit: boo
     for entry in entries:
         try:
             results.append(_collect_one(root, entry, str(meta["base_head"]), str(meta["task_file"]), commit))
+        except ParallelEvidenceError as exc:
+            results.append({
+                "task": str(entry.get("task", "")),
+                "ok": False,
+                "code": exc.code,
+                "message": exc.message,
+                "missing_checks": list(exc.missing_checks),
+            })
         except ParallelError as exc:
             results.append({"task": str(entry.get("task", "")), "ok": False, "code": exc.code, "message": exc.message})
     ok = bool(results) and all(item.get("code") is None for item in results)
-    return {"ok": ok, "action": "collect", "run_id": run_id, "results": results}
+    payload: dict[str, object] = {"ok": ok, "action": "collect", "run_id": run_id, "results": results}
+    if ok:
+        # Batch-level smoke is executed once after merge (TASK-011); collect
+        # only records that the batch still owes it.
+        payload["batch_smoke"] = "pending"
+    return payload
 
 
 # --- merge: rebase + deterministic state-file resolution + --no-ff back-merge ---
