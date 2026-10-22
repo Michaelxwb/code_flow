@@ -49,7 +49,7 @@
 
 ## TASK-001: 基线 fixture 与性能指标
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: 无
 - **Source**: code-flow-0.8-optimization.design.md#2.5 验收条件, code-flow-0.8-optimization.design.md#3.5 质量实现方案
@@ -93,7 +93,7 @@
 
 ## TASK-002: 任务/场景状态机与状态渲染
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: code-flow-0.8-optimization.design.md#3.5.1 状态机与门禁, code-flow-0.8-optimization.design.md#3.5.4 错误与安全
@@ -145,7 +145,7 @@ verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_
 
 ## TASK-003: deferral 语义与 Done Gate 真实性
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-002
 - **Source**: code-flow-0.8-optimization.design.md#3.5.1 状态机与门禁, code-flow-0.8-optimization.design.md#2.5.1 业务规则与约束
@@ -191,7 +191,7 @@ verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_
 
 ## TASK-004: central evidence store 与 context 压缩
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-002
 - **Source**: code-flow-0.8-optimization.design.md#3.3.2 Evidence sidecar, code-flow-0.8-optimization.design.md#3.5.3 性能
@@ -242,7 +242,7 @@ verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_
 
 ## TASK-005: Manifest v3：checks + scenarios 与迁移
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-004
 - **Source**: code-flow-0.8-optimization.design.md#3.3.1 Manifest v3, code-flow-0.8-optimization.design.md#4.2 数据迁移
@@ -294,7 +294,7 @@ verifier `cli-code-standards#RULE-cli-user-content-preservation-001`：`node tes
 
 ## TASK-006: verify --layers / --profile
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-005
 - **Source**: code-flow-0.8-optimization.design.md#3.4 接口设计, code-flow-0.8-optimization.design.md#2.5.2 功能验收场景
@@ -348,7 +348,7 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 ## TASK-007: checkpoint / resume / 并行 / deadline
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-006
 - **Source**: code-flow-0.8-optimization.design.md#3.5.2 并发与原子性, code-flow-0.8-optimization.design.md#3.5.3 性能
@@ -400,7 +400,7 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 ## TASK-008: 环境预检、env_blocked 与隔离契约
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-005
 - **Source**: code-flow-0.8-optimization.design.md#3.3.1 Manifest v3, code-flow-0.8-optimization.design.md#3.5.2 并发与原子性
@@ -447,7 +447,7 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 ## TASK-009: 并行 worktree：central evidence 与 collect
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-004,TASK-005
 - **Source**: code-flow-0.8-optimization.design.md#7 并行 worktree, code-flow-0.8-optimization.design.md#3.5.2 并发与原子性
@@ -503,7 +503,7 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 ## TASK-010: 并行 merge：checks/context 确定性合并
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-009
 - **Source**: code-flow-0.8-optimization.design.md#7.2 规则, code-flow-0.8-optimization.design.md#3.5.2 并发与原子性
@@ -552,7 +552,7 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 ## TASK-011: 批次 smoke、共享环境锁与隔离注入
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-007,TASK-008,TASK-010
 - **Source**: code-flow-0.8-optimization.design.md#7.1 目标流程, code-flow-0.8-optimization.design.md#3.5.2 并发与原子性
@@ -598,7 +598,7 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 ## TASK-012: 能力级 plan 与计划预算
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-002
 - **Source**: code-flow-0.8-optimization.design.md#2.3 功能方案, code-flow-0.8-optimization.design.md#3.4 接口设计
@@ -645,7 +645,7 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ## TASK-013: 批量 finish 与证据聚合
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-011,TASK-012
 - **Source**: code-flow-0.8-optimization.design.md#3.5.1 状态机与门禁, code-flow-0.8-optimization.design.md#3.4 接口设计
@@ -691,7 +691,7 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ## TASK-014: 设计环境假设与生成式追溯矩阵
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-005
 - **Source**: code-flow-0.8-optimization.design.md#2.5 验收条件, code-flow-0.8-optimization.design.md#6 需求追溯矩阵
@@ -737,7 +737,7 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ## TASK-015: 审计不变量与 code-flow audit
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-005,TASK-014
 - **Source**: code-flow-0.8-optimization.design.md#8 审计与追溯
@@ -784,7 +784,7 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ## TASK-016: CI 证据导入（JUnit / Playwright）
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-005,TASK-008
 - **Source**: code-flow-0.8-optimization.design.md#3.4 接口设计, code-flow-0.8-optimization.design.md#3.3.2 Evidence sidecar
@@ -831,7 +831,7 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ## TASK-017: 命令面收敛、四平台生成、迁移与发布
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-001,TASK-002,TASK-003,TASK-004,TASK-005,TASK-006,TASK-007,TASK-008,TASK-009,TASK-010,TASK-011,TASK-012,TASK-013,TASK-014,TASK-015,TASK-016
 - **Source**: code-flow-0.8-optimization.design.md#3.4 接口设计, code-flow-0.8-optimization.design.md#4 部署与运维, code-flow-0.8-optimization.design.md#Spec Compliance Matrix
