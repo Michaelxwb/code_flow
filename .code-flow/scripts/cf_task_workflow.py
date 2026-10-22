@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 from typing import IO, Mapping, Optional, Sequence
 import sys
+import time
 
 from cf_acceptance_manifest import record_manual_evidence
 from cf_acceptance_runner import run_manifest
