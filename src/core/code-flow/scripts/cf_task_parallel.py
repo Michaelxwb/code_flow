@@ -221,7 +221,8 @@ def _install_worktree_manifest(root: Path, worktree: Path) -> None:
         # gitignored, so a fresh worktree does not receive them from checkout.
         # Copy every managed artifact that is missing before verifying.
         manifest = json.loads(source.read_text(encoding="utf-8"))
-        for relative in manifest.get("files", {}):
+        managed = list(manifest.get("files", {})) + list(manifest.get("hook_contracts", {}))
+        for relative in managed:
             if not isinstance(relative, str) or not relative:
                 continue
             target_file = worktree / relative
