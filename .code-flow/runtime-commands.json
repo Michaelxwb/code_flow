@@ -85,6 +85,13 @@
       ],
       "example_args": "--help"
     },
+    "task verify": {
+      "module": "cf_task_workflow",
+      "prefix": [
+        "verify"
+      ],
+      "example_args": "--task-dir \"<需求目录>\" --layers validators,review,e2e --profile changed --root \"$PWD\" --json"
+    },
     "task verify-e2e": {
       "module": "cf_task_workflow",
       "prefix": [

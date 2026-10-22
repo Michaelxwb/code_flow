@@ -477,7 +477,7 @@
       "kind": "functional",
       "boundary": "真实 verify runner + manifest",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -490,7 +490,52 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "check": "CHK-cad7b4b58d31"
+      "check": "CHK-cad7b4b58d31",
+      "revision": 1,
+      "evidence": {
+        "id": "S-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "2c2cab456cbf45f0bbea788898fd62cd",
+        "executed_at": "2026-10-22T05:55:44.418693+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_verify_layers.py",
+          "-k",
+          "layers"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "02c243085844f96a6f5bc062ee802e8fdacfa3cb88102129488a8fbb90e4eca5"
+      },
+      "runs": [
+        {
+          "id": "S-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "2c2cab456cbf45f0bbea788898fd62cd",
+          "executed_at": "2026-10-22T05:55:44.418693+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_verify_layers.py",
+            "-k",
+            "layers"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "02c243085844f96a6f5bc062ee802e8fdacfa3cb88102129488a8fbb90e4eca5"
+        }
+      ]
     },
     {
       "id": "S-03",
@@ -1119,7 +1164,7 @@
       "kind": "functional",
       "boundary": "空需求",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -1132,7 +1177,52 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "check": "CHK-4f253028f29e"
+      "check": "CHK-4f253028f29e",
+      "revision": 1,
+      "evidence": {
+        "id": "B-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "2c2cab456cbf45f0bbea788898fd62cd",
+        "executed_at": "2026-10-22T05:55:44.418693+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_verify_layers.py",
+          "-k",
+          "empty_noop"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "02c243085844f96a6f5bc062ee802e8fdacfa3cb88102129488a8fbb90e4eca5"
+      },
+      "runs": [
+        {
+          "id": "B-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "2c2cab456cbf45f0bbea788898fd62cd",
+          "executed_at": "2026-10-22T05:55:44.418693+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_verify_layers.py",
+            "-k",
+            "empty_noop"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "02c243085844f96a6f5bc062ee802e8fdacfa3cb88102129488a8fbb90e4eca5"
+        }
+      ]
     },
     {
       "id": "B-04",

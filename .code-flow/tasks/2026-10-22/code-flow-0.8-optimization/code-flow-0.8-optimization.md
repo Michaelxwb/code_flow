@@ -22,7 +22,7 @@
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |
 |--------|---------|---------|-------------|---------|------|---------|
 | S-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 task md + spec-context + runner | TASK-003 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_scale.py", "-k", "truthful_gate"] |
-| S-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 verify runner + manifest | TASK-006 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "layers"] |
+| S-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 verify runner + manifest | TASK-006 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "layers"] |
 | S-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 manifest + subprocess | TASK-005 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "checks_scenarios"] |
 | S-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 runner + checkpoint | TASK-007 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "resume"] |
 | S-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree + sidecar | TASK-004 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "relock_compaction"] |
@@ -39,7 +39,7 @@
 | E-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + input_hash | TASK-010 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "stale_after_merge"] |
 | B-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 schema2 manifest | TASK-005 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "schema2_compat"] |
 | B-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 非 git 项目 | TASK-004 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "non_git"] |
-| B-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 空需求 | TASK-006 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "empty_noop"] |
+| B-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 空需求 | TASK-006 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "empty_noop"] |
 | B-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 deadline | TASK-007 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "deadline_incomplete"] |
 
 > 本表覆盖 design §2.5 全部 S/E/B 场景；每个场景唯一 owner。执行命令为计划命令，TASK-001 先建立对应测试文件。
@@ -293,7 +293,7 @@ verifier `cli-code-standards#RULE-cli-user-content-preservation-001`：`node tes
 
 ## TASK-006: verify --layers / --profile
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-005
 - **Source**: code-flow-0.8-optimization.design.md#3.4 接口设计, code-flow-0.8-optimization.design.md#2.5.2 功能验收场景
@@ -308,28 +308,40 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 ### Checklist
 
-- [ ] 实现 --layers 与 --profile。
-- [ ] 每层独立返回 decision/executed/reused/failed/env_blocked。
-- [ ] task verify-e2e 作为别名。
-- [ ] 空需求返回 nothing_to_verify pass。
-- [ ] 四平台命令文档同步。
-- [ ] [S-02][integration] 编写/更新验收测试（真实边界：真实 verify runner + manifest）；断言：只执行 e2e 层；返回该层 decision/计数；不触发 validators
-- [ ] [B-03][integration] 编写/更新验收测试（真实边界：空需求）；断言：无 required 检查/无 E2E 时 nothing_to_verify pass；不伪造执行
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 实现 --layers 与 --profile。
+- [x] 每层独立返回 decision/executed/reused/failed/env_blocked。
+- [x] task verify-e2e 作为别名。
+- [x] 空需求返回 nothing_to_verify pass。
+- [x] 四平台命令文档同步。
+- [x] [S-02][integration] 编写/更新验收测试（真实边界：真实 verify runner + manifest）；断言：只执行 e2e 层；返回该层 decision/计数；不触发 validators
+- [x] [B-03][integration] 编写/更新验收测试（真实边界：空需求）；断言：无 required 检查/无 E2E 时 nothing_to_verify pass；不伪造执行
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-02 | integration | 真实 verify runner + manifest | 只执行 e2e 层；返回该层 decision/计数；不触发 validators | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "layers"] | planned |
-| B-03 | integration | 空需求 | 无 required 检查/无 E2E 时 nothing_to_verify pass；不伪造执行 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "empty_noop"] | planned |
+| S-02 | integration | 真实 verify runner + manifest | 只执行 e2e 层；返回该层 decision/计数；不触发 validators | `tests/test_cf_verify_layers.py::test_layers_cli_runs_only_requested_e2e`、`test_layers_keep_independent_results_after_layer_failure` | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "layers"] | verified |
+| B-03 | integration | 空需求 | 无 required 检查/无 E2E 时 nothing_to_verify pass；不伪造执行 | `tests/test_cf_verify_layers.py::test_empty_noop_returns_nothing_to_verify_without_execution`、`test_empty_noop_manifest_without_e2e_scenarios` | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "empty_noop"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-02 | `-k layers` → **5 failed**：`verify` action 不存在；运行时契约无 `task verify`（KeyError） | 同命令 → **5 passed**；`--layers e2e` 只执行 e2e 层，validators/review/functional 标记文件均未生成；validators 失败时 e2e 层仍执行并返回 | `test_layers_cli_runs_only_requested_e2e`；`test_layers_keep_independent_results_after_layer_failure`；`test_layers_runtime_contract_alias_and_four_platform_docs` | 真实临时 git 仓库 + `cf_task_workflow.py verify` 子进程 + 真实 `.acceptance-manifest.json`；E2E 命令真实写 marker，非 mock | verified |
+| B-03 | `-k empty_noop` → **2 failed**：CLI 不接受 `verify`，无法返回 nothing_to_verify | 同命令 → **2 passed, 3 deselected**；无 context/manifest 与仅 functional manifest 均返回 `reason=nothing_to_verify`、executed/reused 为 0，未执行 functional | `test_empty_noop_returns_nothing_to_verify_without_execution`；`test_empty_noop_manifest_without_e2e_scenarios` | 真实空需求目录 + 真实 manifest 文件；marker 文件不存在证明未伪造执行 | verified |
+
+回归：`python3 -m pytest -q tests/test_cf_e2e_flow.py tests/test_workflow_handoffs.py tests/test_cf_acceptance_runner.py` → **44 passed**；全仓 `python3 -m pytest -q` → **602 passed**。
+运行时：`node src/cli.js task verify --help` / `task verify-e2e --help` 均可解析；四平台 `verify-e2e` 文档保留“`task verify` 分层入口 + 兼容别名”说明并已同步部署副本。
+- S-02: verified — automated command passed; run_id=2c2cab456cbf45f0bbea788898fd62cd (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=2c2cab456cbf45f0bbea788898fd62cd (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] TASK-006 GREEN：5 passed；分层 verify（validators/review/e2e）、profile smoke|changed|full（默认 changed，full 显式）、层内独立计数、verify-e2e 别名、空需求 nothing_to_verify 落地。
+- [2026-10-22] started
+- [2026-10-22] completed (done)
 
 ---
 
