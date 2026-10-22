@@ -29,7 +29,7 @@
 | S-06 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree ×3 | TASK-009 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "central_evidence"] |
 | S-07 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实批次 worktree + shared env | TASK-011 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"] |
 | S-08 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 plan 模板 + 任务文件 | TASK-012 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"] |
-| S-09 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 design + manifest + evidence | TASK-015 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"] |
+| S-09 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 design + manifest + evidence | TASK-015 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"] |
 | S-10 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 JUnit/Playwright 报告 | TASK-016 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"] |
 | S-11 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实四平台安装产物 | TASK-017 | planned | ["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"] |
 | E-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 preflight + 服务探测 | TASK-008 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "env_blocked"] |
@@ -728,7 +728,7 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ## TASK-015: 审计不变量与 code-flow audit
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-005,TASK-014
 - **Source**: code-flow-0.8-optimization.design.md#8 审计与追溯
@@ -743,26 +743,33 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ### Checklist
 
-- [ ] 实现只读 code-flow audit。
-- [ ] owner 从 manifest 字段读取，不从散文扫描。
-- [ ] 场景/规则/风险计数全部推导。
-- [ ] 自指场景拆成 fixture 测试 + 只读审计。
-- [ ] 发现项带场景/规则 ID。
-- [ ] [S-09][integration] 编写/更新验收测试（真实边界：真实 design + manifest + evidence）；断言：增删场景/规则后计数自动变化；owner 来自字段；无硬编码
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 实现只读 code-flow audit。
+- [x] owner 从 manifest 字段读取，不从散文扫描。
+- [x] 场景/规则/风险计数全部推导。
+- [x] 自指场景拆成 fixture 测试 + 只读审计。
+- [x] 发现项带场景/规则 ID。
+- [x] [S-09][integration] 编写/更新验收测试（真实边界：真实 design + manifest + evidence）；断言：增删场景/规则后计数自动变化；owner 来自字段；无硬编码
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-09 | integration | 真实 design + manifest + evidence | 增删场景/规则后计数自动变化；owner 来自字段；无硬编码 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"] | planned |
+| S-09 | integration | 真实 design + manifest + evidence | 增删场景/规则后计数自动变化；owner 来自字段；无硬编码 | `tests/test_cf_audit.py::test_invariants_*` | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-09 | `python3 -m pytest -q tests/test_cf_audit.py -k invariants` → collection error：`ModuleNotFoundError: No module named 'cf_audit'` | 同命令 → **7 passed**；相关回归 `tests/test_cf_traceability.py tests/test_cf_acceptance_manifest.py` → **17 passed**；运行时契约 → **13 passed** | `test_invariants_counts_follow_design_and_manifest_data`、`test_invariants_verified_requires_run_id_exit_zero_and_input_hash`、`test_invariants_verified_falls_back_to_manifest_evidence`、`test_invariants_owner_is_read_from_manifest_field_not_prose`、`test_invariants_design_and_manifest_scenario_sets_must_match`、`test_invariants_audit_is_read_only_on_fixture_and_real_requirement`、`test_invariants_cli_emits_json_and_markdown` | 真实 design + manifest + central evidence sidecar；真实需求 20/20 场景、10 条规则、7 条风险生成 `decision=pass`；审计前后 manifest 字节不变；`node src/cli.js audit --task-dir ... --json` 返回只读报告 | verified |
+- S-09: verified — automated command passed; run_id=7f67e28b791a4092bbf1afc2cd7c35db (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] RED：`python3 -m pytest -q tests/test_cf_audit.py -k invariants` → collection error（`cf_audit` 不存在）。
+- [2026-10-22] TASK-015 GREEN：7 passed；只读 `cf_audit.py` + `code-flow audit`；owner 读 manifest 字段，场景/规则/风险计数由 design/manifest 推导，verified 校验 run_id/exit=0/input_hash（sidecar 优先、manifest 兼容回退）；相关回归 17 passed，运行时契约 13 passed。
+- [2026-10-22] completed (done)
 
 ---
 

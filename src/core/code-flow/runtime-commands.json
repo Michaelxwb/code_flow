@@ -113,6 +113,11 @@
       ],
       "example_args": "--help"
     },
+    "audit": {
+      "module": "cf_audit",
+      "prefix": [],
+      "example_args": "--task-dir \"<需求目录>\" --root \"$PWD\" --json"
+    },
     "spec gate": {
       "module": "cf_spec_gate",
       "prefix": [],
