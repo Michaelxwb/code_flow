@@ -464,10 +464,32 @@ def _skipped_evidence(metadata: SpecMetadata, rule: SpecRule, scope: Verificatio
     )
 
 
+def _deferral_kind(reason: str) -> str:
+    """Map a task-gate deferral reason to its evidence category.
+
+    Budget and env deferrals are recorded but never treated as a pass: the
+    required check did not actually run. Only review-stage work may move to the
+    requirement-level verify-e2e gate.
+    """
+    if reason in ("out_of_task_scope", "review_stage"):
+        return "review_stage"
+    if reason in ("budget", "over_finish_budget", "verifier_budget_exhausted"):
+        return "budget"
+    if reason in ("env", "env_blocked", "environment_unavailable"):
+        return "env"
+    return "unknown"
+
+
 def _deferred_evidence(metadata: SpecMetadata, rule: SpecRule, scope: VerificationScope,
                        reason: str) -> VerificationEvidence:
-    """任务级 Done Gate 延后执行（范围外/超预算）；需求级 verify-e2e 会全量补跑。"""
-    details = {"reason": reason, "deferred_to_review": True}
+    """任务级 Done Gate 延后执行（范围外/预算/环境）；需求级 verify-e2e 只补 review-stage。"""
+    kind = _deferral_kind(reason)
+    error_code = {
+        "review_stage": "deferred_to_review",
+        "budget": "verifier_budget_exhausted",
+        "env": "env_blocked",
+    }.get(kind, "deferred_to_review")
+    details = {"reason": reason, "deferral_kind": kind, "deferred_to_review": kind == "review_stage"}
     return VerificationEvidence(
         f"{metadata.id}#{rule.ref}",
         datetime.now(timezone.utc).isoformat(),
@@ -475,14 +497,14 @@ def _deferred_evidence(metadata: SpecMetadata, rule: SpecRule, scope: Verificati
         rule.text_sha256,
         None,
         scope.diff_sha256,
-        _result_hash("unverified", "deferred_to_review", details),
-        "deferred_to_review",
+        _result_hash("unverified", error_code, details),
+        error_code,
         details,
     )
 
 
 def _budget_evidence(metadata: SpecMetadata, rule: SpecRule, scope: VerificationScope, budget: float) -> VerificationEvidence:
-    details = {"budget": budget}
+    details = {"budget": budget, "deferral_kind": "budget"}
     return VerificationEvidence(
         f"{metadata.id}#{rule.ref}",
         datetime.now(timezone.utc).isoformat(),

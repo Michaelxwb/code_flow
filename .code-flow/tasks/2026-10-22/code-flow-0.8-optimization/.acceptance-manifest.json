@@ -10,7 +10,7 @@
       "kind": "functional",
       "boundary": "真实 task md + spec-context + runner",
       "owner": "TASK-003",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -22,7 +22,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "56a7a36311f44e83892572f222f43f50",
+        "executed_at": "2026-10-22T05:29:18.943546+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_workflow_scale.py",
+          "-k",
+          "truthful_gate"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5864945ef470a99c831232325ec55cb459ea6b73cebdf58c2b284f848b5f8755"
+      },
+      "runs": [
+        {
+          "id": "S-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "56a7a36311f44e83892572f222f43f50",
+          "executed_at": "2026-10-22T05:29:18.943546+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_workflow_scale.py",
+            "-k",
+            "truthful_gate"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5864945ef470a99c831232325ec55cb459ea6b73cebdf58c2b284f848b5f8755"
+        }
+      ]
     },
     {
       "id": "S-02",

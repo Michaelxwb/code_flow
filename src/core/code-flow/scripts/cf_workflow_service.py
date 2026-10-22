@@ -474,3 +474,30 @@ def complete_task(root: str, task_dir: str, task_file: str, task_id: str, gate_p
 
     markdown = _commit_state(root, task_file, task_id, "done", active, None, f"- [{_today()}] completed (done)")
     return {"ok": True, "task_id": task_id, "active": _active_data(completed), "markdown": markdown}
+
+
+def provisional_task(root: str, task_dir: str, task_file: str, task_id: str, reason: str) -> dict[str, object]:
+    """Record a provisional finish without claiming done.
+
+    The active marker stays active so the same TASK can be retried after the
+    missing checks are fixed; provisional is explicitly open/unfinished for
+    dependency, collect and archive gates.
+    """
+    from cf_spec_context import load_active_task
+
+    recover_transition(root)
+    _require_marker_task(root, task_id, task_dir, task_file)
+    _, target = _resolve_paths(root, task_dir, task_file)
+    task_file = str(target)
+    if section_status(read_task_section(task_file, task_id)) in FINISHED_STATUSES:
+        raise WorkflowError("task_already_done", task_id, ("completed TASKs cannot become provisional",))
+    active = load_active_task(root)
+    if active.status != "active":
+        raise WorkflowError("invalid_active_transition", active.status)
+    clean_reason = " ".join(reason.split())
+    markdown = _commit_state(
+        root, task_file, task_id, "provisional", active, active,
+        f"- [{_today()}] provisional ({clean_reason})",
+        prepend=f"> PROVISIONAL: {clean_reason}",
+    )
+    return {"ok": True, "task_id": task_id, "marker": "active", "markdown": markdown}
