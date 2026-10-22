@@ -32,7 +32,7 @@
 | S-09 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 design + manifest + evidence | TASK-015 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"] |
 | S-10 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 JUnit/Playwright 报告 | TASK-016 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"] |
 | S-11 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实四平台安装产物 | TASK-017 | planned | ["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"] |
-| E-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 preflight + 服务探测 | TASK-008 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "env_blocked"] |
+| E-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 preflight + 服务探测 | TASK-008 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "env_blocked"] |
 | E-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + manifest | TASK-010 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "check_conflict"] |
 | E-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 collect | TASK-009 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "provisional_collect"] |
 | E-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 task md + spec-context | TASK-002 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_service.py", "-k", "doc_state_drift"] |
@@ -388,13 +388,13 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 ## TASK-008: 环境预检、env_blocked 与隔离契约
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-005
 - **Source**: code-flow-0.8-optimization.design.md#3.3.1 Manifest v3, code-flow-0.8-optimization.design.md#3.5.2 并发与原子性
 - **Spec-Refs**: N/A
 - **Acceptance-Refs**: E-01
-- **Files**: `cf_acceptance_runner.py`, `cf_acceptance_schema.py`, `cf_worktree_env.py`（可新）
+- **Files**: `cf_acceptance_runner.py`, `cf_acceptance_schema.py`, `cf_acceptance_manifest.py`, `cf_acceptance_evidence.py`, `cf_exec_base.py`, `cf_worktree_env.py`（新）
 - **Estimate**: 1.5d
 
 ### Description
@@ -403,25 +403,33 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 ### Checklist
 
-- [ ] check 增加 env/env_scope/preflight/parallel_safe。
-- [ ] 先跑 preflight；失败返回 env_blocked 与缺失项。
-- [ ] isolated 注入 CF_WORKTREE_ID/CF_RUN_ID/CF_TASK_ID/CF_PORT_OFFSET/CF_DB_SUFFIX。
-- [ ] env 失败不写 verified，不计产品 failed。
-- [ ] [E-01][integration] 编写/更新验收测试（真实边界：真实 preflight + 服务探测）；断言：返回 env_blocked，列出缺失项和 owner；不写 verified；不记产品 failed
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] check 增加 env/env_scope/preflight/parallel_safe。
+- [x] 先跑 preflight；失败返回 env_blocked 与缺失项。
+- [x] isolated 注入 CF_WORKTREE_ID/CF_RUN_ID/CF_TASK_ID/CF_PORT_OFFSET/CF_DB_SUFFIX。
+- [x] env 失败不写 verified，不计产品 failed。
+- [x] [E-01][integration] 编写/更新验收测试（真实边界：真实 preflight + 服务探测）；断言：返回 env_blocked，列出缺失项和 owner；不写 verified；不记产品 failed
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| E-01 | integration | 真实 preflight + 服务探测 | 返回 env_blocked，列出缺失项和 owner；不写 verified；不记产品 failed | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "env_blocked"] | planned |
+| E-01 | integration | 真实 preflight + 服务探测 | 返回 env_blocked，列出缺失项和 owner；不写 verified；不记产品 failed | `test_env_blocked_preflight_failure_marks_env_blocked_not_verified`、`test_env_blocked_preflight_success_executes_check` | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "env_blocked"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| E-01 | `python3 -m pytest -q tests/test_cf_acceptance_runner.py -k env_blocked` → **2 failed**：`KeyError: 'env_blocked'`（runner 无 preflight/env_blocked）；新增 manifest 用例 3 failed（默认 `parallel_safe` 仍为 true、schema 不校验新字段、重锁丢 check 配置） | 同命令 → **2 passed**；相关回归 **45 passed in 4.84s**；全仓 **604 passed in 39.36s** | `test_env_blocked_preflight_failure_marks_env_blocked_not_verified`、`test_env_blocked_preflight_success_executes_check`、`test_isolated_check_injects_worktree_namespace`、`test_shared_env_scope_is_never_parallel_safe`、`test_check_preflight_env_schema_validation`、`test_derived_checks_default_shared_env_not_parallel_safe`、`test_relock_preserves_check_environment_config` | 真实 TCP 服务探测（关闭端口失败 / 监听 socket 通过）+ 真实 argv 子进程；失败时产品命令未执行、manifest 状态 `env_blocked` 且 evidence 无 verified；isolated 子进程实测收到 5 个 CF_* 变量，shared 未注入；证据 run_id 与 CF_RUN_ID 一致 | verified |
+- E-01: verified — automated command passed; run_id=dc83f12130924e81b234bf5a2a1a2980 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=95c9dfb3e75047389723cb58c1e1de8e (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] TASK-008 GREEN：check env/env_scope/preflight/parallel_safe 校验；runner 每 check 先跑真实 preflight，失败返回 env_blocked（缺失命令/exit_code/owner），不执行产品命令、不写 verified、不计 failed；isolated 注入命名空间且 shared 强制非并行；重锁保留 check 配置；全仓 604 passed。
+- [2026-10-22] BLOCKED at Done Gate：`task finish` 返回 `stale_evidence`（cli-code-standards 六条 required 规则）。根因是 base 82f5cd5 的 `cf_task_runtime._update_rule` 在范围外 verifier 被 review_stage 延后时仍保留旧 verified 证据；同批次 TASK-009 已在 d5182e7 修复（`_verified_is_stale`），但未合入本 worktree。E-01 已由 runner 验证通过；待合入该修复后重跑 `task finish` 再提交。
+- [2026-10-22] completed (done)
 
 ---
 

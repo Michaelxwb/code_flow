@@ -10,13 +10,14 @@ from uuid import uuid4
 
 from cf_evidence_store import EvidenceStore, discover_project_root, git_commit
 
-STATES = frozenset(("planned", "pending", "tbd", "verified", "unverified", "failed", "incomplete", "not_configured", "e2e_deferred", "manual_pending"))
+STATES = frozenset(("planned", "pending", "tbd", "verified", "unverified", "failed", "incomplete", "not_configured", "e2e_deferred", "env_blocked", "manual_pending"))
 _EVIDENCE_STATUS = {
     "passed": "passed",
     "failed": "failed",
     "incomplete": "incomplete",
     "not_configured": "not_configured",
     "e2e_deferred": "deferred",
+    "env_blocked": "env_blocked",
 }
 
 
@@ -142,9 +143,9 @@ def _store_evidence_runs(path: Path, rows: Mapping[str, Mapping[str, object]],
 
 
 def persist_results(path: Path, data: dict[str, object], results: Sequence[Mapping[str, object]],
-                    fingerprint: str = "") -> None:
+                    fingerprint: str = "", run_id: str = "") -> None:
     rows = {row["id"]: row for row in data["scenarios"]}
-    run_id, executed_at = uuid4().hex, datetime.now(timezone.utc).isoformat()
+    run_key, executed_at = run_id or uuid4().hex, datetime.now(timezone.utc).isoformat()
     updates = []
     for result in results:
         state = str(result["status"])
@@ -156,13 +157,17 @@ def persist_results(path: Path, data: dict[str, object], results: Sequence[Mappi
         # later Done/finish passes would otherwise silently un-verify it.
         if state == "e2e_deferred" and row.get("status") == "verified":
             continue
+        # An unavailable environment is not new product evidence: keep a prior
+        # verified conclusion, but never promote an unverified row.
+        if state == "env_blocked" and row.get("status") == "verified":
+            continue
         # Content-fingerprint reuse: nothing executed, evidence unchanged.
         if result.get("cache_reused") is True:
             continue
         row["revision"] = int(row.get("revision", 0)) + 1
         status = "verified" if state == "passed" else state
         row["status"] = status
-        record = {**result, "revision": row["revision"], "run_id": run_id, "executed_at": executed_at}
+        record = {**result, "revision": row["revision"], "run_id": run_key, "executed_at": executed_at}
         # Identity for cross-run reuse checks: command/cwd/timeout + content
         # fingerprint of the worktree the command actually ran against.
         record["command"] = row.get("command")
@@ -175,10 +180,10 @@ def persist_results(path: Path, data: dict[str, object], results: Sequence[Mappi
         updates.append((row, record, status))
     from cf_spec_context import _atomic_text
     _atomic_text(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
-    _store_evidence_runs(path, rows, results, run_id, executed_at, fingerprint)
+    _store_evidence_runs(path, rows, results, run_key, executed_at, fingerprint)
     task_name = data.get("task_file")
     if isinstance(task_name, str) and task_name:
         task = Path(task_name) if Path(task_name).is_absolute() else path.parent / task_name
         for row, record, status in updates:
-            detail = f"automated command {record['status']}; run_id={run_id}"
+            detail = f"automated command {record['status']}; run_id={run_key}"
             sync_task_evidence(task, str(row["id"]), "runner", detail, str(row.get("owner", "")), status)

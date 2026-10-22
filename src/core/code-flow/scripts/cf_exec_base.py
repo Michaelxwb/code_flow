@@ -10,6 +10,7 @@ chain, commands never pass through a shell, and unrun work is reported as
 from __future__ import annotations
 
 import hashlib
+import os
 import shlex
 import json
 import subprocess
@@ -41,9 +42,13 @@ def invalidate_executions() -> None:
         cache.clear()
 
 
-def execution_key(argv: Sequence[str], cwd: str, timeout: float) -> str:
+def execution_key(argv: Sequence[str], cwd: str, timeout: float,
+                  env: Optional[Mapping[str, str]] = None) -> str:
     """Identity of a command under the current process environment."""
-    return json.dumps([list(argv), str(Path(cwd).resolve()), float(timeout)], ensure_ascii=False)
+    payload: list[object] = [list(argv), str(Path(cwd).resolve()), float(timeout)]
+    if env:
+        payload.append(sorted((str(key), str(value)) for key, value in env.items()))
+    return json.dumps(payload, ensure_ascii=False)
 
 
 def remaining_seconds(deadline: Optional[float]) -> Optional[float]:
@@ -79,13 +84,14 @@ def run_command(
     cwd: str,
     timeout: float,
     deadline: Optional[float] = None,
+    env: Optional[Mapping[str, str]] = None,
 ) -> dict[str, object]:
     """Run argv synchronously under timeout+deadline. Never uses a shell."""
-    key = execution_key(argv, cwd, timeout)
+    key = execution_key(argv, cwd, timeout, env)
     cache = _EXECUTIONS.get()
     if cache is not None and key in cache:
         return dict(cache[key])
-    result = _execute(argv, cwd, timeout, deadline)
+    result = _execute(argv, cwd, timeout, deadline, env)
     if cache is not None and result["status"] == "ok":
         cache[key] = result
     return result
@@ -170,14 +176,19 @@ def worktree_fingerprint(project_root: str, untracked_filter: Optional[Callable[
     return digest.hexdigest()
 
 
-def _execute(argv: Sequence[str], cwd: str, timeout: float, deadline: Optional[float]) -> dict[str, object]:
+def _execute(argv: Sequence[str], cwd: str, timeout: float, deadline: Optional[float],
+             env: Optional[Mapping[str, str]] = None) -> dict[str, object]:
     remaining = remaining_seconds(deadline)
     if remaining is not None and remaining <= 0:
         return {"status": "deadline_exceeded", "returncode": None, "stdout": "", "stderr": ""}
     effective = min(timeout, remaining) if remaining is not None else timeout
+    child_env = None
+    if env:
+        child_env = {**os.environ, **{str(key): str(value) for key, value in env.items()}}
     try:
         proc = subprocess.run(
-            list(argv), cwd=cwd, capture_output=True, text=True, timeout=max(effective, 0.01)
+            list(argv), cwd=cwd, capture_output=True, text=True, timeout=max(effective, 0.01),
+            env=child_env,
         )
     except subprocess.TimeoutExpired as exc:
         out = exc.stdout

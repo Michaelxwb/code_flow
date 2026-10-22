@@ -941,7 +941,7 @@
       "kind": "functional",
       "boundary": "真实 preflight + 服务探测",
       "owner": "TASK-008",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -954,7 +954,73 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "check": "CHK-89bc50164962"
+      "check": "CHK-89bc50164962",
+      "revision": 2,
+      "evidence": {
+        "id": "E-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "95c9dfb3e75047389723cb58c1e1de8e",
+        "executed_at": "2026-10-22T05:59:19.720845+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_acceptance_runner.py",
+          "-k",
+          "env_blocked"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "c16b927b51b53bc7a913647f0535e9901b6c2bf59d31851b488d84a3e7ef7d71"
+      },
+      "runs": [
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "dc83f12130924e81b234bf5a2a1a2980",
+          "executed_at": "2026-10-22T05:55:06.336968+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_acceptance_runner.py",
+            "-k",
+            "env_blocked"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "8242a9d13f8ec45f47032586113fd4821519759b173e21f83f5f014a2f73bcf6"
+        },
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "95c9dfb3e75047389723cb58c1e1de8e",
+          "executed_at": "2026-10-22T05:59:19.720845+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_acceptance_runner.py",
+            "-k",
+            "env_blocked"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "c16b927b51b53bc7a913647f0535e9901b6c2bf59d31851b488d84a3e7ef7d71"
+        }
+      ]
     },
     {
       "id": "E-02",

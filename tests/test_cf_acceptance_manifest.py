@@ -15,6 +15,7 @@ from cf_acceptance_manifest import (
     validate_manifest,
     write_manifest,
 )
+from cf_acceptance_schema import validate_checks
 
 
 def test_legacy_annotated_e2e_manifest_is_healed(tmp_path: Path) -> None:
@@ -63,6 +64,8 @@ def test_kind_tolerates_level_annotations() -> None:
 
 
 TASK = """# Tasks\n\n## Acceptance Coverage\n| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 |\n|--------|---------|---------|-------------|---------|------|\n| S-01 | design#1 | integration | service -> store | TASK-001 | planned |\n\n## TASK-001: Demo\n- **Acceptance-Refs**: S-01\n"""
+
+TASK_WITH_COMMAND = """# Tasks\n\n## Acceptance Coverage\n| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n|--------|---------|---------|-------------|---------|------|---------|\n| S-01 | design#1 | integration | service -> store | TASK-001 | planned | ["python3", "-c", "pass"] |\n\n## TASK-001: Demo\n- **Acceptance-Refs**: S-01\n"""
 
 
 def test_manifest_lock_and_detects_task_drift(tmp_path: Path) -> None:
@@ -160,3 +163,61 @@ def test_schema2_compat_manifest_remains_readable(tmp_path: Path) -> None:
         scenario.pop("check", None)
     manifest.write_text(json.dumps(legacy, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     assert validate_manifest(str(task), str(manifest)) == (True, "")
+
+
+def test_check_preflight_env_schema_validation() -> None:
+    """check 新字段 fail closed：env/env_scope/preflight/parallel_safe 类型明确。"""
+    validate_checks([{
+        "id": "CHK-1", "command": ["python3", "-c", "pass"],
+        "env": "browser", "env_scope": "isolated", "parallel_safe": True,
+        "preflight": [["python3", "-c", "pass"], "curl -f http://127.0.0.1:3000/health"],
+    }])
+    base = {"id": "CHK-1", "command": ["python3", "-c", "pass"]}
+    invalid = (
+        {"env": ""},
+        {"env": 3},
+        {"env_scope": "banana"},
+        {"env_scope": None},
+        {"parallel_safe": "yes"},
+        {"preflight": "curl -f http://127.0.0.1:3000/health"},
+        {"preflight": [[]]},
+        {"preflight": [123]},
+        {"preflight": [["python3", ""]]},
+    )
+    for extra in invalid:
+        with pytest.raises(ValueError, match="invalid check CHK-1"):
+            validate_checks([{**base, **extra}])
+
+
+def test_derived_checks_default_shared_env_not_parallel_safe(tmp_path: Path) -> None:
+    """shared 环境默认 parallel_safe: false（设计 §3.5.2）。"""
+    task = tmp_path / "demo.md"
+    manifest = tmp_path / ".acceptance-manifest.json"
+    task.write_text(TASK_WITH_COMMAND, encoding="utf-8")
+    locked = write_manifest(str(task), str(manifest))
+    check = locked["checks"][0]
+    assert check["env_scope"] == "shared"
+    assert check["parallel_safe"] is False
+    assert check["preflight"] == []
+
+
+def test_relock_preserves_check_environment_config(tmp_path: Path) -> None:
+    """重锁 plan 保留手写的 env/preflight，不静默丢用户配置。"""
+    task = tmp_path / "demo.md"
+    manifest = tmp_path / ".acceptance-manifest.json"
+    task.write_text(TASK_WITH_COMMAND, encoding="utf-8")
+    write_manifest(str(task), str(manifest))
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["checks"][0].update({
+        "env": "browser", "env_scope": "isolated", "parallel_safe": True,
+        "preflight": [["python3", "-c", "pass"]],
+    })
+    manifest.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    write_manifest(str(task), str(manifest))
+
+    check = json.loads(manifest.read_text(encoding="utf-8"))["checks"][0]
+    assert check["env"] == "browser"
+    assert check["env_scope"] == "isolated"
+    assert check["parallel_safe"] is True
+    assert check["preflight"] == [["python3", "-c", "pass"]]
