@@ -367,8 +367,24 @@ def extract_manifest(task_file: str, kind_fn: Callable[[str], str] = _kind,
     return _extract_rows(task_file, kind_fn, contract_fallback)
 
 
-def write_manifest(task_file: str, output: str) -> dict[str, object]:
+def write_manifest(task_file: str, output: str, scenarios_file: str = "") -> dict[str, object]:
     manifest = extract_manifest(task_file)
+    if scenarios_file:
+        from cf_scenarios import parse_scenarios
+        source = parse_scenarios(scenarios_file)
+        rows = {str(item["id"]): item for item in manifest["scenarios"]}
+        check_ids = {str(item["id"]) for item in manifest.get("checks", [])}
+        for scenario in source["scenarios"]:
+            scenario_id = str(scenario["id"])
+            row = rows.get(scenario_id)
+            if row is None:
+                continue
+            checks = [str(value) for value in scenario.get("checks", [])]
+            unknown = [value for value in checks if value not in check_ids]
+            if unknown:
+                raise ValueError(f"unknown_check:{scenario_id}:{','.join(unknown)}")
+            if checks:
+                row["checks"] = checks
     target = Path(output)
     _preserve_runtime_state(task_file, target, manifest)
     for scenario in manifest.get("scenarios", []):
@@ -528,7 +544,7 @@ def validate_manifest(task_file: str, manifest_file: str) -> tuple[bool, str]:
     for item in expected["scenarios"]:
         current = stored[item["id"]]
         for field in _IMMUTABLE_SCENARIO_FIELDS:
-            if field == "check" and schema != _MANIFEST_SCHEMA and "check" not in current:
+            if field in ("check", "checks") and "checks" not in current:
                 continue
             if field in _OPTIONAL_SCENARIO_FIELDS and field not in current:
                 continue
@@ -582,6 +598,7 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND") or None)
     parser.add_argument("--task-file", required=True)
     parser.add_argument("--output", default="")
+    parser.add_argument("--scenarios-file", default="")
     parser.add_argument("--verify-plan", action="store_true")
     parser.add_argument("--require-scenarios", action="store_true")
     parser.add_argument("--task-dir", default="")
@@ -618,7 +635,7 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
             return 0 if result["decision"] == "pass" else 3
         if not args.output:
             raise ValueError("--output is required unless --verify-plan is used")
-        manifest = write_manifest(args.task_file, args.output)
+        manifest = write_manifest(args.task_file, args.output, args.scenarios_file)
         stdout.write(json.dumps({"ok": True, "scenarios": len(manifest["scenarios"])}, ensure_ascii=False))
         return 0
     except (OSError, ValueError) as exc:

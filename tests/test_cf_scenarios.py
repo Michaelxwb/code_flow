@@ -275,3 +275,28 @@ def test_multi_check_runner_and_semantics(tmp_path: Path) -> None:
     result = run_manifest(str(manifest), str(tmp_path))
     assert result["decision"] == "block"
     assert result["results"][0]["status"] == "failed"
+
+
+def test_write_manifest_projects_scenario_checks(tmp_path: Path) -> None:
+    from cf_acceptance_manifest import write_manifest
+    task = tmp_path / "demo.md"
+    task.write_text(
+        "# Demo\n\n## Acceptance Coverage\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n"
+        "|---|---|---|---|---|---|---|\n"
+        '| S-01 | d#2.5 | integration | runner | TASK-001 | planned | ["python3", "-c", "pass"] |\n\n'
+        "## TASK-001: A\n- **Status**: draft\n- **Acceptance-Refs**: S-01\n",
+        encoding="utf-8",
+    )
+    manifest = tmp_path / ".acceptance-manifest.json"
+    base = write_manifest(str(task), str(manifest))
+    check_id = base["checks"][0]["id"]
+    source = _source(tmp_path, f"""
+schema: 1
+scenarios:
+  - id: S-01
+    title: journey
+    checks: ["{check_id}"]
+""")
+    projected = write_manifest(str(task), str(manifest), str(source))
+    assert projected["scenarios"][0]["checks"] == [check_id]

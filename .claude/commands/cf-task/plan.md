@@ -72,8 +72,9 @@ Read 设计文档后，**先扫描文档结构**，建立章节索引表：
 `--verify-plan` 的执行命令为：
 
 ```bash
+code-flow scenarios parse --file <需求目录>/<需求>.scenarios.md --json
 code-flow acceptance manifest \
-  code-flow scenarios parse --file <需求目录>/<需求>.scenarios.md --json
+  --scenarios-file <需求目录>/<需求>.scenarios.md \
   --verify-plan --require-scenarios --task-dir <需求目录> --task-file <任务文件>
 ```
 
