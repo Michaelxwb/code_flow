@@ -675,13 +675,13 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ## TASK-014: 设计环境假设与生成式追溯矩阵
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-005
 - **Source**: code-flow-0.8-optimization.design.md#2.5 验收条件, code-flow-0.8-optimization.design.md#6 需求追溯矩阵
 - **Spec-Refs**: N/A
 - **Acceptance-Refs**: N/A
-- **Files**: `specs/shared/design/*.md`, `cf_acceptance_manifest.py`
+- **Files**: `specs/shared/design/*.md`, `cf_acceptance_manifest.py`, `cf_traceability.py`（新）, 四平台 plan 模板
 - **Estimate**: 2d
 
 ### Description
@@ -690,11 +690,11 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ### Checklist
 
-- [ ] design 模板新增“验证环境假设”章节。
-- [ ] 验收表新增 exec/priority/env/inputs/command 或等价元数据。
-- [ ] 场景 100% 绑定 check 或显式 aspirational。
-- [ ] 追溯矩阵由 design + manifest 生成，不手工维护。
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] design 模板新增“验证环境假设”章节（容量、硬件、依赖、profile 参数）。
+- [x] 验收表新增 exec/priority/env/inputs/command 或等价元数据（design §2.5 + plan Acceptance Coverage + manifest）。
+- [x] 场景 100% 绑定 check 或显式 aspirational（`cf_traceability.py` 阻断未绑定场景）。
+- [x] 追溯矩阵由 design + manifest 生成，不手工维护（`cf_traceability.py`）。
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
@@ -704,10 +704,18 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| N/A | `python3 -m pytest -q tests/test_spec_workflow_templates.py tests/test_cf_traceability.py` → **4 failed + 1 collection error**：design 模板缺环境假设/执行元数据，plan 模板缺元数据列，`cf_traceability` 不存在 | 同命令 → **16 passed**；相关回归 `tests/test_cf_acceptance_manifest.py tests/test_spec_workflow_templates.py tests/test_cf_traceability.py` → **27 passed**；全仓 **622 passed in 43.31s** | `test_design_templates_require_validation_environment_assumptions`、`test_design_templates_declare_execution_metadata_for_scenarios`、`test_plan_templates_bind_scenarios_to_checks_with_execution_metadata`、`test_design_traceability_matrix_is_generated_not_hand_maintained`、`test_traceability_matrix_is_generated_from_design_and_manifest`、`test_unbound_scenario_blocks_until_explicit_aspirational`、`test_missing_design_scenario_in_manifest_blocks`、`test_conflicting_check_environment_fails_closed` | 真实 design §2.5 文档 + 真实 manifest v3；本需求 design/manifest 生成 **20/20 绑定 check**；`cf_sync check` 五对 canonical/deploy 全 OK | verified |
+
+补充：`python3 src/core/code-flow/scripts/cf_traceability.py --design .code-flow/tasks/2026-10-22/code-flow-0.8-optimization/code-flow-0.8-optimization.design.md --manifest .code-flow/tasks/2026-10-22/code-flow-0.8-optimization/.acceptance-manifest.json --json` → `decision=pass`，summary `design_scenarios=20 / bound=20 / aspirational=0 / unbound=0 / missing=0`。
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] RED：模板环境假设/执行元数据缺失、`cf_traceability` ModuleNotFoundError。
+- [2026-10-22] TASK-014 GREEN：三份 design 模板（live + canonical）新增验证环境假设与 exec/env/inputs；四平台 plan 模板新增执行元数据列；manifest 解析 priority/exec/env/inputs 并做 check 冲突 fail-closed；`cf_traceability.py` 生成矩阵并阻断未绑定场景；全仓 622 passed。
+- [2026-10-22] completed (done)
 
 ---
 

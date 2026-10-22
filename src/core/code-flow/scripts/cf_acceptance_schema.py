@@ -7,6 +7,9 @@ from pathlib import Path
 from typing import Mapping
 
 
+EXEC_MODES = ("auto", "manual", "deferred", "aspirational")
+
+
 def verified_evidence(row: Mapping[str, object]) -> bool:
     evidence = row.get("evidence")
     if row.get("status") != "verified" or not isinstance(evidence, dict):
@@ -50,11 +53,30 @@ def validate_scenarios(value: object) -> list[dict[str, object]]:
         revision = item.get("revision", 0)
         if isinstance(revision, bool) or not isinstance(revision, int) or revision < 0:
             raise ValueError(f"invalid scenario {scenario_id}:revision")
+        _validate_scenario_metadata(scenario_id, item)
     for item in value:
         unknown = set(item.get("depends_on", [])) - seen
         if unknown:
             raise ValueError(f"acceptance scenario dependency missing: {', '.join(sorted(unknown))}")
     return value
+
+
+def _validate_scenario_metadata(scenario_id: str, item: Mapping[str, object]) -> None:
+    """Execution metadata mirrors design §2.5 and manifest v3 checks."""
+    priority = item.get("priority")
+    if priority is not None and (not isinstance(priority, str) or not priority.strip()):
+        raise ValueError(f"invalid scenario {scenario_id}:priority")
+    exec_mode = item.get("exec")
+    if exec_mode is not None and (not isinstance(exec_mode, str) or exec_mode not in EXEC_MODES):
+        raise ValueError(f"invalid scenario {scenario_id}:exec")
+    env = item.get("env")
+    if env is not None and (not isinstance(env, str) or not env.strip()):
+        raise ValueError(f"invalid scenario {scenario_id}:env")
+    inputs = item.get("inputs")
+    if inputs is not None and (
+        not isinstance(inputs, list) or not all(isinstance(value, str) and value for value in inputs)
+    ):
+        raise ValueError(f"invalid scenario {scenario_id}:inputs")
 
 
 def validate_checks(value: object) -> list[dict[str, object]]:

@@ -220,19 +220,22 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 
 ## Acceptance Coverage
 
-| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |
-|--------|---------|---------|-------------|---------|------|---------|
-| S-01 | xxx.design.md#2.5 验收条件 | E2E | API → Store → Renderer | TASK-001 | planned | - |
-| E-01 | xxx.design.md#2.5 验收条件 | integration | Service → Store | TASK-001 | planned | ["python3","-m","pytest","-q","tests/test_e01.py"] |
+| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 | 优先级 | 执行方式 | 环境 | 输入 |
+|--------|---------|---------|-------------|---------|------|---------|--------|---------|------|------|
+| S-01 | xxx.design.md#2.5 验收条件 | E2E | API → Store → Renderer | TASK-001 | planned | ["python3","-m","pytest","-q","tests/test_s01.py"] | P0 | auto | browser | e2e/tests/** |
+| E-01 | xxx.design.md#2.5 验收条件 | integration | Service → Store | TASK-001 | planned | ["python3","-m","pytest","-q","tests/test_e01.py"] | P1 | auto | none | tests/** |
 
 > 本表必须覆盖 design 中全部 P0/P1 场景，以及 RULE/高影响 RISK 映射的场景；存在缺口时不生成可启动任务。
 >
-> **执行命令列（functional 必填）**：`unit/integration` 场景必须登记可单独执行
-> 的命令，argv JSON 数组最稳（含空格/引号路径不拆参）；也可写 shell 词串。
-> `E2E`/`manual` 场景可写 `-`（延期/人工确认，不需要命令）。Manifest 锁定后
-> 该列与测试层级、边界、负责人一同不可静默修改；未登记命令的 functional 场景
-> 会在 Done Gate 阻断执行验收。命令也可只写在 TASK 段 `Acceptance Contract` 的
-> 执行命令列，manifest 会按场景 ID 回退读取。
+> **执行元数据（与 manifest v3 对齐）**：
+> - `执行命令`：`unit/integration` 场景必须登记可单独执行的命令，argv JSON
+>   数组最稳（含空格/引号路径不拆参）；也可写 shell 词串。命令也可只写在 TASK
+>   段 `Acceptance Contract` 的执行命令列，manifest 会按场景 ID 回退读取。
+> - `优先级` → `scenario.priority`；`执行方式` 取 `auto` / `manual` / `deferred` /
+>   `aspirational`；`环境` / `输入` 进入 manifest check 的 `env` / `inputs`。
+> - **每个场景必须绑定 check（有执行命令）或显式标为 `aspirational`**；没有命令
+>   又未标 aspirational 的计划会被追溯矩阵/审计阻断。`E2E`/`manual` 无本地命令时
+>   使用 `deferred` 或 `manual`，纯愿望项使用 `aspirational`。
 
 ---
 

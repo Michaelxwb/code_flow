@@ -13,7 +13,7 @@ import re
 import sys
 from typing import IO, Callable, Mapping, Optional, Sequence
 
-from cf_acceptance_schema import load_manifest, validate_checks, validate_scenarios
+from cf_acceptance_schema import EXEC_MODES, load_manifest, validate_checks, validate_scenarios
 
 
 _ROW_RE = re.compile(r"^\|\s*([SEB]-\d+)\s*\|(.+?)\|$")
@@ -41,6 +41,123 @@ def _kind(level: str) -> str:
     if head in ("e2e", "端到端", "end"):
         return "e2e"
     return "functional"
+
+
+_EXEC_ALIASES = {
+    "auto": "auto",
+    "automatic": "auto",
+    "自动化": "auto",
+    "manual": "manual",
+    "手工": "manual",
+    "手动": "manual",
+    "deferred": "deferred",
+    "延期": "deferred",
+    "aspirational": "aspirational",
+    "愿望": "aspirational",
+    "意向": "aspirational",
+}
+
+_COLUMN_NAMES = {
+    "source": ("来源设计", "来源", "source"),
+    "level": ("测试层级", "测试级别", "level"),
+    "boundary": ("关键真实边界", "真实边界", "boundary"),
+    "owner": ("负责任务", "负责任任务", "负责人", "owner"),
+    "status": ("状态", "status"),
+    "command": ("执行命令", "命令", "command"),
+    "cwd": ("工作目录", "cwd"),
+    "timeout": ("超时", "timeout"),
+    "depends": ("依赖", "depends"),
+    "priority": ("优先级", "priority"),
+    "exec": ("执行方式", "exec"),
+    "env": ("环境", "env"),
+    "inputs": ("输入", "inputs"),
+}
+
+
+def _column_indexes(cells: Sequence[str]) -> dict[str, int]:
+    """Map table headers to field offsets (fields omit the leading 场景ID cell)."""
+    indexes: dict[str, int] = {}
+    for key, names in _COLUMN_NAMES.items():
+        for index, cell in enumerate(cells[1:]):
+            lowered = cell.strip().lower()
+            if any(name.lower() in lowered for name in names):
+                indexes[key] = index
+                break
+    return indexes
+
+
+def _column_value(fields: Sequence[str], columns: Mapping[str, int], key: str, fallback: int) -> str:
+    """Prefer named headers; only headerless legacy tables use positional fallback."""
+    index = columns.get(key, -1) if columns else fallback
+    return fields[index].strip() if 0 <= index < len(fields) else ""
+
+
+def _metadata_cell(fields: Sequence[str], columns: Mapping[str, int], key: str) -> str:
+    index = columns.get(key, -1)
+    return fields[index].strip() if 0 <= index < len(fields) else ""
+
+
+def _parse_priority(cell: str) -> str:
+    value = (cell or "").strip().strip("`").upper()
+    return value if value and value not in {"-", "N/A"} else ""
+
+
+def _parse_exec(cell: str) -> str:
+    value = (cell or "").strip().strip("`")
+    if not value or value in {"-", "N/A"}:
+        return ""
+    normalized = _EXEC_ALIASES.get(value.lower(), value.lower())
+    if normalized not in EXEC_MODES:
+        raise ValueError(f"未知执行方式: {value}（允许 {', '.join(EXEC_MODES)}）")
+    return normalized
+
+
+def _parse_inputs(cell: str, scenario_id: str = "") -> list[str]:
+    text = (cell or "").strip().strip("`")
+    if not text or text in {"-", "none", "N/A", "TBD", "tbd"}:
+        return []
+    if text.startswith("["):
+        try:
+            value = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"{scenario_id} 输入列不是合法 JSON 数组: {exc}") from exc
+        if not isinstance(value, list) or not all(isinstance(item, str) and item for item in value):
+            raise ValueError(f"{scenario_id} 输入列必须是字符串数组")
+        return list(value)
+    return [item.strip() for item in re.split(r"[,，、;；]", text) if item.strip()]
+
+
+def _row_metadata(fields: Sequence[str], columns: Mapping[str, int], scenario_id: str) -> dict[str, object]:
+    """Only emit optional fields when explicitly present, preserving schema2/legacy rows."""
+    metadata: dict[str, object] = {}
+    priority = _parse_priority(_metadata_cell(fields, columns, "priority"))
+    if priority:
+        metadata["priority"] = priority
+    exec_mode = _parse_exec(_metadata_cell(fields, columns, "exec"))
+    if exec_mode:
+        metadata["exec"] = exec_mode
+    env = _metadata_cell(fields, columns, "env").strip("`")
+    if env and env not in {"-", "N/A"}:
+        metadata["env"] = env
+    inputs = _parse_inputs(_metadata_cell(fields, columns, "inputs"), scenario_id)
+    if inputs:
+        metadata["inputs"] = inputs
+    return metadata
+
+
+def _merge_check_config(check: dict[str, object], env: str, inputs: Sequence[str]) -> None:
+    """Same execution identity must not declare conflicting env/inputs."""
+    check_id = str(check.get("id", ""))
+    if env:
+        current = str(check.get("env", "none"))
+        if current != "none" and current != env:
+            raise ValueError(f"check configuration conflict: {check_id} env {current} != {env}")
+        check["env"] = env
+    if inputs:
+        current = list(check.get("inputs") or [])
+        if current and current != list(inputs):
+            raise ValueError(f"check configuration conflict: {check_id} inputs {current} != {list(inputs)}")
+        check["inputs"] = list(inputs)
 
 
 def _parse_command(cell: str, scenario_id: str) -> Optional[list[str]]:
@@ -139,18 +256,28 @@ def _derive_checks(rows: list[dict[str, object]]) -> list[dict[str, object]]:
         timeout = float(row.get("timeout", 60))
         check_id = _check_id(command, cwd, timeout)
         row["check"] = check_id
-        by_id.setdefault(check_id, {
-            "id": check_id,
-            "command": list(command),
-            "cwd": cwd,
-            "timeout": timeout,
-            "env": "none",
-            "env_scope": "shared",
-            "parallel_safe": False,
-            "profile": "changed",
-            "inputs": [],
-            "preflight": [],
-        })
+        check = by_id.get(check_id)
+        if check is None:
+            check = {
+                "id": check_id,
+                "command": list(command),
+                "cwd": cwd,
+                "timeout": timeout,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": False,
+                "profile": "changed",
+                "inputs": [],
+                "preflight": [],
+            }
+            by_id[check_id] = check
+        env = row.get("env")
+        inputs = row.get("inputs")
+        _merge_check_config(
+            check,
+            env if isinstance(env, str) else "",
+            inputs if isinstance(inputs, list) else [],
+        )
     return list(by_id.values())
 
 
@@ -161,6 +288,7 @@ def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallba
     rows: list[dict[str, object]] = []
     in_table = False
     seen: set[str] = set()
+    columns: dict[str, int] = {}
     for line in text.splitlines():
         if line.startswith("## Acceptance Coverage"):
             in_table = True
@@ -169,6 +297,11 @@ def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallba
             break
         if not in_table:
             continue
+        if line.strip().startswith("|"):
+            header = [item.strip() for item in line.strip().strip("|").split("|")]
+            if header and header[0].replace(" ", "") in ("场景ID", "场景编号"):
+                columns = _column_indexes(header)
+                continue
         match = _ROW_RE.match(line)
         if not match or set(match.group(2).replace("|", "").strip()) <= {"-", " "}:
             continue
@@ -178,21 +311,32 @@ def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallba
         if len(fields) < 5:
             raise ValueError(f"Acceptance Coverage missing columns: {match.group(1)}")
         seen.add(match.group(1))
-        depends = [item.strip() for item in (fields[8] if len(fields) > 8 else "").split(",") if item.strip()]
-        command_cell = fields[5] if len(fields) > 5 else contract_commands.get(match.group(1), "")
-        rows.append({
+        depends_cell = _column_value(fields, columns, "depends", 8)
+        depends = [item.strip() for item in depends_cell.split(",") if item.strip()]
+        level = _column_value(fields, columns, "level", 1)
+        # Legacy coverage tables sometimes append a command cell without a
+        # header; keep the positional read when the header has no command column.
+        if "command" in columns:
+            command_cell = _column_value(fields, columns, "command", 5)
+        else:
+            command_cell = fields[5].strip() if len(fields) > 5 else ""
+        if not command_cell:
+            command_cell = contract_commands.get(match.group(1), "")
+        row: dict[str, object] = {
             "id": match.group(1),
-            "source": fields[0],
-            "level": fields[1],
-            "kind": kind_fn(fields[1]),
-            "boundary": fields[2],
-            "owner": fields[3],
-            "status": fields[4],
+            "source": _column_value(fields, columns, "source", 0),
+            "level": level,
+            "kind": kind_fn(level),
+            "boundary": _column_value(fields, columns, "boundary", 2),
+            "owner": _column_value(fields, columns, "owner", 3),
+            "status": _column_value(fields, columns, "status", 4),
             "command": _parse_command(command_cell, match.group(1)),
-            "cwd": (fields[6] if len(fields) > 6 else "").strip() or ".",
-            "timeout": _parse_float(fields[7], 60.0) if len(fields) > 7 else 60.0,
+            "cwd": _column_value(fields, columns, "cwd", 6) or ".",
+            "timeout": _parse_float(_column_value(fields, columns, "timeout", 7), 60.0),
             "depends_on": depends,
-        })
+        }
+        row.update(_row_metadata(fields, columns, match.group(1)))
+        rows.append(row)
     if not rows:
         raise ValueError("Acceptance Coverage 缺失或为空")
     validate_scenarios(rows)
@@ -291,7 +435,10 @@ def _preserve_runtime_state(task_file: str, target: Path, manifest: dict[str, ob
 
 _IMMUTABLE_SCENARIO_FIELDS = (
     "id", "source", "level", "kind", "boundary", "owner", "command", "cwd", "timeout", "depends_on", "check",
+    "priority", "exec", "env", "inputs",
 )
+
+_OPTIONAL_SCENARIO_FIELDS = ("priority", "exec", "env", "inputs")
 
 
 def _heal_legacy_manifest(manifest_file: Path, manifest: dict[str, object], expected: dict[str, object]) -> None:
@@ -362,6 +509,8 @@ def validate_manifest(task_file: str, manifest_file: str) -> tuple[bool, str]:
         current = stored[item["id"]]
         for field in _IMMUTABLE_SCENARIO_FIELDS:
             if field == "check" and schema != _MANIFEST_SCHEMA and "check" not in current:
+                continue
+            if field in _OPTIONAL_SCENARIO_FIELDS and field not in current:
                 continue
             if current.get(field) != item.get(field):
                 return False, f"acceptance_manifest_field_changed:{item['id']}:{field}"
