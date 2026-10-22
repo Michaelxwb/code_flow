@@ -27,7 +27,7 @@
 | S-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 runner + checkpoint | TASK-007 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "resume"] |
 | S-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree + sidecar | TASK-004 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "relock_compaction"] |
 | S-06 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree ×3 | TASK-009 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "central_evidence"] |
-| S-07 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实批次 worktree + shared env | TASK-011 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"] |
+| S-07 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实批次 worktree + shared env | TASK-011 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"] |
 | S-08 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 plan 模板 + 任务文件 | TASK-012 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"] |
 | S-09 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 design + manifest + evidence | TASK-015 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"] |
 | S-10 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 JUnit/Playwright 报告 | TASK-016 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"] |
@@ -551,7 +551,7 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 ## TASK-011: 批次 smoke、共享环境锁与隔离注入
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-007,TASK-008,TASK-010
 - **Source**: code-flow-0.8-optimization.design.md#7.1 目标流程, code-flow-0.8-optimization.design.md#3.5.2 并发与原子性
@@ -566,25 +566,32 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 ### Checklist
 
-- [ ] 批次 merge 后跑 verify --profile smoke --changed。
-- [ ] shared 环境跨 worktree 锁，带 stale timeout。
-- [ ] 批次 smoke 失败不 cleanup、不标 verified。
-- [ ] isolated check 注入 worktree 命名空间。
-- [ ] [S-07][integration] 编写/更新验收测试（真实边界：真实批次 worktree + shared env）；断言：3 个任务合并；shared E2E 只执行一次；失败保留 worktree
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 批次 merge 后跑 verify --profile smoke --changed。
+- [x] shared 环境跨 worktree 锁，带 stale timeout。
+- [x] 批次 smoke 失败不 cleanup、不标 verified。
+- [x] isolated check 注入 worktree 命名空间。
+- [x] [S-07][integration] 编写/更新验收测试（真实边界：真实批次 worktree + shared env）；断言：3 个任务合并；shared E2E 只执行一次；失败保留 worktree
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-07 | integration | 真实批次 worktree + shared env | 3 个任务合并；shared E2E 只执行一次；失败保留 worktree | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"] | planned |
+| S-07 | integration | 真实批次 worktree + shared env | 3 个任务合并；shared E2E 只执行一次；失败保留 worktree | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-07 | `python3 -m pytest -q tests/test_cf_task_parallel.py -k batch_smoke` → **4 failed**：`KeyError: 'batch_smoke'`、smoke 失败仍 `ok=True`、`shared_env_lock_path/shared_env_lock` 缺失 | 同命令 → **4 passed in 3.92s**；相关回归 `tests/test_cf_task_parallel.py tests/test_cf_verify_layers.py tests/test_cf_acceptance_runner.py` → **49 passed**；`tests/test_cf_task_merge.py` → **19 passed**；全量 `tests/` → **639 passed** | `test_batch_smoke_after_merge_runs_shared_e2e_once`、`test_batch_smoke_failure_keeps_worktrees_and_blocks_cleanup`、`test_batch_smoke_shared_env_lock_serializes_real_worktrees`、`test_batch_smoke_shared_env_lock_recovers_stale_owner` | 真实 git worktree ×3 + schema3 manifest + 真实 `run_manifest`；collect 标记 `batch_smoke=pending` 后 merge 在主区执行一次 `verify --profile smoke`（validators,e2e）；shared E2E marker 仅 1 条；失败 merge `ok=false`、worktree 保留、cleanup 拒绝；两个真实 worktree 的 shared 检查区间不重叠；stale lock 在阈值后可接管 | verified |
+- S-07: verified — automated command passed; run_id=6fab62b645c043df976f5fd39a72769b (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] RED：`-k batch_smoke` 4 failed（collect 未执行 smoke、shared 锁缺失）。
+- [2026-10-22] GREEN：batch smoke 复用 `verify_layers`，shared 环境跨 worktree 文件锁 + stale timeout；`-k batch_smoke` 4 passed，全量 639 passed。
+- [2026-10-22] completed (done)
 
 ---
 

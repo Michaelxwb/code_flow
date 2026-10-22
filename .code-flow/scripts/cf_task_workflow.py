@@ -545,10 +545,21 @@ def _promote_verified(tasks: Sequence[tuple[Path, str, str]]) -> None:
 
 
 def verify_layers(root: str, directory: str, layers: Optional[str] = None,
-                  profile: Optional[str] = None) -> dict[str, object]:
-    """Run validators/review/e2e independently and aggregate truthful layer results."""
+                  profile: Optional[str] = None,
+                  only_tasks: Optional[Sequence[str]] = None) -> dict[str, object]:
+    """Run validators/review/e2e independently and aggregate truthful layer results.
+
+    ``only_tasks`` scopes the batch smoke gate to the tasks merged by this run;
+    unrelated unfinished tasks in the same requirement must not block it.
+    """
     recover_transition(root)
     tasks = _demand_tasks(Path(directory))
+    if only_tasks is not None:
+        wanted = {str(task_id) for task_id in only_tasks}
+        known = {task_id for _, task_id, _ in tasks}
+        if wanted - known:
+            return {"decision": "block", "reason": "unknown_tasks", "tasks": sorted(wanted - known)}
+        tasks = [item for item in tasks if item[1] in wanted]
     unfinished = [task_id for _, task_id, status in tasks if status not in FINISHED_STATUSES]
     if unfinished:
         return {"decision": "block", "reason": "unfinished_tasks", "tasks": unfinished}

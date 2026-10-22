@@ -28,7 +28,7 @@ import json
 import re
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import IO, Mapping, Optional, Sequence
 
@@ -231,6 +231,16 @@ def _read_run_meta(root: Path, run_id: str) -> dict[str, object]:
     if not isinstance(data, dict) or not isinstance(data.get("base_head"), str) or not isinstance(data.get("task_file"), str):
         raise ParallelError("run_corrupt", f"并行记录损坏（缺 base_head/task_file）: {meta}")
     return data
+
+
+def _update_run_meta(root: Path, run_id: str, updates: Mapping[str, object]) -> None:
+    """Persist batch-level state (smoke status) without rewriting worktrees."""
+    data = _read_run_meta(root, run_id)
+    data.update(updates)
+    path = root / WORKTREES_DIR / run_id / "run.json"
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(path)
 
 
 def _install_worktree_manifest(root: Path, worktree: Path) -> None:
@@ -553,6 +563,9 @@ def collect(root: Path, run_id: str, tasks: Optional[Sequence[str]], commit: boo
         # Batch-level smoke is executed once after merge (TASK-011); collect
         # only records that the batch still owes it.
         payload["batch_smoke"] = "pending"
+        _update_run_meta(root, run_id, {
+            "batch_smoke": {"status": "pending", "profile": "smoke"},
+        })
     return payload
 
 
@@ -756,6 +769,68 @@ def _refresh_demand(root: Path, task_file: str) -> str:
     return f"block: {detail[-200:]}"
 
 
+_BATCH_SMOKE_BLOCKING = ("failed", "env_blocked", "incomplete")
+
+
+def _smoke_status(result: Mapping[str, object]) -> str:
+    if result.get("decision") == "pass":
+        return "passed"
+    if int(result.get("env_blocked") or 0) > 0:
+        return "env_blocked"
+    if int(result.get("incomplete") or 0) > 0:
+        return "incomplete"
+    return "failed"
+
+
+def _smoke_summary(result: Mapping[str, object]) -> dict[str, object]:
+    summary: dict[str, object] = {
+        "status": _smoke_status(result),
+        "profile": "smoke",
+        "changed": True,
+        "decision": result.get("decision", "block"),
+        "reason": result.get("reason", ""),
+        "executed": int(result.get("executed") or 0),
+        "reused": int(result.get("reused") or 0),
+        "failed": list(result.get("failed") or ()),
+        "env_blocked": int(result.get("env_blocked") or 0),
+        "incomplete": int(result.get("incomplete") or 0),
+    }
+    layers = result.get("layers")
+    if isinstance(layers, Mapping):
+        summary["layers"] = {
+            str(name): {
+                key: layer.get(key)
+                for key in ("decision", "reason", "executed", "reused", "env_blocked", "incomplete", "failed")
+            }
+            for name, layer in layers.items() if isinstance(layer, Mapping)
+        }
+    return summary
+
+
+def _run_batch_smoke(root: Path, run_id: str, task_file: str,
+                     task_ids: Sequence[str]) -> dict[str, object]:
+    """One post-merge smoke for the whole batch, reusing the layer runner."""
+    from cf_task_workflow import verify_layers
+
+    directory = root / Path(task_file).parent
+    try:
+        result = verify_layers(str(root), str(directory), layers="validators,e2e",
+                               profile="smoke", only_tasks=list(task_ids))
+    except (OSError, ValueError) as exc:
+        summary = {
+            "status": "failed", "profile": "smoke", "changed": True,
+            "decision": "block", "reason": "batch_smoke_error", "detail": str(exc),
+            "executed": 0, "reused": 0, "failed": [], "env_blocked": 0, "incomplete": 0,
+        }
+    else:
+        summary = _smoke_summary(result)
+    _update_run_meta(root, run_id, {
+        "batch_smoke": summary,
+        "batch_smoke_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return summary
+
+
 def merge(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, object]:
     root = root.resolve()
     _assert_repo(root)
@@ -764,7 +839,10 @@ def merge(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, 
     if main_branch == "HEAD":
         raise ParallelError("detached_head", "主工作区处于 detached HEAD，无法回并")
     wanted = set(tasks) if tasks else None
-    entries = [item for item in meta.get("worktrees", []) if isinstance(item, dict)]
+    all_entries = [item for item in meta.get("worktrees", []) if isinstance(item, dict)]
+    all_task_ids = {str(item.get("task", "")) for item in all_entries}
+    full_batch = wanted is None or wanted >= all_task_ids
+    entries = all_entries
     if wanted:
         entries = [item for item in entries if item.get("task") in wanted]
     entries.sort(key=lambda item: str(item.get("task", "")))
@@ -794,12 +872,42 @@ def merge(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, 
             payload["stale"] = _stale_after_merge(root, task_file, after_hash)
         if (root / Path(task_file).parent / "spec-context.yml").is_file():
             payload["refresh"] = _refresh_demand(root, task_file)
+        previous = meta.get("batch_smoke")
+        previous_status = previous.get("status") if isinstance(previous, Mapping) else ""
+        merged_any = any(item.get("status") == "merged" for item in results)
+        if full_batch and (merged_any or previous_status != "passed"):
+            smoke = _run_batch_smoke(root, run_id, task_file, sorted(all_task_ids))
+            payload["batch_smoke"] = smoke
+            if smoke.get("status") != "passed":
+                payload["ok"] = False
+                payload["code"] = "batch_smoke_failed"
+                payload["message"] = (
+                    f"批次 smoke {smoke.get('status')}: "
+                    f"{smoke.get('reason') or 'shared environment verification failed'}；保留 worktree"
+                )
+        elif isinstance(previous, Mapping) and previous_status == "passed":
+            payload["batch_smoke"] = dict(previous)
     return payload
 
 
 def cleanup(root: Path, run_id: str, force: bool) -> dict[str, object]:
     root = root.resolve()
     meta = _read_run_meta(root, run_id)
+    smoke = meta.get("batch_smoke")
+    if not force and isinstance(smoke, Mapping) and smoke.get("status") in _BATCH_SMOKE_BLOCKING:
+        message = (
+            f"批次 smoke {smoke.get('status')}，保留 worktree；"
+            "修复后重新 merge，或 --force 明确放弃现场"
+        )
+        return {
+            "ok": False, "action": "cleanup", "run_id": run_id,
+            "code": "batch_smoke_failed", "message": message,
+            "results": [
+                {"task": item.get("task"), "removed": False,
+                 "code": "batch_smoke_failed", "message": message}
+                for item in meta.get("worktrees", []) if isinstance(item, dict)
+            ],
+        }
     results: list[dict[str, object]] = []
     for item in meta.get("worktrees", []):
         if not isinstance(item, dict):

@@ -5,9 +5,12 @@
 """
 import json
 import io
+import os
 import re
+import socket
 import subprocess
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -527,9 +530,9 @@ def _evidence_repo(tmp_path: Path) -> Path:
     return root
 
 
-def _force_status(worktree: Path, task: str, status: str) -> None:
+def _force_status(worktree: Path, task: str, status: str, task_file: str = EVIDENCE_TASK_FILE) -> None:
     """把 TASK 区 Status 改成任意状态（draft → provisional → blocked → done）。"""
-    task_path = worktree / EVIDENCE_TASK_FILE
+    task_path = worktree / task_file
     text = task_path.read_text(encoding="utf-8")
     index = text.index(f"## {task}:")
     head, tail = text[:index], text[index:]
@@ -641,3 +644,231 @@ def test_e03_provisional_collect_rejects_and_lists_missing_checks(tmp_path: Path
     assert recovered["results"][0]["status"] == "done"
     assert recovered["batch_smoke"] == "pending"
     assert all("code-flow/evidence" not in path for path in recovered["results"][0]["files"])
+
+
+BATCH_TASK_FILE = ".code-flow/tasks/2026-09-29/batch/batch.md"
+
+
+def _batch_task_body(tasks, e2e_command) -> str:
+    rows = []
+    sections = []
+    for index, task in enumerate(tasks, 1):
+        scenario = f"S-{index:02d}"
+        command = json.dumps([sys.executable, "-c", f"print('{task}')"])
+        rows.append(
+            f"| {scenario} | demo.design.md#2.5 | integration | 真实 runner | {task} | planned | {command} |"
+        )
+        refs = scenario + (", E-01" if index == 1 else "")
+        sections.append(
+            f"## {task}: {task}\n\n"
+            f"- **Status**: draft\n"
+            f"- **Depends**:\n"
+            f"- **Acceptance-Refs**: {refs}\n\n"
+            f"### Log\n- [2026-09-29] created (draft)\n"
+        )
+    rows.append(
+        "| E-01 | demo.design.md#2.5 | e2e | 真实 shared env | "
+        f"{tasks[0]} | planned | {json.dumps(e2e_command)} |"
+    )
+    return (
+        "# 批次 smoke 演示\n\n"
+        "- **Updated**: 2026-09-29\n\n"
+        "## Acceptance Coverage\n\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n"
+        "|--------|---------|---------|-------------|---------|------|---------|\n"
+        + "\n".join(rows)
+        + "\n\n---\n\n"
+        + "\n---\n\n".join(sections)
+    )
+
+
+def _batch_repo(tmp_path: Path, tasks, e2e_command) -> Path:
+    """真实 git 仓库 + schema3 manifest：每个 TASK 一个 functional check，一个 shared E2E。"""
+    root = tmp_path / "batch-proj"
+    root.mkdir()
+    _git(root, "init", "-q")
+    _git(root, "config", "user.email", "cf@test")
+    _git(root, "config", "user.name", "cf-test")
+    (root / ".code-flow").mkdir()
+    (root / ".code-flow/.gitignore").write_text(GITIGNORE, encoding="utf-8")
+    task_dir = root / Path(BATCH_TASK_FILE).parent
+    task_dir.mkdir(parents=True)
+    task_path = root / BATCH_TASK_FILE
+    task_path.write_text(_batch_task_body(tasks, e2e_command), encoding="utf-8")
+    write_manifest(str(task_path), str(task_dir / ".acceptance-manifest.json"))
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "init batch")
+    return root
+
+
+def _batch_manifest(worktree: Path) -> Path:
+    return worktree / Path(BATCH_TASK_FILE).parent / ".acceptance-manifest.json"
+
+
+def _run_batch_worker(root: Path, run_id: str, task: str) -> dict[str, object]:
+    worktree = root / f".code-flow/worktrees/{run_id}" / task
+    (worktree / f"impl-{task}.txt").write_text(task + "\n", encoding="utf-8")
+    outcome = run_manifest(str(_batch_manifest(worktree)), str(worktree), write_evidence=True, owner=task)
+    _force_status(worktree, task, "done", BATCH_TASK_FILE)
+    _commit_worktree(worktree, task)
+    return outcome
+
+
+def _shared_marker_command(marker: Path) -> list[str]:
+    return [
+        sys.executable,
+        "-c",
+        "from pathlib import Path\n"
+        f"p = Path({str(marker)!r})\n"
+        "p.write_text((p.read_text() if p.exists() else '') + 'x')\n",
+    ]
+
+
+def test_batch_smoke_after_merge_runs_shared_e2e_once(tmp_path: Path) -> None:
+    """S-07: collect 标 pending，merge 后在主 worktree 跑一次 smoke，shared E2E 只执行一次。"""
+    marker = tmp_path / "shared-e2e.log"
+    tasks = ["TASK-001", "TASK-002", "TASK-003"]
+    root = _batch_repo(tmp_path, tasks, _shared_marker_command(marker))
+    prepared = prepare(root, BATCH_TASK_FILE, tasks, "run-batch-smoke")
+    assert prepared["ok"] is True
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        outcomes = list(pool.map(lambda task: _run_batch_worker(root, "run-batch-smoke", task), tasks))
+    assert all(item["decision"] == "pass" for item in outcomes), outcomes
+
+    collected = collect(root, "run-batch-smoke", None)
+    assert collected["ok"] is True, collected
+    assert collected["batch_smoke"] == "pending"
+
+    merged = merge(root, "run-batch-smoke", None)
+
+    assert merged["ok"] is True, merged
+    assert [item["status"] for item in merged["results"]] == ["merged", "merged", "merged"]
+    smoke = merged["batch_smoke"]
+    assert smoke["status"] == "passed"
+    assert smoke["profile"] == "smoke"
+    assert smoke["decision"] == "pass"
+    assert smoke["executed"] == 1, smoke
+    assert marker.read_text(encoding="utf-8") == "x", "shared E2E 必须只执行一次"
+
+
+def test_batch_smoke_failure_keeps_worktrees_and_blocks_cleanup(tmp_path: Path) -> None:
+    """S-07 失败面：smoke block 时不得 cleanup，也不得把任务标成 verified。"""
+    failing = [sys.executable, "-c", "raise SystemExit(3)"]
+    tasks = ["TASK-001", "TASK-002", "TASK-003"]
+    root = _batch_repo(tmp_path, tasks, failing)
+    prepare(root, BATCH_TASK_FILE, tasks, "run-batch-fail")
+    for task in tasks:
+        assert _run_batch_worker(root, "run-batch-fail", task)["decision"] == "pass"
+    assert collect(root, "run-batch-fail", None)["batch_smoke"] == "pending"
+
+    merged = merge(root, "run-batch-fail", None)
+
+    assert merged["ok"] is False
+    assert merged["code"] == "batch_smoke_failed"
+    assert merged["batch_smoke"]["status"] == "failed"
+    assert merged["batch_smoke"]["decision"] == "block"
+    text = (root / BATCH_TASK_FILE).read_text(encoding="utf-8")
+    task_sections = re.split(r"(?m)^## TASK-\d+:", text)
+    for section in task_sections[1:]:
+        assert "- **Status**: done" in section
+        assert "- **Status**: verified" not in section
+    for task in tasks:
+        assert (root / ".code-flow/worktrees/run-batch-fail" / task).is_dir()
+
+    cleaned = cleanup(root, "run-batch-fail", force=False)
+
+    assert cleaned["ok"] is False
+    assert {item["code"] for item in cleaned["results"]} == {"batch_smoke_failed"}
+    for task in tasks:
+        assert (root / ".code-flow/worktrees/run-batch-fail" / task).is_dir()
+
+
+def test_batch_smoke_shared_env_lock_serializes_real_worktrees(tmp_path: Path) -> None:
+    """shared 环境检查跨 worktree 串行：两个真实 worktree 的 shared E2E 不重叠。"""
+    go = tmp_path / "shared-go"
+    log = tmp_path / "shared-intervals.log"
+    capture = (
+        "import sys, time\n"
+        "from pathlib import Path\n"
+        "go = Path(sys.argv[1]); log = Path(sys.argv[2])\n"
+        "while not go.exists():\n"
+        "    time.sleep(0.01)\n"
+        "start = time.time()\n"
+        "time.sleep(0.4)\n"
+        "end = time.time()\n"
+        "with log.open('a') as handle:\n"
+        "    handle.write(f'{sys.argv[3]} {start} {end}\\n')\n"
+    )
+    e2e_command = [sys.executable, "-c", capture, str(go), str(log), "shared"]
+    tasks = ["TASK-001", "TASK-002"]
+    root = _batch_repo(tmp_path, tasks, e2e_command)
+    prepared = prepare(root, BATCH_TASK_FILE, tasks, "run-lock")
+    assert prepared["ok"] is True
+
+    from cf_worktree_env import shared_env_lock_path
+
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(SCRIPTS) + os.pathsep + env.get("PYTHONPATH", "")
+    processes = []
+    ready_files = []
+    for item in prepared["worktrees"]:
+        worktree = Path(item["path"])
+        ready = tmp_path / f"ready-{item['task']}"
+        ready_files.append(ready)
+        code = (
+            "import json, sys\n"
+            "from pathlib import Path\n"
+            f"Path({str(ready)!r}).write_text('1')\n"
+            f"sys.path.insert(0, {str(SCRIPTS)!r})\n"
+            "from cf_acceptance_runner import run_manifest\n"
+            f"result = run_manifest({str(_batch_manifest(worktree))!r}, {str(worktree)!r}, "
+            "only_e2e=True, use_cache=False)\n"
+            "print(json.dumps(result))\n"
+        )
+        processes.append(subprocess.Popen(
+            (sys.executable, "-c", code), cwd=str(worktree), env=env,
+            text=True, encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        ))
+
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline and not all(path.exists() for path in ready_files):
+        time.sleep(0.02)
+    assert all(path.exists() for path in ready_files), "两个 worker 必须都启动"
+    lock = shared_env_lock_path(str(root))
+    while time.monotonic() < deadline and not lock.exists():
+        time.sleep(0.02)
+    assert lock.exists(), "shared 环境锁必须被第一个 worktree 持有"
+    time.sleep(0.2)
+    go.write_text("go", encoding="utf-8")
+
+    for process in processes:
+        stdout, stderr = process.communicate(timeout=20)
+        assert process.returncode == 0, stderr
+        assert json.loads(stdout)["decision"] == "pass", stdout
+
+    entries = [line.split() for line in log.read_text(encoding="utf-8").splitlines()]
+    assert len(entries) == 2, entries
+    intervals = sorted((float(start), float(end)) for _, start, end in entries)
+    assert intervals[1][0] >= intervals[0][1] - 0.05, intervals
+
+
+def test_batch_smoke_shared_env_lock_recovers_stale_owner(tmp_path: Path) -> None:
+    """stale timeout：残留锁超过阈值可被后继 worktree 接管。"""
+    root = _repo(tmp_path)
+    from cf_worktree_env import shared_env_lock, shared_env_lock_path
+
+    lock = shared_env_lock_path(str(root))
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    lock.write_text(json.dumps({
+        "pid": os.getpid(),
+        "host": socket.gethostname(),
+        "token": "stale-owner",
+        "created_at": time.time() - 3600,
+    }), encoding="utf-8")
+
+    started = time.monotonic()
+    with shared_env_lock(str(root), wait=2, stale_after=1) as info:
+        assert Path(info["path"]) == lock
+    assert time.monotonic() - started < 1.5
+    assert not lock.exists()

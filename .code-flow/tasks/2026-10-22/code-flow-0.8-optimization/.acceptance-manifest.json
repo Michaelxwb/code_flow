@@ -854,7 +854,7 @@
       "kind": "functional",
       "boundary": "真实批次 worktree + shared env",
       "owner": "TASK-011",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -867,7 +867,52 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "check": "CHK-98f5eb66c5ee"
+      "check": "CHK-98f5eb66c5ee",
+      "revision": 1,
+      "evidence": {
+        "id": "S-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "6fab62b645c043df976f5fd39a72769b",
+        "executed_at": "2026-10-22T06:38:50.901406+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_task_parallel.py",
+          "-k",
+          "batch_smoke"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "27fd25e89a6ffe0923bbaf3a4adba3732480efc4ef4db6e8fe0429d8cd0742b3"
+      },
+      "runs": [
+        {
+          "id": "S-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "6fab62b645c043df976f5fd39a72769b",
+          "executed_at": "2026-10-22T06:38:50.901406+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_task_parallel.py",
+            "-k",
+            "batch_smoke"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "27fd25e89a6ffe0923bbaf3a4adba3732480efc4ef4db6e8fe0429d8cd0742b3"
+        }
+      ]
     },
     {
       "id": "S-08",
