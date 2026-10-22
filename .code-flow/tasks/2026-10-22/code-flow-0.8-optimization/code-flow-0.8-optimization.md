@@ -48,7 +48,7 @@
 
 ## TASK-001: 基线 fixture 与性能指标
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: 无
 - **Source**: code-flow-0.8-optimization.design.md#2.5 验收条件, code-flow-0.8-optimization.design.md#3.5 质量实现方案
@@ -63,10 +63,10 @@
 
 ### Checklist
 
-- [ ] 构造 119 任务、190 场景、62 E2E、7 唯一命令的合成 fixture。
-- [ ] 记录 verify 总耗时、唯一命令执行次数、重复执行次数、context 体积、证据条数、中断后续跑起点。
-- [ ] 提供一键基准命令与 JSON 输出，误差 <10%。
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 构造 119 任务、190 场景、62 E2E、7 唯一命令的合成 fixture。
+- [x] 记录 verify 总耗时、唯一命令执行次数、重复执行次数、context 体积、证据条数、中断后续跑起点。
+- [x] 提供一键基准命令与 JSON 输出，误差 <10%。
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
@@ -76,10 +76,17 @@
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| N/A | `python3 -m pytest -q tests/test_cf_workflow_scale.py` → 3 failed：YAML alias 导致 context 体积/证据数偏小；results 含 not_included；证据计数口径错误 | 同命令 → **4 passed in 0.95s** | `test_workflow_scale_fixture_shape`、`test_workflow_scale_duplicate_commands_execute_once`、`test_workflow_scale_baseline_metrics_are_measurable`、`test_baseline_interrupt_loses_progress` | 真实临时 git 仓库 + 真实 `run_manifest` 子进程 + 合成 190 场景/7 命令/2440 evidence | verified |
+
+基线数字：`docs/plans/0.8-baseline.md`。首次运行 7 条命令，修改无关 tracked 文件后 7 条全部重跑；context 2,095,389 bytes / 2,440 evidence；中断后 manifest 仍全部 planned，恢复从 0 重跑。
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] TASK-001 GREEN：4 passed；基线报告 `docs/plans/0.8-baseline.md`；7 命令去重、2.1 MB context、2440 evidence、中断从 0 重跑已固化。
+- [2026-10-22] completed (done)
 
 ---
 
