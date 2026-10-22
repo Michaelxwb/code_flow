@@ -1679,6 +1679,272 @@ def _status_text(data: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
+def _doctor_finding(code: str, severity: str, message: str, path: str = "", fix: str = "") -> dict[str, str]:
+    return {"code": code, "severity": severity, "message": message, "path": path, "fix": fix}
+
+
+def _doctor_runtime(root: Path) -> tuple[dict[str, object], list[dict[str, str]]]:
+    """Diagnose install manifest drift without mutating the runtime."""
+    runtime: dict[str, object] = {
+        "installed": False, "version": "", "manifest_version": "",
+        "files_checked": 0, "files_missing": [], "files_drifted": [], "commands": 0,
+    }
+    version_path = root / ".code-flow/.version"
+    manifest_path = root / ".code-flow/.runtime-install.json"
+    if not version_path.exists() and not manifest_path.exists():
+        return runtime, [_doctor_finding(
+            "runtime_not_installed", "info", "未检测到运行时安装清单", str(manifest_path),
+            "code-flow init 或 code-flow migrate --runtime --apply")]
+    runtime["installed"] = True
+    if not version_path.is_file():
+        return runtime, [_doctor_finding(
+            "runtime_version_missing", "block", "缺少 .code-flow/.version", str(version_path),
+            "code-flow migrate --runtime --apply")]
+    version = version_path.read_text(encoding="utf-8").strip()
+    runtime["version"] = version
+    if not _valid_version(version):
+        return runtime, [_doctor_finding(
+            "runtime_version_invalid", "block", f"运行时不合法: {version!r}", str(version_path),
+            "code-flow migrate --runtime --apply")]
+    findings = _doctor_manifest(root, manifest_path, version, runtime)
+    findings.extend(_doctor_contract(root, runtime))
+    return runtime, findings
+
+
+def _valid_version(value: str) -> bool:
+    parts = value.split(".")
+    return len(parts) == 3 and all(part.isdigit() for part in parts)
+
+
+def _doctor_manifest(root: Path, path: Path, version: str,
+                     runtime: dict[str, object]) -> list[dict[str, str]]:
+    if not path.is_file():
+        return [_doctor_finding("runtime_manifest_missing", "block", "缺少 .runtime-install.json",
+                                str(path), "code-flow migrate --runtime --apply")]
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        return [_doctor_finding("runtime_manifest_invalid", "block", str(exc), str(path),
+                                "code-flow migrate --runtime --apply")]
+    if not isinstance(manifest, dict) or manifest.get("schema_version") != 1:
+        return [_doctor_finding("runtime_manifest_invalid", "block", "manifest schema 不支持",
+                                str(path), "code-flow migrate --runtime --apply")]
+    manifest_version = manifest.get("version")
+    runtime["manifest_version"] = manifest_version if isinstance(manifest_version, str) else ""
+    files = manifest.get("files")
+    if not isinstance(files, dict) or not files:
+        return [_doctor_finding("runtime_manifest_incomplete", "block", "manifest.files 为空",
+                                str(path), "code-flow migrate --runtime --apply")]
+    findings: list[dict[str, str]] = []
+    if manifest_version != version:
+        findings.append(_doctor_finding(
+            "runtime_version_drift", "block",
+            f"version {version} 与 manifest {manifest_version} 不一致", str(path),
+            "code-flow migrate --runtime --apply"))
+    missing, drifted = _doctor_files(root, files)
+    runtime["files_checked"] = len(files)
+    runtime["files_missing"] = missing
+    runtime["files_drifted"] = drifted
+    if missing:
+        findings.append(_doctor_finding(
+            "runtime_file_missing", "block", f"{len(missing)} 个受管理文件缺失: {', '.join(missing[:5])}",
+            str(root / ".code-flow"), "code-flow migrate --runtime --apply"))
+    if drifted:
+        findings.append(_doctor_finding(
+            "runtime_file_drift", "block", f"{len(drifted)} 个受管理文件被修改: {', '.join(drifted[:5])}",
+            str(root / ".code-flow"), "code-flow migrate --runtime --apply"))
+    if not isinstance(manifest.get("hook_contracts"), dict):
+        findings.append(_doctor_finding("runtime_hooks_missing", "warn", "manifest 缺 hook_contracts",
+                                        str(path), "code-flow migrate --runtime --apply"))
+    return findings
+
+
+def _doctor_files(root: Path, files: Mapping[str, object]) -> tuple[list[str], list[str]]:
+    missing: list[str] = []
+    drifted: list[str] = []
+    base = root.resolve()
+    for relative, expected in files.items():
+        target = (root / str(relative)).resolve()
+        if target != base and base not in target.parents:
+            missing.append(str(relative))
+        elif not target.is_file():
+            missing.append(str(relative))
+        elif not isinstance(expected, str) or _file_sha256(target) != expected:
+            drifted.append(str(relative))
+    return missing, drifted
+
+
+def _doctor_contract(root: Path, runtime: dict[str, object]) -> list[dict[str, str]]:
+    path = root / ".code-flow/runtime-commands.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        return [_doctor_finding("runtime_contract_invalid", "block", str(exc), str(path),
+                                "code-flow migrate --runtime --apply")]
+    commands = data.get("commands") if isinstance(data, dict) else None
+    if not isinstance(data, dict) or data.get("schema_version") != 1 or not isinstance(commands, dict) or not commands:
+        return [_doctor_finding("runtime_contract_invalid", "block", "runtime-commands.json 契约损坏",
+                                str(path), "code-flow migrate --runtime --apply")]
+    runtime["commands"] = len(commands)
+    return []
+
+
+def _doctor_config(root: Path) -> list[dict[str, str]]:
+    import yaml
+
+    path = root / ".code-flow/config.yml"
+    if not path.is_file():
+        return [_doctor_finding("config_missing", "warn", "缺少 config.yml", str(path), "code-flow init")]
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except (OSError, UnicodeError, yaml.YAMLError) as exc:
+        return [_doctor_finding("config_unreadable", "block", str(exc), str(path), "修复 config.yml 后重试")]
+    if not isinstance(data, dict):
+        return [_doctor_finding("config_unreadable", "block", "config.yml 不是 mapping", str(path),
+                                "修复 config.yml 后重试")]
+    workflow = data.get("spec_workflow")
+    schema = workflow.get("schema_version") if isinstance(workflow, dict) else None
+    if schema is None:
+        return [_doctor_finding("config_schema_missing", "warn", "spec_workflow.schema_version 未声明",
+                                str(path), "code-flow migrate --spec-workflow --dry-run")]
+    if schema != 1:
+        return [_doctor_finding("config_schema_unsupported", "block", f"不支持的 schema {schema!r}",
+                                str(path), "code-flow migrate --spec-workflow --dry-run")]
+    return []
+
+
+def _doctor_migrations(root: Path) -> list[dict[str, str]]:
+    findings: list[dict[str, str]] = []
+    lock = root / ".code-flow/.runtime-migration.lock"
+    if lock.exists():
+        findings.append(_doctor_finding("runtime_migration_lock", "block", "存在运行时迁移锁", str(lock),
+                                        "按 lock owner 输出执行 migrate --runtime --rollback <id>"))
+    workspace = root / ".code-flow/migrations"
+    for journal in sorted(workspace.glob("runtime-*/journal.json")) if workspace.is_dir() else ():
+        try:
+            status = json.loads(journal.read_text(encoding="utf-8")).get("status")
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            findings.append(_doctor_finding("migration_journal_invalid", "warn", "迁移 journal 不可读",
+                                            str(journal), "检查 migrations 目录"))
+            continue
+        if status in ("staging", "applying"):
+            findings.append(_doctor_finding(
+                "runtime_migration_recovery", "block", f"迁移未完成: {status}", str(journal),
+                f"code-flow migrate --runtime --rollback {journal.parent.name}"))
+    return findings
+
+
+def _doctor_legacy(root: Path) -> list[dict[str, str]]:
+    retired = ("cf_inject_hook.py", "cf_session_hook.py", "cf_codex_user_prompt_hook.py")
+    findings = [
+        _doctor_finding("legacy_runtime_residue", "warn", f"旧 Hook 脚本仍存在: {name}",
+                        str(root / ".code-flow/scripts" / name), "code-flow migrate --runtime --apply")
+        for name in retired if (root / ".code-flow/scripts" / name).exists()
+    ]
+    legacy_inject = root / ".claude/skills/cf-inject.md"
+    if legacy_inject.exists():
+        findings.append(_doctor_finding("legacy_skill_residue", "warn", "旧 cf-inject skill 仍存在",
+                                        str(legacy_inject), "code-flow init --force"))
+    return findings
+
+
+def _doctor_marker(root: Path, task_dir: str, context: SpecContext) -> tuple[dict[str, object], list[dict[str, str]]]:
+    marker_path = root / ".code-flow/.active-task.json"
+    info: dict[str, object] = {"exists": False, "task_id": "", "status": "", "hash_match": False,
+                               "task_match": False}
+    if not marker_path.is_file():
+        return info, []
+    try:
+        active = load_active_task(str(root))
+    except ContextError as exc:
+        return info, [_doctor_finding("corrupt_marker", "block", exc.message, str(marker_path),
+                                      "确认放弃后运行 code-flow spec active doctor --abandon")]
+    task_match = Path(active.task_dir).resolve() == Path(task_dir).resolve()
+    hash_match = active.context_sha256 == context_sha256(context)
+    info.update({"exists": True, "task_id": active.task_id, "status": active.status,
+                 "hash_match": hash_match, "task_match": task_match})
+    findings: list[dict[str, str]] = []
+    if not hash_match:
+        findings.append(_doctor_finding(
+            "marker_hash_drift", "block", "marker context hash 漂移", str(marker_path),
+            "code-flow spec refresh --task-dir <需求目录> --root \"$PWD\" --json"))
+    if not task_match:
+        findings.append(_doctor_finding(
+            "marker_task_mismatch", "block", f"marker 属于 {active.task_dir}", str(marker_path),
+            "回到原需求目录，或用 spec active doctor --resync 重新绑定"))
+    if active.status == "activating":
+        findings.append(_doctor_finding(
+            "marker_stuck_activating", "block", "start 事务停在 activating", str(marker_path),
+            "code-flow spec active doctor --resync --context-sha256 <hash>"))
+    return info, findings
+
+
+def _doctor_command(args: argparse.Namespace) -> dict[str, object]:
+    """Read-only drift diagnosis for Context, marker and installed runtime."""
+    task_dir = Path(args.task_dir)
+    context_path = task_dir / "spec-context.yml"
+    runtime: dict[str, object] = {"installed": False, "version": "", "manifest_version": "",
+                                  "files_checked": 0, "files_missing": [], "files_drifted": [],
+                                  "commands": 0}
+    empty_marker: dict[str, object] = {"exists": False, "task_id": "", "status": "",
+                                       "hash_match": False, "task_match": False}
+    try:
+        context = load_context(str(context_path))
+        sha = context_sha256(context)
+    except ContextError as exc:
+        finding = _doctor_finding("invalid_context", "block", exc.message, str(context_path),
+                                  "修复 spec-context.yml 后运行 code-flow spec refresh")
+        return _doctor_report("", "", empty_marker, runtime, [finding])
+    root_value = getattr(args, "root", "") or _find_root(str(task_dir))
+    if not root_value:
+        finding = _doctor_finding("root_not_found", "block", "无法定位项目根目录", str(task_dir),
+                                  "在项目内运行，或显式传入 --root")
+        return _doctor_report(context.task, sha, empty_marker, runtime, [finding])
+    root = Path(root_value).resolve()
+    marker, findings = _doctor_marker(root, str(task_dir), context)
+    runtime, runtime_findings = _doctor_runtime(root)
+    findings.extend(runtime_findings)
+    findings.extend(_doctor_config(root))
+    findings.extend(_doctor_migrations(root))
+    findings.extend(_doctor_legacy(root))
+    return _doctor_report(context.task, sha, marker, runtime, findings)
+
+
+def _doctor_report(task: str, sha: str, marker: Mapping[str, object],
+                   runtime: Mapping[str, object], findings: Sequence[Mapping[str, str]]) -> dict[str, object]:
+    blocking = [item for item in findings if item["severity"] == "block"]
+    next_steps: list[str] = []
+    for item in blocking:
+        if item["fix"] and item["fix"] not in next_steps:
+            next_steps.append(item["fix"])
+    return {
+        "ok": not blocking,
+        "decision": "block" if blocking else "pass",
+        "task": task,
+        "context_sha256": sha,
+        "marker": dict(marker),
+        "runtime": dict(runtime),
+        "findings": [dict(item) for item in findings],
+        "next": next_steps,
+    }
+
+
+def _doctor_text(data: dict[str, object]) -> str:
+    lines = [f"# {data['task'] or '<unknown>'} — Spec Doctor",
+             f"- decision: {data['decision']}"]
+    runtime = data["runtime"]
+    lines.append(f"- runtime: installed={runtime['installed']} version={runtime['version'] or '-'} "
+                 f"files={runtime['files_checked']}")
+    findings = data["findings"]
+    if not findings:
+        lines.append("- 未发现漂移")
+    for item in findings:
+        lines.append(f"- [{item['severity']}] {item['code']}: {item['message']}")
+        if item["fix"]:
+            lines.append(f"  修复: {item['fix']}")
+    return "\n".join(lines)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND", "cf_spec_context.py"))
     commands = parser.add_subparsers(dest="command", required=True)
@@ -1702,6 +1968,10 @@ def _parser() -> argparse.ArgumentParser:
     status.add_argument("--task-dir", required=True)
     status.add_argument("--root", default="")
     status.add_argument("--json", action="store_true")
+    doctor = commands.add_parser("doctor")
+    doctor.add_argument("--task-dir", required=True)
+    doctor.add_argument("--root", default="")
+    doctor.add_argument("--json", action="store_true")
     for name in ("refresh", "refresh-missing"):
         refresh = commands.add_parser(name)
         refresh.add_argument("--task-dir", required=True)
@@ -1732,6 +2002,8 @@ def _parser() -> argparse.ArgumentParser:
 def _execute(args: argparse.Namespace, stdin: IO[str]) -> dict[str, object]:
     if args.command == "catalog":
         return _catalog_command(args)
+    if args.command == "doctor":
+        return _doctor_command(args)
     if args.command == "active":
         return _active_command(args, _json_payload(stdin))
     if args.command == "start":
@@ -1769,6 +2041,13 @@ def main(argv: Optional[Sequence[str]] = None, stdin: IO[str] = sys.stdin, stdou
             else:
                 stdout.write(_status_text(data) + "\n")
             return 0
+        if args.command == "doctor":
+            data = _doctor_command(args)
+            if args.json:
+                stdout.write(json.dumps(data, ensure_ascii=False))
+            else:
+                stdout.write(_doctor_text(data) + "\n")
+            return 0 if data["decision"] == "pass" else 3
         result = _execute(args, stdin)
         stdout.write(json.dumps(result, ensure_ascii=False))
         return 0

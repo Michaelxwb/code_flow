@@ -327,6 +327,36 @@ code-flow feedback ignore <check-id>
 
 ## CLI 命令
 
+### 0.8 用户命令面（16 → 11）
+
+0.8.0 把 Agent 命令从 16 条收敛到 11 条。命令清单的唯一权威源是 `src/adapters/commands.json`，四平台（Claude Code / Codex / Costrict / OpenCode）从同一目录生成/校验；旧命令文件保留一个 minor，0.9.0 移除。
+
+| 用户命令 | 用途 |
+|----------|------|
+| `cf-init` | 初始化项目规范体系 |
+| `cf-learn` | 从项目配置、代码与变更中沉淀规范 |
+| `cf-spec` | Spec Context、迁移计划与 `code-flow spec doctor` |
+| `cf-stats` | Token/预算统计与规范质量审计 |
+| `cf-task:prd` | 产出产品需求文档 |
+| `cf-task:align` | 需求对齐与设计简报 |
+| `cf-task:plan` | 能力级任务拆解与预算门禁 |
+| `cf-task:start` | 激活任务并编码 |
+| `cf-task:status` | 任务总览；`--notes` / `--block` / `--graph` 子动作 |
+| `cf-task:archive` | 归档已完成需求 |
+| `cf-task:verify-e2e` | 分层/分级验证（`code-flow task verify` 兼容别名） |
+
+兼容别名与内部命令（不计入 11 条用户命令面）：
+
+| 命令 | 状态 | 0.8 等价入口 |
+|------|------|--------------|
+| `cf-task:note` | 别名（0.9.0 移除） | `/cf-task:status --notes` |
+| `cf-task:block` | 别名（0.9.0 移除） | `/cf-task:status --block` |
+| `cf-task:graph` | 别名（0.9.0 移除） | `/cf-task:status --graph` |
+| `cf-validate` | 别名（0.9.0 移除） | `code-flow task verify --checks` |
+| `cf-sync` | internal（开发/发布维护） | 不属于用户安装面 |
+
+> 从 0.7 升级请按 [0.8.0 迁移说明](migrations/runtime-0.8.0.md) 执行 `code-flow migrate --runtime --dry-run` → `--apply`；迁移包含 manifest v3、evidence sidecar、状态机与命令别名。
+
 ### `code-flow init`
 
 在终端中执行，一键初始化项目规范体系。默认平台为 `claude`。
@@ -507,11 +537,15 @@ JSON 输出（默认模式）会包含 `missing_specs` 字段，可用于自动�
 /cf-spec migrate --plan .code-flow/migrations/v0.6.0/plan.yml # 确认迁移计划
 ```
 
+`doctor` 的机器入口是 `code-flow spec doctor --task-dir <需求目录> --root "$PWD" --json`（0.8 新增）。它只读检查 config schema、active marker、Context hash、迁移 journal/lock、运行时 manifest 与 legacy residue；发现阻断项返回 `decision=block`（退出码 3），`next` 给出修复命令。它不是删除 marker 或绕过 Gate 的捷径。
+
 > **硬门禁**：`spec_workflow.schema_version` 非 `1` 时只有 `migrate --plan` 可用；Context 缺失/损坏时 fail-closed，不回退 Catalog。
 >
 > **轻量模式**：`spec_workflow.enforcement` 支持 `required`（全门禁，默认）/ `warn`（门禁仅记录不阻断）/ `inject`（只注入不门禁），solo 项目可渐进采纳。
 
-### `/cf-sync` — 双副本同步
+### `/cf-sync` — 双副本同步（internal）
+
+> **0.8 命令面状态**：internal（开发/发布维护专用），不属于 11 条用户命令面。普通用户执行 `code-flow init` / `code-flow migrate --runtime --apply` 即可，无需调用本命令。
 
 一键检查/同步 canonical 源与部署副本（`src/core/code-flow` ↔ `.code-flow`、四平台适配器 ↔ 运行目录），防止"测试通过但 live 行为不变"。
 
@@ -522,14 +556,17 @@ code-flow sync apply    # canonical → 部署副本
 
 项目自有内容（`specs/`、`tasks/`、`config.yml`、`settings.local.json`）不在同步范围；部署侧独有文件不会被删除。
 
-### `/cf-validate` — 验证变更
+### `/cf-validate` — 验证变更（别名）
+
+> **0.8 命令面状态**：alias（0.9.0 移除）。等价入口是 `code-flow task verify --checks`（即 `--layers validators`）；需要 review/e2e 时用 `task verify --layers validators,review,e2e`。
 
 根据变更文件自动匹配并执行验证规则（测试、类型检查、lint）。
 
 ```
-/cf-validate                             # 基于 git diff 自动获取变更
-/cf-validate src/Foo.tsx                 # 验证指定文件
-/cf-validate --files=src/a.ts,src/b.ts   # 验证多个文件
+code-flow task verify --checks          # 0.8 推荐：等价 cf-validate
+code-flow task verify --layers e2e      # 只跑 E2E 层
+/cf-validate src/Foo.tsx                # 兼容别名：验证指定文件
+/cf-validate --files=src/a.ts,src/b.ts  # 兼容别名：验证多个文件
 ```
 
 验证规则定义在 `.code-flow/validation.yml`：
@@ -770,6 +807,14 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 /cf-task:status auth-module  # 指定文件的详细状态
 ```
 
+0.8 起 `cf-task:status` 同时承载三个子动作（旧命令保留一个 minor）：
+
+| 子动作 | 等价旧命令 | 用途 |
+|--------|-----------|------|
+| `/cf-task:status --notes` | `/cf-task:note` | 讨论并收敛 `#NOTES` |
+| `/cf-task:status --block` | `/cf-task:block` | 标记阻塞并记录原因 |
+| `/cf-task:status --graph` | `/cf-task:graph` | 依赖 DAG 与并行批次 |
+
 输出示例：
 
 ```
@@ -784,7 +829,9 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 汇总: 3 个子任务 | done: 1 | in-progress: 1 | draft: 1
 ```
 
-### `/cf-task:note` — 讨论 Notes
+### `/cf-task:note` — 讨论 Notes（别名）
+
+> **0.8 命令面状态**：alias（0.9.0 移除），等价 `/cf-task:status --notes`。
 
 用户在 review 任务文件时，可以在任意位置标注 `#NOTES` 提出疑问：
 
@@ -804,10 +851,13 @@ AI 会加载详设上下文，逐条分析并给出建议方案。用户确认�
 
 > `#NOTES` 是 `cf-task:start` 的前置条件之一——含有未解决 Notes 的子任务无法启动。
 
-### `/cf-task:block` — 标记阻塞
+### `/cf-task:block` — 标记阻塞（别名）
+
+> **0.8 命令面状态**：alias（0.9.0 移除），等价 `/cf-task:status --block`。
 
 ```
-/cf-task:block auth-module TASK-001 "等待第三方 SDK 文档"
+/cf-task:status --block auth-module TASK-001 "等待第三方 SDK 文档"   # 0.8 推荐
+/cf-task:block auth-module TASK-001 "等待第三方 SDK 文档"            # 兼容别名
 ```
 
 Status 更新为 blocked，阻塞原因记录在 Log 中。
@@ -816,11 +866,14 @@ Status 更新为 blocked，阻塞原因记录在 Log 中。
 - Notes 导致的阻塞 → 用 `/cf-task:note` 讨论解决后自动解除
 - 外部阻塞 → 手动编辑文件移除阻塞条目，再用 `/cf-task:start` 重新启动
 
-### `/cf-task:graph` — 可视化依赖
+### `/cf-task:graph` — 可视化依赖（别名）
+
+> **0.8 命令面状态**：alias（0.9.0 移除），等价 `/cf-task:status --graph`。
 
 ```
-/cf-task:graph auth-module    # 指定文件的依赖图
-/cf-task:graph                # 所有活跃文件的依赖图
+/cf-task:status --graph auth-module    # 0.8 推荐：指定文件的依赖图
+/cf-task:status --graph                # 所有活跃文件的依赖图
+/cf-task:graph auth-module             # 兼容别名
 ```
 
 输出 ASCII 依赖 DAG，标注可并行执行的任务组和关键路径。
@@ -1375,6 +1428,16 @@ python3 -m pip install pyyaml pytest
 - 精简过长的 spec 文件（单文件 > 500 tokens 会被标记）
 - 调整 `config.yml` 中的预算上限
 
-## 0.7.0 运行时命令契约
+## 0.8.0 运行时命令契约
 
-Agent 使用 `code-flow spec/task/acceptance/validate/stats/sync` 正式入口；Python 文件是内部实现。参数帮助来自实际运行时解析器，例如 `code-flow spec validate --help`。旧安装需执行显式事务迁移，见 [0.7.0 迁移说明](migrations/runtime-0.7.0.md)。
+Agent 使用 `code-flow spec/task/acceptance/evidence/audit/validate/stats` 正式入口；Python 文件是内部实现。参数帮助来自实际运行时解析器，例如 `code-flow spec doctor --help`。0.8 新增：
+
+| 命令 | 用途 |
+|------|------|
+| `code-flow task verify --layers validators,review,e2e --profile smoke\|changed\|full --resume --deadline <秒>` | 分层/分级/续跑；`--checks` 等价 `--layers validators` |
+| `code-flow task finish --batch TASK-001,TASK-002` / `--capability <名称>` | 批量 Done Gate，共享 check 只执行一次 |
+| `code-flow evidence import --format junit\|playwright --file <报告> --commit <sha> --run-url <url>` | CI 证据导入 |
+| `code-flow audit --task-dir <需求目录> --json` | 只读不变量审计 |
+| `code-flow spec doctor --task-dir <需求目录> --root "$PWD" --json` | Context/marker/运行时/manifest 漂移诊断 |
+
+运行时状态：`done` 仅在 required code check 全部 verified 后成立；`provisional` 表示仍有 deferred/env_blocked/failed；`env_blocked` 不写 verified、不计产品失败。0.7 安装需执行显式事务迁移，见 [0.8.0 迁移说明](migrations/runtime-0.8.0.md)（含 rollback、manifest v3 与 evidence sidecar）。旧的 0.7 命令别名保留一个 minor。

@@ -3,6 +3,8 @@ name: cf-task-note
 description: Discuss #NOTES annotations in task files or design briefs, propose solutions with context, resolve questions collaboratively, and merge conclusions back removing the #NOTES marker. Use when files have unresolved #NOTES markers.
 ---
 
+> **命令面状态（0.8）**：alias — 等价于 `cf-task-status --notes`；保留一个 minor，0.9.0 移除。
+
 ## 背景
 
 用户在 review 文件时，直接在有问题的位置**就地标注** `#NOTES`，格式：

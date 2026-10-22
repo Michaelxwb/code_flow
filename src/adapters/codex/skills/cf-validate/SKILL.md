@@ -3,6 +3,8 @@ name: cf-validate
 description: Run validation rules (lint, type check, tests) against changed files based on .code-flow/validation.yml. Auto-fix failures. Use when validating code changes, running project checks, or after editing source files.
 ---
 
+> **命令面状态（0.8）**：alias — 等价于 `cf-task-verify-e2e --checks`（运行时 `code-flow task verify --checks`）；保留一个 minor，0.9.0 移除。
+
 ## 输入
 
 - `cf-validate` — 自动获取任务基线或 Git 全部变更文件
@@ -80,6 +82,7 @@ code-flow validate --root "$PWD" --json
 运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
 
 ```bash
+code-flow task verify --task-dir "<需求目录>" --layers validators,review,e2e --profile changed --root "$PWD" --json
 code-flow validate --root "$PWD" --json
 ```
 

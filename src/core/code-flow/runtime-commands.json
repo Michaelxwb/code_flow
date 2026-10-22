@@ -36,6 +36,13 @@
       ],
       "example_args": "--task-dir \"<需求目录>\" --root \"$PWD\" --json"
     },
+    "spec doctor": {
+      "module": "cf_spec_context",
+      "prefix": [
+        "doctor"
+      ],
+      "example_args": "--task-dir \"<需求目录>\" --root \"$PWD\" --json"
+    },
     "spec refresh": {
       "module": "cf_spec_context",
       "prefix": [

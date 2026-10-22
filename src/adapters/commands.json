@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "content_canonical": "claude",
+  "commands": [
+    {
+      "id": "cf-init",
+      "file": "cf-init.md",
+      "kind": "user",
+      "description": "初始化项目规范体系"
+    },
+    {
+      "id": "cf-learn",
+      "file": "cf-learn.md",
+      "kind": "user",
+      "description": "从项目证据沉淀规范"
+    },
+    {
+      "id": "cf-spec",
+      "file": "cf-spec.md",
+      "kind": "user",
+      "description": "Spec Context、迁移计划与 doctor"
+    },
+    {
+      "id": "cf-stats",
+      "file": "cf-stats.md",
+      "kind": "user",
+      "description": "Token/预算统计与规范质量审计"
+    },
+    {
+      "id": "cf-task-prd",
+      "file": "cf-task/prd.md",
+      "kind": "user",
+      "description": "产出产品需求文档"
+    },
+    {
+      "id": "cf-task-align",
+      "file": "cf-task/align.md",
+      "kind": "user",
+      "description": "需求对齐与设计简报"
+    },
+    {
+      "id": "cf-task-plan",
+      "file": "cf-task/plan.md",
+      "kind": "user",
+      "description": "能力级任务拆解与预算门禁"
+    },
+    {
+      "id": "cf-task-start",
+      "file": "cf-task/start.md",
+      "kind": "user",
+      "description": "激活任务并编码"
+    },
+    {
+      "id": "cf-task-status",
+      "file": "cf-task/status.md",
+      "kind": "user",
+      "description": "任务状态总览与 notes/block/graph 子动作",
+      "subactions": [
+        "--notes",
+        "--block",
+        "--graph"
+      ]
+    },
+    {
+      "id": "cf-task-archive",
+      "file": "cf-task/archive.md",
+      "kind": "user",
+      "description": "归档已完成需求"
+    },
+    {
+      "id": "cf-task-verify-e2e",
+      "file": "cf-task/verify-e2e.md",
+      "kind": "user",
+      "description": "分层/分级验证（task verify 别名）"
+    },
+    {
+      "id": "cf-task-note",
+      "file": "cf-task/note.md",
+      "kind": "alias",
+      "alias_of": "cf-task-status",
+      "alias_flag": "--notes",
+      "remove_in": "0.9.0"
+    },
+    {
+      "id": "cf-task-block",
+      "file": "cf-task/block.md",
+      "kind": "alias",
+      "alias_of": "cf-task-status",
+      "alias_flag": "--block",
+      "remove_in": "0.9.0"
+    },
+    {
+      "id": "cf-task-graph",
+      "file": "cf-task/graph.md",
+      "kind": "alias",
+      "alias_of": "cf-task-status",
+      "alias_flag": "--graph",
+      "remove_in": "0.9.0"
+    },
+    {
+      "id": "cf-validate",
+      "file": "cf-validate.md",
+      "kind": "alias",
+      "alias_of": "cf-task-verify-e2e",
+      "alias_flag": "--checks",
+      "remove_in": "0.9.0"
+    },
+    {
+      "id": "cf-sync",
+      "file": "cf-sync.md",
+      "kind": "internal",
+      "description": "canonical → 部署副本同步，仅开发/发布维护使用"
+    }
+  ]
+}

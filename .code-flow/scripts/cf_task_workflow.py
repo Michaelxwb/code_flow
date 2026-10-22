@@ -994,6 +994,15 @@ def confirm_manual(root: str, directory: str, refs: Sequence[str], scenarios: Se
     }
 
 
+def _verify_layers_argument(layers: str, checks: bool) -> Optional[str]:
+    """Map the cf-validate compatible ``--checks`` flag onto validators only."""
+    if not checks:
+        return layers or None
+    if layers and parse_verify_layers(layers) != ("validators",):
+        raise ValueError("--checks is an alias for --layers validators; pass one of them")
+    return "validators"
+
+
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
     parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND") or None)
     parser.add_argument("action", choices=("finish", "block", "resume", "verify", "verify-e2e",
@@ -1005,6 +1014,8 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--batch", default="", help="finish multiple TASKs: TASK-001,TASK-002")
     parser.add_argument("--capability", default="", help="finish every TASK whose Capability matches")
     parser.add_argument("--layers", default="", help="verify layers: validators,review,e2e (default all)")
+    parser.add_argument("--checks", action="store_true",
+                        help="alias for --layers validators (cf-validate compatible entry)")
     parser.add_argument("--profile", default="", help="verify profile: smoke,changed,full (default changed)")
     parser.add_argument("--reason", default="")
     parser.add_argument("--refs", default="")
@@ -1021,7 +1032,8 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
             raise ValueError("task directory outside project")
         recover_transition(root)
         if args.action == "verify":
-            result = verify_layers(root, directory, args.layers or None, args.profile or None)
+            layers = _verify_layers_argument(args.layers, args.checks)
+            result = verify_layers(root, directory, layers, args.profile or None)
         elif args.action == "verify-e2e":
             result = verify_e2e(root, directory, args.layers or None, args.profile or None)
         elif args.action == "cleanup-session":

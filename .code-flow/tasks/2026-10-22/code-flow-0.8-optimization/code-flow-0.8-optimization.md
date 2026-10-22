@@ -31,7 +31,7 @@
 | S-08 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 plan 模板 + 任务文件 | TASK-012 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"] |
 | S-09 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 design + manifest + evidence | TASK-015 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"] |
 | S-10 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 JUnit/Playwright 报告 | TASK-016 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"] |
-| S-11 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实四平台安装产物 | TASK-017 | planned | ["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"] |
+| S-11 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实四平台安装产物 | TASK-017 | verified | ["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"] |
 | E-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 preflight + 服务探测 | TASK-008 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "env_blocked"] |
 | E-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + manifest | TASK-010 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "check_conflict"] |
 | E-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 collect | TASK-009 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "provisional_collect"] |
@@ -831,7 +831,7 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ## TASK-017: 命令面收敛、四平台生成、迁移与发布
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-001,TASK-002,TASK-003,TASK-004,TASK-005,TASK-006,TASK-007,TASK-008,TASK-009,TASK-010,TASK-011,TASK-012,TASK-013,TASK-014,TASK-015,TASK-016
 - **Source**: code-flow-0.8-optimization.design.md#3.4 接口设计, code-flow-0.8-optimization.design.md#4 部署与运维, code-flow-0.8-optimization.design.md#Spec Compliance Matrix
@@ -846,30 +846,38 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ### Checklist
 
-- [ ] 合并 note/block/graph 到 task status；cf-validate 并入 task verify；cf-sync 移出用户安装面。
-- [ ] 四平台命令从 canonical 源生成，删除四份手写漂移。
-- [ ] 实现 code-flow migrate --runtime 与 spec doctor。
-- [ ] 旧命令别名保留一个 minor。
-- [ ] 实现并运行 verifier cli-code-standards#RULE-cli-dependency-allowlist-001：不新增 npm 运行时依赖。
-- [ ] 实现并运行 verifier cli-code-standards#RULE-cli-platform-parity-001：四平台命令一致。
-- [ ] 实现并运行 verifier cli-code-standards#RULE-cli-migration-transaction-001：dry-run/备份/journal/rollback。
-- [ ] 实现并运行 verifier cli-code-standards#RULE-cli-opencode-native-001：原生事件入口。
-- [ ] 实现并运行 verifier scripts-code-standards#RULE-scripts-canonical-parity-001：canonical 与部署副本同步。
-- [ ] 完成文档、迁移指南、回滚说明、parity 测试。
-- [ ] [S-11][integration] 编写/更新验收测试（真实边界：真实四平台安装产物）；断言：9-11 用户命令；四平台内容一致；旧别名可用
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 合并 note/block/graph 到 task status；cf-validate 并入 task verify；cf-sync 移出用户安装面。
+- [x] 四平台命令从 canonical 源生成，删除四份手写漂移。
+- [x] 实现 code-flow migrate --runtime 与 spec doctor。
+- [x] 旧命令别名保留一个 minor。
+- [x] 实现并运行 verifier cli-code-standards#RULE-cli-dependency-allowlist-001：不新增 npm 运行时依赖。
+- [x] 实现并运行 verifier cli-code-standards#RULE-cli-platform-parity-001：四平台命令一致。
+- [x] 实现并运行 verifier cli-code-standards#RULE-cli-migration-transaction-001：dry-run/备份/journal/rollback。
+- [x] 实现并运行 verifier cli-code-standards#RULE-cli-opencode-native-001：原生事件入口。
+- [x] 实现并运行 verifier scripts-code-standards#RULE-scripts-canonical-parity-001：canonical 与部署副本同步。
+- [x] 完成文档、迁移指南、回滚说明、parity 测试。
+- [x] [S-11][integration] 编写/更新验收测试（真实边界：真实四平台安装产物）；断言：9-11 用户命令；四平台内容一致；旧别名可用
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-11 | integration | 真实四平台安装产物 | 9-11 用户命令；四平台内容一致；旧别名可用 | planned | ["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"] | planned |
+| S-11 | integration | 真实四平台安装产物 | 9-11 用户命令；四平台内容一致；旧别名可用 | `tests/test_adapter_parity.py::test_s11_command_surface_converges_to_9_to_11_user_commands`、`test_s11_four_platform_install_surface_matches_catalog` | ["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-11 | `python3 -m pytest -q tests/test_adapter_parity.py` → **2 failed**（`FileNotFoundError: src/adapters/commands.json`；`spec doctor` 未知命令、`task verify --checks` 未识别）；`tests/test_command_surface.py` → **8 failed**；`-k checks` → **1 failed**（unrecognized arguments: --checks）；`_doctor_command` → **ImportError** | 同命令 → **8 passed**；`tests/test_command_surface.py` → **8 passed**；`-k checks` → **1 passed**；doctor 两例 → **2 passed**；全仓 `python3 -m pytest -q` → **668 passed in 56.08s** | `test_s11_command_surface_converges_to_9_to_11_user_commands`、`test_s11_four_platform_install_surface_matches_catalog`、`test_four_platform_sources_match_canonical_catalog`、`test_four_platform_deploy_copies_match_canonical_catalog`、`test_alias_commands_declare_one_minor_compatibility_window`、`test_runtime_migration_dry_run_apply_and_rollback`、`test_spec_doctor_help_is_served_by_real_parser`、`test_s11_spec_doctor_reports_healthy_context`、`test_s11_spec_doctor_blocks_marker_and_runtime_drift`、`test_checks_flag_runs_validators_only_as_cf_validate_alias` | `src/adapters/commands.json` 驱动四平台 16 个命令文件（11 user + 4 alias + 1 internal）；真实 `code-flow init` 产物 + 部署副本逐字一致；真实 `migrate --runtime --dry-run/--apply/--rollback`（`.version` 0.7.0 → 0.8.0 → 0.7.0）；真实 `spec doctor` 报 113 个受管理文件 0 漂移；`sync check` 五对配对全 OK | verified |
+- S-11: verified — automated command passed; run_id=91f198ad072b4a779ca0f10b00caecca (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=b938e149f8554761963e7cf769da319f (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] RED：`tests/test_adapter_parity.py` 2 failed（缺 canonical 目录）；`tests/test_command_surface.py` 8 failed；`task verify --checks` 未识别；`_doctor_command` ImportError。
+- [2026-10-22] TASK-017 GREEN：`src/adapters/commands.json` 收敛 11 用户命令 + 4 别名 + 1 internal；四平台 alias/subaction 标注与部署副本同步；新增 `code-flow spec doctor`、`task verify --checks`；版本 0.8.0 与运行时事务迁移落地；`docs/migrations/runtime-0.8.0.md` + USAGE 同步；全仓 668 passed，required node tests 全绿，`sync check` 全 OK。
+- [2026-10-22] completed (done)
 
 ---
