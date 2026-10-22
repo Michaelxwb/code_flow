@@ -102,6 +102,11 @@
 - S-04: verified — automated command passed; run_id=bf2ce5d8c554438086fcd3420a9bf40b (confirmed_by: runner)
 - E-03: verified — automated command passed; run_id=bf2ce5d8c554438086fcd3420a9bf40b (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=bf2ce5d8c554438086fcd3420a9bf40b (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -161,6 +166,8 @@ align 产出 scenarios.md；plan 只从 scenarios.md 取场景并分配唯一 ow
 - E-01: verified — automated command passed; run_id=ca0e951556c24a01a9b04d99387ff525 (confirmed_by: runner)
 - S-03: verified — automated command passed; run_id=bf2ce5d8c554438086fcd3420a9bf40b (confirmed_by: runner)
 - E-01: verified — automated command passed; run_id=bf2ce5d8c554438086fcd3420a9bf40b (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -223,6 +230,10 @@ audit 只对账 scenarios/Coverage/manifest；无 scenarios.md 的 0.8 需求回
 - S-06: verified — automated command passed; run_id=bc789c82b510461cb30449e85dec4a33 (confirmed_by: runner)
 - E-02: verified — automated command passed; run_id=bc789c82b510461cb30449e85dec4a33 (confirmed_by: runner)
 - B-01: verified — automated command passed; run_id=bc789c82b510461cb30449e85dec4a33 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -231,3 +242,47 @@ audit 只对账 scenarios/Coverage/manifest；无 scenarios.md 的 0.8 需求回
 - [2026-10-22] completed (done)
 
 ---
+
+## TASK-004: 生产接线 scenarios source
+
+- **Status**: verified
+- **Priority**: P0
+- **Depends**: TASK-001, TASK-002, TASK-003
+- **Source**: scenario-first-acceptance.design.md#3.2 架构, scenario-first-acceptance.design.md#3.4 接口设计
+- **Spec-Refs**:
+- **Acceptance-Refs**:
+- **Files**: `cf_audit.py`, `cf_traceability.py`, `runtime-commands.json`, `cf-task-plan` skill
+- **Estimate**: 1d
+
+### Description
+
+把 `cf_audit` / `cf_task_plan` 真正切到 `<需求>.scenarios.md` 入口；有场景文件时不再解析 design 场景表；无文件时保持 0.8 回退并标记 deprecated。
+
+### Checklist
+
+- [x] `cf_audit` 自动发现 `<需求>.scenarios.md`，用场景源构建 traceability。
+- [x] 场景源 → manifest 对账：missing/unbound/extra 产生 findings。
+- [x] 无场景文件时回退原 design trace，并输出 `deprecated: true`。
+- [x] 注册 `scenarios parse` / `scenarios merge` 运行时命令。
+- [x] plan 文档改为调用 `code-flow scenarios parse`，旧路径标记 deprecated。
+- [x] 补集成测试并运行全量回归。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 执行命令 | 状态 |
+|---|---|---|---|---|---|
+| N/A | integration | 真实 scenarios.md + manifest | 场景源审计/回退 | `python3 -m pytest -q tests/test_cf_audit.py tests/test_cf_scenarios.py` | planned |
+
+### Acceptance Evidence
+
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|---|---|---|---|---|---|
+| N/A | `-k traceability` 无场景源 trace | **1 passed** | `test_traceability_from_scenarios_source` | 真实 scenarios.md + manifest check | verified |
+
+全仓 **703 passed**；`cf_audit` 自动发现 `<需求>.scenarios.md`，无文件时 `deprecated=true` 回退；`scenarios parse/merge` 已注册运行时命令。
+
+### Log
+- [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] TASK-004 GREEN：audit 场景源接入 + 回退标记 + scenarios CLI；703 passed。
+- [2026-10-22] completed (done)

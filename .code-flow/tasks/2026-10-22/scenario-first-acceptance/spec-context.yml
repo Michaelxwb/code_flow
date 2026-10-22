@@ -1,7 +1,7 @@
 version: 1
 task: scenario-first-acceptance
 enforcement: required
-updated_at: '2026-10-22T13:51:30.549106+00:00'
+updated_at: '2026-10-22T14:11:23.267524+00:00'
 sources:
 - type: cli
   ref: bind
@@ -45,7 +45,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: ae12e49c37ac2bc178f627dbee9ab4114f2cafc41610a01c22f96189c51981f1
+          artifact_sha256: 95a14bbd921b0dc8d03e66ec249112a599edbf2e32c018dd332ed2b5af1bc3ce
         decision: null
         evidence: []
       code:
@@ -54,11 +54,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
-          executed_at: '2026-10-22T13:54:47.351582+00:00'
+          executed_at: '2026-10-22T14:14:57.371717+00:00'
           status: verified
           rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
           artifact_sha256: null
-          diff_sha256: head:d6cc0b35fc948ee638bce1aa44ba847c8536d787
+          diff_sha256: head:65219a89a3a78ec8f2ffc337c035010ca45f19ca
           result_sha256: 1085c4cab6098edb47d916a3f61807f8941bff345e264feb00b9abd8a1d910cf
           error_code: null
           details:
@@ -108,7 +108,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: ae12e49c37ac2bc178f627dbee9ab4114f2cafc41610a01c22f96189c51981f1
+          artifact_sha256: 95a14bbd921b0dc8d03e66ec249112a599edbf2e32c018dd332ed2b5af1bc3ce
         decision: null
         evidence: []
       code:
@@ -117,11 +117,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
-          executed_at: '2026-10-22T13:54:47.369839+00:00'
+          executed_at: '2026-10-22T14:14:57.388104+00:00'
           status: verified
           rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
           artifact_sha256: null
-          diff_sha256: head:d6cc0b35fc948ee638bce1aa44ba847c8536d787
+          diff_sha256: head:65219a89a3a78ec8f2ffc337c035010ca45f19ca
           result_sha256: b993aeefb614fe0bf53e1d4c9059ce0c76d04eb18efd68f4adbdb2bb9b9737d9
           error_code: null
           details:
@@ -181,7 +181,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: ae12e49c37ac2bc178f627dbee9ab4114f2cafc41610a01c22f96189c51981f1
+          artifact_sha256: 95a14bbd921b0dc8d03e66ec249112a599edbf2e32c018dd332ed2b5af1bc3ce
         decision: null
         evidence: []
       code:
@@ -190,11 +190,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
-          executed_at: '2026-10-22T13:54:47.501730+00:00'
+          executed_at: '2026-10-22T14:14:57.408701+00:00'
           status: verified
           rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
           artifact_sha256: null
-          diff_sha256: head:d6cc0b35fc948ee638bce1aa44ba847c8536d787
+          diff_sha256: head:65219a89a3a78ec8f2ffc337c035010ca45f19ca
           result_sha256: e5f1387cd8b51acb45cffab067f3aa409519def55572a9fff4aae96c0158dcbf
           error_code: null
           details:
@@ -205,13 +205,159 @@ bindings:
             - -q
             - tests/test_adapter_parity.py
             exit_code: 0
-            stdout_sha256: 1698cf53738fece3fc128f68a2005bf90098cb09ffc528d80a18fe683159d622
-            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '........                                                                 [100%]
 
               8 passed in 0.03s
 
               '
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            stdout_sha256: 1698cf53738fece3fc128f68a2005bf90098cb09ffc528d80a18fe683159d622
+            cache_reused: true
+            scope_files:
+            - .agents/skills/cf-init/SKILL.md
+            - .agents/skills/cf-learn/SKILL.md
+            - .agents/skills/cf-spec/SKILL.md
+            - .agents/skills/cf-stats/SKILL.md
+            - .agents/skills/cf-sync/SKILL.md
+            - .agents/skills/cf-task-align/SKILL.md
+            - .agents/skills/cf-task-archive/SKILL.md
+            - .agents/skills/cf-task-block/SKILL.md
+            - .agents/skills/cf-task-graph/SKILL.md
+            - .agents/skills/cf-task-note/SKILL.md
+            - .agents/skills/cf-task-plan/SKILL.md
+            - .agents/skills/cf-task-prd/SKILL.md
+            - .agents/skills/cf-task-start/SKILL.md
+            - .agents/skills/cf-task-status/SKILL.md
+            - .agents/skills/cf-task-verify-e2e/SKILL.md
+            - .agents/skills/cf-validate/SKILL.md
+            - .claude/commands/cf-init.md
+            - .claude/commands/cf-learn.md
+            - .claude/commands/cf-spec.md
+            - .claude/commands/cf-stats.md
+            - .claude/commands/cf-sync.md
+            - .claude/commands/cf-task/align.md
+            - .claude/commands/cf-task/archive.md
+            - .claude/commands/cf-task/block.md
+            - .claude/commands/cf-task/graph.md
+            - .claude/commands/cf-task/note.md
+            - .claude/commands/cf-task/plan.md
+            - .claude/commands/cf-task/prd.md
+            - .claude/commands/cf-task/start.md
+            - .claude/commands/cf-task/status.md
+            - .claude/commands/cf-task/verify-e2e.md
+            - .claude/commands/cf-validate.md
+            - .costrict/commands/cf-init.md
+            - .costrict/commands/cf-learn.md
+            - .costrict/commands/cf-spec.md
+            - .costrict/commands/cf-stats.md
+            - .costrict/commands/cf-sync.md
+            - .costrict/commands/cf-task/align.md
+            - .costrict/commands/cf-task/archive.md
+            - .costrict/commands/cf-task/block.md
+            - .costrict/commands/cf-task/graph.md
+            - .costrict/commands/cf-task/note.md
+            - .costrict/commands/cf-task/plan.md
+            - .costrict/commands/cf-task/prd.md
+            - .costrict/commands/cf-task/start.md
+            - .costrict/commands/cf-task/status.md
+            - .costrict/commands/cf-task/verify-e2e.md
+            - .costrict/commands/cf-validate.md
+            - .costrict/settings.local.json
+            - .opencode/commands/cf-init.md
+            - .opencode/commands/cf-learn.md
+            - .opencode/commands/cf-spec.md
+            - .opencode/commands/cf-stats.md
+            - .opencode/commands/cf-sync.md
+            - .opencode/commands/cf-task/align.md
+            - .opencode/commands/cf-task/archive.md
+            - .opencode/commands/cf-task/block.md
+            - .opencode/commands/cf-task/graph.md
+            - .opencode/commands/cf-task/note.md
+            - .opencode/commands/cf-task/plan.md
+            - .opencode/commands/cf-task/prd.md
+            - .opencode/commands/cf-task/start.md
+            - .opencode/commands/cf-task/status.md
+            - .opencode/commands/cf-task/verify-e2e.md
+            - .opencode/commands/cf-validate.md
+            - .opencode/plugins/code-flow/index.js
+            - .opencode/plugins/code-flow/package.json
+            - src/adapters/claude/CLAUDE.md
+            - src/adapters/claude/commands/cf-init.md
+            - src/adapters/claude/commands/cf-learn.md
+            - src/adapters/claude/commands/cf-spec.md
+            - src/adapters/claude/commands/cf-stats.md
+            - src/adapters/claude/commands/cf-sync.md
+            - src/adapters/claude/commands/cf-task/align.md
+            - src/adapters/claude/commands/cf-task/archive.md
+            - src/adapters/claude/commands/cf-task/block.md
+            - src/adapters/claude/commands/cf-task/graph.md
+            - src/adapters/claude/commands/cf-task/note.md
+            - src/adapters/claude/commands/cf-task/plan.md
+            - src/adapters/claude/commands/cf-task/prd.md
+            - src/adapters/claude/commands/cf-task/start.md
+            - src/adapters/claude/commands/cf-task/status.md
+            - src/adapters/claude/commands/cf-task/verify-e2e.md
+            - src/adapters/claude/commands/cf-validate.md
+            - src/adapters/claude/settings.local.json
+            - src/adapters/codex/AGENTS.md
+            - src/adapters/codex/config.toml
+            - src/adapters/codex/hooks.json
+            - src/adapters/codex/skills/cf-init/SKILL.md
+            - src/adapters/codex/skills/cf-learn/SKILL.md
+            - src/adapters/codex/skills/cf-spec/SKILL.md
+            - src/adapters/codex/skills/cf-stats/SKILL.md
+            - src/adapters/codex/skills/cf-sync/SKILL.md
+            - src/adapters/codex/skills/cf-task-align/SKILL.md
+            - src/adapters/codex/skills/cf-task-archive/SKILL.md
+            - src/adapters/codex/skills/cf-task-block/SKILL.md
+            - src/adapters/codex/skills/cf-task-graph/SKILL.md
+            - src/adapters/codex/skills/cf-task-note/SKILL.md
+            - src/adapters/codex/skills/cf-task-plan/SKILL.md
+            - src/adapters/codex/skills/cf-task-prd/SKILL.md
+            - src/adapters/codex/skills/cf-task-start/SKILL.md
+            - src/adapters/codex/skills/cf-task-status/SKILL.md
+            - src/adapters/codex/skills/cf-task-verify-e2e/SKILL.md
+            - src/adapters/codex/skills/cf-validate/SKILL.md
+            - src/adapters/commands.json
+            - src/adapters/costrict/CLAUDE.md
+            - src/adapters/costrict/commands/cf-init.md
+            - src/adapters/costrict/commands/cf-learn.md
+            - src/adapters/costrict/commands/cf-spec.md
+            - src/adapters/costrict/commands/cf-stats.md
+            - src/adapters/costrict/commands/cf-sync.md
+            - src/adapters/costrict/commands/cf-task/align.md
+            - src/adapters/costrict/commands/cf-task/archive.md
+            - src/adapters/costrict/commands/cf-task/block.md
+            - src/adapters/costrict/commands/cf-task/graph.md
+            - src/adapters/costrict/commands/cf-task/note.md
+            - src/adapters/costrict/commands/cf-task/plan.md
+            - src/adapters/costrict/commands/cf-task/prd.md
+            - src/adapters/costrict/commands/cf-task/start.md
+            - src/adapters/costrict/commands/cf-task/status.md
+            - src/adapters/costrict/commands/cf-task/verify-e2e.md
+            - src/adapters/costrict/commands/cf-validate.md
+            - src/adapters/costrict/settings.local.json
+            - src/adapters/opencode/AGENTS.md
+            - src/adapters/opencode/commands/cf-init.md
+            - src/adapters/opencode/commands/cf-learn.md
+            - src/adapters/opencode/commands/cf-spec.md
+            - src/adapters/opencode/commands/cf-stats.md
+            - src/adapters/opencode/commands/cf-sync.md
+            - src/adapters/opencode/commands/cf-task/align.md
+            - src/adapters/opencode/commands/cf-task/archive.md
+            - src/adapters/opencode/commands/cf-task/block.md
+            - src/adapters/opencode/commands/cf-task/graph.md
+            - src/adapters/opencode/commands/cf-task/note.md
+            - src/adapters/opencode/commands/cf-task/plan.md
+            - src/adapters/opencode/commands/cf-task/prd.md
+            - src/adapters/opencode/commands/cf-task/start.md
+            - src/adapters/opencode/commands/cf-task/status.md
+            - src/adapters/opencode/commands/cf-task/verify-e2e.md
+            - src/adapters/opencode/commands/cf-validate.md
+            - src/adapters/opencode/opencode.json
+            - src/adapters/opencode/plugins/code-flow/index.js
+            - src/adapters/opencode/plugins/code-flow/package.json
+            - tests/test_adapter_parity.py
       review:
         status: pending
         refs: []
@@ -240,7 +386,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: ae12e49c37ac2bc178f627dbee9ab4114f2cafc41610a01c22f96189c51981f1
+          artifact_sha256: 95a14bbd921b0dc8d03e66ec249112a599edbf2e32c018dd332ed2b5af1bc3ce
         decision: null
         evidence: []
       code:
@@ -249,12 +395,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
-          executed_at: '2026-10-22T13:54:48.132956+00:00'
+          executed_at: '2026-10-22T14:14:58.007331+00:00'
           status: verified
           rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
           artifact_sha256: null
-          diff_sha256: head:d6cc0b35fc948ee638bce1aa44ba847c8536d787
-          result_sha256: df5ef09329392f4b96dce841678017bd07fc1bde2746f27804d6864c88a96d6b
+          diff_sha256: head:65219a89a3a78ec8f2ffc337c035010ca45f19ca
+          result_sha256: 132afec667bc18340d709abfea37c08c500414d49c99ec670c85e16cadad0a7c
           error_code: null
           details:
             argv:
@@ -264,11 +410,11 @@ bindings:
             - -q
             - tests/test_hook_command_robustness.py
             exit_code: 0
-            stdout_sha256: 00a8614270ba8472fd66ad756931ce6c941c964e72fa1dd797d89853abcf36dd
+            stdout_sha256: af88bdd7a54cc39cfb5904eec849f46c36db3b008cd00a1693c86331142646eb
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '......                                                                   [100%]
 
-              6 passed in 0.52s
+              6 passed in 0.49s
 
               '
       review:
@@ -299,7 +445,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: ae12e49c37ac2bc178f627dbee9ab4114f2cafc41610a01c22f96189c51981f1
+          artifact_sha256: 95a14bbd921b0dc8d03e66ec249112a599edbf2e32c018dd332ed2b5af1bc3ce
         decision: null
         evidence: []
       code:
@@ -308,39 +454,39 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
-          executed_at: '2026-10-22T13:54:49.369590+00:00'
+          executed_at: '2026-10-22T14:14:59.259843+00:00'
           status: verified
           rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
           artifact_sha256: null
-          diff_sha256: head:d6cc0b35fc948ee638bce1aa44ba847c8536d787
-          result_sha256: fbb9890bc8339d9f8b190d471b5f00b45a720fa7f4b607c7feb91a3e0fe1b9a1
+          diff_sha256: head:65219a89a3a78ec8f2ffc337c035010ca45f19ca
+          result_sha256: ffc28facfebe00443909717037e38bab700f42af3ed1de67450b1cb0b4aecd8d
           error_code: null
           details:
             argv:
             - node
             - tests/test_spec_workflow_migrate.js
             exit_code: 0
-            stdout_sha256: 150ce1349852730ceb44c8a5d017a12177bf731f9b55924876dc39264d5e716f
+            stdout_sha256: ce420833906466312b793b99e2b286baa4329ee95d45c19cf167ec169483328e
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '✔ B-08 dry-run is a single in-memory preview with zero writes
-              (53.821958ms)
+              (52.982333ms)
 
               ✔ prepare creates bound plan, byte backup, empty staging and journal
-              (53.726667ms)
+              (53.889667ms)
 
-              ✔ S-12 apply is idempotent and writes version last (171.134084ms)
+              ✔ S-12 apply is idempotent and writes version last (166.544875ms)
 
-              ✔ E-08 injected rename failure restores all original bytes (295.971583ms)
+              ✔ E-08 injected rename failure restores all original bytes (302.358ms)
 
               ✔ B-05 interruption before version is completed from proven target hashes
-              (165.77725ms)
+              (175.191375ms)
 
               ✔ EXDEV fails closed and rolls back without copy-delete commit fallback
-              (146.70375ms)
+              (155.809084ms)
 
-              ✔ re-apply after rollback succeeds (staging is reset) (254.674708ms)
+              ✔ re-apply after rollback succeeds (staging is reset) (253.941875ms)
 
-              ✔ apply refuses a plan whose project_root differs from cwd (53.333792ms)
+              ✔ apply refuses a plan whose project_root differs from cwd (52.353458ms)
 
               ℹ tests 8
 
@@ -356,7 +502,7 @@ bindings:
 
               ℹ todo 0
 
-              ℹ duration_ms 1197.899458
+              ℹ duration_ms 1215.830125
 
               '
       review:
@@ -388,7 +534,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: ae12e49c37ac2bc178f627dbee9ab4114f2cafc41610a01c22f96189c51981f1
+          artifact_sha256: 95a14bbd921b0dc8d03e66ec249112a599edbf2e32c018dd332ed2b5af1bc3ce
         decision: null
         evidence: []
       code:
@@ -397,11 +543,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
-          executed_at: '2026-10-22T13:54:50.723910+00:00'
+          executed_at: '2026-10-22T14:15:00.573462+00:00'
           status: verified
           rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
           artifact_sha256: null
-          diff_sha256: head:d6cc0b35fc948ee638bce1aa44ba847c8536d787
+          diff_sha256: head:65219a89a3a78ec8f2ffc337c035010ca45f19ca
           result_sha256: 3cd1ee3e105ef106eaf349c7f44dbe753eef65fb606a2a7258e3beef3f4d9ba5
           error_code: null
           details:
@@ -622,7 +768,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: ae12e49c37ac2bc178f627dbee9ab4114f2cafc41610a01c22f96189c51981f1
+          artifact_sha256: 95a14bbd921b0dc8d03e66ec249112a599edbf2e32c018dd332ed2b5af1bc3ce
         decision: null
         evidence: []
       code:
@@ -631,11 +777,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
-          executed_at: '2026-10-22T13:55:11.655107+00:00'
+          executed_at: '2026-10-22T14:15:19.552752+00:00'
           status: verified
           rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
           artifact_sha256: null
-          diff_sha256: head:d6cc0b35fc948ee638bce1aa44ba847c8536d787
+          diff_sha256: head:65219a89a3a78ec8f2ffc337c035010ca45f19ca
           result_sha256: 22c068054a541e609d992fd69ae16346c86ce57d362acbfdb984cefbcb19d589
           error_code: null
           details:
@@ -669,7 +815,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: ae12e49c37ac2bc178f627dbee9ab4114f2cafc41610a01c22f96189c51981f1
+          artifact_sha256: 95a14bbd921b0dc8d03e66ec249112a599edbf2e32c018dd332ed2b5af1bc3ce
         decision: null
         evidence: []
       code:
@@ -678,11 +824,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
-          executed_at: '2026-10-22T13:55:11.682057+00:00'
+          executed_at: '2026-10-22T14:15:19.581279+00:00'
           status: verified
           rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
           artifact_sha256: null
-          diff_sha256: head:d6cc0b35fc948ee638bce1aa44ba847c8536d787
+          diff_sha256: head:65219a89a3a78ec8f2ffc337c035010ca45f19ca
           result_sha256: 4c633b527b50710bcbb57a6bb3f7bda844a91cce97bf40d6a6813614c1adaf02
           error_code: null
           details:
@@ -716,7 +862,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: ae12e49c37ac2bc178f627dbee9ab4114f2cafc41610a01c22f96189c51981f1
+          artifact_sha256: 95a14bbd921b0dc8d03e66ec249112a599edbf2e32c018dd332ed2b5af1bc3ce
         decision: null
         evidence: []
       code:
@@ -725,12 +871,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
-          executed_at: '2026-10-22T13:55:01.574473+00:00'
+          executed_at: '2026-10-22T14:15:11.582413+00:00'
           status: verified
           rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
           artifact_sha256: null
-          diff_sha256: head:d6cc0b35fc948ee638bce1aa44ba847c8536d787
-          result_sha256: cffb163a7f751bf05b93f61531cf52661d32f4903c488692bbe4fab15e2b1763
+          diff_sha256: head:65219a89a3a78ec8f2ffc337c035010ca45f19ca
+          result_sha256: 52909ccdf45e8bbb526d06fc65c14e3638cc8e0e62e91e66d195d53efa49ee4e
           error_code: null
           details:
             argv:
@@ -745,11 +891,11 @@ bindings:
             - tests/test_opencode_native.py
             - tests/test_runtime_contract.py
             exit_code: 0
-            stdout_sha256: 98b9f2d706b7114ca3ab36c84274ce1981bf6b7b7b0a0548116b271a619f839e
+            stdout_sha256: 60c0d0764ac5ee728700abf5e7aba496710b7729e593a865d7e19bc985bffcb2
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '.....................................................................    [100%]
 
-              69 passed in 10.51s
+              69 passed in 10.50s
 
               '
       review:
@@ -780,7 +926,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: ae12e49c37ac2bc178f627dbee9ab4114f2cafc41610a01c22f96189c51981f1
+          artifact_sha256: 95a14bbd921b0dc8d03e66ec249112a599edbf2e32c018dd332ed2b5af1bc3ce
         decision: null
         evidence: []
       code:
@@ -789,12 +935,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
-          executed_at: '2026-10-22T13:55:09.787815+00:00'
+          executed_at: '2026-10-22T14:15:17.720125+00:00'
           status: verified
           rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
           artifact_sha256: null
-          diff_sha256: head:d6cc0b35fc948ee638bce1aa44ba847c8536d787
-          result_sha256: f053351ddfa1fef8e01b523e3ffb6d6b03a9a9a622b73c907b2001a8afd78831
+          diff_sha256: head:65219a89a3a78ec8f2ffc337c035010ca45f19ca
+          result_sha256: fa59e7c141a7634fc164f0d15c6d6151c68f90c9e810913f6557fda14f5a1cd5
           error_code: null
           details:
             argv:
@@ -806,11 +952,11 @@ bindings:
             - tests/test_cf_spec_gate.py
             - tests/test_cf_task_runtime.py
             exit_code: 0
-            stdout_sha256: 7921fe5febfb3a51dbb486e80fe9f15907f594ba874507cfcf11a1bec1599cd8
+            stdout_sha256: f5b7d31efe992f9263706aa03a9214e794ce48aca04ab5260c6026bc539bcc3c
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '..............................................................           [100%]
 
-              62 passed in 6.75s
+              62 passed in 6.00s
 
               '
       review:
@@ -841,7 +987,7 @@ bindings:
         - artifact: scenario-first-acceptance.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: ae12e49c37ac2bc178f627dbee9ab4114f2cafc41610a01c22f96189c51981f1
+          artifact_sha256: 95a14bbd921b0dc8d03e66ec249112a599edbf2e32c018dd332ed2b5af1bc3ce
         decision: null
         evidence: []
       code:
@@ -850,12 +996,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
-          executed_at: '2026-10-22T13:55:11.649259+00:00'
+          executed_at: '2026-10-22T14:15:19.546368+00:00'
           status: verified
           rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
           artifact_sha256: null
-          diff_sha256: head:d6cc0b35fc948ee638bce1aa44ba847c8536d787
-          result_sha256: 2bc250eb6fd2fd16959f6fbc1a8885462a474d3a983535d68b8ecb7dd96c6d1b
+          diff_sha256: head:65219a89a3a78ec8f2ffc337c035010ca45f19ca
+          result_sha256: e6cfd657ed78b3df1a55e50e785c92931c5b6731038a2e057b2d64d60c6c73ff
           error_code: null
           details:
             argv:
@@ -867,11 +1013,11 @@ bindings:
             - tests/test_adapter_parity.py
             - tests/test_spec_workflow_residue.py
             exit_code: 0
-            stdout_sha256: d2c626bed8d67a9d80b40ccddfcf5fa2c6f1f7da444d727fbbe290ef23475103
+            stdout_sha256: 14dec3be0edf79aaef55d8512c3082d0a647e83300bfff97c1d82b8ed7f61da5
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '........................                                                 [100%]
 
-              24 passed in 0.41s
+              24 passed in 0.40s
 
               '
       review:

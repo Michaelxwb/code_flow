@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -185,3 +186,26 @@ def test_migrate_legacy_coverage_to_scenarios() -> None:
     assert result["migrated"] is True
     assert result["scenarios"][0]["id"] == "S-01"
     assert result["scenarios"][0]["sources"] == ["legacy-coverage"]
+
+
+def test_traceability_from_scenarios_source(tmp_path: Path) -> None:
+    from cf_traceability import build_traceability_from_scenarios
+    source = _source(tmp_path, """
+schema: 1
+scenarios:
+  - id: S-01
+    title: journey
+    priority: P0
+    level: E2E
+    checks: [CHK-1]
+""")
+    manifest = tmp_path / ".acceptance-manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [{"id": "CHK-1", "command": ["true"], "cwd": ".", "timeout": 30}],
+        "scenarios": [{"id": "S-01", "kind": "functional", "check": "CHK-1",
+                       "owner": "TASK-001", "status": "verified"}],
+    }), encoding="utf-8")
+    trace = build_traceability_from_scenarios(str(source), str(manifest))
+    assert trace["decision"] == "pass"
+    assert trace["summary"]["bound"] == 1

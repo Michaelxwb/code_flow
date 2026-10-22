@@ -379,3 +379,70 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def build_traceability_from_scenarios(scenarios_file: str, manifest_file: str) -> dict[str, object]:
+    """Join the scenario source with manifest checks (0.9 source model)."""
+    from cf_scenarios import parse_scenarios
+    source = parse_scenarios(scenarios_file)
+    manifest_scenarios, checks = _load_manifest(manifest_file)[1:]
+    source_ids = {str(item["id"]) for item in source["scenarios"]}
+    violations: list[dict[str, str]] = []
+    rows: list[dict[str, object]] = []
+    for item in source["scenarios"]:
+        scenario_id = str(item["id"])
+        row = manifest_scenarios.get(scenario_id)
+        check_id = row.get("check") if row is not None else None
+        check = checks.get(check_id) if isinstance(check_id, str) else None
+        exec_mode = str(item.get("exec") or "")
+        if row is None:
+            binding, status = "missing", "missing"
+            violations.append({"code": "missing_in_manifest", "scenario": scenario_id,
+                               "message": f"{scenario_id} 在场景源中声明，但未进入 manifest"})
+        elif check is not None:
+            binding, status = "check", str(row.get("status") or "planned")
+        elif exec_mode == "aspirational":
+            binding, status = "aspirational", "aspirational"
+        else:
+            binding, status = "unbound", str(row.get("status") or "planned")
+            violations.append({"code": "unbound_scenario", "scenario": scenario_id,
+                               "message": f"{scenario_id} 没有可执行 check，且未显式 aspirational"})
+        rows.append({
+            "id": scenario_id,
+            "feature": "",
+            "priority": str(item.get("priority") or ""),
+            "level": str(item.get("level") or ""),
+            "boundary": str(item.get("boundary") or ""),
+            "exec": exec_mode,
+            "env": str(check.get("env", "none")) if check else str(item.get("env") or "none"),
+            "inputs": list(check.get("inputs") or []) if check else [],
+            "check": check_id if isinstance(check_id, str) and check is not None else "-",
+            "command": list(check.get("command") or []) if check else [],
+            "owner": str(row.get("owner") or "") if row else "",
+            "status": status,
+            "binding": binding,
+            "in_design": False,
+        })
+    extras = _extra_rows(manifest_scenarios, checks, source_ids)
+    for row in extras:
+        violations.append({"code": "extra_in_manifest", "scenario": str(row["id"]),
+                           "message": f"{row['id']} 存在于 manifest，但场景源未声明"})
+    all_rows = rows + extras
+    summary = {
+        "design_scenarios": len(source["scenarios"]),
+        "manifest_scenarios": len(manifest_scenarios),
+        "bound": sum(1 for row in all_rows if row["binding"] == "check"),
+        "aspirational": sum(1 for row in all_rows if row["binding"] == "aspirational"),
+        "unbound": sum(1 for row in all_rows if row["binding"] == "unbound"),
+        "missing": sum(1 for row in all_rows if row["binding"] == "missing"),
+    }
+    return {
+        "decision": "block" if violations else "pass",
+        "generated": True,
+        "source": str(scenarios_file),
+        "design_file": str(scenarios_file),
+        "manifest_file": str(manifest_file),
+        "summary": summary,
+        "scenarios": all_rows,
+        "violations": violations,
+    }

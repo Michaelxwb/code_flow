@@ -26,7 +26,7 @@ from typing import IO, Mapping, Optional, Sequence
 
 from cf_acceptance_schema import load_manifest, verified_evidence
 from cf_evidence_store import EvidenceStore
-from cf_traceability import build_traceability
+from cf_traceability import build_traceability, build_traceability_from_scenarios
 
 _SCENARIO_RE = re.compile(r"\b[SEB]-\d+\b")
 _RULE_RE = re.compile(r"^RULE-\d+$")
@@ -269,7 +269,7 @@ def _dedupe(findings: Sequence[Mapping[str, object]]) -> list[dict[str, object]]
 
 
 def build_audit(design_file: str, manifest_file: str, root: str,
-                requirement: str = "") -> dict[str, object]:
+                requirement: str = "", scenarios_file: str = "") -> dict[str, object]:
     """Build the read-only invariant report; raises ValueError on unreadable input."""
     design_path = Path(design_file)
     manifest_path = Path(manifest_file)
@@ -280,7 +280,10 @@ def build_audit(design_file: str, manifest_file: str, root: str,
     rules = parse_design_rules(str(design_path))
     risks = parse_design_risks(str(design_path))
     manifest = load_manifest(manifest_path)
-    trace = build_traceability(str(design_path), str(manifest_path))
+    if scenarios_file:
+        trace = build_traceability_from_scenarios(scenarios_file, str(manifest_path))
+    else:
+        trace = build_traceability(str(design_path), str(manifest_path))
     scenarios = {
         str(item["id"]): item
         for item in manifest.get("scenarios") or ()
@@ -325,6 +328,8 @@ def build_audit(design_file: str, manifest_file: str, root: str,
         "read_only": True,
         "generated": True,
         "design_file": str(design_path),
+        "source": trace.get("source", ""),
+        "deprecated": not bool(scenarios_file),
         "manifest_file": str(manifest_path),
         "evidence_dir": str(store.directory),
         "summary": summary,
@@ -412,7 +417,11 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     args = parser.parse_args(argv)
     try:
         root, design, manifest = _resolve_paths(args.root, args.task_dir, args.design, args.manifest)
-        report = build_audit(str(design), str(manifest), root=str(root))
+        sources = sorted(Path(args.task_dir).glob("*.scenarios.md")) if Path(args.task_dir).is_dir() else []
+        scenarios_file = str(sources[0]) if len(sources) == 1 else ""
+        if len(sources) > 1:
+            raise ValueError("scenario_source_ambiguous")
+        report = build_audit(str(design), str(manifest), root=str(root), scenarios_file=scenarios_file)
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
         stdout.write(json.dumps({"decision": "block", "error": str(exc)}, ensure_ascii=False))
         return 2

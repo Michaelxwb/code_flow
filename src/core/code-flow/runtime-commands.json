@@ -199,6 +199,20 @@
         "archive"
       ],
       "example_args": "--task-dir \"<需求目录>\" --root \"$PWD\" --json"
+    },
+    "scenarios parse": {
+      "module": "cf_scenarios",
+      "prefix": [
+        "parse"
+      ],
+      "example_args": "--file \"<需求>.scenarios.md\" --json"
+    },
+    "scenarios merge": {
+      "module": "cf_scenarios",
+      "prefix": [
+        "merge"
+      ],
+      "example_args": "--file a.scenarios.md --file b.scenarios.md --json"
     }
   }
 }
