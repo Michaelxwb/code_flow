@@ -996,7 +996,8 @@ def _changed_paths(root: str) -> set[str]:
     return changed
 
 
-def _select_profile(data: Mapping[str, object], root: str, profile: str) -> dict[str, object]:
+def _select_profile(data: Mapping[str, object], root: str, profile: str,
+                    force_ids: Sequence[str] = ()) -> dict[str, object]:
     """Return a shallow manifest view filtered by smoke/changed/full."""
     if profile == "full":
         return dict(data)
@@ -1008,12 +1009,16 @@ def _select_profile(data: Mapping[str, object], root: str, profile: str) -> dict
     changed = _changed_paths(root)
     scenarios = [item for item in data.get("scenarios", []) or [] if isinstance(item, Mapping)]
     explicit_priority = any(isinstance(item.get("priority"), str) for item in scenarios)
+    forced = {str(item) for item in force_ids}
     selected: list[Mapping[str, object]] = []
     has_smoke_profile = any(str((check or {}).get("profile", "")) == "smoke" for check in checks.values())
     has_e2e = any(str(scenario.get("kind", "")) == "e2e" for scenario in scenarios)
     for scenario in scenarios:
         check = checks.get(str(scenario.get("check", "")))
         priority = str(scenario.get("priority", ""))
+        if str(scenario.get("id")) in forced:
+            selected.append(scenario)
+            continue
         if profile == "smoke":
             if explicit_priority:
                 if (priority.upper() == "P0" or str((check or {}).get("profile", "")) == "smoke"
@@ -1064,11 +1069,12 @@ def run_manifest(
     fail_fast: bool = False,
     jobs: int = 0,
     profile: str = "full",
+    force_ids: Sequence[str] = (),
 ) -> dict[str, object]:
     if profile not in ("smoke", "changed", "full"):
         raise ValueError(f"invalid verify profile: {profile}")
     full_data = load_manifest(Path(manifest_file))
-    data = _select_profile(full_data, root, profile)
+    data = _select_profile(full_data, root, profile, force_ids)
     validate_execution_baseline(Path(manifest_file), full_data)
     scenarios = data["scenarios"]
     _ordered(scenarios)  # Validate the complete DAG before owner filtering.
@@ -1101,6 +1107,8 @@ def run_manifest(
     if not state.get("interrupted") and (write_evidence or resume):
         persist_results(Path(manifest_file), full_data, results, fingerprint=fingerprint, run_id=run_key)
     outcome = _payload(items, check_list, check_map, results, state)
+    if full_data.get("schema") == 2:
+        outcome["schema2_compat"] = True
     if state.get("interrupted"):
         raise AcceptanceInterrupted(outcome)
     if not _executable(items):

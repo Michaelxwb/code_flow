@@ -194,6 +194,8 @@ def _render_markdown(text: str, task_id: str, status: str, log_line: str = "", p
     if match is None:
         raise WorkflowError("task_not_found", task_id)
     section = _set_status(match.group(0), status, log_line)
+    if not prepend and status in ("done", "verified"):
+        section = re.sub(r"(?m)^> (?:PROVISIONAL|BLOCKED):[^\n]*\n?", "", section)
     if prepend and prepend not in section:
         if "### Log" in section:
             section = section.replace("### Log", prepend + "\n### Log", 1)

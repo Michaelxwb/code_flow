@@ -855,13 +855,6 @@ def _e2e_layer(root: str, directory: str, tasks: Sequence[tuple[Path, str, str]]
         return failure
     stale = _stale_functional_rows(data, root) if requirement_gate else []
     unverified = _unverified_functional_rows(data) if requirement_gate else []
-    if (stale or unverified) and profile == "changed":
-        return _layer_result(
-            "block",
-            reason="functional_evidence_stale",
-            scenarios=stale or unverified,
-            next="stale functional evidence requires --profile full to re-run all affected checks",
-        )
     if profile == "smoke":
         # Smoke only needs the E2E subset; functional freshness is handled by
         # the explicit changed/full gate, not by the batch smoke.
@@ -874,6 +867,7 @@ def _e2e_layer(root: str, directory: str, tasks: Sequence[tuple[Path, str, str]]
             only_e2e=not (stale or unverified) and profile not in ("full", "smoke"),
             profile=profile, resume=resume, deadline=deadline,
             max_failures=max_failures, fail_fast=fail_fast, jobs=jobs,
+            force_ids=tuple(stale or unverified),
         )
     except (OSError, ValueError) as exc:
         return _layer_result("block", reason="acceptance_run_error", detail=str(exc))

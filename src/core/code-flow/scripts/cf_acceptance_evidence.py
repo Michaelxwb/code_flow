@@ -211,7 +211,10 @@ def persist_results(path: Path, data: dict[str, object], results: Sequence[Mappi
         record, status = applied
         row["evidence"] = record
         if result.get("cache_reused") is not True:
-            row.setdefault("runs", []).append(record)
+            runs = row.setdefault("runs", [])
+            runs.append(record)
+            if len(runs) > 50:
+                del runs[:-50]
         updates.append((row, record, status))
     from cf_spec_context import _atomic_text
     _atomic_text(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")

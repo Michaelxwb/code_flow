@@ -351,7 +351,14 @@ def prepare(root: Path, task_file: str, tasks: Sequence[str], run_id: Optional[s
             raise ParallelError("invalid_task_id", f"TASK-ID 非法: {task}")
     _validate_batch(root, task_file, tasks)
     _commit_task_dir(root, task_file)
-    outcome = _create_worktrees(root, task_file, tasks, identifier)
+    try:
+        outcome = _create_worktrees(root, task_file, tasks, identifier)
+    except Exception:
+        try:
+            _run_git(root, ("worktree", "prune"))
+        except ParallelError:
+            pass
+        raise
     worktrees = [
         {"task": task, "branch": branch, "path": str(path)}
         for task, (path, branch) in zip(tasks, outcome["created"])
