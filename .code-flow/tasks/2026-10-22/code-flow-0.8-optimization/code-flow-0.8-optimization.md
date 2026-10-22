@@ -25,7 +25,7 @@
 | S-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 verify runner + manifest | TASK-006 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "layers"] |
 | S-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 manifest + subprocess | TASK-005 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "checks_scenarios"] |
 | S-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 runner + checkpoint | TASK-007 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "resume"] |
-| S-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree + sidecar | TASK-004 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "relock_compaction"] |
+| S-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree + sidecar | TASK-004 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "relock_compaction"] |
 | S-06 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree ×3 | TASK-009 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "central_evidence"] |
 | S-07 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实批次 worktree + shared env | TASK-011 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"] |
 | S-08 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 plan 模板 + 任务文件 | TASK-012 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"] |
@@ -38,7 +38,7 @@
 | E-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 task md + spec-context | TASK-002 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_service.py", "-k", "doc_state_drift"] |
 | E-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + input_hash | TASK-010 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "stale_after_merge"] |
 | B-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 schema2 manifest | TASK-005 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "schema2_compat"] |
-| B-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 非 git 项目 | TASK-004 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "non_git"] |
+| B-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 非 git 项目 | TASK-004 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "non_git"] |
 | B-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 空需求 | TASK-006 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "empty_noop"] |
 | B-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 deadline | TASK-007 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "deadline_incomplete"] |
 
@@ -190,7 +190,7 @@ verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_
 
 ## TASK-004: central evidence store 与 context 压缩
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-002
 - **Source**: code-flow-0.8-optimization.design.md#3.3.2 Evidence sidecar, code-flow-0.8-optimization.design.md#3.5.3 性能
@@ -205,28 +205,37 @@ verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_
 
 ### Checklist
 
-- [ ] 实现 central evidence store 与非 git 回落。
-- [ ] 实现原子写、latest 读取、run_id 去重、export/import。
-- [ ] spec-context 只保留每个 rule 最新状态，旧历史压缩进 sidecar。
-- [ ] manifest 只引用 run_id；重锁 plan 不清证据。
-- [ ] 迁移 0.7 的 122 条 evidence 为 latest + 有上限历史。
-- [ ] [S-05][integration] 编写/更新验收测试（真实边界：真实 git worktree + sidecar）；断言：重锁 plan 后证据仍可读；context <100 KB；旧 verified 不被清空
-- [ ] [B-02][integration] 编写/更新验收测试（真实边界：非 git 项目）；断言：无 .git 时回落 .code-flow/evidence/；功能不降级
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 实现 central evidence store 与非 git 回落。
+- [x] 实现原子写、latest 读取、run_id 去重、export/import。
+- [x] spec-context 只保留每个 rule 最新状态，旧历史压缩进 sidecar（`compact_context` / `compact_evidence` / `compact_context_file`）。
+- [x] manifest 只引用 run_id；重锁 plan 不清证据（schema2 兼容期保留运行态，sidecar 独立可读）。
+- [x] 迁移 0.7 的 122 条 evidence 为 latest + 有上限历史（提供 `compact_context_file` 迁移入口；本需求工作树无 0.7 122 条数据集，函数级覆盖）。
+- [x] [S-05][integration] 编写/更新验收测试（真实边界：真实 git worktree + sidecar）；断言：重锁 plan 后证据仍可读；context <100 KB；旧 verified 不被清空
+- [x] [B-02][integration] 编写/更新验收测试（真实边界：非 git 项目）；断言：无 .git 时回落 `.code-flow/evidence/`；功能不降级
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-05 | integration | 真实 git worktree + sidecar | 重锁 plan 后证据仍可读；context <100 KB；旧 verified 不被清空 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "relock_compaction"] | planned |
-| B-02 | integration | 非 git 项目 | 无 .git 时回落 .code-flow/evidence/；功能不降级 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "non_git"] | planned |
+| S-05 | integration | 真实 git worktree + sidecar | 重锁 plan 后证据仍可读；context <100 KB；旧 verified 不被清空 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "relock_compaction"] | verified |
+| B-02 | integration | 非 git 项目 | 无 .git 时回落 .code-flow/evidence/；功能不降级 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "non_git"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-05 | `python3 -m pytest -q tests/test_cf_evidence_store.py -k relock_compaction` → 1 failed（`ModuleNotFoundError: cf_evidence_store`） | 同命令 → **1 passed**；`tests/test_cf_evidence_store.py` 全量 **6 passed**；全仓 **582 passed in 38.29s** | `test_s05_relock_compaction_keeps_evidence_across_worktrees_and_bounds_context`、`test_s05_compaction_history_is_capped`、`test_s05_atomic_store_dedupes_run_id_and_roundtrips_export` | 真实 git 仓库 + `git worktree add` 共享 `--git-common-dir`；真实 `run_manifest` 执行与 `write_manifest` 重锁；sidecar 历史 29 条、压缩后 context 26,084 bytes | verified |
+| B-02 | `python3 -m pytest -q tests/test_cf_evidence_store.py -k non_git` → 1 failed（`ModuleNotFoundError: cf_evidence_store`） | 同命令 → **1 passed**；相关回归 **100 passed** | `test_b02_non_git_fallback_store_and_runner` | 无 `.git` 项目回落 `<root>/.code-flow/evidence/demo/`；真实 `run_manifest` 写入 latest 并保持 pass | verified |
+- S-05: verified — automated command passed; run_id=d7a05651ca9740f48d4f7b81e988c342 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=d7a05651ca9740f48d4f7b81e988c342 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] TASK-004 GREEN：central evidence store（git common dir / 非 git 回落）、原子写、run_id 去重、export/import；`compact_context` 每 rule 仅保留 latest，历史 sidecar 上限 200；S-05/B-02 验收通过。
+- [2026-10-22] 兼容修复：deferral / cheap skip 不再把已 verified 的 rule 降级，旧证据保留；全仓 582 passed。
+- [2026-10-22] completed (done)
 
 ---
 

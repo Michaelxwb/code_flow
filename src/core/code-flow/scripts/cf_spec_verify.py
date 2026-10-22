@@ -602,3 +602,44 @@ def evidence_is_fresh(
         and evidence.artifact_sha256 == artifact_sha256
         and evidence.diff_sha256 == diff_sha256
     )
+
+def store_verification_evidence(
+    metadata: SpecMetadata,
+    scope: VerificationScope,
+    result: VerificationResult,
+    requirement: str = "",
+) -> tuple[dict[str, object], ...]:
+    """Persist verifier runs in the central sidecar (audit/compaction input)."""
+    from cf_evidence_store import EvidenceStore, git_commit
+
+    store = EvidenceStore(scope.root, requirement)
+    commit = git_commit(store.root)
+    outcomes: list[dict[str, object]] = []
+    for item in result.evidence:
+        details = dict(item.details or {})
+        identity = "|".join((
+            item.verifier_ref, item.status, item.result_sha256,
+            item.diff_sha256 or "", item.rule_text_sha256,
+        ))
+        argv = details.get("argv")
+        timeout = details.get("timeout")
+        run = {
+            "run_id": hashlib.sha256(identity.encode("utf-8")).hexdigest()[:32],
+            "check_id": item.verifier_ref,
+            "command": argv if isinstance(argv, list) and all(isinstance(value, str) for value in argv) else [],
+            "cwd": ".",
+            "timeout": timeout if isinstance(timeout, (int, float)) else 0,
+            "input_hash": item.diff_sha256 or item.result_sha256,
+            "exit_code": details.get("exit_code") if isinstance(details.get("exit_code"), int) else (0 if item.status == "verified" else 1),
+            "status": "passed" if item.status == "verified" else "failed",
+            "executed_at": item.executed_at,
+            "source": "local",
+            "commit": commit,
+            "run_url": "",
+            "rule_text_sha256": item.rule_text_sha256,
+            "result_sha256": item.result_sha256,
+            "error_code": item.error_code,
+            "details": details,
+        }
+        outcomes.append(store.write_run(item.verifier_ref, run))
+    return tuple(outcomes)

@@ -139,7 +139,7 @@
       "kind": "functional",
       "boundary": "真实 git worktree + sidecar",
       "owner": "TASK-004",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -151,7 +151,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "d7a05651ca9740f48d4f7b81e988c342",
+        "executed_at": "2026-10-22T05:31:12.199114+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_evidence_store.py",
+          "-k",
+          "relock_compaction"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "cd59cb143269e1b751efc7536378b9fc2be2304ba9c8c05889f488294ff9297b"
+      },
+      "runs": [
+        {
+          "id": "S-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "d7a05651ca9740f48d4f7b81e988c342",
+          "executed_at": "2026-10-22T05:31:12.199114+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_evidence_store.py",
+            "-k",
+            "relock_compaction"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "cd59cb143269e1b751efc7536378b9fc2be2304ba9c8c05889f488294ff9297b"
+        }
+      ]
     },
     {
       "id": "S-06",
@@ -455,7 +500,7 @@
       "kind": "functional",
       "boundary": "非 git 项目",
       "owner": "TASK-004",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -467,7 +512,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "d7a05651ca9740f48d4f7b81e988c342",
+        "executed_at": "2026-10-22T05:31:12.199114+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_evidence_store.py",
+          "-k",
+          "non_git"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "cd59cb143269e1b751efc7536378b9fc2be2304ba9c8c05889f488294ff9297b"
+      },
+      "runs": [
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "d7a05651ca9740f48d4f7b81e988c342",
+          "executed_at": "2026-10-22T05:31:12.199114+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_evidence_store.py",
+            "-k",
+            "non_git"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "cd59cb143269e1b751efc7536378b9fc2be2304ba9c8c05889f488294ff9297b"
+        }
+      ]
     },
     {
       "id": "B-03",
