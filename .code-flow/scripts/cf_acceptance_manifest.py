@@ -618,8 +618,22 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
             if not args.task_dir:
                 raise ValueError("--verify-plan requires --task-dir")
             if args.require_scenarios:
-                from cf_scenarios import require_source
-                require_source(args.task_dir)
+                from cf_scenarios import parse_scenarios, require_source
+                source_path = require_source(args.task_dir)
+                source = parse_scenarios(source_path)
+                manifest_path = Path(args.task_dir) / ".acceptance-manifest.json"
+                if manifest_path.is_file():
+                    locked = load_manifest(manifest_path)
+                    rows = {str(item.get("id")): item for item in locked.get("scenarios", [])}
+                    check_ids = {str(item.get("id")) for item in locked.get("checks", [])}
+                    for scenario in source.get("scenarios", []):
+                        sid = str(scenario.get("id"))
+                        required = [str(value) for value in scenario.get("checks", [])]
+                        unknown = [value for value in required if value not in check_ids]
+                        if unknown:
+                            raise ValueError(f"unknown_check:{sid}:{','.join(unknown)}")
+                        if required and not rows.get(sid, {}).get("checks"):
+                            raise ValueError(f"scenario_checks_not_projected:{sid}")
             from cf_spec_context import load_context
             from cf_spec_gate import result_to_data, validate_plan_coverage, validate_stage
 
