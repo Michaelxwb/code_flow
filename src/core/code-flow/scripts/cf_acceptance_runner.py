@@ -13,6 +13,15 @@ from typing import IO, Mapping, Optional, Sequence
 from cf_exec_base import execution_key, run_command, invalidate_executions, worktree_fingerprint
 from cf_acceptance_schema import load_manifest, validate_execution_baseline
 from cf_acceptance_evidence import persist_results
+from cf_worktree_env import (
+    check_environment,
+    effective_parallel_safe,
+    env_scope,
+    is_isolated,
+    preflight_commands,
+    resolve_run_id,
+    worktree_namespace,
+)
 
 
 def _scenario_cwd(root: Path, item: Mapping[str, object]) -> str:
@@ -67,7 +76,7 @@ def _reusable(row: Optional[Mapping[str, object]], item: Mapping[str, object], f
 
 def _run(
     item: Mapping[str, object], root: Path, include_e2e: bool = False, deadline: Optional[float] = None,
-    only_e2e: bool = False,
+    only_e2e: bool = False, env: Optional[Mapping[str, str]] = None,
 ) -> dict[str, object]:
     scenario_id = str(item.get("id", "unknown"))
     kind = str(item.get("kind", "functional"))
@@ -82,7 +91,7 @@ def _run(
         return {"id": scenario_id, "kind": kind, "status": "not_configured"}
     timeout_value = _scenario_timeout(item)
     cwd = item.get("cwd", ".") if isinstance(item.get("cwd", "."), str) else "."
-    outcome = run_command(command, str(root / cwd), timeout_value, deadline)
+    outcome = run_command(command, str(root / cwd), timeout_value, deadline, env=env)
     if outcome["status"] == "deadline_exceeded":
         return {"id": scenario_id, "kind": kind, "status": "incomplete", "error": "deadline_exceeded"}
     if outcome["status"] == "timeout":
@@ -94,6 +103,105 @@ def _run(
         return {"id": scenario_id, "kind": kind, "status": "passed", "exit_code": 0}
     output = (str(outcome.get("stdout", "")) + str(outcome.get("stderr", ""))).strip()[-4000:]
     return {"id": scenario_id, "kind": kind, "status": "failed", "exit_code": outcome["returncode"], "output": output}
+
+
+def _preflight_failures(
+    check: Mapping[str, object], root: Path, env: Optional[Mapping[str, str]], deadline: Optional[float]
+) -> list[dict[str, object]]:
+    """Probe declared preflight commands; each failure is a missing dependency."""
+    cwd = check.get("cwd", ".") if isinstance(check.get("cwd", "."), str) else "."
+    timeout = _scenario_timeout(check)
+    failures: list[dict[str, object]] = []
+    for argv in preflight_commands(check):
+        outcome = run_command(argv, str(root / cwd), timeout, deadline, env=env)
+        status = outcome["status"]
+        item: dict[str, object] = {
+            "command": list(argv),
+            "cwd": cwd,
+            "timeout": timeout,
+            "reason": str(status),
+        }
+        if status == "deadline_exceeded":
+            item["exit_code"] = None
+            failures.append(item)
+            break
+        if status == "timeout":
+            item["exit_code"] = None
+            item["output"] = str(outcome.get("stdout", ""))[-2000:]
+            failures.append(item)
+            continue
+        if status == "spawn_error":
+            item["exit_code"] = None
+            item["output"] = str(outcome.get("stderr", ""))[-2000:]
+            failures.append(item)
+            continue
+        if outcome["returncode"] != 0:
+            item["exit_code"] = outcome["returncode"]
+            output = (str(outcome.get("stdout", "")) + str(outcome.get("stderr", ""))).strip()
+            item["output"] = output[-2000:]
+            item["reason"] = "exit_code"
+            failures.append(item)
+    return failures
+
+
+def _env_blocked_result(
+    item: Mapping[str, object], check_id: str, missing: Sequence[Mapping[str, object]]
+) -> dict[str, object]:
+    return {
+        "id": str(item.get("id", "unknown")),
+        "kind": str(item.get("kind", "functional")),
+        "status": "env_blocked",
+        "check_id": check_id,
+        "owner": str(item.get("owner", "") or ""),
+        "missing": [dict(entry) for entry in missing],
+        "error": "env_preflight_failed",
+    }
+
+
+def _gate_check(
+    item: Mapping[str, object], check: Optional[Mapping[str, object]], root: Path,
+    namespace: Optional[Mapping[str, str]], deadline: Optional[float],
+    preflighted: set[str], blocked: dict[str, list[dict[str, object]]],
+) -> Optional[dict[str, object]]:
+    """Return an env_blocked/incomplete result when a check cannot start."""
+    if check is None:
+        return None
+    check_id = str(check.get("id", item.get("check", "")))
+    if check_id not in preflighted:
+        preflighted.add(check_id)
+        missing = _preflight_failures(check, root, check_environment(check, str(root), namespace), deadline)
+        if missing:
+            blocked[check_id] = missing
+    if check_id not in blocked:
+        return None
+    missing = blocked[check_id]
+    # A global deadline is not an environment defect: report it as unexecuted.
+    if any(str(entry.get("reason")) == "deadline_exceeded" for entry in missing):
+        return {"id": str(item.get("id", "unknown")), "kind": str(item.get("kind", "functional")),
+                "status": "incomplete", "check_id": check_id, "error": "deadline_exceeded"}
+    return _env_blocked_result(item, check_id, missing)
+
+
+def _env_blocked_details(
+    checks: Mapping[str, Mapping[str, object]], results: Sequence[Mapping[str, object]]
+) -> list[dict[str, object]]:
+    details: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for item in results:
+        if item.get("status") != "env_blocked":
+            continue
+        check_id = str(item.get("check_id") or item.get("id"))
+        if check_id in seen:
+            continue
+        seen.add(check_id)
+        check = checks.get(check_id, {})
+        details.append({
+            "check_id": check_id,
+            "owner": str(item.get("owner", "") or ""),
+            "command": check.get("command", item.get("command")),
+            "missing": [dict(entry) for entry in item.get("missing", [])],
+        })
+    return details
 
 
 def _ordered(items: list[Mapping[str, object]]) -> list[Mapping[str, object]]:
@@ -157,10 +265,42 @@ def _owned(items: list[Mapping[str, object]], owner: str) -> list[Mapping[str, o
     return pruned
 
 
+def _identity_key(
+    item: Mapping[str, object], root: Path, include_e2e: bool, only_e2e: bool
+) -> Optional[str]:
+    """Execution identity for within-run dedup, or None when not configured."""
+    command = item.get("command")
+    if not isinstance(command, list) or not command or not all(isinstance(value, str) for value in command):
+        return None
+    key = execution_key(command, str(root / str(item.get("cwd", "."))), float(item.get("timeout", 60)))
+    return key + json.dumps([item.get("kind", "functional"), include_e2e, only_e2e])
+
+
+def _cached_result(
+    item: Mapping[str, object], scenario_id: str, key: Optional[str],
+    rows: Optional[Mapping[str, Mapping[str, object]]], fingerprint: str,
+    include_e2e: bool, only_e2e: bool, use_cache: bool,
+) -> Optional[dict[str, object]]:
+    """Cross-run reuse result when identity+content still match."""
+    if not use_cache or key is None or rows is None or not _included(item, include_e2e, only_e2e):
+        return None
+    if not _reusable(rows.get(scenario_id), item, fingerprint):
+        return None
+    return {
+        "id": scenario_id,
+        "kind": str(item.get("kind", "functional")),
+        "status": "passed",
+        "exit_code": 0,
+        "cache_reused": True,
+    }
+
+
 def _run_unique(
     ordered: list[Mapping[str, object]], root: Path, include_e2e: bool, deadline: Optional[float] = None,
     only_e2e: bool = False, rows: Optional[Mapping[str, Mapping[str, object]]] = None,
     fingerprint: str = "", use_cache: bool = True,
+    checks: Optional[Mapping[str, Mapping[str, object]]] = None,
+    namespace: Optional[Mapping[str, str]] = None,
 ) -> list[dict[str, object]]:
     """Reuse identical execution semantics within a dependency-free batch.
 
@@ -168,37 +308,37 @@ def _run_unique(
     and an unchanged worktree fingerprint is reported `passed` with
     `cache_reused: true` instead of re-executing. This is what keeps repeated
     verify-e2e / archive / confirm-manual checkpoints from paying the E2E cost
-    again; any content change invalidates it.
+    again; any content change invalidates it. Preflight runs once per check and
+    gates every scenario that shares it.
     """
     cache: dict[str, Mapping[str, object]] = {}
+    blocked: dict[str, list[dict[str, object]]] = {}
+    preflighted: set[str] = set()
     results: list[dict[str, object]] = []
     for item in ordered:
         scenario_id = str(item.get("id", "unknown"))
-        command = item.get("command")
-        key: Optional[str] = None
-        if isinstance(command, list) and command and all(isinstance(value, str) for value in command):
-            key = execution_key(command, str(root / str(item.get("cwd", "."))), float(item.get("timeout", 60)))
-            key += json.dumps([item.get("kind", "functional"), include_e2e, only_e2e])
+        check_id = item.get("check")
+        check = checks.get(check_id) if checks and isinstance(check_id, str) else None
+        key = _identity_key(item, root, include_e2e, only_e2e)
         if item.get("depends_on"):
             cache.clear()
             invalidate_executions()
-        if use_cache and key is not None and rows is not None and _included(item, include_e2e, only_e2e) and _reusable(
-            rows.get(scenario_id), item, fingerprint
-        ):
-            results.append({
-                "id": scenario_id,
-                "kind": str(item.get("kind", "functional")),
-                "status": "passed",
-                "exit_code": 0,
-                "cache_reused": True,
-            })
+        reused = _cached_result(item, scenario_id, key, rows, fingerprint, include_e2e, only_e2e, use_cache)
+        if reused is not None:
+            results.append(reused)
             continue
+        if _included(item, include_e2e, only_e2e):
+            gated = _gate_check(item, check, root, namespace, deadline, preflighted, blocked)
+            if gated is not None:
+                results.append(gated)
+                continue
         if key is not None and key in cache:
             shared = dict(cache[key])
             shared["id"] = scenario_id
             results.append(shared)
             continue
-        result = _run(item, root, include_e2e, deadline, only_e2e)
+        env = check_environment(check, str(root), namespace) if check is not None else None
+        result = _run(item, root, include_e2e, deadline, only_e2e, env=env)
         if key is not None:
             cache[key] = result
         results.append(result)
@@ -227,12 +367,75 @@ def _check_summary(checks: Sequence[Mapping[str, object]], scenarios: Sequence[M
             status = "passed"
         elif any(value in ("failed", "incomplete", "not_configured") for value in statuses):
             status = "failed"
+        elif any(value == "env_blocked" for value in statuses):
+            status = "env_blocked"
         elif any(value == "e2e_deferred" for value in statuses):
             status = "deferred"
         else:
             status = "included"
-        summary.append({"id": check_id, "status": status, "scenarios": scenario_ids})
+        summary.append({
+            "id": check_id,
+            "status": status,
+            "scenarios": scenario_ids,
+            "env_scope": env_scope(check),
+            "parallel_safe": effective_parallel_safe(check),
+        })
     return summary
+
+
+def _check_plan(data: Mapping[str, object]) -> tuple[list[Mapping[str, object]], dict[str, Mapping[str, object]]]:
+    """Manifest v3 checks (schema2 manifests have none)."""
+    value = data.get("checks")
+    checks = value if isinstance(value, list) else []
+    mapping = {
+        str(check["id"]): check
+        for check in checks
+        if isinstance(check, Mapping) and "id" in check
+    }
+    return checks, mapping
+
+
+def _run_namespace(
+    root: str, check_map: Mapping[str, Mapping[str, object]], owner: str,
+    items: Sequence[Mapping[str, object]], run_key: str,
+) -> Optional[dict[str, str]]:
+    """Namespace is only materialized when at least one check is isolated."""
+    if not any(is_isolated(check) for check in check_map.values()):
+        return None
+    return worktree_namespace(str(root), task_id=_task_identity(owner, items), run_id=run_key)
+
+
+def _task_identity(owner: str, items: Sequence[Mapping[str, object]]) -> str:
+    """Owner wins; a single-owner manifest still exposes CF_TASK_ID."""
+    if owner:
+        return owner
+    owners = {
+        str(item.get("owner")) for item in items
+        if isinstance(item.get("owner"), str) and item.get("owner")
+    }
+    return owners.pop() if len(owners) == 1 else ""
+
+
+def _decision(results: Sequence[Mapping[str, object]]) -> tuple[str, str]:
+    allowed = ("passed", "manual_pending", "e2e_deferred", "not_included")
+    if all(item["status"] in allowed for item in results):
+        return "pass", ""
+    pending = sorted({str(item["id"]) for item in results if item["status"] == "incomplete"})
+    env_blocked = sorted({
+        str(item.get("check_id") or item["id"]) for item in results if item["status"] == "env_blocked"
+    })
+    failed = sorted({
+        str(item["id"]) for item in results
+        if item["status"] not in (*allowed, "incomplete", "env_blocked")
+    })
+    segments = (
+        ["incomplete:" + ",".join(pending)] if pending else []
+    ) + (
+        ["env_blocked:" + ",".join(env_blocked)] if env_blocked else []
+    ) + (
+        ["failed:" + ",".join(failed)] if failed else []
+    )
+    return "block", ",".join(segments) or "acceptance scenario failed"
 
 
 def run_manifest(
@@ -244,6 +447,7 @@ def run_manifest(
     deadline: Optional[float] = None,
     only_e2e: bool = False,
     use_cache: bool = True,
+    run_id: str = "",
 ) -> dict[str, object]:
     data = load_manifest(Path(manifest_file))
     validate_execution_baseline(Path(manifest_file), data)
@@ -260,24 +464,25 @@ def run_manifest(
         for row in scenarios
         if isinstance(row, Mapping) and isinstance(row.get("id"), str)
     }
+    check_list, check_map = _check_plan(data)
+    run_key = resolve_run_id(run_id)
+    namespace = _run_namespace(str(root), check_map, owner, items, run_key)
     fingerprint = worktree_fingerprint(str(root)) if use_cache else ""
     results = _run_unique(ordered, Path(root), include_e2e or only_e2e, deadline, only_e2e,
-                          rows=rows, fingerprint=fingerprint, use_cache=use_cache)
+                          rows=rows, fingerprint=fingerprint, use_cache=use_cache,
+                          checks=check_map or None, namespace=namespace)
     if write_evidence:
-        persist_results(Path(manifest_file), data, results, fingerprint=fingerprint)
+        persist_results(Path(manifest_file), data, results, fingerprint=fingerprint, run_id=run_key)
     if not _executable(items):
         return {"decision": "block", "results": results, "error": "no_executable_scenarios"}
-    allowed = ("passed", "manual_pending", "e2e_deferred", "not_included")
-    decision = "pass" if all(item["status"] in allowed for item in results) else "block"
-    error = ""
-    if decision == "block":
-        pending = sorted({str(item["id"]) for item in results if item["status"] == "incomplete"})
-        failed = sorted({str(item["id"]) for item in results if item["status"] not in (*allowed, "incomplete")})
-        error = ",".join((["incomplete:" + ",".join(pending)] if pending else []) + (["failed:" + ",".join(failed)] if failed else [])) or "acceptance scenario failed"
+    decision, error = _decision(results)
     outcome: dict[str, object] = {"decision": decision, "results": results}
-    checks = data.get("checks")
-    if isinstance(checks, list) and checks:
-        outcome["checks"] = _check_summary(checks, items, results)
+    if check_list:
+        outcome["checks"] = _check_summary(check_list, items, results)
+    env_blocked = sum(1 for item in results if item["status"] == "env_blocked")
+    outcome["env_blocked"] = env_blocked
+    if env_blocked:
+        outcome["env_blocked_details"] = _env_blocked_details(check_map, results)
     if error:
         outcome["error"] = error
     return outcome

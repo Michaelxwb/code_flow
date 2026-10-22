@@ -82,7 +82,35 @@ def validate_checks(value: object) -> list[dict[str, object]]:
         timeout = item.get("timeout", 60)
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
             raise ValueError(f"invalid check {check_id}:timeout")
+        _validate_check_environment(check_id, item)
     return value
+
+
+_ENV_SCOPES = ("shared", "isolated")
+
+
+def _validate_check_environment(check_id: str, item: Mapping[str, object]) -> None:
+    """env/env_scope/preflight/parallel_safe describe how a check may run."""
+    env = item.get("env", "none")
+    if not isinstance(env, str) or not env.strip():
+        raise ValueError(f"invalid check {check_id}:env")
+    scope = item.get("env_scope", "shared")
+    if not isinstance(scope, str) or scope not in _ENV_SCOPES:
+        raise ValueError(f"invalid check {check_id}:env_scope")
+    if "parallel_safe" in item and not isinstance(item["parallel_safe"], bool):
+        raise ValueError(f"invalid check {check_id}:parallel_safe")
+    preflight = item.get("preflight", [])
+    if not isinstance(preflight, list):
+        raise ValueError(f"invalid check {check_id}:preflight")
+    for entry in preflight:
+        if isinstance(entry, str):
+            if not entry.strip():
+                raise ValueError(f"invalid check {check_id}:preflight")
+        elif isinstance(entry, list):
+            if not entry or not all(isinstance(token, str) and token for token in entry):
+                raise ValueError(f"invalid check {check_id}:preflight")
+        else:
+            raise ValueError(f"invalid check {check_id}:preflight")
 
 
 def load_manifest(path: Path) -> dict[str, object]:

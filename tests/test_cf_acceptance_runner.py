@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import socket
 import sys
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
@@ -7,6 +8,26 @@ sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_runner import run_manifest
 import pytest
+
+
+def _closed_port() -> int:
+    """A real, currently-closed TCP port (bound then released)."""
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+    return port
+
+
+def _service_probe(port: int) -> list[str]:
+    """Real service probe: exit 0 only if the TCP endpoint accepts connections."""
+    code = (
+        "import socket, sys\n"
+        "sock = socket.socket()\n"
+        "sock.settimeout(1.0)\n"
+        f"sys.exit(0 if sock.connect_ex(('127.0.0.1', {port})) == 0 else 1)\n"
+    )
+    return [sys.executable, "-c", code]
 
 
 def test_runner_executes_functional_and_reports_manual(tmp_path: Path) -> None:
@@ -216,3 +237,130 @@ def test_runner_executes_each_check_once_and_reports_checks(tmp_path: Path) -> N
     assert marker.read_text(encoding="utf-8") == "xx", "每个 check 只执行一次"
     assert len(result["checks"]) == 2
     assert [item["status"] for item in result["checks"]] == ["passed", "passed"]
+
+
+def test_env_blocked_preflight_failure_marks_env_blocked_not_verified(tmp_path: Path) -> None:
+    """[E-01] 真实服务探测失败 → env_blocked；不执行产品命令、不写 verified、不算产品 failed。"""
+    marker = tmp_path / "product-ran.txt"
+    product = [sys.executable, "-c",
+               f"from pathlib import Path; Path({str(marker)!r}).write_text('ran')"]
+    probe = _service_probe(_closed_port())
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [{
+            "id": "CHK-ENV", "command": product, "cwd": ".", "timeout": 30,
+            "env": "browser", "env_scope": "isolated", "parallel_safe": True,
+            "preflight": [probe],
+        }],
+        "scenarios": [{
+            "id": "E-01", "kind": "functional", "owner": "TASK-008", "check": "CHK-ENV",
+            "command": product, "cwd": ".", "timeout": 30, "depends_on": [], "status": "planned",
+        }],
+    }), encoding="utf-8")
+
+    result = run_manifest(str(manifest), str(tmp_path), write_evidence=True)
+
+    assert result["decision"] == "block"
+    item = result["results"][0]
+    assert item["status"] == "env_blocked"
+    assert item["owner"] == "TASK-008"
+    assert item["missing"][0]["command"] == probe
+    assert item["missing"][0]["exit_code"] == 1
+    assert marker.exists() is False, "preflight 失败不得执行产品命令"
+    assert result["env_blocked"] == 1
+    detail = result["env_blocked_details"][0]
+    assert detail["check_id"] == "CHK-ENV"
+    assert detail["owner"] == "TASK-008"
+    assert detail["command"] == product
+    assert detail["missing"][0]["command"] == probe
+    assert "env_blocked:CHK-ENV" in result["error"]
+    assert "failed:" not in result["error"], "环境失败不得冒充产品失败"
+    assert [check["status"] for check in result["checks"]] == ["env_blocked"]
+
+    saved = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"][0]
+    assert saved["status"] == "env_blocked"
+    assert saved["evidence"]["status"] == "env_blocked"
+    assert saved["status"] != "verified"
+
+
+def test_env_blocked_preflight_success_executes_check(tmp_path: Path) -> None:
+    """[E-01] 真实服务在线时 preflight 通过，check 正常执行并 verified。"""
+    marker = tmp_path / "product-ran.txt"
+    product = [sys.executable, "-c",
+               f"from pathlib import Path; Path({str(marker)!r}).write_text('ran')"]
+    listener = socket.socket()
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    port = listener.getsockname()[1]
+    probe = _service_probe(port)
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [{"id": "CHK-ENV", "command": product, "cwd": ".", "timeout": 30,
+                    "env_scope": "shared", "preflight": [probe]}],
+        "scenarios": [{"id": "S-01", "kind": "functional", "owner": "TASK-008", "check": "CHK-ENV",
+                       "command": product, "cwd": ".", "timeout": 30, "status": "planned"}],
+    }), encoding="utf-8")
+    try:
+        result = run_manifest(str(manifest), str(tmp_path), write_evidence=True)
+    finally:
+        listener.close()
+
+    assert result["decision"] == "pass", result
+    assert result["env_blocked"] == 0
+    assert marker.read_text(encoding="utf-8") == "ran"
+    saved = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"][0]
+    assert saved["status"] == "verified"
+
+
+def test_isolated_check_injects_worktree_namespace(tmp_path: Path) -> None:
+    """[isolation] isolated check 注入命名空间；shared check 不注入。"""
+    isolated_out = tmp_path / "isolated-env.json"
+    shared_out = tmp_path / "shared-env.json"
+    capture = (
+        "import json, os, sys\n"
+        "from pathlib import Path\n"
+        "Path(sys.argv[1]).write_text(json.dumps({k: v for k, v in os.environ.items() if k.startswith('CF_')}))\n"
+    )
+    isolated = [sys.executable, "-c", capture, str(isolated_out)]
+    shared = [sys.executable, "-c", capture, str(shared_out)]
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [
+            {"id": "CHK-ISO", "command": isolated, "cwd": ".", "timeout": 30,
+             "env": "db", "env_scope": "isolated"},
+            {"id": "CHK-SHARED", "command": shared, "cwd": ".", "timeout": 30,
+             "env": "browser", "env_scope": "shared"},
+        ],
+        "scenarios": [
+            {"id": "S-01", "kind": "functional", "owner": "TASK-008", "check": "CHK-ISO",
+             "command": isolated, "cwd": ".", "timeout": 30, "status": "planned"},
+            {"id": "S-02", "kind": "functional", "owner": "TASK-008", "check": "CHK-SHARED",
+             "command": shared, "cwd": ".", "timeout": 30, "status": "planned"},
+        ],
+    }), encoding="utf-8")
+
+    result = run_manifest(str(manifest), str(tmp_path), write_evidence=True)
+
+    assert result["decision"] == "pass", result
+    injected = json.loads(isolated_out.read_text(encoding="utf-8"))
+    assert injected["CF_WORKTREE_ID"] == tmp_path.name
+    assert injected["CF_TASK_ID"] == "TASK-008"
+    assert injected["CF_RUN_ID"]
+    assert int(injected["CF_PORT_OFFSET"]) >= 10000
+    assert tmp_path.name.lower().replace("-", "_") in injected["CF_DB_SUFFIX"]
+    assert json.loads(shared_out.read_text(encoding="utf-8")) == {}, "shared 环境不得注入命名空间"
+    saved = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"]
+    assert saved[0]["evidence"]["run_id"] == injected["CF_RUN_ID"], "证据 run_id 与子进程一致"
+
+
+def test_shared_env_scope_is_never_parallel_safe() -> None:
+    from cf_worktree_env import effective_parallel_safe
+
+    assert effective_parallel_safe({"env_scope": "shared", "parallel_safe": True}) is False
+    assert effective_parallel_safe({"env_scope": "shared"}) is False
+    assert effective_parallel_safe({"env_scope": "isolated"}) is True
+    assert effective_parallel_safe({"env_scope": "isolated", "parallel_safe": False}) is False

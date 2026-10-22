@@ -146,7 +146,7 @@ def _derive_checks(rows: list[dict[str, object]]) -> list[dict[str, object]]:
             "timeout": timeout,
             "env": "none",
             "env_scope": "shared",
-            "parallel_safe": True,
+            "parallel_safe": False,
             "profile": "changed",
             "inputs": [],
             "preflight": [],
@@ -210,6 +210,7 @@ def write_manifest(task_file: str, output: str) -> dict[str, object]:
     manifest = extract_manifest(task_file)
     target = Path(output)
     _preserve_runtime_state(task_file, target, manifest)
+    _preserve_check_config(target, manifest)
     try:
         manifest["task_file"] = str(Path(task_file).resolve().relative_to(target.parent.resolve()))
     except ValueError:
@@ -220,6 +221,40 @@ def write_manifest(task_file: str, output: str) -> dict[str, object]:
 
 
 _RUNTIME_SCENARIO_FIELDS = ("status", "revision", "evidence", "runs")
+
+_CHECK_CONFIG_FIELDS = ("env", "env_scope", "parallel_safe", "profile", "inputs", "preflight")
+
+
+def _preserve_check_config(target: Path, manifest: dict[str, object]) -> None:
+    """Re-locking the plan must not erase user-authored check environment.
+
+    Check IDs are command identities, so a stored check with the same ID still
+    describes the same execution; its env/preflight configuration remains valid.
+    """
+    if not target.is_file():
+        return
+    try:
+        stored = {
+            item.get("id"): item
+            for item in load_manifest(target).get("checks", [])
+            if isinstance(item, dict) and isinstance(item.get("id"), str)
+        }
+    except (OSError, ValueError, json.JSONDecodeError):
+        return
+    checks = manifest.get("checks")
+    if not isinstance(checks, list):
+        return
+    for item in checks:
+        if not isinstance(item, dict):
+            continue
+        old = stored.get(item.get("id"))
+        if not isinstance(old, dict):
+            continue
+        for key in _CHECK_CONFIG_FIELDS:
+            if key in old:
+                item[key] = old[key]
+        if item.get("env_scope", "shared") != "isolated":
+            item["parallel_safe"] = False
 
 
 def _preserve_runtime_state(task_file: str, target: Path, manifest: dict[str, object]) -> None:
