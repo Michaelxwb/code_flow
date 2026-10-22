@@ -10,6 +10,67 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 CORE = ROOT / "src/core/code-flow"
 
+DESIGN_ROOTS = (ROOT / ".code-flow/specs/shared/design", CORE / "specs/shared/design")
+DESIGN_TEMPLATES = ("design-full.md", "design-lite.md", "design-frontend.md")
+PLAN_SOURCES = (
+    ROOT / "src/adapters/claude/commands/cf-task/plan.md",
+    ROOT / "src/adapters/costrict/commands/cf-task/plan.md",
+    ROOT / "src/adapters/opencode/commands/cf-task/plan.md",
+    ROOT / "src/adapters/codex/skills/cf-task-plan/SKILL.md",
+)
+
+
+def _section(text: str, heading: str) -> str:
+    match = re.search(rf"(?m)^(#{{2,4}})\s+[^\n]*{re.escape(heading)}[^\n]*$", text)
+    assert match is not None, f"缺少章节: {heading}"
+    level = len(match.group(1))
+    tail = text[match.end():]
+    end = re.search(rf"(?m)^#{{1,{level}}}\s+", tail)
+    return text[match.start():match.end() + (end.start() if end else len(tail))]
+
+
+def test_design_templates_require_validation_environment_assumptions() -> None:
+    """设计模板必须写清容量/硬件/依赖/profile 参数，避免执行期才发现环境缺口。"""
+    for directory in DESIGN_ROOTS:
+        for name in DESIGN_TEMPLATES:
+            text = (directory / name).read_text(encoding="utf-8")
+            section = _section(text, "验证环境假设")
+            for keyword in ("容量", "硬件", "依赖", "profile"):
+                assert keyword in section, f"{directory / name}: 验证环境假设缺少 {keyword}"
+            assert "env_blocked" in section, f"{directory / name}: 未说明环境缺失时的 env_blocked 行为"
+
+
+def test_design_templates_declare_execution_metadata_for_scenarios() -> None:
+    """验收场景必须声明 priority/exec/env/inputs，并与 manifest 字段对齐。"""
+    for directory in DESIGN_ROOTS:
+        for name in DESIGN_TEMPLATES:
+            text = (directory / name).read_text(encoding="utf-8")
+            section = _section(text, "验收条件")
+            for keyword in ("优先级", "执行方式", "环境", "输入"):
+                assert keyword in section, f"{directory / name}: 验收条件缺少 {keyword} 元数据"
+            assert "aspirational" in section, f"{directory / name}: 未说明无命令场景必须显式 aspirational"
+            assert "manifest" in section, f"{directory / name}: 未说明元数据与 manifest 的映射"
+
+
+def test_plan_templates_bind_scenarios_to_checks_with_execution_metadata() -> None:
+    """plan 的 Acceptance Coverage 必须同时承载命令、优先级、执行方式、环境与输入。"""
+    for source in PLAN_SOURCES:
+        text = source.read_text(encoding="utf-8")
+        header = next((line for line in text.splitlines() if line.startswith("| 场景ID |")), "")
+        assert header, f"{source}: 缺少 Acceptance Coverage 表头"
+        for column in ("执行命令", "优先级", "执行方式", "环境", "输入"):
+            assert column in header, f"{source}: Acceptance Coverage 缺少 {column} 列"
+        assert "aspirational" in text, f"{source}: 未说明无命令场景必须显式 aspirational"
+
+
+def test_design_traceability_matrix_is_generated_not_hand_maintained() -> None:
+    """§6 追溯矩阵必须由 cf_traceability.py 从 §2.5 + manifest 生成。"""
+    for directory in DESIGN_ROOTS:
+        text = (directory / "design-full.md").read_text(encoding="utf-8")
+        section = _section(text, "需求追溯矩阵")
+        assert "cf_traceability.py" in section
+        assert "不手工维护" in section
+
 
 def test_s_09_config_is_required_schema_one_without_legacy_routes() -> None:
     for path in (CORE / "config.yml", ROOT / ".code-flow/config.yml"):
