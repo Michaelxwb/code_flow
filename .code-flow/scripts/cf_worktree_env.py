@@ -52,16 +52,17 @@ def effective_parallel_safe(check: Mapping[str, object]) -> bool:
     """Shared environments are never parallel-safe, regardless of the flag."""
     if not is_isolated(check):
         return False
-    declared = check.get("parallel_safe", True)
-    return declared is not False
+    declared = check.get("parallel_safe", False)
+    return declared is True
 
 
 def worktree_identity(root: str, explicit: str = "") -> str:
     for candidate in (explicit, os.environ.get("CF_WORKTREE_ID", "")):
         if isinstance(candidate, str) and candidate.strip():
             return candidate.strip()
-    name = Path(root).resolve().name
-    return name or "worktree"
+    path = Path(root).resolve()
+    digest = hashlib.sha256(str(path).encode("utf-8")).hexdigest()[:8]
+    return f"{path.name or 'worktree'}-{digest}"
 
 
 def resolve_run_id(explicit: str = "") -> str:
@@ -152,9 +153,6 @@ def _lock_is_stale(path: Path, stale_after: float) -> bool:
         # that stayed unreadable beyond the grace window.
         grace = min(max(stale_after, 0.1), 1.0)
         return time.time() - stat.st_mtime >= grace
-    created = data.get("created_at")
-    if isinstance(created, (int, float)) and time.time() - float(created) >= stale_after:
-        return True
     if data.get("host") == socket.gethostname():
         pid = data.get("pid")
         if isinstance(pid, int) and pid > 0:
@@ -164,6 +162,11 @@ def _lock_is_stale(path: Path, stale_after: float) -> bool:
                 return True
             except (PermissionError, OSError):
                 return False
+            # A live local owner is never stale purely because the run is long.
+            return False
+    created = data.get("created_at")
+    if isinstance(created, (int, float)) and time.time() - float(created) >= stale_after:
+        return True
     return False
 
 

@@ -466,6 +466,14 @@ def _context_body(status: str = "verified", diff_sha256: str = "old-diff") -> st
 def test_check_conflict_blocks_real_merge_and_lists_check_and_field(tmp_path: Path) -> None:
     """E-02: 两个 worktree 修改同一 check command，merge fail closed 并报字段。"""
     root = _merge_repo(tmp_path)
+    main_manifest = _manifest_path(root)
+    data = json.loads(main_manifest.read_text(encoding="utf-8"))
+    data["checks"][0]["id"] = "CHK-01"
+    for row in data["scenarios"]:
+        row["check"] = "CHK-01"
+    main_manifest.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "normalize check id")
     prepared = prepare(root, _REPO_TASK_FILE, ["TASK-001", "TASK-002"], "run-check")
     assert prepared["ok"] is True
     commands = {"TASK-001": ["pytest", "-q"], "TASK-002": ["pytest", "-x"]}
@@ -511,9 +519,12 @@ def test_stale_after_merge_downgrades_verified_and_changed_reruns(tmp_path: Path
     assert prepared["ok"] is True
     worktree = Path(prepared["worktrees"][0]["path"])
     (worktree / "impl-TASK-001.txt").write_text("merged code\n", encoding="utf-8")
+    _commit(worktree, "cf-task(TASK-001): implementation")
     (worktree / Path(_REPO_TASK_FILE).parent / "spec-context.yml").write_text(
         _context_body(), encoding="utf-8"
     )
+    evidence = run_manifest(str(_manifest_path(worktree)), str(worktree), write_evidence=True, owner="TASK-001")
+    assert evidence["decision"] == "pass", evidence
     _set_status(worktree, "TASK-001", "done")
     _commit(worktree, "cf-task(TASK-001): verified context")
 
@@ -526,6 +537,7 @@ def test_stale_after_merge_downgrades_verified_and_changed_reruns(tmp_path: Path
     assert stage["status"] == "stale"
     assert stage["evidence"][0]["result_sha256"] == "result-old"
 
+    (root / "impl-TASK-001.txt").write_text("changed after merge\n", encoding="utf-8")
     rerun = run_manifest(str(manifest_path), str(root), owner="TASK-001")
     assert rerun["decision"] == "pass", rerun
     assert rerun["results"][0].get("cache_reused") is not True

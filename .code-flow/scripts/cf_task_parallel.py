@@ -394,6 +394,24 @@ def _required_check_map(manifest: Mapping[str, object], task: str) -> dict[str, 
     return required
 
 
+def _required_spec_refs(task_file: str, task: str) -> tuple[str, ...]:
+    """Spec refs explicitly owned by this TASK (N/A/empty means none)."""
+    try:
+        text = Path(task_file).read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return ()
+    match = re.search(rf"(?ms)^##\s+{re.escape(task)}:.*?(?=^##\s+TASK-|\Z)", text)
+    if match is None:
+        return ()
+    refs = re.search(r"(?m)^- \*\*Spec-Refs\*\*:[ \t]*([^\n]*)", match.group(0))
+    if refs is None:
+        return ()
+    value = refs.group(1).strip()
+    if not value or value.upper() == "N/A":
+        return ()
+    return tuple(item.strip() for item in value.split(",") if item.strip())
+
+
 def _task_manifest(worktree: Path, task_file: str) -> Optional[dict[str, object]]:
     path = worktree / Path(task_file).parent / ".acceptance-manifest.json"
     if not path.is_file():
@@ -437,13 +455,14 @@ def _missing_evidence(
     required = _required_check_map(manifest, task)
     if not required:
         return [], []
-    expected = worktree_fingerprint(str(worktree))
+    expected = worktree_fingerprint(str(worktree), include_untracked=False)
     if not expected:
         raise ParallelError(
             "evidence_hash_unavailable",
             f"{task}: 无法计算 worktree input_hash，拒绝用无法校验的旧证据放行",
         )
-    store = EvidenceStore(worktree, requirement=Path(task_file).parent.name)
+    from cf_evidence_store import requirement_key
+    store = EvidenceStore(worktree, requirement=requirement_key(Path(task_file).parent))
     missing: list[dict[str, object]] = []
     for check_id in sorted(required):
         runs = store.list_runs(check_id)
@@ -462,6 +481,13 @@ def _evidence_state(
 ) -> tuple[list[dict[str, object]], list[str]]:
     manifest = _task_manifest(worktree, task_file)
     if manifest is None:
+        if _required_spec_refs(str(worktree / task_file), task):
+            raise ParallelEvidenceError(
+                "required_evidence_missing",
+                f"{task}: 有 Spec-Refs 但缺少 .acceptance-manifest.json；先锁定验收计划并执行 required 检查",
+                [{"check_id": "manifest", "scenarios": [], "reason": "manifest_missing"}],
+                ["manifest"],
+            )
         return [], []
     return _missing_evidence(worktree, task, manifest, task_file)
 
@@ -486,6 +512,18 @@ def _reject_unfinished(task: str, status: str, path: Path, task_file: str) -> No
 
 
 def _require_evidence(task: str, path: Path, task_file: str) -> list[str]:
+    context_path = path / Path(task_file).parent / "spec-context.yml"
+    if context_path.is_file():
+        from cf_spec_context import load_context
+        from cf_workflow_service import task_truth_issues
+        issues = task_truth_issues(str(path / task_file), task, load_context(str(context_path)))
+        if issues:
+            raise ParallelEvidenceError(
+                "task_status_truth_mismatch",
+                f"{task}: 文档状态与 spec-context 冲突: {', '.join(issues)}",
+                [{"check_id": issue.split(":", 1)[0], "scenarios": [], "reason": "unverified_rule"} for issue in issues],
+                list(issues),
+            )
     missing, required = _evidence_state(path, task, task_file)
     if missing:
         raise ParallelEvidenceError(
@@ -517,14 +555,20 @@ def _collect_one(root: Path, entry: dict[str, object], base_head: str, task_file
         raise ParallelError("active_marker_present", f"{task}: marker 未清理，finish 未完成")
     dirty = _status_paths(path)
     if dirty:
-        # finish 会在通过后回写 Evidence/状态；任务已 done 且 marker 已清理时，
-        # 这些回写由 collect 自动提交（--no-commit 可关闭，保持严格模式）。
+        outside = [item for item in dirty if not item.startswith(".code-flow/")]
+        if outside:
+            raise ParallelError(
+                "worktree_dirty",
+                f"{task}: .code-flow 之外存在未提交改动: {', '.join(outside[:8])}；"
+                "collect 只允许自动提交 finish 的流程回写",
+            )
+        # finish 会在通过后回写 Evidence/状态；只提交受管流程目录，绝不 add -A。
         if not commit:
             raise ParallelError(
                 "worktree_dirty",
-                f"{task}: 尚有未提交改动: {', '.join(dirty[:8])}；可在 worktree 内提交后重跑 collect，或去掉 --no-commit",
+                f"{task}: 尚有未提交的流程回写: {', '.join(dirty[:8])}；去掉 --no-commit 或手工提交",
             )
-        _run_git(path, ("add", "-A"))
+        _run_git(path, ("add", "-A", "--", ".code-flow"))
         _run_git(path, ("commit", "-q", "-m", f"cf-task({task}): finish 回写验收证据与任务状态"))
     head = _run_git(path, ("rev-parse", "HEAD")).strip()
     if head == base_head:
@@ -711,6 +755,16 @@ def _merge_one(root: Path, main_branch: str, entry: dict, task_file: str) -> dic
     status = next((node.status for node in nodes if node.task_id == task), None)
     if status not in FINISHED_STATUSES:
         raise ParallelError("task_not_finished", f"{task}: Status 为 {status}，未通过 Done Gate")
+    main_manifest = _task_manifest(root, task_file)
+    worktree_manifest = _task_manifest(path, task_file)
+    if main_manifest is not None and worktree_manifest is not None:
+        from cf_task_merge import _check_conflicts
+        conflicts = _check_conflicts(main_manifest.get("checks"), worktree_manifest.get("checks"))
+        if conflicts:
+            detail = ", ".join(f"{item['check_id']}({','.join(item['fields'])})" for item in conflicts)
+            raise ParallelError("check_conflict", f"{task}: check 配置冲突: {detail}",
+                                {"conflicts": conflicts})
+    _require_evidence(task, path, task_file)
     if _status_paths(path):
         raise ParallelError("worktree_dirty", f"{task}: worktree 有未提交改动，先运行 collect")
     if _branch_is_ancestor(root, branch):

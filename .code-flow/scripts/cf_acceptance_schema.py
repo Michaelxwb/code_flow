@@ -10,11 +10,13 @@ from typing import Mapping
 EXEC_MODES = ("auto", "manual", "deferred", "aspirational")
 
 
-def verified_evidence(row: Mapping[str, object]) -> bool:
+def verified_evidence(row: Mapping[str, object], fingerprint: str = "") -> bool:
     evidence = row.get("evidence")
     if row.get("status") != "verified" or not isinstance(evidence, dict):
         return False
     if row.get("kind") != "manual":
+        if fingerprint and evidence.get("fingerprint") != fingerprint:
+            return False
         return evidence.get("status") == "passed" and evidence.get("exit_code") == 0
     author, detail = evidence.get("confirmed_by"), evidence.get("evidence")
     agents = {"agent", "assistant", "codex", "claude", "opencode", "costrict"}
@@ -142,6 +144,11 @@ def load_manifest(path: Path) -> dict[str, object]:
     validate_scenarios(data.get("scenarios"))
     if "checks" in data:
         validate_checks(data.get("checks"))
+        check_ids = {item.get("id") for item in data.get("checks", []) if isinstance(item, dict)}
+        for scenario in data.get("scenarios", []):
+            check_id = scenario.get("check") if isinstance(scenario, dict) else None
+            if isinstance(check_id, str) and check_id and check_id not in check_ids:
+                raise ValueError(f"scenario {scenario.get('id')} references missing check: {check_id}")
     if "task_file" in data and not isinstance(data["task_file"], str):
         raise ValueError("invalid acceptance manifest: task_file")
     return data

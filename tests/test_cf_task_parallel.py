@@ -520,6 +520,8 @@ def _evidence_repo(tmp_path: Path) -> Path:
     _git(root, "config", "user.name", "cf-test")
     (root / ".code-flow").mkdir()
     (root / ".code-flow/.gitignore").write_text(GITIGNORE, encoding="utf-8")
+    (root / "src").mkdir()
+    (root / "src/app.py").write_text("VALUE = 0\n", encoding="utf-8")
     task_dir = root / Path(EVIDENCE_TASK_FILE).parent
     task_dir.mkdir(parents=True)
     task_path = root / EVIDENCE_TASK_FILE
@@ -560,7 +562,7 @@ def test_s06_three_worktrees_share_central_evidence_without_committing(tmp_path:
 
     def worker(task: str) -> dict[str, object]:
         worktree = by_task[task]
-        (worktree / f"impl-{task}.txt").write_text(task + "\n", encoding="utf-8")
+        (worktree / "src/app.py").write_text(f"VALUE = {task!r}\n", encoding="utf-8")
         outcome = run_manifest(str(_manifest_path(worktree)), str(worktree), write_evidence=True, owner=task)
         _force_status(worktree, task, "done")
         _commit_worktree(worktree, task)
@@ -576,7 +578,8 @@ def test_s06_three_worktrees_share_central_evidence_without_committing(tmp_path:
     common = Path(_git(root, "rev-parse", "--git-common-dir").strip())
     if not common.is_absolute():
         common = (root / common).resolve()
-    requirement = Path(EVIDENCE_TASK_FILE).parent.name
+    from cf_evidence_store import requirement_key
+    requirement = requirement_key(Path(EVIDENCE_TASK_FILE).parent)
     store = EvidenceStore(root, requirement=requirement)
     assert store.directory.resolve() == (common / "code-flow/evidence" / requirement).resolve()
 
@@ -598,7 +601,7 @@ def test_s06_three_worktrees_share_central_evidence_without_committing(tmp_path:
     for item in collected["results"]:
         assert item["evidence"]["required_checks"] == [check_id]
         assert item["evidence"]["verified_checks"] == [check_id]
-        assert any(path.startswith("impl-") for path in item["files"])
+        assert "src/app.py" in item["files"]
         assert all("code-flow/evidence" not in path for path in item["files"])
 
     for task, worktree in by_task.items():
@@ -708,6 +711,8 @@ def _batch_manifest(worktree: Path) -> Path:
 def _run_batch_worker(root: Path, run_id: str, task: str) -> dict[str, object]:
     worktree = root / f".code-flow/worktrees/{run_id}" / task
     (worktree / f"impl-{task}.txt").write_text(task + "\n", encoding="utf-8")
+    _git(worktree, "add", "-A")
+    _git(worktree, "commit", "-q", "-m", f"cf-task({task}): implementation")
     outcome = run_manifest(str(_batch_manifest(worktree)), str(worktree), write_evidence=True, owner=task)
     _force_status(worktree, task, "done", BATCH_TASK_FILE)
     _commit_worktree(worktree, task)
@@ -861,7 +866,7 @@ def test_batch_smoke_shared_env_lock_recovers_stale_owner(tmp_path: Path) -> Non
     lock = shared_env_lock_path(str(root))
     lock.parent.mkdir(parents=True, exist_ok=True)
     lock.write_text(json.dumps({
-        "pid": os.getpid(),
+        "pid": 999999,
         "host": socket.gethostname(),
         "token": "stale-owner",
         "created_at": time.time() - 3600,

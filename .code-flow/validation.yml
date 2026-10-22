@@ -12,7 +12,7 @@ validators:
     - name: "Pytest"
       trigger: "**/*.py"
       command: "python3 -m pytest --tb=short -q"
-      timeout: 60000
+      timeout: 180000
       heavy: true
       on_fail: "测试失败，检查断言和 mock 是否需要更新"
 

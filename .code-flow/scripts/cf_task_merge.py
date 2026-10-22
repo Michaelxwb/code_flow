@@ -455,6 +455,17 @@ def _check_conflict(check_id: str, main: Mapping[str, object],
     }
 
 
+def _check_conflicts(main: object, branch: object) -> list[dict[str, object]]:
+    main_by = _keyed(_as_dicts(main), "id")
+    branch_by = _keyed(_as_dicts(branch), "id")
+    conflicts: list[dict[str, object]] = []
+    for check_id in sorted(set(main_by) & set(branch_by)):
+        conflict = _check_conflict(check_id, main_by[check_id], branch_by[check_id])
+        if conflict is not None:
+            conflicts.append(conflict)
+    return conflicts
+
+
 def _merge_checks(main: object, branch: object) -> list[dict]:
     main_rows = _as_dicts(main)
     branch_by = _keyed(_as_dicts(branch), "id")
@@ -567,6 +578,7 @@ def _merged_schema(main: Mapping[str, object], branch: Mapping[str, object]) -> 
 
 
 def merge_manifest_docs(main: Mapping[str, object], branch: Mapping[str, object]) -> dict:
+    merged_checks = _merge_checks(main.get("checks"), branch.get("checks")) if ("checks" in main or "checks" in branch) else None
     conflicts = _scenario_conflicts(main.get("scenarios"), branch.get("scenarios"))
     if conflicts:
         detail = ", ".join(

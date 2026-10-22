@@ -291,7 +291,8 @@ def build_audit(design_file: str, manifest_file: str, root: str,
         for item in manifest.get("checks") or ()
         if isinstance(item, Mapping) and isinstance(item.get("id"), str)
     }
-    store = EvidenceStore(str(root), requirement or manifest_path.parent.name)
+    from cf_evidence_store import requirement_key
+    store = EvidenceStore(str(root), requirement or requirement_key(manifest_path.parent))
     findings = [
         *_trace_findings(trace),
         *_owner_findings(scenarios),

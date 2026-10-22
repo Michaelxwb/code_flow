@@ -134,6 +134,8 @@
 verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_prompt_hook.py`、`tests/test_cf_post_hook.py`、`tests/test_codex_native_hook.py`、`tests/test_opencode_native.py`、`tests/test_runtime_contract.py`、`tests/test_cf_spec_context.py`、`tests/test_cf_spec_gate.py`、`tests/test_cf_task_runtime.py`、`tests/test_cf_workflow_service.py`、`tests/test_cf_task_state.py` → **143 passed**。
 - E-04: failed — automated command failed; run_id=b4c77cbaa1d74da7947bb570acd5ee14 (confirmed_by: runner)
 - E-04: verified — automated command passed; run_id=f3e4eb2fa85849849776a5142ce12c6c (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -180,6 +182,8 @@ verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_
 |--------|-----|-------|---------|-------------|------|
 | S-01 | `python3 -m pytest -q tests/test_cf_workflow_scale.py -k truthful_gate` → **3 failed**：旧 finish 在预算耗尽时仍返回 pass/done；声明 timeout 9999 直接延后不执行；legacy `over_finish_budget` 被 `allow_deferred_skips` 当成通过 | 同命令 → **4 passed** | `test_truthful_gate_unexecuted_required_check_is_provisional_and_recoverable`、`test_truthful_gate_declared_timeout_over_budget_is_not_a_deferral`、`test_truthful_gate_deferred_skips_accept_only_review_stage`、`test_truthful_gate_actual_failure_still_blocks` | 真实临时 git 仓库 + 真实 task md + spec-context + command verifier；`finish_task` 真实改写 marker/Markdown；预算恢复后重跑真实命令并转 done | verified |
 - S-01: verified — automated command passed; run_id=56a7a36311f44e83892572f222f43f50 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -230,6 +234,10 @@ verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_
 | B-02 | `python3 -m pytest -q tests/test_cf_evidence_store.py -k non_git` → 1 failed（`ModuleNotFoundError: cf_evidence_store`） | 同命令 → **1 passed**；相关回归 **100 passed** | `test_b02_non_git_fallback_store_and_runner` | 无 `.git` 项目回落 `<root>/.code-flow/evidence/demo/`；真实 `run_manifest` 写入 latest 并保持 pass | verified |
 - S-05: verified — automated command passed; run_id=d7a05651ca9740f48d4f7b81e988c342 (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=d7a05651ca9740f48d4f7b81e988c342 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -283,6 +291,10 @@ verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_
 verifier `cli-code-standards#RULE-cli-user-content-preservation-001`：`node tests/test_cli_merge_helpers.js` → **22 tests passed**。
 - S-03: verified — automated command passed; run_id=5a55278553174b2680c25e417e976f82 (confirmed_by: runner)
 - B-01: verified — automated command passed; run_id=5a55278553174b2680c25e417e976f82 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -336,6 +348,10 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 运行时：`node src/cli.js task verify --help` / `task verify-e2e --help` 均可解析；四平台 `verify-e2e` 文档保留“`task verify` 分层入口 + 兼容别名”说明并已同步部署副本。
 - S-02: verified — automated command passed; run_id=2c2cab456cbf45f0bbea788898fd62cd (confirmed_by: runner)
 - B-03: verified — automated command passed; run_id=2c2cab456cbf45f0bbea788898fd62cd (confirmed_by: runner)
+- S-02: failed — automated command failed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -388,6 +404,10 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 - B-04: verified — automated command passed; run_id=48c2580e2c2542dbbe3edcc59340a891 (confirmed_by: runner)
 - S-04: verified — automated command passed; run_id=861bee3694e84f0fb5620d16d7d6651a (confirmed_by: runner)
 - B-04: verified — automated command passed; run_id=861bee3694e84f0fb5620d16d7d6651a (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -435,6 +455,8 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 | E-01 | `python3 -m pytest -q tests/test_cf_acceptance_runner.py -k env_blocked` → **2 failed**：`KeyError: 'env_blocked'`（runner 无 preflight/env_blocked）；新增 manifest 用例 3 failed（默认 `parallel_safe` 仍为 true、schema 不校验新字段、重锁丢 check 配置） | 同命令 → **2 passed**；相关回归 **45 passed in 4.84s**；全仓 **604 passed in 39.36s** | `test_env_blocked_preflight_failure_marks_env_blocked_not_verified`、`test_env_blocked_preflight_success_executes_check`、`test_isolated_check_injects_worktree_namespace`、`test_shared_env_scope_is_never_parallel_safe`、`test_check_preflight_env_schema_validation`、`test_derived_checks_default_shared_env_not_parallel_safe`、`test_relock_preserves_check_environment_config` | 真实 TCP 服务探测（关闭端口失败 / 监听 socket 通过）+ 真实 argv 子进程；失败时产品命令未执行、manifest 状态 `env_blocked` 且 evidence 无 verified；isolated 子进程实测收到 5 个 CF_* 变量，shared 未注入；证据 run_id 与 CF_RUN_ID 一致 | verified |
 - E-01: verified — automated command passed; run_id=dc83f12130924e81b234bf5a2a1a2980 (confirmed_by: runner)
 - E-01: verified — automated command passed; run_id=95c9dfb3e75047389723cb58c1e1de8e (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -490,6 +512,10 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 相关回归修复：`cf_task_runtime._update_rule` 只在旧 verified 证据的 rule/diff 仍匹配时才保留状态；跨 worktree 继承的 stale verified 遇到 deferral 会降为 unverified。回归 `tests/test_cf_evidence_store.py tests/test_cf_task_runtime.py` → **31 passed**（含 `test_s05_stale_verified_evidence_is_downgraded_by_deferral`）。
 - S-06: verified — automated command passed; run_id=f26759c7b85a442facf5dff65fa54cf2 (confirmed_by: runner)
 - E-03: verified — automated command passed; run_id=f26759c7b85a442facf5dff65fa54cf2 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -541,6 +567,10 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 | E-05 | `python3 -m pytest -q tests/test_cf_task_merge.py -k stale_after_merge` → collection error（`MergeConflictError` 未实现） | 同命令 → **1 passed**；全仓 **621 passed** | `test_context_input_hash_change_downgrades_verified_to_stale`、`test_stale_after_merge_downgrades_verified_and_changed_reruns` | 真实 git 仓库 + `prepare`/`merge` + manifest runner；merge 前后 `worktree_fingerprint` 变化，旧 rule `verified → stale`（evidence 保留）；`changed` 再次执行 check 而非 `cache_reused` | verified |
 - E-02: verified — automated command passed; run_id=b09af688ee2a478cb5613e2c06a29fd7 (confirmed_by: runner)
 - E-05: verified — automated command passed; run_id=b09af688ee2a478cb5613e2c06a29fd7 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -586,6 +616,8 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 |--------|-----|-------|---------|-------------|------|
 | S-07 | `python3 -m pytest -q tests/test_cf_task_parallel.py -k batch_smoke` → **4 failed**：`KeyError: 'batch_smoke'`、smoke 失败仍 `ok=True`、`shared_env_lock_path/shared_env_lock` 缺失 | 同命令 → **4 passed in 3.92s**；相关回归 `tests/test_cf_task_parallel.py tests/test_cf_verify_layers.py tests/test_cf_acceptance_runner.py` → **49 passed**；`tests/test_cf_task_merge.py` → **19 passed**；全量 `tests/` → **639 passed** | `test_batch_smoke_after_merge_runs_shared_e2e_once`、`test_batch_smoke_failure_keeps_worktrees_and_blocks_cleanup`、`test_batch_smoke_shared_env_lock_serializes_real_worktrees`、`test_batch_smoke_shared_env_lock_recovers_stale_owner` | 真实 git worktree ×3 + schema3 manifest + 真实 `run_manifest`；collect 标记 `batch_smoke=pending` 后 merge 在主区执行一次 `verify --profile smoke`（validators,e2e）；shared E2E marker 仅 1 条；失败 merge `ok=false`、worktree 保留、cleanup 拒绝；两个真实 worktree 的 shared 检查区间不重叠；stale lock 在阈值后可接管 | verified |
 - S-07: verified — automated command passed; run_id=6fab62b645c043df976f5fd39a72769b (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -634,6 +666,8 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module named 'cf_task_plan'`；核心函数 GREEN 后模板守护仍 RED（`src/adapters/.../plan.md` 缺 `--task-size capability`）。全量回归 `python3 -m pytest -q` → **582 passed in 35.68s**。
 - S-08: verified — automated command passed; run_id=3e20ae49819f4741b8ccd1984b72cc00 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -772,6 +806,8 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 |--------|-----|-------|---------|-------------|------|
 | S-09 | `python3 -m pytest -q tests/test_cf_audit.py -k invariants` → collection error：`ModuleNotFoundError: No module named 'cf_audit'` | 同命令 → **7 passed**；相关回归 `tests/test_cf_traceability.py tests/test_cf_acceptance_manifest.py` → **17 passed**；运行时契约 → **13 passed** | `test_invariants_counts_follow_design_and_manifest_data`、`test_invariants_verified_requires_run_id_exit_zero_and_input_hash`、`test_invariants_verified_falls_back_to_manifest_evidence`、`test_invariants_owner_is_read_from_manifest_field_not_prose`、`test_invariants_design_and_manifest_scenario_sets_must_match`、`test_invariants_audit_is_read_only_on_fixture_and_real_requirement`、`test_invariants_cli_emits_json_and_markdown` | 真实 design + manifest + central evidence sidecar；真实需求 20/20 场景、10 条规则、7 条风险生成 `decision=pass`；审计前后 manifest 字节不变；`node src/cli.js audit --task-dir ... --json` 返回只读报告 | verified |
 - S-09: verified — automated command passed; run_id=7f67e28b791a4092bbf1afc2cd7c35db (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -818,6 +854,8 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 |--------|-----|-------|---------|-------------|------|
 | S-10 | `python3 -m pytest -q tests/test_cf_evidence_store.py -k ci_import` → **4 failed**：`cf_evidence_import.py` 不存在、`evidence import` 未注册、unmapped 用例未被拒绝 | 同命令 → **4 passed**；相关回归 `tests/test_cf_evidence_store.py tests/test_cf_acceptance_runner.py` → **30 passed** | `test_s10_ci_import_junit_maps_checks_and_feeds_verify`、`test_s10_ci_import_playwright_failures_and_commit_mismatch`、`test_s10_ci_import_rejects_missing_provenance_and_unmapped_cases`、`test_ci_import_runtime_command_registry_entry` | 真实临时 git 仓库 + 真实 JUnit XML / Playwright JSON 报告 + 真实 `cf_acceptance_runner` 复用；central sidecar 记录 `source=ci`、`commit`、`run_url`、`input_hash`、`exit_code` | verified |
 - S-10: verified — automated command passed; run_id=e833572ad8d948308a1b7a52b0dca31f (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -872,6 +910,8 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 | S-11 | `python3 -m pytest -q tests/test_adapter_parity.py` → **2 failed**（`FileNotFoundError: src/adapters/commands.json`；`spec doctor` 未知命令、`task verify --checks` 未识别）；`tests/test_command_surface.py` → **8 failed**；`-k checks` → **1 failed**（unrecognized arguments: --checks）；`_doctor_command` → **ImportError** | 同命令 → **8 passed**；`tests/test_command_surface.py` → **8 passed**；`-k checks` → **1 passed**；doctor 两例 → **2 passed**；全仓 `python3 -m pytest -q` → **668 passed in 56.08s** | `test_s11_command_surface_converges_to_9_to_11_user_commands`、`test_s11_four_platform_install_surface_matches_catalog`、`test_four_platform_sources_match_canonical_catalog`、`test_four_platform_deploy_copies_match_canonical_catalog`、`test_alias_commands_declare_one_minor_compatibility_window`、`test_runtime_migration_dry_run_apply_and_rollback`、`test_spec_doctor_help_is_served_by_real_parser`、`test_s11_spec_doctor_reports_healthy_context`、`test_s11_spec_doctor_blocks_marker_and_runtime_drift`、`test_checks_flag_runs_validators_only_as_cf_validate_alias` | `src/adapters/commands.json` 驱动四平台 16 个命令文件（11 user + 4 alias + 1 internal）；真实 `code-flow init` 产物 + 部署副本逐字一致；真实 `migrate --runtime --dry-run/--apply/--rollback`（`.version` 0.7.0 → 0.8.0 → 0.7.0）；真实 `spec doctor` 报 113 个受管理文件 0 漂移；`sync check` 五对配对全 OK | verified |
 - S-11: verified — automated command passed; run_id=91f198ad072b4a779ca0f10b00caecca (confirmed_by: runner)
 - S-11: verified — automated command passed; run_id=b938e149f8554761963e7cf769da319f (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=839b4b012dd34112a2a18f24a1042c42 (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=bee8a69d80594b5380afae01d2795dc9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)

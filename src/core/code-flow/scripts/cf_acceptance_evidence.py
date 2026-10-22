@@ -124,8 +124,9 @@ def _run_record(row: Mapping[str, object], result: Mapping[str, object], run_id:
 def _store_evidence_runs(path: Path, rows: Mapping[str, Mapping[str, object]],
                          results: Sequence[Mapping[str, object]], run_id: str,
                          executed_at: str, fingerprint: str) -> dict[str, int]:
+    from cf_evidence_store import requirement_key
     project = discover_project_root(path.parent)
-    store = EvidenceStore(project, path.parent.name)
+    store = EvidenceStore(project, requirement_key(path.parent))
     commit = git_commit(project)
     created = duplicates = 0
     for result in results:

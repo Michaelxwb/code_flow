@@ -107,7 +107,17 @@ def _active_requirement(root: Path) -> str:
     except (OSError, UnicodeError, ValueError):
         return ""
     task_dir = data.get("task_dir") if isinstance(data, Mapping) else None
-    return Path(task_dir).name if isinstance(task_dir, str) and task_dir.strip() else ""
+    return requirement_key(task_dir) if isinstance(task_dir, str) and task_dir.strip() else ""
+
+
+def requirement_key(task_dir: object) -> str:
+    """Collision-safe requirement key: date + name when available."""
+    path = Path(task_dir)
+    name = _safe_component(path.name or _DEFAULT_REQUIREMENT, "requirement")
+    parent = path.parent.name
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", parent or ""):
+        return f"{parent}--{name}"
+    return name
 
 
 def evidence_root(root: object, requirement: str = "") -> Path:
@@ -302,9 +312,8 @@ class EvidenceStore:
         return sorted(runs.values(), key=_run_sort_key)
 
     def read_latest(self, check_id: str) -> Optional[dict[str, object]]:
-        latest = _read_mapping(self.latest_path(check_id))
-        if latest is not None:
-            return latest
+        # latest.json is only a hint: concurrent worktrees may write it out of
+        # order. The run files themselves are immutable and authoritative.
         runs = self.list_runs(check_id)
         return runs[-1] if runs else None
 

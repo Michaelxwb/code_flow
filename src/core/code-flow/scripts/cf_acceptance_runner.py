@@ -11,9 +11,11 @@ new work and reports unrun checks as `incomplete`, never as failed/verified.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import hashlib
 import json
 import os
+import subprocess
 import tempfile
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
@@ -67,11 +69,13 @@ def _scenario_timeout(item: Mapping[str, object]) -> float:
 def _included(item: Mapping[str, object], include_e2e: bool, only_e2e: bool) -> bool:
     """Whether the scenario would actually execute under the current flags."""
     kind = str(item.get("kind", "functional"))
-    if kind == "manual":
+    mode = str(item.get("exec", ""))
+    if kind == "manual" or mode in ("manual", "aspirational"):
         return False
+    deferred = kind == "e2e" or mode == "deferred"
     if only_e2e:
-        return kind == "e2e"
-    if kind == "e2e":
+        return deferred
+    if deferred:
         return include_e2e
     return True
 
@@ -89,6 +93,8 @@ def _reusable(row: Optional[Mapping[str, object]], item: Mapping[str, object], f
     if item.get("depends_on"):
         return False
     if row.get("status") != "verified":
+        return False
+    if row.get("check") != item.get("check"):
         return False
     evidence = row.get("evidence")
     if not isinstance(evidence, Mapping):
@@ -134,11 +140,15 @@ def _run(
 ) -> dict[str, object]:
     scenario_id = str(item.get("id", "unknown"))
     kind = str(item.get("kind", "functional"))
-    if only_e2e and kind != "e2e":
-        return {"id": scenario_id, "kind": kind, "status": "not_included"}
-    if kind == "manual":
+    mode = str(item.get("exec", ""))
+    if mode == "aspirational":
+        return {"id": scenario_id, "kind": kind, "status": "not_included", "reason": "aspirational"}
+    if kind == "manual" or mode == "manual":
         return {"id": scenario_id, "kind": kind, "status": "manual_pending"}
-    if kind == "e2e" and not include_e2e and not only_e2e:
+    deferred = kind == "e2e" or mode == "deferred"
+    if only_e2e and not deferred:
+        return {"id": scenario_id, "kind": kind, "status": "not_included"}
+    if deferred and not include_e2e and not only_e2e:
         return {"id": scenario_id, "kind": kind, "status": "e2e_deferred"}
     outcome = _command_outcome(item, root, deadline, env)
     return {"id": scenario_id, "kind": kind, **outcome}
@@ -526,8 +536,9 @@ def _atomic_checkpoint(path: Path, payload: Mapping[str, object]) -> None:
 
 
 def _checkpoint_path(manifest_file: str, root: str) -> Path:
+    from cf_evidence_store import requirement_key
     digest = hashlib.sha256(str(Path(manifest_file).resolve()).encode("utf-8")).hexdigest()[:16]
-    requirement = Path(manifest_file).resolve().parent.name
+    requirement = requirement_key(Path(manifest_file).resolve().parent)
     return EvidenceStore(root, requirement).directory.parent / "_checkpoints" / f"acceptance-{digest}.json"
 
 
@@ -974,6 +985,67 @@ def _make_checkpoint(
     )
 
 
+def _changed_paths(root: str) -> set[str]:
+    changed: set[str] = set()
+    for arguments in (("diff", "--name-only", "HEAD"), ("ls-files", "--others", "--exclude-standard")):
+        completed = subprocess.run(("git", "-C", root, *arguments), text=True, capture_output=True, check=False)
+        if completed.returncode == 0:
+            changed.update(line.strip() for line in completed.stdout.splitlines() if line.strip())
+    return changed
+
+
+def _select_profile(data: Mapping[str, object], root: str, profile: str) -> dict[str, object]:
+    """Return a shallow manifest view filtered by smoke/changed/full."""
+    if profile == "full":
+        return dict(data)
+    checks = {
+        str(item.get("id")): item
+        for item in data.get("checks", []) or []
+        if isinstance(item, Mapping) and isinstance(item.get("id"), str)
+    }
+    changed = _changed_paths(root)
+    scenarios = [item for item in data.get("scenarios", []) or [] if isinstance(item, Mapping)]
+    explicit_priority = any(isinstance(item.get("priority"), str) for item in scenarios)
+    selected: list[Mapping[str, object]] = []
+    has_smoke_profile = any(str((check or {}).get("profile", "")) == "smoke" for check in checks.values())
+    has_e2e = any(str(scenario.get("kind", "")) == "e2e" for scenario in scenarios)
+    for scenario in scenarios:
+        check = checks.get(str(scenario.get("check", "")))
+        priority = str(scenario.get("priority", ""))
+        if profile == "smoke":
+            if explicit_priority:
+                if priority.upper() == "P0" or str((check or {}).get("profile", "")) == "smoke":
+                    selected.append(scenario)
+            elif has_smoke_profile:
+                if str((check or {}).get("profile", "")) == "smoke":
+                    selected.append(scenario)
+            elif has_e2e:
+                if str(scenario.get("kind", "")) == "e2e":
+                    selected.append(scenario)
+            else:
+                selected.append(scenario)
+            continue
+        inputs = (check or {}).get("inputs")
+        if (not explicit_priority or priority.upper() == "P0" or str((check or {}).get("profile", "")) == "smoke"
+                or not inputs or not changed or any(
+                    fnmatch.fnmatch(path, str(pattern)) for pattern in inputs for path in changed
+                )):
+            selected.append(scenario)
+    selected_ids = {str(item.get("id")) for item in selected}
+    selected_checks = [
+        item for item in data.get("checks", []) or []
+        if isinstance(item, Mapping) and any(
+            str(scenario.get("check", "")) == str(item.get("id")) for scenario in selected
+        )
+    ]
+    result = dict(data)
+    result["scenarios"] = selected
+    if "checks" in data:
+        result["checks"] = selected_checks
+    result["profile"] = profile
+    return result
+
+
 def run_manifest(
     manifest_file: str,
     root: str,
@@ -988,8 +1060,11 @@ def run_manifest(
     max_failures: int = 0,
     fail_fast: bool = False,
     jobs: int = 0,
+    profile: str = "full",
 ) -> dict[str, object]:
-    data = load_manifest(Path(manifest_file))
+    if profile not in ("smoke", "changed", "full"):
+        raise ValueError(f"invalid verify profile: {profile}")
+    data = _select_profile(load_manifest(Path(manifest_file)), root, profile)
     validate_execution_baseline(Path(manifest_file), data)
     scenarios = data["scenarios"]
     _ordered(scenarios)  # Validate the complete DAG before owner filtering.
@@ -1003,7 +1078,7 @@ def run_manifest(
     check_list, check_map = _check_plan(data)
     run_key = resolve_run_id(run_id)
     namespace = _run_namespace(str(root), check_map, owner, items, run_key)
-    fingerprint = worktree_fingerprint(str(root)) if use_cache else ""
+    fingerprint = worktree_fingerprint(str(root), include_untracked=False) if use_cache else ""
     limit = 1 if fail_fast else max(0, int(max_failures))
     checkpoint = _make_checkpoint(manifest_file, root, fingerprint, use_cache, resume)
     units, _ = _build_units(ordered, Path(root), check_map, include_e2e or only_e2e, only_e2e)

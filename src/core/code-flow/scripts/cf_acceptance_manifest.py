@@ -240,21 +240,38 @@ def _contract_commands(text: str) -> dict[str, str]:
     return commands
 
 
-def _check_id(command: list[str], cwd: str, timeout: float) -> str:
-    payload = json.dumps([command, cwd, timeout], ensure_ascii=False, sort_keys=True).encode("utf-8")
+def _check_id(command: list[str], cwd: str, timeout: float, config: Mapping[str, object] | None = None) -> str:
+    payload = json.dumps([command, cwd, timeout, config or {}], ensure_ascii=False, sort_keys=True).encode("utf-8")
     return "CHK-" + hashlib.sha256(payload).hexdigest()[:12]
 
 
 def _derive_checks(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     """Derive executable checks from scenario command identity (stable IDs)."""
     by_id: dict[str, dict[str, object]] = {}
+    by_command: dict[tuple, dict[str, object]] = {}
     for row in rows:
         command = row.get("command")
         if not isinstance(command, list) or not command:
             continue
         cwd = str(row.get("cwd", "."))
         timeout = float(row.get("timeout", 60))
-        check_id = _check_id(command, cwd, timeout)
+        config = {
+            "env": row.get("env") if isinstance(row.get("env"), str) else "",
+            "inputs": list(row.get("inputs") or []),
+        }
+        identity = {
+            key: row.get(key) for key in
+            ("env", "env_scope", "preflight", "parallel_safe", "profile", "inputs")
+        }
+        command_key = (tuple(command), cwd, timeout)
+        previous = by_command.setdefault(command_key, {"env": "", "inputs": []})
+        if config["env"] and previous["env"] and config["env"] != previous["env"]:
+            raise ValueError(f"check configuration conflict: {row.get('id')} {command_key} env")
+        if config["inputs"] and previous["inputs"] and config["inputs"] != previous["inputs"]:
+            raise ValueError(f"check configuration conflict: {row.get('id')} {command_key} inputs")
+        previous["env"] = previous["env"] or config["env"]
+        previous["inputs"] = previous["inputs"] or config["inputs"]
+        check_id = _check_id(command, cwd, timeout, identity)
         row["check"] = check_id
         check = by_id.get(check_id)
         if check is None:
@@ -354,6 +371,9 @@ def write_manifest(task_file: str, output: str) -> dict[str, object]:
     manifest = extract_manifest(task_file)
     target = Path(output)
     _preserve_runtime_state(task_file, target, manifest)
+    for scenario in manifest.get("scenarios", []):
+        if isinstance(scenario, dict) and scenario.get("status") in ("verified", "failed") and not scenario.get("evidence"):
+            scenario["status"] = "planned"
     _preserve_check_config(target, manifest)
     try:
         manifest["task_file"] = str(Path(task_file).resolve().relative_to(target.parent.resolve()))

@@ -127,7 +127,7 @@ def check_startable(task_file: str, task_id: str) -> list[str]:
         blockers.append(f"{task_id} is blocked; resolve Log BLOCKED entries first")
     elif status == "done":
         blockers.append(f"{task_id} is already done; verify contract or reopen explicitly")
-    elif status not in ("draft", "in-progress"):
+    elif status not in ("draft", "in-progress", "provisional"):
         blockers.append(f"{task_id} has unexpected status '{status}'")
     notes = section_notes(section)
     if notes:
@@ -438,10 +438,10 @@ def resume_task(root: str, task_dir: str, task_file: str, task_id: str) -> dict[
     if (Path(root) / ".code-flow/.active-task.json").exists():
         _require_marker_task(root, task_id, task_dir, task_file)
         active = load_active_task(root)
-        if active.status not in ("blocked", "paused"):
+        if active.status not in ("blocked", "paused", "provisional"):
             raise WorkflowError("resume_unexpected_state", active.status, (task_id,))
     section = read_task_section(task_file, task_id)
-    if active is None and section_status(section) != "blocked":
+    if active is None and section_status(section) not in ("blocked", "provisional"):
         raise WorkflowError("resume_unexpected_state", section_status(section), (task_id,))
     notes = section_notes(section)
     statuses = _all_statuses(task_file)

@@ -6,6 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 import hashlib
 import json
+import sys
 from pathlib import Path
 import time
 from typing import Mapping, Optional
@@ -28,7 +29,7 @@ from cf_spec_gate import evidence_deferral_kind, validate_stage
 from cf_spec_metadata import SpecMetadata, load_spec_metadata
 from cf_spec_resolver import resolve_candidates, SpecCandidate
 from cf_spec_session import context_sha256
-from cf_spec_verify import VerificationEvidence, VerificationScope, run_all_verifiers
+from cf_spec_verify import VerificationEvidence, VerificationScope, run_all_verifiers, store_verification_evidence
 from cf_core import load_config, phase_timing, resolve_quality_loop
 from cf_acceptance_schema import load_manifest, validate_execution_baseline
 from cf_exec_base import execution_session
@@ -346,24 +347,33 @@ def _provisional_message(missing: tuple[Mapping[str, object], ...]) -> str:
 
 
 def _run_acceptance(root: str, task_dir: str, owner: str, include_e2e: bool,
-                    deadline: Optional[float], cheap: bool = False) -> str:
+                    deadline: Optional[float], cheap: bool = False) -> tuple[str, str]:
     baseline_issue = _acceptance_baseline_issue(task_dir, owner)
     if baseline_issue:
-        return baseline_issue
+        return baseline_issue, "block"
     # manual 场景的人工确认统一在需求级终验（verify-e2e + confirm-manual）完成，
     # 不在每个任务的 Done Gate 中逐任务阻断。
     if cheap:
         # 轻量门禁：只做 manifest 基线检查，不执行 functional 场景；
         # 场景命令由 finish 的全量 Done Gate 执行。
-        return ""
+        return "", "pass"
     manifest_path = Path(task_dir) / ".acceptance-manifest.json"
     if manifest_path.is_file():
         from cf_acceptance_runner import run_manifest
         scenario_result = run_manifest(str(manifest_path), root, write_evidence=True, include_e2e=include_e2e, owner=owner, deadline=deadline)
         if scenario_result["decision"] == "block":
+            statuses = [
+                str(item.get("status", ""))
+                for item in scenario_result.get("results", [])
+                if isinstance(item, dict)
+            ]
+            if "env_blocked" in statuses:
+                return "acceptance env_blocked: " + (scenario_result.get("error") or "environment unavailable"), "env_blocked"
+            if "incomplete" in statuses:
+                return "acceptance incomplete: " + (scenario_result.get("error") or "deadline exceeded"), "incomplete"
             reason = scenario_result.get("error") or "acceptance scenario failed"
-            return f"acceptance scenario failed: {reason}"
-    return ""
+            return f"acceptance scenario failed: {reason}", "block"
+    return "", "pass"
 
 
 def _run_finish_validation(root: str, files: tuple[str, ...]) -> tuple[str, int]:
@@ -416,9 +426,10 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
     if scope_result.decision == "pause":
         return DoneResult("block", scope_result.files, (), scope_result.message)
     deadline = started + budget if budget is not None else None
-    issue = _run_acceptance(root, task_dir, owner, include_e2e, deadline, cheap)
+    issue, acceptance_kind = _run_acceptance(root, task_dir, owner, include_e2e, deadline, cheap)
     if issue:
-        return DoneResult("block", scope_result.files, (), issue)
+        decision = "provisional" if acceptance_kind in ("env_blocked", "incomplete") else "block"
+        return DoneResult(decision, scope_result.files, (), issue)
     phase_started = time.monotonic()
     context = load_context(_context_path(task_dir))
     diff_hash = _diff_hash(root, scope_result.files)
@@ -460,6 +471,14 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
             stage="code", deferred=deferrals or None,
         )
         phase_timing(f"done.verify.{binding.spec_id}", phase_started)
+        try:
+            from cf_evidence_store import requirement_key
+            store_verification_evidence(
+                metadata, VerificationScope(root, scope_result.files, diff_hash), result,
+                requirement=requirement_key(Path(task_dir)),
+            )
+        except (OSError, ValueError) as exc:
+            sys.stderr.write(f"cf_task_runtime: evidence sidecar write failed: {exc}\n")
         all_evidence.extend(_evidence_data(item) for item in result.evidence)
     updated = _apply_evidence(context, tuple(all_evidence))
     if updated != context:

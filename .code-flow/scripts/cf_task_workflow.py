@@ -21,7 +21,9 @@ from cf_spec_context import (ContextError, DEFAULT_ACTIVE_EXCLUDES, Decision, Sp
 from cf_spec_gate import evidence_deferral_kind, validate_stage
 from cf_spec_metadata import load_spec_metadata
 from cf_spec_session import context_sha256
-from cf_spec_verify import VerificationScope, _git_tracked_files, run_all_verifiers
+from cf_spec_verify import (VerificationScope, _git_tracked_files, run_all_verifiers,
+                             store_verification_evidence)
+from cf_exec_base import worktree_fingerprint
 from cf_task_index import parse_task_file
 from cf_task_runtime import (_NON_EXECUTION_ERRORS, _apply_evidence, _evidence_data,
                              run_done_gate)
@@ -518,6 +520,7 @@ def _manual_confirmations(root: str, targets: Mapping[str, Mapping[str, object]]
 
 def _run_requirement_verifiers(
     root: str,
+    directory: str,
     targets: dict[str, dict[str, object]],
     confirmations: Optional[Mapping[str, Mapping[str, Mapping[str, object]]]] = None,
 ) -> dict[str, object]:
@@ -532,6 +535,13 @@ def _run_requirement_verifiers(
         info = targets[spec_id]
         metadata = load_spec_metadata(str(Path(root) / ".code-flow/specs" / str(info["path"])))
         result = run_all_verifiers(metadata, scope, (confirmations or {}).get(spec_id), stage=None)
+        try:
+            from cf_evidence_store import requirement_key
+            store_verification_evidence(
+                metadata, scope, result, requirement=requirement_key(directory),
+            )
+        except (OSError, ValueError) as exc:
+            sys.stderr.write(f"cf_task_workflow: verifier evidence sidecar failed: {exc}\n")
         by_rule: dict[str, object] = {}
         for evidence in result.evidence:
             rule_ref = evidence.verifier_ref.split("#", 1)[-1]
@@ -704,7 +714,7 @@ def _review_layer(root: str, directory: str) -> dict[str, object]:
     if not all_targets:
         return _nothing_to_verify()
     confirmations = _manual_confirmations(root, all_targets)
-    review = _run_requirement_verifiers(root, all_targets, confirmations)
+    review = _run_requirement_verifiers(root, directory, all_targets, confirmations)
     blocked = bool(review["failed"] or review["env_blocked"] or review["incomplete"])
     return _layer_result(
         "block" if blocked else "pass",
@@ -745,7 +755,7 @@ def _acceptance_counts(acceptance: Mapping[str, object]) -> dict[str, object]:
 
 
 def _e2e_preflight(manifest: Path, tasks: Sequence[tuple[Path, str, str]],
-                   requirement_gate: bool) -> tuple[Optional[dict[str, object]], Optional[dict[str, object]]]:
+                   requirement_gate: bool, profile: str = "changed") -> tuple[Optional[dict[str, object]], Optional[dict[str, object]]]:
     try:
         data = load_manifest(manifest)
         validate_execution_baseline(manifest, data)
@@ -761,9 +771,11 @@ def _e2e_preflight(manifest: Path, tasks: Sequence[tuple[Path, str, str]],
     functional_required: list[object] = []
     manual_scenarios: list[dict[str, object]] = []
     for row in data["scenarios"]:
+        if row.get("exec") == "aspirational":
+            continue
         if verified_evidence(row):
             continue
-        if row.get("kind") == "manual":
+        if row.get("kind") == "manual" or row.get("exec") == "manual":
             manual_scenarios.append({
                 "id": row.get("id"),
                 "owner": row.get("owner", ""),
@@ -782,21 +794,69 @@ def _e2e_preflight(manifest: Path, tasks: Sequence[tuple[Path, str, str]],
             next=("向用户展示待确认清单并取得明确回复后，运行 confirm-manual 批量写入确认，再重跑 verify；"
                   "Agent 不得代确认。"),
         )
-    if not any(row.get("kind") == "e2e" for row in data["scenarios"]):
+    if not any(row.get("kind") == "e2e" for row in data["scenarios"]) and not functional_required:
         return None, _nothing_to_verify()
     return data, None
 
 
+def _stale_functional_rows(data: Mapping[str, object], root: str) -> list[str]:
+    """Functional rows claiming verified but recorded against different content."""
+    fingerprint = worktree_fingerprint(root, include_untracked=False)
+    stale: list[str] = []
+    for row in data.get("scenarios", []) or []:
+        if not isinstance(row, Mapping):
+            continue
+        if str(row.get("kind", "functional")) in ("manual", "e2e"):
+            continue
+        if row.get("status") == "verified" and not verified_evidence(row, fingerprint):
+            stale.append(str(row.get("id")))
+    return stale
+
+
+def _unverified_functional_rows(data: Mapping[str, object]) -> list[str]:
+    rows: list[str] = []
+    for row in data.get("scenarios", []) or []:
+        if not isinstance(row, Mapping):
+            continue
+        if str(row.get("kind", "functional")) in ("manual", "e2e") or row.get("exec") in ("manual", "aspirational"):
+            continue
+        if not verified_evidence(row):
+            rows.append(str(row.get("id")))
+    return rows
+
+
 def _e2e_layer(root: str, directory: str, tasks: Sequence[tuple[Path, str, str]],
-               requirement_gate: bool) -> dict[str, object]:
+               requirement_gate: bool, profile: str = "changed", resume: bool = True,
+               deadline: Optional[float] = None, max_failures: int = 0,
+               fail_fast: bool = False, jobs: int = 0) -> dict[str, object]:
     manifest = Path(directory) / ".acceptance-manifest.json"
     if not manifest.exists():
         return _nothing_to_verify()
-    _data, failure = _e2e_preflight(manifest, tasks, requirement_gate)
+    data, failure = _e2e_preflight(manifest, tasks, requirement_gate, profile)
     if failure is not None:
         return failure
+    stale = _stale_functional_rows(data, root) if requirement_gate else []
+    unverified = _unverified_functional_rows(data) if requirement_gate else []
+    if (stale or unverified) and profile == "changed":
+        return _layer_result(
+            "block",
+            reason="functional_evidence_stale",
+            scenarios=stale or unverified,
+            next="stale functional evidence requires --profile full to re-run all affected checks",
+        )
+    if profile == "smoke":
+        # Smoke only needs the E2E subset; functional freshness is handled by
+        # the explicit changed/full gate, not by the batch smoke.
+        stale = []
+        unverified = []
     try:
-        acceptance = run_manifest(str(manifest), root, write_evidence=True, only_e2e=True)
+        acceptance = run_manifest(
+            str(manifest), root, write_evidence=True,
+            include_e2e=bool(stale or unverified) or profile == "full",
+            only_e2e=not (stale or unverified) and profile != "full",
+            profile=profile, resume=resume, deadline=deadline,
+            max_failures=max_failures, fail_fast=fail_fast, jobs=jobs,
+        )
     except (OSError, ValueError) as exc:
         return _layer_result("block", reason="acceptance_run_error", detail=str(exc))
     counts = _acceptance_counts(acceptance)
@@ -865,9 +925,22 @@ def _promote_verified(tasks: Sequence[tuple[Path, str, str]]) -> None:
         _sync_markdown(str(task_file), task_id, "verified")
 
 
+def _compact_requirement_contexts(root: str, directory: str) -> None:
+    """Keep spec-context bounded after a full requirement gate passes."""
+    from cf_evidence_store import compact_context_file
+    for path in sorted(Path(directory).rglob("spec-context.yml")):
+        try:
+            compact_context_file(path, root=root, requirement=Path(directory).name)
+        except (OSError, ValueError) as exc:
+            sys.stderr.write(f"cf_task_workflow: context compaction failed: {exc}\n")
+
+
 def verify_layers(root: str, directory: str, layers: Optional[str] = None,
                   profile: Optional[str] = None,
-                  only_tasks: Optional[Sequence[str]] = None) -> dict[str, object]:
+                  only_tasks: Optional[Sequence[str]] = None,
+                  resume: bool = True, deadline: Optional[float] = None,
+                  max_failures: int = 0, fail_fast: bool = False,
+                  jobs: int = 0) -> dict[str, object]:
     """Run validators/review/e2e independently and aggregate truthful layer results.
 
     ``only_tasks`` scopes the batch smoke gate to the tasks merged by this run;
@@ -896,10 +969,28 @@ def verify_layers(root: str, directory: str, layers: Optional[str] = None,
         elif name == "review":
             layer_results[name] = _review_layer(root, directory)
         else:
-            layer_results[name] = _e2e_layer(root, directory, tasks, requirement_gate)
+            layer_results[name] = _e2e_layer(
+                root, directory, tasks, requirement_gate,
+                profile=resolved_profile, resume=resume, deadline=deadline,
+                max_failures=max_failures, fail_fast=fail_fast, jobs=jobs,
+            )
     result = _aggregate_layers(layer_results, resolved_profile, selected)
-    if (requirement_gate and resolved_profile == "full" and result["decision"] == "pass"
-            and result["reason"] != "nothing_to_verify"):
+    if requirement_gate and resolved_profile == "full" and result["decision"] == "pass":
+        context_path = Path(directory) / "spec-context.yml"
+        if context_path.is_file():
+            context = load_context(str(context_path))
+            mismatches = [
+                {"task": task_id, "issues": list(issues)}
+                for task_file, task_id, _ in tasks
+                for issues in (task_truth_issues(str(task_file), task_id, context),)
+                if issues
+            ]
+            if mismatches:
+                result["decision"] = "block"
+                result["reason"] = "task_status_truth_mismatch"
+                result["tasks"] = mismatches
+                return result
+        _compact_requirement_contexts(root, directory)
         _promote_verified(tasks)
     return result
 
@@ -931,6 +1022,26 @@ def verify_e2e(root: str, directory: str, layers: Optional[str] = None,
             if key in layer_map["e2e"]:
                 result[key] = layer_map["e2e"][key]
     return result
+
+
+def archive_requirement(root: str, directory: str) -> dict[str, object]:
+    """Runtime archive gate: full verify first, then move the requirement dir."""
+    from datetime import date
+    from pathlib import Path as _Path
+
+    result = verify_layers(root, directory, layers=",".join(VERIFY_LAYERS), profile="full")
+    if result.get("decision") != "pass":
+        return {"decision": "block", "reason": "archive_verify_failed", "verify": result}
+    source = _Path(directory)
+    base = _Path(root) / ".code-flow/tasks/archived" / date.today().isoformat()
+    target = base / source.name
+    suffix = 2
+    while target.exists():
+        target = base / f"{source.name}-{suffix}"
+        suffix += 1
+    base.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(source), str(target))
+    return {"decision": "pass", "archived_to": str(target)}
 
 
 def confirm_manual(root: str, directory: str, refs: Sequence[str], scenarios: Sequence[str],
@@ -1006,7 +1117,7 @@ def _verify_layers_argument(layers: str, checks: bool) -> Optional[str]:
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
     parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND") or None)
     parser.add_argument("action", choices=("finish", "block", "resume", "verify", "verify-e2e",
-                                           "confirm-manual", "cleanup-session"),
+                                           "confirm-manual", "cleanup-session", "archive"),
                         metavar=os.environ.get("CF_RUNTIME_ACTION") or None)
     parser.add_argument("--root", default=os.getcwd())
     parser.add_argument("--task-dir", required=True)
@@ -1017,6 +1128,11 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--checks", action="store_true",
                         help="alias for --layers validators (cf-validate compatible entry)")
     parser.add_argument("--profile", default="", help="verify profile: smoke,changed,full (default changed)")
+    parser.add_argument("--resume", action="store_true", default=False, help="resume from the first unfinished check")
+    parser.add_argument("--deadline", type=float, default=0.0, help="absolute monotonic deadline (0 = unbounded)")
+    parser.add_argument("--max-failures", type=int, default=0, help="stop after N failed checks (0 = unlimited)")
+    parser.add_argument("--fail-fast", action="store_true", default=False, help="stop after the first failed check")
+    parser.add_argument("--jobs", type=int, default=0, help="parallel check workers (0 = automatic)")
     parser.add_argument("--reason", default="")
     parser.add_argument("--refs", default="")
     parser.add_argument("--scenarios", default="")
@@ -1031,9 +1147,15 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
         if Path(root) not in Path(directory).parents:
             raise ValueError("task directory outside project")
         recover_transition(root)
-        if args.action == "verify":
+        if args.action == "archive":
+            result = archive_requirement(root, directory)
+        elif args.action == "verify":
             layers = _verify_layers_argument(args.layers, args.checks)
-            result = verify_layers(root, directory, layers, args.profile or None)
+            result = verify_layers(
+                root, directory, layers, args.profile or None,
+                resume=args.resume, deadline=args.deadline or None,
+                max_failures=args.max_failures, fail_fast=args.fail_fast, jobs=args.jobs,
+            )
         elif args.action == "verify-e2e":
             result = verify_e2e(root, directory, args.layers or None, args.profile or None)
         elif args.action == "cleanup-session":

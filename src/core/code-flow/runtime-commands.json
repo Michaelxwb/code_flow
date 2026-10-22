@@ -192,6 +192,13 @@
         "sync"
       ],
       "example_args": "--help"
+    },
+    "task archive": {
+      "module": "cf_task_workflow",
+      "prefix": [
+        "archive"
+      ],
+      "example_args": "--task-dir \"<需求目录>\" --root \"$PWD\" --json"
     }
   }
 }

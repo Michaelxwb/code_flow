@@ -353,7 +353,8 @@ def test_isolated_check_injects_worktree_namespace(tmp_path: Path) -> None:
 
     assert result["decision"] == "pass", result
     injected = json.loads(isolated_out.read_text(encoding="utf-8"))
-    assert injected["CF_WORKTREE_ID"] == tmp_path.name
+    assert injected["CF_WORKTREE_ID"].startswith(tmp_path.name)
+    assert injected["CF_WORKTREE_ID"] != tmp_path.name, "namespace 必须包含路径哈希以避免跨批次碰撞"
     assert injected["CF_TASK_ID"] == "TASK-008"
     assert injected["CF_RUN_ID"]
     assert int(injected["CF_PORT_OFFSET"]) >= 10000
@@ -370,7 +371,8 @@ def test_shared_env_scope_is_never_parallel_safe() -> None:
 
     assert effective_parallel_safe({"env_scope": "shared", "parallel_safe": True}) is False
     assert effective_parallel_safe({"env_scope": "shared"}) is False
-    assert effective_parallel_safe({"env_scope": "isolated"}) is True
+    assert effective_parallel_safe({"env_scope": "isolated"}) is False
+    assert effective_parallel_safe({"env_scope": "isolated", "parallel_safe": True}) is True
     assert effective_parallel_safe({"env_scope": "isolated", "parallel_safe": False}) is False
 
 
