@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+import fnmatch
 import json
 import os
 from pathlib import Path
@@ -13,16 +14,21 @@ import sys
 from cf_acceptance_manifest import record_manual_evidence
 from cf_acceptance_runner import run_manifest
 from cf_acceptance_schema import load_manifest, validate_execution_baseline, verified_evidence
-from cf_spec_context import (ContextError, Decision, SpecContext, _git_changes, _run_git,
-                             apply_decision, load_context, save_context)
-from cf_spec_gate import validate_stage
+from cf_exec_base import execution_session
+from cf_spec_context import (ContextError, DEFAULT_ACTIVE_EXCLUDES, Decision, SpecContext,
+                             _git_changes, _run_git, apply_decision, load_active_task,
+                             load_context, save_context, start_active_task)
+from cf_spec_gate import evidence_deferral_kind, validate_stage
 from cf_spec_metadata import load_spec_metadata
+from cf_spec_session import context_sha256
 from cf_spec_verify import VerificationScope, _git_tracked_files, run_all_verifiers
 from cf_task_index import parse_task_file
-from cf_task_runtime import _apply_evidence, _evidence_data, run_done_gate
+from cf_task_runtime import (_NON_EXECUTION_ERRORS, _apply_evidence, _evidence_data,
+                             run_done_gate)
 from cf_workflow_service import (FINISHED_STATUSES, _require_marker_task,
-                                 _sync_markdown, block_task, cleanup_session_projections,
-                                 complete_task, locate_task_file, provisional_task,
+                                 _sync_markdown, block_task, check_startable,
+                                 cleanup_session_projections, complete_task,
+                                 locate_task_file, provisional_task, read_task_section,
                                  remove_session_projection, resume_task, task_truth_issues)
 from cf_workflow_transaction import recover_transition
 
@@ -66,6 +72,321 @@ def finish_task(root: str, directory: str, task_file: str, task_id: str) -> dict
     if hints:
         result["deferred_hint"] = " | ".join(hints)
     return result
+
+
+_CAPABILITY_LINE = re.compile(r"^- \*\*(?:Capability|Demo)\*\*:[ \t]*(.*)$")
+
+
+def _normalize_capability(value: str) -> str:
+    return " ".join(value.split()).casefold()
+
+
+def _task_capability(task_file: Path, task_id: str) -> str:
+    """Read the user-demonstrable capability declared by one TASK section."""
+    try:
+        section = read_task_section(str(task_file), task_id)
+    except ValueError:
+        return ""
+    for line in section.splitlines():
+        match = _CAPABILITY_LINE.match(line)
+        if match:
+            return " ".join(match.group(1).split())
+    return ""
+
+
+def _unique_ids(values: Sequence[str]) -> list[str]:
+    seen: set[str] = set()
+    chosen: list[str] = []
+    for value in values:
+        task_id = value.strip()
+        if task_id and task_id not in seen:
+            seen.add(task_id)
+            chosen.append(task_id)
+    return chosen
+
+
+def _batch_selection(directory: Path, tasks: Sequence[str],
+                     capability: str) -> tuple[list[tuple[Path, str, str]], str]:
+    """Resolve --batch IDs or a --capability name to TASK file/status tuples."""
+    available = _demand_tasks(directory)
+    by_id = {task_id: (task_file, status) for task_file, task_id, status in available}
+    if capability.strip():
+        wanted = _normalize_capability(capability)
+        selected = [
+            (task_file, task_id, status)
+            for task_file, task_id, status in available
+            if _normalize_capability(_task_capability(task_file, task_id)) == wanted
+        ]
+        if not selected:
+            known = sorted({_task_capability(f, t) for f, t, _ in available} - {""})
+            raise ValueError(
+                f"unknown_capability: {capability.strip()}; available: {', '.join(known) or 'none'}"
+            )
+        return selected, "capability"
+    chosen = _unique_ids(tasks)
+    if not chosen:
+        raise ValueError("batch_empty: pass --batch TASK-... or --capability <name>")
+    unknown = [task_id for task_id in chosen if task_id not in by_id]
+    if unknown:
+        raise ValueError(f"unknown_tasks: {', '.join(unknown)}")
+    return [(by_id[task_id][0], task_id, by_id[task_id][1]) for task_id in chosen], "batch"
+
+
+def _batch_working_changes(root: str) -> tuple[str, ...]:
+    """Current business changes, ignoring the paths the active marker excludes."""
+    return tuple(sorted(
+        path for path in _git_changes(root)
+        if not any(fnmatch.fnmatchcase(path, pattern) for pattern in DEFAULT_ACTIVE_EXCLUDES)
+    ))
+
+
+def _batch_active_task(root: str) -> str:
+    if not (Path(root) / ".code-flow/.active-task.json").exists():
+        return ""
+    return load_active_task(root).task_id
+
+
+def _ensure_batch_marker(root: str, directory: str, task_id: str) -> bool:
+    """Open a transient marker for one batch task; returns True when created.
+
+    A pre-existing marker is only accepted for the same TASK. Other TASKs are
+    rejected: silently switching identity would let a batch finish arbitrary
+    work that was never started.
+    """
+    marker = Path(root) / ".code-flow/.active-task.json"
+    if marker.exists():
+        active = load_active_task(root)
+        if active.task_id != task_id:
+            raise ValueError(f"active_mismatch: marker={active.task_id} requested={task_id}")
+        if active.status != "active":
+            raise ValueError(f"active_not_ready: {active.task_id} is {active.status}")
+        return False
+    context = load_context(str(Path(directory) / "spec-context.yml"))
+    start_active_task(root, directory, task_id, context_sha256(context), _batch_working_changes(root))
+    return True
+
+
+def _abandon_batch_marker(root: str) -> bool:
+    """Drop a batch marker without changing the Markdown view.
+
+    A failed TASK must stay open (draft/in-progress) and must not claim done;
+    the marker only holds the single active slot, so it cannot be left behind
+    while the rest of the batch continues.
+    """
+    marker = Path(root) / ".code-flow/.active-task.json"
+    if not marker.exists():
+        return False
+    from cf_spec_context import doctor_active_task
+
+    doctor_active_task(root, "", abandon=True)
+    return True
+
+
+def _task_evidence_counts(evidence: Sequence[Mapping[str, object]]) -> tuple[int, int]:
+    executed = reused = 0
+    for item in evidence:
+        if evidence_deferral_kind(item) in ("review_stage", "heavy"):
+            continue
+        if item.get("error_code") in _NON_EXECUTION_ERRORS:
+            continue
+        details = item.get("details")
+        details = details if isinstance(details, Mapping) else {}
+        if details.get("cache_reused"):
+            reused += 1
+        else:
+            executed += 1
+    return executed, reused
+
+
+def _acceptance_task_evidence(directory: str, task_id: str) -> list[dict[str, object]]:
+    """Project the TASK's persisted manifest rows into per-check evidence."""
+    manifest = Path(directory) / ".acceptance-manifest.json"
+    if not manifest.is_file():
+        return []
+    try:
+        data = load_manifest(manifest)
+    except (OSError, ValueError):
+        return []
+    items: list[dict[str, object]] = []
+    for row in data.get("scenarios") or ():
+        if not isinstance(row, Mapping):
+            continue
+        owner = row.get("owner")
+        if isinstance(owner, str) and owner and owner != task_id:
+            continue
+        record = row.get("evidence")
+        if not isinstance(record, Mapping):
+            continue
+        scenario_id = str(row.get("id", ""))
+        check_id = str(row.get("check") or scenario_id)
+        verified = row.get("status") == "verified"
+        items.append({
+            "verifier_ref": check_id,
+            "check_id": check_id,
+            "status": "verified" if verified else "unverified",
+            "error_code": None if verified else "acceptance_failed",
+            "details": {"scenario": scenario_id, "cache_reused": bool(record.get("cache_reused"))},
+        })
+    return items
+
+
+def _finish_batch_task(root: str, directory: str, task_file: str, task_id: str) -> dict[str, object]:
+    """Run one TASK inside the shared batch execution session."""
+    activated = _ensure_batch_marker(root, directory, task_id)
+    try:
+        gate = run_done_gate(root, directory, task_id=task_id)
+        evidence = [*gate.evidence, *_acceptance_task_evidence(directory, task_id)]
+        executed, reused = _task_evidence_counts(evidence)
+        if gate.decision == "pass":
+            completed = complete_task(root, directory, task_file, task_id, True)
+            result = {
+                **completed,
+                "task": task_id,
+                "decision": "pass",
+                "status": "done",
+                "activated": activated,
+                "executed": executed,
+                "reused": reused,
+                "evidence": evidence,
+                "session_projection": remove_session_projection(root, task_file),
+            }
+            return result
+        result = {
+            "task": task_id,
+            "decision": gate.decision,
+            "status": "unchanged",
+            "reason": gate.message,
+            "activated": activated,
+            "executed": executed,
+            "reused": reused,
+            "missing_checks": list(gate.missing_checks),
+            "next": gate.next_action,
+            "evidence": evidence,
+        }
+        result["marker_cleared"] = _abandon_batch_marker(root)
+        return result
+    except Exception:
+        _abandon_batch_marker(root)
+        raise
+
+
+def _aggregate_batch_checks(
+    results: Sequence[Mapping[str, object]],
+) -> tuple[list[dict[str, object]], int, int]:
+    """Fold per-task evidence into one entry per check (executed once, reused N)."""
+    checks: dict[str, dict[str, object]] = {}
+    order: list[str] = []
+    for result in results:
+        task = str(result.get("task", ""))
+        evidence = result.get("evidence")
+        if not isinstance(evidence, Sequence):
+            continue
+        for item in evidence:
+            if not isinstance(item, Mapping):
+                continue
+            kind = evidence_deferral_kind(item)
+            if kind in ("review_stage", "heavy"):
+                continue
+            check_id = str(item.get("verifier_ref") or item.get("check_id") or "")
+            if not check_id:
+                continue
+            entry = checks.get(check_id)
+            if entry is None:
+                entry = {"check_id": check_id, "status": "verified", "tasks": [],
+                         "executions": 0, "reused": 0}
+                checks[check_id] = entry
+                order.append(check_id)
+            if task and task not in entry["tasks"]:
+                entry["tasks"].append(task)
+            if item.get("status") != "verified":
+                entry["status"] = "failed"
+            if item.get("error_code") in _NON_EXECUTION_ERRORS:
+                continue
+            if entry["executions"] == 0:
+                entry["executions"] = 1
+            else:
+                entry["reused"] = int(entry["reused"]) + 1
+    aggregated = [checks[check_id] for check_id in order]
+    executed = sum(1 for item in aggregated if int(item["executions"]) > 0)
+    reused = sum(int(item["reused"]) for item in aggregated)
+    return aggregated, executed, reused
+
+
+def _run_batch_tasks(root: str, directory: str,
+                     selected: Sequence[tuple[Path, str, str]]) -> list[dict[str, object]]:
+    results: list[dict[str, object]] = []
+    with execution_session():
+        for task_file, task_id, status in selected:
+            if status in FINISHED_STATUSES:
+                results.append({"task": task_id, "decision": "pass", "status": "already_done",
+                                "reason": "already_done", "activated": False,
+                                "executed": 0, "reused": 0, "evidence": []})
+                continue
+            blockers = check_startable(str(task_file), task_id)
+            if blockers:
+                results.append({"task": task_id, "decision": "block", "status": status,
+                                "reason": "start_blocked", "blockers": blockers,
+                                "activated": False, "executed": 0, "reused": 0, "evidence": []})
+                continue
+            try:
+                results.append(_finish_batch_task(root, directory, str(task_file), task_id))
+            except (OSError, ValueError) as exc:
+                results.append({"task": task_id, "decision": "block", "status": status,
+                                "reason": "batch_task_error", "error": str(exc),
+                                "activated": False, "executed": 0, "reused": 0, "evidence": []})
+    return results
+
+
+def _batch_payload(results: Sequence[Mapping[str, object]], selected: Sequence[tuple[Path, str, str]],
+                   mode: str, capability: str) -> dict[str, object]:
+    checks, executed, reused = _aggregate_batch_checks(results)
+    decisions = {str(item.get("decision")) for item in results}
+    decision = "block" if "block" in decisions else "provisional" if "provisional" in decisions else "pass"
+    failed = [str(item["task"]) for item in results if item.get("decision") == "block"]
+    first_reason = next(
+        (str(item.get("reason", "")) for item in results if item.get("decision") != "pass"), ""
+    )
+    return {
+        "decision": decision,
+        "action": "finish-batch",
+        "reason": "batch_failed: " + ", ".join(failed) if failed else first_reason,
+        "selection": {"mode": mode, "tasks": [item[1] for item in selected],
+                      "capability": capability.strip() or None},
+        "results": list(results),
+        "evidence": checks,
+        "executed": executed,
+        "reused": reused,
+        "failed": failed,
+        "env_blocked": sum(
+            1 for item in results if str(item.get("reason", "")).startswith("env")
+        ),
+        "incomplete": sum(1 for item in results if item.get("decision") == "provisional"),
+    }
+
+
+def finish_batch(root: str, directory: str, tasks: Sequence[str] = (),
+                 capability: str = "") -> dict[str, object]:
+    """Batch Done Gate: one shared execution session for a TASK list/capability.
+
+    Every selected TASK is gated independently, so one failure does not mark
+    the others done or block their completion. Code checks shared by the batch
+    execute once inside the session; their evidence is folded per check.
+    """
+    recover_transition(root)
+    selected, mode = _batch_selection(Path(directory), tasks, capability)
+    active_id = _batch_active_task(root)
+    selected_ids = [task_id for _, task_id, _ in selected]
+    if active_id and active_id not in selected_ids:
+        return {
+            "decision": "block",
+            "action": "finish-batch",
+            "reason": "active_mismatch",
+            "detail": f"marker={active_id}; batch={','.join(selected_ids)}",
+            "results": [],
+        }
+    # The active TASK must be consumed before any transient marker is opened.
+    selected.sort(key=lambda item: 0 if item[1] == active_id else 1)
+    return _batch_payload(_run_batch_tasks(root, directory, selected), selected, mode, capability)
 
 
 def _demand_tasks(directory: Path) -> list[tuple[Path, str, str]]:
@@ -681,6 +1002,8 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--root", default=os.getcwd())
     parser.add_argument("--task-dir", required=True)
     parser.add_argument("--task", default="")
+    parser.add_argument("--batch", default="", help="finish multiple TASKs: TASK-001,TASK-002")
+    parser.add_argument("--capability", default="", help="finish every TASK whose Capability matches")
     parser.add_argument("--layers", default="", help="verify layers: validators,review,e2e (default all)")
     parser.add_argument("--profile", default="", help="verify profile: smoke,changed,full (default changed)")
     parser.add_argument("--reason", default="")
@@ -708,6 +1031,10 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
             scenarios = [item.strip() for item in args.scenarios.split(",") if item.strip()]
             result = confirm_manual(root, directory, refs, scenarios, args.confirmed_by, args.source,
                                     args.reason, args.evidence)
+        elif args.action == "finish" and (args.batch or args.capability):
+            result = finish_batch(root, directory,
+                                  [item for item in args.batch.split(",") if item.strip()],
+                                  args.capability)
         else:
             task = locate_task_file(directory, args.task)
             if task is None:

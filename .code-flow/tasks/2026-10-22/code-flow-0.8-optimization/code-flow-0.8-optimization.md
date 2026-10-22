@@ -645,7 +645,7 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ## TASK-013: 批量 finish 与证据聚合
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-011,TASK-012
 - **Source**: code-flow-0.8-optimization.design.md#3.5.1 状态机与门禁, code-flow-0.8-optimization.design.md#3.4 接口设计
@@ -660,11 +660,11 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 ### Checklist
 
-- [ ] 实现 task finish --batch 或 --capability。
-- [ ] 一次执行同能力 code checks，证据按 check 聚合。
-- [ ] 批量结果逐任务返回；单任务可重跑。
-- [ ] 与并行 collect/merge 兼容。
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 实现 task finish --batch 或 --capability。
+- [x] 一次执行同能力 code checks，证据按 check 聚合。
+- [x] 批量结果逐任务返回；单任务可重跑。
+- [x] 与并行 collect/merge 兼容。
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
@@ -676,8 +676,16 @@ RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module name
 
 > 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
 
+| 验证点 | RED | GREEN | 断言位置 | 真实组件证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| 批量共享 check / 失败隔离 / 逐任务结果 / CLI | `python3 -m pytest -q tests/test_cf_task_batch.py` → collection error: `ImportError: cannot import name 'finish_batch' from 'cf_task_workflow'` | 同命令 → **5 passed in 1.50s**；相关回归 `tests/test_cf_task_*.py` → **107 passed**；全仓 → **655 passed in 54.57s** | `test_batch_shared_check_executes_once_and_returns_per_task_results`、`test_failed_task_does_not_block_other_tasks_or_write_done`、`test_capability_selection_finishes_every_matching_task`、`test_batch_rerun_skips_done_tasks_without_duplicate_evidence`、`test_cli_finish_batch_flag_returns_per_task_json` | 真实 git 仓库 + 3 个 TASK + 真实 command verifier 子进程（marker 文件仅 `x` 一次）+ 真实 `run_manifest` schema3 check（`CHK-SHARED` 跨 2 个 TASK 只执行一次）；失败 TASK-002 保持 `draft` 且 marker 清理，TASK-001/003 均 `done`；context 证据仅 1 条（无重复追加） | verified |
+
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] RED：`tests/test_cf_task_batch.py` collection error（`finish_batch` 未实现）。
+- [2026-10-22] GREEN：`task finish --batch/--capability` 在一个 execution session 内逐任务 Done Gate；共享 check 只执行 1 次、证据按 check 聚合；失败任务不写 done 且不阻断其他任务；5 passed，全仓 655 passed。
+- [2026-10-22] completed (done)
 
 ---
 
