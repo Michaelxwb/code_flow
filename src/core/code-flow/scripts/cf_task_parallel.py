@@ -217,6 +217,21 @@ def _install_worktree_manifest(root: Path, worktree: Path) -> None:
         return  # Core-only repositories have no installed platform runtime.
     try:
         verify_install(str(root))
+        # Platform files such as .claude/settings.local.json are commonly
+        # gitignored, so a fresh worktree does not receive them from checkout.
+        # Copy every managed artifact that is missing before verifying.
+        manifest = json.loads(source.read_text(encoding="utf-8"))
+        for relative in manifest.get("files", {}):
+            if not isinstance(relative, str) or not relative:
+                continue
+            target_file = worktree / relative
+            if target_file.exists():
+                continue
+            source_file = root / relative
+            if not source_file.is_file():
+                continue
+            target_file.parent.mkdir(parents=True, exist_ok=True)
+            target_file.write_bytes(source_file.read_bytes())
         target = worktree / ".code-flow/.runtime-install.json"
         target.write_bytes(source.read_bytes())
         verify_install(str(worktree))

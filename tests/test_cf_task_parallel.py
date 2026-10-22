@@ -67,6 +67,7 @@ GITIGNORE = """.active-task.json
 .debug.log
 specs/_session/
 worktrees/
+.claude/settings.local.json
 """
 
 
@@ -425,3 +426,29 @@ def test_cli_merge_emits_json(tmp_path: Path) -> None:
     payload = json.loads(stdout.getvalue())
     assert payload["ok"] is True
     assert payload["results"][0]["status"] == "merged"
+
+
+
+def test_prepare_copies_ignored_managed_artifacts(tmp_path: Path) -> None:
+    """settings.local.json 常被 gitignore，worktree 也必须拿到并通过对账。"""
+    import hashlib
+
+    root = _repo(tmp_path)
+    settings = root / ".claude/settings.local.json"
+    settings.parent.mkdir()
+    settings.write_text('{"hooks": {}}\n', encoding="utf-8")
+    runtime = root / ".code-flow/runtime-commands.json"
+    runtime.write_text("{}\n", encoding="utf-8")
+    (root / ".code-flow/.version").write_text("0.7.0", encoding="utf-8")
+    manifest = {"schema_version": 1, "version": "0.7.0", "files": {
+        ".claude/settings.local.json": hashlib.sha256(settings.read_bytes()).hexdigest(),
+        ".code-flow/runtime-commands.json": hashlib.sha256(runtime.read_bytes()).hexdigest(),
+    }}
+    (root / ".code-flow/.runtime-install.json").write_text(json.dumps(manifest), encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "runtime")
+
+    result = prepare(root, TASK_FILE, ["TASK-001"], "run-1")
+    assert result["ok"] is True
+    copied = Path(result["worktrees"][0]["path"]) / ".claude/settings.local.json"
+    assert copied.read_text(encoding="utf-8") == '{"hooks": {}}\n'
