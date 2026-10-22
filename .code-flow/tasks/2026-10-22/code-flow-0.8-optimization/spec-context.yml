@@ -1,7 +1,7 @@
 version: 1
 task: code-flow-0.8-optimization
 enforcement: required
-updated_at: '2026-10-22T06:27:12.741784+00:00'
+updated_at: '2026-10-22T06:30:14.332917+00:00'
 sources:
 - type: cli
   ref: bind
@@ -256,6 +256,18 @@ bindings:
             reason: review_stage
             deferral_kind: review_stage
             deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
+          executed_at: '2026-10-22T06:38:51.161523+00:00'
+          status: unverified
+          rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
+          artifact_sha256: null
+          diff_sha256: 50b02f0c163208eb8d20a4c282c7c9dcc0c4904c8bc3eed759978f0274ca118e
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
       design:
         status: applied
         refs:
@@ -275,7 +287,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
-          artifact_sha256: 6a7a2e73b1e841d6366526646911059ad51fdb4764ffc62731550ef008ab3eda
+          artifact_sha256: f51975e51d8c5e3ee310741b166cce835a3fb5c35e9c793365d45a33d0678451
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
@@ -569,6 +581,18 @@ bindings:
             reason: review_stage
             deferral_kind: review_stage
             deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
+          executed_at: '2026-10-22T06:38:51.161543+00:00'
+          status: unverified
+          rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
+          artifact_sha256: null
+          diff_sha256: 50b02f0c163208eb8d20a4c282c7c9dcc0c4904c8bc3eed759978f0274ca118e
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
       design:
         status: applied
         refs:
@@ -588,7 +612,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 6a7a2e73b1e841d6366526646911059ad51fdb4764ffc62731550ef008ab3eda
+          artifact_sha256: f51975e51d8c5e3ee310741b166cce835a3fb5c35e9c793365d45a33d0678451
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-005
           item_id: TASK-005
@@ -1112,6 +1136,18 @@ bindings:
             reason: review_stage
             deferral_kind: review_stage
             deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
+          executed_at: '2026-10-22T06:38:51.161549+00:00'
+          status: unverified
+          rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
+          artifact_sha256: null
+          diff_sha256: 50b02f0c163208eb8d20a4c282c7c9dcc0c4904c8bc3eed759978f0274ca118e
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
       design:
         status: applied
         refs:
@@ -1131,7 +1167,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
-          artifact_sha256: 6a7a2e73b1e841d6366526646911059ad51fdb4764ffc62731550ef008ab3eda
+          artifact_sha256: f51975e51d8c5e3ee310741b166cce835a3fb5c35e9c793365d45a33d0678451
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
@@ -1689,6 +1725,18 @@ bindings:
             reason: review_stage
             deferral_kind: review_stage
             deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
+          executed_at: '2026-10-22T06:38:51.161554+00:00'
+          status: unverified
+          rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
+          artifact_sha256: null
+          diff_sha256: 50b02f0c163208eb8d20a4c282c7c9dcc0c4904c8bc3eed759978f0274ca118e
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
       design:
         status: applied
         refs:
@@ -1708,7 +1756,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 6a7a2e73b1e841d6366526646911059ad51fdb4764ffc62731550ef008ab3eda
+          artifact_sha256: f51975e51d8c5e3ee310741b166cce835a3fb5c35e9c793365d45a33d0678451
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-002
           item_id: TASK-002
@@ -2185,6 +2233,18 @@ bindings:
             reason: review_stage
             deferral_kind: review_stage
             deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
+          executed_at: '2026-10-22T06:38:51.161558+00:00'
+          status: unverified
+          rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
+          artifact_sha256: null
+          diff_sha256: 50b02f0c163208eb8d20a4c282c7c9dcc0c4904c8bc3eed759978f0274ca118e
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
       design:
         status: applied
         refs:
@@ -2204,7 +2264,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
-          artifact_sha256: 6a7a2e73b1e841d6366526646911059ad51fdb4764ffc62731550ef008ab3eda
+          artifact_sha256: f51975e51d8c5e3ee310741b166cce835a3fb5c35e9c793365d45a33d0678451
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
@@ -2546,6 +2606,18 @@ bindings:
             reason: review_stage
             deferral_kind: review_stage
             deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
+          executed_at: '2026-10-22T06:38:51.161563+00:00'
+          status: unverified
+          rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
+          artifact_sha256: null
+          diff_sha256: 50b02f0c163208eb8d20a4c282c7c9dcc0c4904c8bc3eed759978f0274ca118e
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
       design:
         status: applied
         refs:
@@ -2565,7 +2637,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
-          artifact_sha256: 6a7a2e73b1e841d6366526646911059ad51fdb4764ffc62731550ef008ab3eda
+          artifact_sha256: f51975e51d8c5e3ee310741b166cce835a3fb5c35e9c793365d45a33d0678451
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
@@ -2946,6 +3018,17 @@ bindings:
           details:
             checked_files: 0
             violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-10-22T06:39:06.610393+00:00'
+          status: verified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: 50b02f0c163208eb8d20a4c282c7c9dcc0c4904c8bc3eed759978f0274ca118e
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
       design:
         status: applied
         refs:
@@ -2965,7 +3048,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 70a109fdbad50fac0280899a35e515e5468d7997816212b4aae2f93b94a8dffd
+          artifact_sha256: f51975e51d8c5e3ee310741b166cce835a3fb5c35e9c793365d45a33d0678451
         decision: null
         evidence: []
       review:
@@ -3162,6 +3245,17 @@ bindings:
           details:
             checked_files: 8
             violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-10-22T06:39:06.613396+00:00'
+          status: verified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: 50b02f0c163208eb8d20a4c282c7c9dcc0c4904c8bc3eed759978f0274ca118e
+          result_sha256: fe2a22f5c0fecfb6bbced497722c0f2fe0c01f65b0a24927c625f05e6d5ff48a
+          error_code: null
+          details:
+            checked_files: 9
+            violations: []
       design:
         status: applied
         refs:
@@ -3181,7 +3275,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 70a109fdbad50fac0280899a35e515e5468d7997816212b4aae2f93b94a8dffd
+          artifact_sha256: f51975e51d8c5e3ee310741b166cce835a3fb5c35e9c793365d45a33d0678451
         decision: null
         evidence: []
       review:
@@ -4012,6 +4106,34 @@ bindings:
               69 passed in 9.40s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-10-22T06:39:00.862976+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: 50b02f0c163208eb8d20a4c282c7c9dcc0c4904c8bc3eed759978f0274ca118e
+          result_sha256: 08807fbb6eaf013bd6d605211ab1d365ecd842de4db1f645e1995d7756b97b6b
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            - tests/test_codex_native_hook.py
+            - tests/test_opencode_native.py
+            - tests/test_runtime_contract.py
+            exit_code: 0
+            stdout_sha256: 0b02da39f72b8d99fded436480453f9b9f3c86c8bc095bc7b2c937cd09912825
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '.....................................................................    [100%]
+
+              69 passed in 9.56s
+
+              '
       design:
         status: applied
         refs:
@@ -4031,7 +4153,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 70a109fdbad50fac0280899a35e515e5468d7997816212b4aae2f93b94a8dffd
+          artifact_sha256: f51975e51d8c5e3ee310741b166cce835a3fb5c35e9c793365d45a33d0678451
         decision: null
         evidence: []
       review:
@@ -4655,6 +4777,31 @@ bindings:
               60 passed in 4.61s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-10-22T06:39:06.005204+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: 50b02f0c163208eb8d20a4c282c7c9dcc0c4904c8bc3eed759978f0274ca118e
+          result_sha256: 16b5a836ddb6287e02c9c80f1f217624601e415d44473cedd22f1f1b4883fc05
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            stdout_sha256: 9cb0f1a8c32d8b41c4107ce11c7236f7d873007bafcb9dd11336c2ea293fef67
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '............................................................             [100%]
+
+              60 passed in 4.96s
+
+              '
       design:
         status: applied
         refs:
@@ -4674,7 +4821,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 70a109fdbad50fac0280899a35e515e5468d7997816212b4aae2f93b94a8dffd
+          artifact_sha256: f51975e51d8c5e3ee310741b166cce835a3fb5c35e9c793365d45a33d0678451
         decision: null
         evidence: []
       review:
@@ -5574,6 +5721,31 @@ bindings:
               22 passed in 0.38s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-10-22T06:39:06.609821+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: 50b02f0c163208eb8d20a4c282c7c9dcc0c4904c8bc3eed759978f0274ca118e
+          result_sha256: 508ee6e244532de868ac8e9ece3de8c09874d1f2188d5535bc10c522b1717b34
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            stdout_sha256: d18132970bc119f4f713b06f888b3ca89e19e754db94aad71acc4649d7a66c0f
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '......................                                                   [100%]
+
+              22 passed in 0.43s
+
+              '
       design:
         status: applied
         refs:
@@ -5593,7 +5765,7 @@ bindings:
         - artifact: code-flow-0.8-optimization.md
           section_id: TASK-017
           item_id: TASK-017
-          artifact_sha256: 70a109fdbad50fac0280899a35e515e5468d7997816212b4aae2f93b94a8dffd
+          artifact_sha256: f51975e51d8c5e3ee310741b166cce835a3fb5c35e9c793365d45a33d0678451
         decision: null
         evidence: []
       review:

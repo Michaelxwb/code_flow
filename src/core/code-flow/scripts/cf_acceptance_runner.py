@@ -32,12 +32,14 @@ from cf_acceptance_schema import load_manifest, validate_execution_baseline
 from cf_acceptance_evidence import persist_results
 from cf_evidence_store import EvidenceStore
 from cf_worktree_env import (
+    SharedEnvLockTimeout,
     check_environment,
     effective_parallel_safe,
     env_scope,
     is_isolated,
     preflight_commands,
     resolve_run_id,
+    shared_env_lock,
     worktree_namespace,
 )
 
@@ -457,6 +459,15 @@ def _unit_preflight(
     return {"status": "env_blocked", "missing": missing}
 
 
+def _execute_check(
+    check: Mapping[str, object], root: Path, env: Mapping[str, str], deadline: Optional[float]
+) -> dict[str, object]:
+    gated = _unit_preflight(check, root, env, deadline)
+    if gated is not None:
+        return gated
+    return _command_outcome(check, root, deadline, env)
+
+
 def _execute_unit(
     unit: Mapping[str, object], root: Path, include_e2e: bool, only_e2e: bool,
     deadline: Optional[float], namespace: Optional[Mapping[str, str]],
@@ -467,10 +478,18 @@ def _execute_unit(
     if not _unit_active(unit, include_e2e, only_e2e):
         return {"status": "not_included"}
     env = check_environment(check, str(root), namespace)
-    gated = _unit_preflight(check, root, env, deadline)
-    if gated is not None:
-        return gated
-    return _command_outcome(check, root, deadline, env)
+    if is_isolated(check):
+        return _execute_check(check, root, env, deadline)
+    # Shared services cannot be partitioned: every worktree serializes on the
+    # same lock, with a stale timeout so a crashed owner cannot stall a batch.
+    remaining = remaining_seconds(deadline)
+    if remaining is not None and remaining <= 0:
+        return {"status": "incomplete", "error": "deadline_exceeded"}
+    try:
+        with shared_env_lock(str(root), wait=remaining):
+            return _execute_check(check, root, env, deadline)
+    except SharedEnvLockTimeout as exc:
+        return {"status": "incomplete", "error": "shared_env_lock_timeout", "detail": str(exc)}
 
 
 def _parallel_safe(unit: Mapping[str, object]) -> bool:
