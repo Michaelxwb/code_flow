@@ -1,18 +1,36 @@
 #!/usr/bin/env python3
-"""Execute manifest scenarios with deterministic ordering and evidence."""
+"""Execute manifest scenarios with deterministic ordering, checkpoints and resume.
+
+Execution is scheduled per check: a check result is persisted as soon as it
+completes, so an interrupted run resumes from the first unfinished/failed check
+instead of starting over. Independent parallel-safe checks may overlap;
+`depends_on` edges serialize them. A global deadline or a failure budget stops
+new work and reports unrun checks as `incomplete`, never as failed/verified.
+"""
 
 from __future__ import annotations
 
 import argparse
-import os
+import hashlib
 import json
+import os
+import tempfile
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
 from typing import IO, Mapping, Optional, Sequence
 
-from cf_exec_base import execution_key, run_command, invalidate_executions, worktree_fingerprint
+from cf_exec_base import (
+    execution_key,
+    invalidate_executions,
+    remaining_seconds,
+    run_command,
+    worktree_fingerprint,
+)
 from cf_acceptance_schema import load_manifest, validate_execution_baseline
 from cf_acceptance_evidence import persist_results
+from cf_evidence_store import EvidenceStore
 from cf_worktree_env import (
     check_environment,
     effective_parallel_safe,
@@ -22,6 +40,16 @@ from cf_worktree_env import (
     resolve_run_id,
     worktree_namespace,
 )
+
+DEFAULT_JOBS = 4
+
+
+class AcceptanceInterrupted(KeyboardInterrupt):
+    """A checkpointed run was interrupted; carries the partial, truthful payload."""
+
+    def __init__(self, payload: Mapping[str, object]) -> None:
+        super().__init__("acceptance run interrupted")
+        self.payload = dict(payload)
 
 
 def _scenario_cwd(root: Path, item: Mapping[str, object]) -> str:
@@ -74,6 +102,30 @@ def _reusable(row: Optional[Mapping[str, object]], item: Mapping[str, object], f
     return float(evidence.get("timeout", 60)) == _scenario_timeout(item)
 
 
+def _command_outcome(
+    item: Mapping[str, object], root: Path, deadline: Optional[float],
+    env: Optional[Mapping[str, str]] = None,
+) -> dict[str, object]:
+    """Execute one command identity and normalize its execution status."""
+    command = item.get("command")
+    if not isinstance(command, list) or not command or not all(isinstance(value, str) for value in command):
+        return {"status": "not_configured"}
+    timeout_value = _scenario_timeout(item)
+    cwd = item.get("cwd", ".") if isinstance(item.get("cwd", "."), str) else "."
+    outcome = run_command(command, str(root / cwd), timeout_value, deadline, env=env)
+    if outcome["status"] == "deadline_exceeded":
+        return {"status": "incomplete", "error": "deadline_exceeded"}
+    if outcome["status"] == "timeout":
+        return {"status": "failed", "error": "timeout",
+                "output": str(outcome.get("stdout", ""))}
+    if outcome["status"] == "spawn_error":
+        return {"status": "failed", "error": str(outcome.get("stderr", ""))}
+    if outcome["returncode"] == 0:
+        return {"status": "passed", "exit_code": 0}
+    output = (str(outcome.get("stdout", "")) + str(outcome.get("stderr", ""))).strip()[-4000:]
+    return {"status": "failed", "exit_code": outcome["returncode"], "output": output}
+
+
 def _run(
     item: Mapping[str, object], root: Path, include_e2e: bool = False, deadline: Optional[float] = None,
     only_e2e: bool = False, env: Optional[Mapping[str, str]] = None,
@@ -86,23 +138,8 @@ def _run(
         return {"id": scenario_id, "kind": kind, "status": "manual_pending"}
     if kind == "e2e" and not include_e2e and not only_e2e:
         return {"id": scenario_id, "kind": kind, "status": "e2e_deferred"}
-    command = item.get("command")
-    if not isinstance(command, list) or not command or not all(isinstance(value, str) for value in command):
-        return {"id": scenario_id, "kind": kind, "status": "not_configured"}
-    timeout_value = _scenario_timeout(item)
-    cwd = item.get("cwd", ".") if isinstance(item.get("cwd", "."), str) else "."
-    outcome = run_command(command, str(root / cwd), timeout_value, deadline, env=env)
-    if outcome["status"] == "deadline_exceeded":
-        return {"id": scenario_id, "kind": kind, "status": "incomplete", "error": "deadline_exceeded"}
-    if outcome["status"] == "timeout":
-        return {"id": scenario_id, "kind": kind, "status": "failed", "error": "timeout",
-                "output": str(outcome.get("stdout", ""))}
-    if outcome["status"] == "spawn_error":
-        return {"id": scenario_id, "kind": kind, "status": "failed", "error": str(outcome.get("stderr", ""))}
-    if outcome["returncode"] == 0:
-        return {"id": scenario_id, "kind": kind, "status": "passed", "exit_code": 0}
-    output = (str(outcome.get("stdout", "")) + str(outcome.get("stderr", ""))).strip()[-4000:]
-    return {"id": scenario_id, "kind": kind, "status": "failed", "exit_code": outcome["returncode"], "output": output}
+    outcome = _command_outcome(item, root, deadline, env)
+    return {"id": scenario_id, "kind": kind, **outcome}
 
 
 def _preflight_failures(
@@ -156,30 +193,6 @@ def _env_blocked_result(
         "missing": [dict(entry) for entry in missing],
         "error": "env_preflight_failed",
     }
-
-
-def _gate_check(
-    item: Mapping[str, object], check: Optional[Mapping[str, object]], root: Path,
-    namespace: Optional[Mapping[str, str]], deadline: Optional[float],
-    preflighted: set[str], blocked: dict[str, list[dict[str, object]]],
-) -> Optional[dict[str, object]]:
-    """Return an env_blocked/incomplete result when a check cannot start."""
-    if check is None:
-        return None
-    check_id = str(check.get("id", item.get("check", "")))
-    if check_id not in preflighted:
-        preflighted.add(check_id)
-        missing = _preflight_failures(check, root, check_environment(check, str(root), namespace), deadline)
-        if missing:
-            blocked[check_id] = missing
-    if check_id not in blocked:
-        return None
-    missing = blocked[check_id]
-    # A global deadline is not an environment defect: report it as unexecuted.
-    if any(str(entry.get("reason")) == "deadline_exceeded" for entry in missing):
-        return {"id": str(item.get("id", "unknown")), "kind": str(item.get("kind", "functional")),
-                "status": "incomplete", "check_id": check_id, "error": "deadline_exceeded"}
-    return _env_blocked_result(item, check_id, missing)
 
 
 def _env_blocked_details(
@@ -276,72 +289,519 @@ def _identity_key(
     return key + json.dumps([item.get("kind", "functional"), include_e2e, only_e2e])
 
 
-def _cached_result(
-    item: Mapping[str, object], scenario_id: str, key: Optional[str],
-    rows: Optional[Mapping[str, Mapping[str, object]]], fingerprint: str,
-    include_e2e: bool, only_e2e: bool, use_cache: bool,
-) -> Optional[dict[str, object]]:
-    """Cross-run reuse result when identity+content still match."""
-    if not use_cache or key is None or rows is None or not _included(item, include_e2e, only_e2e):
+def _group_key(
+    item: Mapping[str, object], root: Path, include_e2e: bool, only_e2e: bool
+) -> Optional[str]:
+    """Schema2 compatibility: identical independent commands share one run."""
+    if item.get("depends_on") or not _included(item, include_e2e, only_e2e):
         return None
-    if not _reusable(rows.get(scenario_id), item, fingerprint):
-        return None
-    return {
-        "id": scenario_id,
-        "kind": str(item.get("kind", "functional")),
-        "status": "passed",
-        "exit_code": 0,
-        "cache_reused": True,
-    }
+    return _identity_key(item, root, include_e2e, only_e2e)
 
 
-def _run_unique(
-    ordered: list[Mapping[str, object]], root: Path, include_e2e: bool, deadline: Optional[float] = None,
-    only_e2e: bool = False, rows: Optional[Mapping[str, Mapping[str, object]]] = None,
-    fingerprint: str = "", use_cache: bool = True,
-    checks: Optional[Mapping[str, Mapping[str, object]]] = None,
-    namespace: Optional[Mapping[str, str]] = None,
-) -> list[dict[str, object]]:
-    """Reuse identical execution semantics within a dependency-free batch.
+def _unit_dependencies(
+    units: list[dict[str, object]], scenario_unit: Mapping[str, str],
+    by_id: Mapping[str, dict[str, object]],
+) -> None:
+    """Serialize a check when a scenario or the check itself declares depends_on."""
+    for unit in units:
+        wanted: list[str] = []
+        check = unit.get("check")
+        raw = check.get("depends_on", []) if isinstance(check, Mapping) else []
+        if isinstance(raw, list):
+            wanted.extend(str(dep) for dep in raw)
+        for item in unit["scenarios"]:
+            deps = item.get("depends_on", [])
+            if isinstance(deps, list):
+                wanted.extend(str(dep) for dep in deps)
+        resolved: list[str] = []
+        for dep in wanted:
+            target = by_id.get(dep)
+            if target is None:
+                target = by_id.get(scenario_unit.get(dep, ""))
+            if target is not None and target["id"] != unit["id"] and target["id"] not in resolved:
+                resolved.append(str(target["id"]))
+        unit["deps"] = resolved
 
-    Cross-run reuse: a scenario already verified with matching command identity
-    and an unchanged worktree fingerprint is reported `passed` with
-    `cache_reused: true` instead of re-executing. This is what keeps repeated
-    verify-e2e / archive / confirm-manual checkpoints from paying the E2E cost
-    again; any content change invalidates it. Preflight runs once per check and
-    gates every scenario that shares it.
-    """
-    cache: dict[str, Mapping[str, object]] = {}
-    blocked: dict[str, list[dict[str, object]]] = {}
-    preflighted: set[str] = set()
-    results: list[dict[str, object]] = []
-    for item in ordered:
-        scenario_id = str(item.get("id", "unknown"))
+
+def _build_units(
+    items: Sequence[Mapping[str, object]], root: Path, check_map: Mapping[str, Mapping[str, object]],
+    include_e2e: bool, only_e2e: bool,
+) -> tuple[list[dict[str, object]], dict[str, str]]:
+    """Group scenarios into check units (v3) or command-identity units (schema2)."""
+    units: list[dict[str, object]] = []
+    by_id: dict[str, dict[str, object]] = {}
+    command_units: dict[str, dict[str, object]] = {}
+    scenario_unit: dict[str, str] = {}
+    for item in items:
+        scenario_id = str(item.get("id"))
         check_id = item.get("check")
-        check = checks.get(check_id) if checks and isinstance(check_id, str) else None
-        key = _identity_key(item, root, include_e2e, only_e2e)
-        if item.get("depends_on"):
-            cache.clear()
-            invalidate_executions()
-        reused = _cached_result(item, scenario_id, key, rows, fingerprint, include_e2e, only_e2e, use_cache)
-        if reused is not None:
-            results.append(reused)
+        if isinstance(check_id, str) and check_id in check_map:
+            unit = by_id.get(check_id)
+            if unit is None:
+                unit = {"id": check_id, "check": check_map[check_id], "scenarios": [], "deps": []}
+                by_id[check_id] = unit
+                units.append(unit)
+            unit["scenarios"].append(item)
+            scenario_unit[scenario_id] = check_id
             continue
-        if _included(item, include_e2e, only_e2e):
-            gated = _gate_check(item, check, root, namespace, deadline, preflighted, blocked)
-            if gated is not None:
-                results.append(gated)
-                continue
-        if key is not None and key in cache:
-            shared = dict(cache[key])
-            shared["id"] = scenario_id
-            results.append(shared)
+        key = _group_key(item, root, include_e2e, only_e2e)
+        unit = command_units.get(key) if key is not None else None
+        if unit is None:
+            identity = (
+                "command:" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
+                if key is not None else f"scenario:{scenario_id}"
+            )
+            unit = {"id": identity, "check": None, "scenarios": [], "deps": []}
+            units.append(unit)
+            by_id[identity] = unit
+            if key is not None:
+                command_units[key] = unit
+        unit["scenarios"].append(item)
+        scenario_unit[scenario_id] = str(unit["id"])
+    _unit_dependencies(units, scenario_unit, by_id)
+    return units, scenario_unit
+
+
+def _unit_layers(units: Sequence[Mapping[str, object]]) -> list[list[Mapping[str, object]]]:
+    """Stable dependency levels: every layer can run concurrently."""
+    remaining = list(units)
+    done: set[str] = set()
+    layers: list[list[Mapping[str, object]]] = []
+    while remaining:
+        ready = [
+            unit for unit in remaining
+            if all(str(dep) in done for dep in unit.get("deps", []))
+        ]
+        if not ready:
+            raise ValueError("acceptance check dependency cycle")
+        layers.append(ready)
+        done.update(str(unit["id"]) for unit in ready)
+        remaining = [unit for unit in remaining if str(unit["id"]) not in done]
+    return layers
+
+
+def _unit_active(unit: Mapping[str, object], include_e2e: bool, only_e2e: bool) -> list[Mapping[str, object]]:
+    return [
+        item for item in unit["scenarios"]
+        if _included(item, include_e2e, only_e2e)
+    ]
+
+
+def _unit_reusable(
+    unit: Mapping[str, object], rows: Mapping[str, Mapping[str, object]], fingerprint: str,
+    use_cache: bool, include_e2e: bool, only_e2e: bool, checkpoint: _Checkpoint,
+) -> bool:
+    """A check is reusable only when every active scenario is still fresh."""
+    if not use_cache or not fingerprint or unit.get("deps"):
+        return False
+    active = _unit_active(unit, include_e2e, only_e2e)
+    if not active:
+        return False
+    if checkpoint.reusable(unit):
+        return True
+    return all(_reusable(rows.get(str(item.get("id"))), item, fingerprint) for item in active)
+
+
+def _reuse_results(
+    unit: Mapping[str, object], root: Path, include_e2e: bool, only_e2e: bool, deadline: Optional[float],
+    checkpoint: _Checkpoint,
+) -> list[dict[str, object]]:
+    checkpoint_reused = checkpoint.reusable(unit)
+    results: list[dict[str, object]] = []
+    for item in unit["scenarios"]:
+        if not _included(item, include_e2e, only_e2e):
+            results.append(_run(item, root, include_e2e, deadline, only_e2e))
             continue
-        env = check_environment(check, str(root), namespace) if check is not None else None
-        result = _run(item, root, include_e2e, deadline, only_e2e, env=env)
-        if key is not None:
-            cache[key] = result
+        results.append({
+            "id": str(item.get("id", "unknown")),
+            "kind": str(item.get("kind", "functional")),
+            "status": "passed",
+            "exit_code": 0,
+            "cache_reused": True,
+            "checkpoint_reused": checkpoint_reused,
+        })
+    return results
+
+
+def _apply_outcome(
+    unit: Mapping[str, object], outcome: Mapping[str, object], root: Path,
+    include_e2e: bool, only_e2e: bool, deadline: Optional[float],
+) -> list[dict[str, object]]:
+    """Project one check outcome onto every scenario that declares it."""
+    check_id = str(unit["id"]) if unit.get("check") is not None else ""
+    status = str(outcome.get("status"))
+    results: list[dict[str, object]] = []
+    for item in unit["scenarios"]:
+        if not _included(item, include_e2e, only_e2e):
+            results.append(_run(item, root, include_e2e, deadline, only_e2e))
+            continue
+        if status == "env_blocked":
+            results.append(_env_blocked_result(item, check_id, outcome.get("missing", [])))
+            continue
+        result = {"id": str(item.get("id", "unknown")), "kind": str(item.get("kind", "functional"))}
+        result.update({key: value for key, value in outcome.items() if key not in ("id", "kind")})
+        if check_id and status in ("failed", "incomplete"):
+            result["check_id"] = check_id
         results.append(result)
+    return results
+
+
+def _unit_preflight(
+    check: Mapping[str, object], root: Path, env: Optional[Mapping[str, str]], deadline: Optional[float]
+) -> Optional[dict[str, object]]:
+    missing = _preflight_failures(check, root, env, deadline)
+    if not missing:
+        return None
+    if any(str(entry.get("reason")) == "deadline_exceeded" for entry in missing):
+        return {"status": "incomplete", "error": "deadline_exceeded"}
+    return {"status": "env_blocked", "missing": missing}
+
+
+def _execute_unit(
+    unit: Mapping[str, object], root: Path, include_e2e: bool, only_e2e: bool,
+    deadline: Optional[float], namespace: Optional[Mapping[str, str]],
+) -> dict[str, object]:
+    check = unit.get("check")
+    if check is None:
+        return _command_outcome(unit["scenarios"][0], root, deadline, None)
+    if not _unit_active(unit, include_e2e, only_e2e):
+        return {"status": "not_included"}
+    env = check_environment(check, str(root), namespace)
+    gated = _unit_preflight(check, root, env, deadline)
+    if gated is not None:
+        return gated
+    return _command_outcome(check, root, deadline, env)
+
+
+def _parallel_safe(unit: Mapping[str, object]) -> bool:
+    check = unit.get("check")
+    return isinstance(check, Mapping) and effective_parallel_safe(check)
+
+
+def _unit_command(unit: Mapping[str, object]) -> tuple[list[str], str, float]:
+    """Command identity used to validate a checkpoint entry on resume."""
+    check = unit.get("check")
+    source = check if isinstance(check, Mapping) else unit["scenarios"][0]
+    command = source.get("command")
+    argv = [str(value) for value in command] if isinstance(command, list) else []
+    cwd = source.get("cwd", ".")
+    return argv, cwd if isinstance(cwd, str) else ".", _scenario_timeout(source)
+
+
+def _atomic_checkpoint(path: Path, payload: Mapping[str, object]) -> None:
+    """Checkpoint files are replaced atomically, like every other evidence file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    except OSError:
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise
+
+
+def _checkpoint_path(manifest_file: str, root: str) -> Path:
+    digest = hashlib.sha256(str(Path(manifest_file).resolve()).encode("utf-8")).hexdigest()[:16]
+    requirement = Path(manifest_file).resolve().parent.name
+    return EvidenceStore(root, requirement).directory.parent / "_checkpoints" / f"acceptance-{digest}.json"
+
+
+class _Checkpoint:
+    """Per-check completion sidecar, separate from the user's manifest.
+
+    The manifest is only rewritten when a run finishes, so an interrupt cannot
+    leave partially-verified rows. Resume reads passed checks whose command
+    identity and worktree freshness still match and reuses them.
+    """
+
+    def __init__(self, path: Path, fingerprint: str, enabled: bool, resume: bool) -> None:
+        self.path = path
+        self.fingerprint = fingerprint
+        self.enabled = enabled
+        self.entries: dict[str, Mapping[str, object]] = {}
+        if not enabled:
+            return
+        if resume:
+            self.entries = self._read()
+        else:
+            self._write()  # a fresh run must not inherit an older run's progress
+
+    def _read(self) -> dict[str, Mapping[str, object]]:
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        checks = data.get("checks") if isinstance(data, Mapping) else None
+        if not isinstance(checks, Mapping):
+            return {}
+        return {
+            str(key): value for key, value in checks.items() if isinstance(value, Mapping)
+        }
+
+    def _write(self) -> None:
+        if not self.enabled:
+            return
+        payload = {
+            "schema": 1,
+            "fingerprint": self.fingerprint,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "checks": self.entries,
+        }
+        _atomic_checkpoint(self.path, payload)
+
+    def reusable(self, unit: Mapping[str, object]) -> bool:
+        if not self.enabled:
+            return False
+        entry = self.entries.get(str(unit.get("id")))
+        if not isinstance(entry, Mapping):
+            return False
+        command, cwd, timeout = _unit_command(unit)
+        try:
+            recorded_timeout = float(entry.get("timeout", 60))
+        except (TypeError, ValueError):
+            return False
+        return (
+            entry.get("status") == "passed"
+            and entry.get("fingerprint") == self.fingerprint
+            and entry.get("command") == command
+            and str(entry.get("cwd", ".")) == cwd
+            and recorded_timeout == timeout
+        )
+
+    def record(self, unit: Mapping[str, object], outcome: Mapping[str, object]) -> None:
+        if not self.enabled:
+            return
+        if outcome.get("status") != "passed":
+            self.forget(unit)
+            return
+        command, cwd, timeout = _unit_command(unit)
+        self.entries[str(unit["id"])] = {
+            "status": "passed",
+            "fingerprint": self.fingerprint,
+            "command": command,
+            "cwd": cwd,
+            "timeout": timeout,
+        }
+        self._write()
+
+    def forget(self, unit: Mapping[str, object]) -> None:
+        if not self.enabled:
+            return
+        if self.entries.pop(str(unit["id"]), None) is not None:
+            self._write()
+
+
+def _failure(status: str) -> bool:
+    return status in ("failed", "not_configured")
+
+
+class _UnitEngine:
+    """Schedule check units, checkpointing each completion for resume."""
+
+    def __init__(
+        self, units: Sequence[Mapping[str, object]], root: Path, include_e2e: bool, only_e2e: bool,
+        deadline: Optional[float], namespace: Optional[Mapping[str, str]],
+        rows: Mapping[str, Mapping[str, object]], fingerprint: str, use_cache: bool,
+        max_failures: int, checkpoint: _Checkpoint, jobs: int,
+    ) -> None:
+        self.units = list(units)
+        self.root = root
+        self.include_e2e = include_e2e
+        self.only_e2e = only_e2e
+        self.deadline = deadline
+        self.namespace = namespace
+        self.rows = rows
+        self.fingerprint = fingerprint
+        self.use_cache = use_cache
+        self.max_failures = max_failures
+        self.checkpoint = checkpoint
+        self.jobs = max(1, jobs or DEFAULT_JOBS)
+        self.results_by_id: dict[str, dict[str, object]] = {}
+        self.completed: set[str] = set()
+        self.failures = 0
+        self.executed = 0
+        self.reused = 0
+        self.stop_reason = ""
+        self.interrupted = False
+
+    def run(self) -> tuple[dict[str, dict[str, object]], dict[str, object]]:
+        try:
+            for layer in _unit_layers(self.units):
+                if self.stop_reason:
+                    break
+                self._run_layer(layer)
+        except KeyboardInterrupt:
+            self.interrupted = True
+            self.stop_reason = "interrupted"
+        self._fill_unfinished()
+        state = {
+            "executed": self.executed,
+            "reused": self.reused,
+            "interrupted": self.interrupted,
+            "stopped_reason": self.stop_reason,
+        }
+        return self.results_by_id, state
+
+    def _run_layer(self, layer: Sequence[Mapping[str, object]]) -> None:
+        placeholders = [unit for unit in layer if not self._active(unit)]
+        for unit in placeholders:
+            self._record(unit, self._placeholder_results(unit))
+        parallel = [unit for unit in layer if self._active(unit) and _parallel_safe(unit)]
+        serial = [unit for unit in layer if self._active(unit) and not _parallel_safe(unit)]
+        self._run_parallel(parallel)
+        for unit in serial:
+            self._run_one(unit)
+
+    def _active(self, unit: Mapping[str, object]) -> bool:
+        return bool(_unit_active(unit, self.include_e2e, self.only_e2e))
+
+    def _can_start(self) -> bool:
+        if self.stop_reason:
+            return False
+        if self.max_failures and self.failures >= self.max_failures:
+            self._stop("max_failures_exceeded")
+            return False
+        if self._deadline_expired():
+            self._stop("deadline_exceeded")
+            return False
+        return True
+
+    def _stop(self, reason: str) -> None:
+        if not self.stop_reason:
+            self.stop_reason = reason
+
+    def _deadline_expired(self) -> bool:
+        remaining = remaining_seconds(self.deadline)
+        return remaining is not None and remaining <= 0
+
+    def _run_one(self, unit: Mapping[str, object]) -> None:
+        if not self._can_start():
+            return
+        self._run_unit(unit)
+
+    def _run_unit(self, unit: Mapping[str, object]) -> None:
+        if _unit_reusable(unit, self.rows, self.fingerprint, self.use_cache,
+                          self.include_e2e, self.only_e2e, self.checkpoint):
+            results = _reuse_results(unit, self.root, self.include_e2e, self.only_e2e,
+                                     self.deadline, self.checkpoint)
+            self.checkpoint.record(unit, {"status": "passed"})
+            self.reused += len(_unit_active(unit, self.include_e2e, self.only_e2e))
+            self._record(unit, results)
+            return
+        if unit.get("deps"):
+            invalidate_executions()
+        outcome = _execute_unit(unit, self.root, self.include_e2e, self.only_e2e,
+                                self.deadline, self.namespace)
+        self.executed += 1
+        self._complete(unit, outcome)
+
+    def _complete(self, unit: Mapping[str, object], outcome: Mapping[str, object]) -> None:
+        results = _apply_outcome(unit, outcome, self.root, self.include_e2e,
+                                 self.only_e2e, self.deadline)
+        self._record(unit, results)
+        self.checkpoint.record(unit, outcome)
+        status = str(outcome.get("status"))
+        if _failure(status):
+            self.failures += 1
+            if self.max_failures and self.failures >= self.max_failures:
+                self._stop("max_failures_exceeded")
+        if status == "incomplete" and outcome.get("error") == "deadline_exceeded":
+            self._stop("deadline_exceeded")
+
+    def _run_parallel(self, units: Sequence[Mapping[str, object]]) -> None:
+        runnable = []
+        for unit in units:
+            if not self._can_start():
+                break
+            runnable.append(unit)
+        if not runnable:
+            return
+        if len(runnable) == 1:
+            self._run_unit(runnable[0])
+            return
+        workers = min(len(runnable), self.jobs)
+        pool = ThreadPoolExecutor(max_workers=workers)
+        pending: dict[Future, Mapping[str, object]] = {}
+        cursor = 0
+        interrupted = False
+        try:
+            while cursor < len(runnable) and len(pending) < workers:
+                pending[pool.submit(self._execute, runnable[cursor])] = runnable[cursor]
+                cursor += 1
+            while pending:
+                done, _ = wait(tuple(pending), return_when=FIRST_COMPLETED)
+                for future in done:
+                    unit = pending.pop(future)
+                    self.executed += 1
+                    self._complete(unit, future.result())
+                while (not self.stop_reason and cursor < len(runnable)
+                       and len(pending) < workers and self._can_start()):
+                    unit = runnable[cursor]
+                    cursor += 1
+                    pending[pool.submit(self._execute, unit)] = unit
+        except KeyboardInterrupt:
+            self._drain_done(pending)
+            interrupted = True
+            raise
+        finally:
+            pool.shutdown(wait=not interrupted, cancel_futures=interrupted)
+
+    def _drain_done(self, pending: dict[Future, Mapping[str, object]]) -> None:
+        """A signal can arrive after a check finished but before it was recorded."""
+        for future in tuple(pending):
+            if not future.done() or future.cancelled():
+                continue
+            if future.exception() is not None:
+                continue
+            unit = pending.pop(future)
+            self.executed += 1
+            self._complete(unit, future.result())
+
+    def _execute(self, unit: Mapping[str, object]) -> dict[str, object]:
+        return _execute_unit(unit, self.root, self.include_e2e, self.only_e2e,
+                             self.deadline, self.namespace)
+
+    def _placeholder_results(self, unit: Mapping[str, object]) -> list[dict[str, object]]:
+        return [
+            _run(item, self.root, self.include_e2e, self.deadline, self.only_e2e)
+            for item in unit["scenarios"]
+        ]
+
+    def _record(self, unit: Mapping[str, object], results: Sequence[Mapping[str, object]]) -> None:
+        for result in results:
+            self.results_by_id[str(result.get("id"))] = dict(result)
+        self.completed.add(str(unit["id"]))
+
+    def _fill_unfinished(self) -> None:
+        reason = self.stop_reason or "incomplete"
+        outcome = {"status": "incomplete", "error": reason}
+        for unit in self.units:
+            if str(unit["id"]) in self.completed:
+                continue
+            results = _apply_outcome(unit, outcome, self.root, self.include_e2e,
+                                     self.only_e2e, self.deadline)
+            for result in results:
+                self.results_by_id.setdefault(str(result.get("id")), dict(result))
+
+
+def _ordered_results(
+    items: Sequence[Mapping[str, object]], results_by_id: Mapping[str, Mapping[str, object]]
+) -> list[dict[str, object]]:
+    """Stable output order independent of parallel completion order."""
+    results: list[dict[str, object]] = []
+    for item in items:
+        scenario_id = str(item.get("id", "unknown"))
+        result = results_by_id.get(scenario_id)
+        if result is None:
+            result = {"id": scenario_id, "kind": str(item.get("kind", "functional")),
+                      "status": "incomplete", "error": "not_scheduled"}
+        results.append(dict(result))
     return results
 
 
@@ -365,8 +825,10 @@ def _check_summary(checks: Sequence[Mapping[str, object]], scenarios: Sequence[M
             status = "not_included"
         elif all(value == "passed" for value in statuses):
             status = "passed"
-        elif any(value in ("failed", "incomplete", "not_configured") for value in statuses):
+        elif any(value in ("failed", "not_configured") for value in statuses):
             status = "failed"
+        elif any(value == "incomplete" for value in statuses):
+            status = "incomplete"
         elif any(value == "env_blocked" for value in statuses):
             status = "env_blocked"
         elif any(value == "e2e_deferred" for value in statuses):
@@ -438,6 +900,61 @@ def _decision(results: Sequence[Mapping[str, object]]) -> tuple[str, str]:
     return "block", ",".join(segments) or "acceptance scenario failed"
 
 
+def _run_counts(results: Sequence[Mapping[str, object]]) -> tuple[int, list[str]]:
+    incomplete = sum(1 for item in results if item["status"] == "incomplete")
+    failed = sorted(str(item["id"]) for item in results if item["status"] in ("failed", "not_configured"))
+    return incomplete, failed
+
+
+def _payload(
+    items: Sequence[Mapping[str, object]], check_list: Sequence[Mapping[str, object]],
+    check_map: Mapping[str, Mapping[str, object]], results: Sequence[Mapping[str, object]],
+    state: Mapping[str, object],
+) -> dict[str, object]:
+    decision, error = _decision(results)
+    if state.get("interrupted") and decision == "pass":
+        decision, error = "block", "interrupted"
+    incomplete, failed = _run_counts(results)
+    outcome: dict[str, object] = {
+        "decision": decision,
+        "results": list(results),
+        "executed": int(state.get("executed", 0)),
+        "reused": int(state.get("reused", 0)),
+        "incomplete": incomplete,
+        "failed": failed,
+    }
+    if state.get("interrupted"):
+        outcome["interrupted"] = True
+    if state.get("stopped_reason"):
+        outcome["stopped_reason"] = str(state["stopped_reason"])
+    if check_list:
+        outcome["checks"] = _check_summary(check_list, items, results)
+    env_blocked = sum(1 for item in results if item["status"] == "env_blocked")
+    outcome["env_blocked"] = env_blocked
+    if env_blocked:
+        outcome["env_blocked_details"] = _env_blocked_details(check_map, results)
+    if error:
+        outcome["error"] = error
+    return outcome
+
+
+def _scenario_rows(scenarios: Sequence[Mapping[str, object]]) -> dict[str, Mapping[str, object]]:
+    return {
+        str(row.get("id")): row
+        for row in scenarios
+        if isinstance(row, Mapping) and isinstance(row.get("id"), str)
+    }
+
+
+def _make_checkpoint(
+    manifest_file: str, root: str, fingerprint: str, use_cache: bool, resume: bool
+) -> _Checkpoint:
+    return _Checkpoint(
+        _checkpoint_path(manifest_file, root), fingerprint,
+        enabled=use_cache and bool(fingerprint), resume=resume,
+    )
+
+
 def run_manifest(
     manifest_file: str,
     root: str,
@@ -448,6 +965,10 @@ def run_manifest(
     only_e2e: bool = False,
     use_cache: bool = True,
     run_id: str = "",
+    resume: bool = False,
+    max_failures: int = 0,
+    fail_fast: bool = False,
+    jobs: int = 0,
 ) -> dict[str, object]:
     data = load_manifest(Path(manifest_file))
     validate_execution_baseline(Path(manifest_file), data)
@@ -459,32 +980,27 @@ def run_manifest(
         # 视为空集通过；"零可执行场景"阻断只针对整体无场景的 manifest。
         return {"decision": "pass", "results": [], "reason": "no_owned_scenarios"}
     ordered = _ordered(items)
-    rows = {
-        str(row.get("id")): row
-        for row in scenarios
-        if isinstance(row, Mapping) and isinstance(row.get("id"), str)
-    }
+    rows = _scenario_rows(scenarios)
     check_list, check_map = _check_plan(data)
     run_key = resolve_run_id(run_id)
     namespace = _run_namespace(str(root), check_map, owner, items, run_key)
     fingerprint = worktree_fingerprint(str(root)) if use_cache else ""
-    results = _run_unique(ordered, Path(root), include_e2e or only_e2e, deadline, only_e2e,
-                          rows=rows, fingerprint=fingerprint, use_cache=use_cache,
-                          checks=check_map or None, namespace=namespace)
-    if write_evidence:
+    limit = 1 if fail_fast else max(0, int(max_failures))
+    checkpoint = _make_checkpoint(manifest_file, root, fingerprint, use_cache, resume)
+    units, _ = _build_units(ordered, Path(root), check_map, include_e2e or only_e2e, only_e2e)
+    engine = _UnitEngine(units, Path(root), include_e2e or only_e2e, only_e2e, deadline,
+                         namespace, rows, fingerprint, use_cache, limit, checkpoint, jobs)
+    results_by_id, state = engine.run()
+    results = _ordered_results(ordered, results_by_id)
+    # An interruption keeps the manifest untouched: the checkpoint sidecar is
+    # the only progress record, so rows are never partially verified.
+    if not state.get("interrupted") and (write_evidence or resume):
         persist_results(Path(manifest_file), data, results, fingerprint=fingerprint, run_id=run_key)
+    outcome = _payload(items, check_list, check_map, results, state)
+    if state.get("interrupted"):
+        raise AcceptanceInterrupted(outcome)
     if not _executable(items):
         return {"decision": "block", "results": results, "error": "no_executable_scenarios"}
-    decision, error = _decision(results)
-    outcome: dict[str, object] = {"decision": decision, "results": results}
-    if check_list:
-        outcome["checks"] = _check_summary(check_list, items, results)
-    env_blocked = sum(1 for item in results if item["status"] == "env_blocked")
-    outcome["env_blocked"] = env_blocked
-    if env_blocked:
-        outcome["env_blocked_details"] = _env_blocked_details(check_map, results)
-    if error:
-        outcome["error"] = error
     return outcome
 
 
@@ -498,12 +1014,32 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--owner", default="", help="Only execute scenarios owned by this TASK (plus ownerless legacy ones)")
     parser.add_argument("--deadline", type=float, default=0.0, help="Absolute monotonic deadline propagated from the entry gate (0 = unbounded)")
     parser.add_argument("--no-cache", action="store_true", help="Force execution; skip content-fingerprint reuse of already-verified scenarios")
+    parser.add_argument("--resume", action="store_true", help="Continue from the first unfinished/failed check using persisted checkpoints")
+    parser.add_argument("--max-failures", type=int, default=0, help="Stop scheduling after N failed checks (0 = run all)")
+    failure_mode = parser.add_mutually_exclusive_group()
+    failure_mode.add_argument("--fail-fast", dest="fail_fast", action="store_true", help="Stop after the first failed check")
+    failure_mode.add_argument("--continue", dest="fail_fast", action="store_false", help="Keep running after failures (default)")
+    parser.set_defaults(fail_fast=False)
+    parser.add_argument("--jobs", type=int, default=0, help="Maximum concurrent parallel-safe checks (0 = auto)")
     args = parser.parse_args(argv)
     try:
-        result = run_manifest(args.manifest, args.root, args.write_evidence, args.include_e2e, args.owner,
-                              args.deadline or None, args.only_e2e, use_cache=not args.no_cache)
+        result = run_manifest(
+            args.manifest, args.root, args.write_evidence, args.include_e2e, args.owner,
+            args.deadline or None, args.only_e2e, use_cache=not args.no_cache,
+            resume=args.resume, max_failures=args.max_failures, fail_fast=args.fail_fast,
+            jobs=args.jobs,
+        )
         stdout.write(json.dumps(result, ensure_ascii=False))
+        if result.get("interrupted"):
+            return 130
         return 0 if result["decision"] == "pass" else 3
+    except AcceptanceInterrupted as exc:
+        stdout.write(json.dumps(exc.payload, ensure_ascii=False))
+        return 130
+    except KeyboardInterrupt:
+        stdout.write(json.dumps({"decision": "block", "error": "interrupted", "interrupted": True},
+                                ensure_ascii=False))
+        return 130
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         stdout.write(json.dumps({"decision": "block", "error": str(exc)}, ensure_ascii=False))
         return 2

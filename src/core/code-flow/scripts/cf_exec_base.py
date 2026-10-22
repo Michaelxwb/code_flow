@@ -181,6 +181,9 @@ def _execute(argv: Sequence[str], cwd: str, timeout: float, deadline: Optional[f
     remaining = remaining_seconds(deadline)
     if remaining is not None and remaining <= 0:
         return {"status": "deadline_exceeded", "returncode": None, "stdout": "", "stderr": ""}
+    # When the entry deadline is tighter than the command timeout, expiry is
+    # unexecuted work (`incomplete`), never a product failure.
+    deadline_bounded = remaining is not None and remaining <= timeout
     effective = min(timeout, remaining) if remaining is not None else timeout
     child_env = None
     if env:
@@ -193,7 +196,7 @@ def _execute(argv: Sequence[str], cwd: str, timeout: float, deadline: Optional[f
     except subprocess.TimeoutExpired as exc:
         out = exc.stdout
         return {
-            "status": "timeout",
+            "status": "deadline_exceeded" if deadline_bounded else "timeout",
             "returncode": None,
             "stdout": (out.decode() if isinstance(out, bytes) else (out or ""))[-4000:],
             "stderr": "",

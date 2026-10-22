@@ -24,7 +24,7 @@
 | S-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 task md + spec-context + runner | TASK-003 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_scale.py", "-k", "truthful_gate"] |
 | S-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 verify runner + manifest | TASK-006 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "layers"] |
 | S-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 manifest + subprocess | TASK-005 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "checks_scenarios"] |
-| S-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 runner + checkpoint | TASK-007 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "resume"] |
+| S-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 runner + checkpoint | TASK-007 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "resume"] |
 | S-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree + sidecar | TASK-004 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "relock_compaction"] |
 | S-06 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree ×3 | TASK-009 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "central_evidence"] |
 | S-07 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实批次 worktree + shared env | TASK-011 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"] |
@@ -40,7 +40,7 @@
 | B-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 schema2 manifest | TASK-005 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "schema2_compat"] |
 | B-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 非 git 项目 | TASK-004 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "non_git"] |
 | B-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 空需求 | TASK-006 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "empty_noop"] |
-| B-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 deadline | TASK-007 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "deadline_incomplete"] |
+| B-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 deadline | TASK-007 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "deadline_incomplete"] |
 
 > 本表覆盖 design §2.5 全部 S/E/B 场景；每个场景唯一 owner。执行命令为计划命令，TASK-001 先建立对应测试文件。
 
@@ -347,7 +347,7 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 ## TASK-007: checkpoint / resume / 并行 / deadline
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-006
 - **Source**: code-flow-0.8-optimization.design.md#3.5.2 并发与原子性, code-flow-0.8-optimization.design.md#3.5.3 性能
@@ -362,27 +362,38 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 ### Checklist
 
-- [ ] 实现 check 级 checkpoint 与 --resume。
-- [ ] 独立 check 并行，depends_on 串行。
-- [ ] 实现 --deadline、--max-failures、fail-fast/continue。
-- [ ] 结果去重与稳定排序。
-- [ ] [S-04][integration] 编写/更新验收测试（真实边界：真实 runner + checkpoint）；断言：10 个 check 执行到第 5 个中断；resume 从第 6 个继续；已完成 check 复用
-- [ ] [B-04][integration] 编写/更新验收测试（真实边界：真实 deadline）；断言：全局 deadline 到期返回 incomplete；不标 failed/verified
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 实现 check 级 checkpoint 与 --resume。
+- [x] 独立 check 并行，depends_on 串行。
+- [x] 实现 --deadline、--max-failures、fail-fast/continue。
+- [x] 结果去重与稳定排序。
+- [x] [S-04][integration] 编写/更新验收测试（真实边界：真实 runner + checkpoint）；断言：10 个 check 执行到第 5 个中断；resume 从第 6 个继续；已完成 check 复用
+- [x] [B-04][integration] 编写/更新验收测试（真实边界：真实 deadline）；断言：全局 deadline 到期返回 incomplete；不标 failed/verified
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-04 | integration | 真实 runner + checkpoint | 10 个 check 执行到第 5 个中断；resume 从第 6 个继续；已完成 check 复用 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "resume"] | planned |
-| B-04 | integration | 真实 deadline | 全局 deadline 到期返回 incomplete；不标 failed/verified | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "deadline_incomplete"] | planned |
+| S-04 | integration | 真实 runner + checkpoint | 10 个 check 执行到第 5 个中断；resume 从第 6 个继续；已完成 check 复用 | `test_resume_continues_after_interrupted_checkpoints` | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "resume"] | verified |
+| B-04 | integration | 真实 deadline | 全局 deadline 到期返回 incomplete；不标 failed/verified | `test_deadline_incomplete_marks_unstarted_checks_without_failed_or_verified` | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "deadline_incomplete"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-04 | `python3 -m pytest -q tests/test_cf_acceptance_runner.py -k resume` → 1 failed：真实 runner 子进程被 SIGINT 终止并输出 KeyboardInterrupt 栈，无 JSON/checkpoint；--resume 尚不存在 | 同命令 → **1 passed** | `test_resume_continues_after_interrupted_checkpoints`（第 434 行：前 5 个 passed、后 5 个 incomplete、checkpoint 5 条、resume 后 ledger 1–10 且前 5 个 cache_reused） | 真实 git worktree + 真实 runner 子进程 + 真实 SIGINT + 真实 checkpoint sidecar（`.git/code-flow/evidence/_checkpoints`）+ 真实 ledger | verified |
+| B-04 | `python3 -m pytest -q tests/test_cf_acceptance_runner.py -k deadline_incomplete` → 1 failed：deadline 收紧 subprocess timeout 时被归类为 `failed/timeout`，未返回 incomplete | 同命令 → **1 passed** | `test_deadline_incomplete_marks_unstarted_checks_without_failed_or_verified`（第 480 行：4 个 incomplete、failed 空、check 汇总 incomplete、慢/后续命令均未落标记） | 真实 deadline（`time.monotonic()`）+ 真实 sleep 子进程 + 真实 manifest 写回 | verified |
+- S-04: verified — automated command passed; run_id=48c2580e2c2542dbbe3edcc59340a891 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=48c2580e2c2542dbbe3edcc59340a891 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=861bee3694e84f0fb5620d16d7d6651a (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=861bee3694e84f0fb5620d16d7d6651a (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] RED：resume/deadline/parallel/max-failures 4 项失败；checkpoint 与 resume 尚未实现，deadline 超时被误判 failed。
+- [2026-10-22] GREEN：checkpoint sidecar + `--resume`、check 级并行/依赖串行、`--deadline`/`--max-failures`/`--fail-fast`；S-04/B-04 及 68 项相关回归通过，全量 616 passed。
+- [2026-10-22] completed (done)
 
 ---
 

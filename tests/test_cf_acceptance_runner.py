@@ -1,13 +1,19 @@
 from pathlib import Path
 import json
+import os
 import socket
+import subprocess
 import sys
+import time
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_runner import run_manifest
+from cf_evidence_store import EvidenceStore
 import pytest
+
+RUNNER = SCRIPTS / "cf_acceptance_runner.py"
 
 
 def _closed_port() -> int:
@@ -364,3 +370,214 @@ def test_shared_env_scope_is_never_parallel_safe() -> None:
     assert effective_parallel_safe({"env_scope": "shared"}) is False
     assert effective_parallel_safe({"env_scope": "isolated"}) is True
     assert effective_parallel_safe({"env_scope": "isolated", "parallel_safe": False}) is False
+
+
+def _checkpoint_repo(root: Path) -> None:
+    """A real git worktree so resume freshness is content-addressed."""
+    root.mkdir()
+    subprocess.run(("git", "init", "-q"), cwd=root, check=True)
+    subprocess.run(("git", "config", "user.email", "t@t"), cwd=root, check=True)
+    subprocess.run(("git", "config", "user.name", "t"), cwd=root, check=True)
+    (root / "src").mkdir()
+    (root / "src/app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    subprocess.run(("git", "add", "-A"), cwd=root, check=True)
+    subprocess.run(("git", "commit", "-qm", "init"), cwd=root, check=True)
+
+
+def _ledger_command(ledger: Path, index: int, signal_file: Path = Path()) -> list[str]:
+    """Append the check index to a shared ledger; optionally SIGINT the runner."""
+    armed = str(signal_file) if str(signal_file) else ""
+    code = (
+        "import os, signal, sys, time\n"
+        "from pathlib import Path\n"
+        f"ledger = Path({str(ledger)!r})\n"
+        f"index = {index}\n"
+        f"armed = Path({armed!r}) if {armed!r} else None\n"
+        "if index == 6 and armed is not None and armed.exists():\n"
+        "    armed.unlink()\n"
+        "    os.kill(os.getppid(), signal.SIGINT)\n"
+        "    time.sleep(2)\n"
+        "with ledger.open('a', encoding='utf-8') as handle:\n"
+        "    handle.write(f'{index}\\n')\n"
+    )
+    return [sys.executable, "-c", code]
+
+
+def _write_check_manifest(path: Path, commands: list[list[str]]) -> None:
+    checks = []
+    scenarios = []
+    for index, command in enumerate(commands, start=1):
+        check_id = f"CHK-{index:02d}"
+        checks.append({"id": check_id, "command": command, "cwd": ".", "timeout": 30})
+        scenarios.append({
+            "id": f"S-{index:02d}",
+            "kind": "functional",
+            "owner": "TASK-007",
+            "check": check_id,
+            "command": command,
+            "cwd": ".",
+            "timeout": 30,
+            "depends_on": [],
+            "status": "planned",
+        })
+    path.write_text(json.dumps({"schema": 3, "checks": checks, "scenarios": scenarios}), encoding="utf-8")
+
+
+def _runner_call(manifest: Path, root: Path, *extra: str) -> subprocess.CompletedProcess:
+    env = {**os.environ, "PYTHONPATH": str(SCRIPTS)}
+    return subprocess.run(
+        [sys.executable, str(RUNNER), "--manifest", str(manifest), "--root", str(root), *extra],
+        capture_output=True, text=True, env=env, timeout=60,
+    )
+
+
+def test_resume_continues_after_interrupted_checkpoints(tmp_path: Path) -> None:
+    """[S-04] 第 6 个 check 中断；resume 复用 1-5 并从第 6 个继续。"""
+    root = tmp_path / "repo"
+    _checkpoint_repo(root)
+    ledger = tmp_path / "ledger.txt"
+    armed = tmp_path / "armed"
+    armed.write_text("1", encoding="utf-8")
+    commands = [
+        _ledger_command(ledger, index, armed if index == 6 else Path())
+        for index in range(1, 11)
+    ]
+    manifest = root / ".code-flow/.acceptance-manifest.json"
+    manifest.parent.mkdir()
+    _write_check_manifest(manifest, commands)
+
+    first = _runner_call(manifest, root, "--write-evidence")
+    assert first.stdout.strip(), first.stderr
+    payload = json.loads(first.stdout)
+    assert first.returncode != 0
+    assert payload["decision"] == "block"
+    assert payload.get("interrupted") is True, payload
+    assert [item["status"] for item in payload["results"][:5]] == ["passed"] * 5
+    assert all(item["status"] == "incomplete" for item in payload["results"][5:])
+    assert ledger.read_text(encoding="utf-8").splitlines() == ["1", "2", "3", "4", "5"]
+
+    saved = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"]
+    assert all(item["status"] == "planned" for item in saved), "中断不得写部分 verified"
+    checkpoint_dir = EvidenceStore(str(root), manifest.parent.name).directory.parent / "_checkpoints"
+    checkpoints = list(checkpoint_dir.glob("*.json"))
+    assert len(checkpoints) == 1, checkpoints
+    checkpoint = json.loads(checkpoints[0].read_text(encoding="utf-8"))
+    assert len(checkpoint["checks"]) == 5, checkpoint
+
+    second = _runner_call(manifest, root, "--write-evidence", "--resume")
+    assert second.stdout.strip(), second.stderr
+    resumed = json.loads(second.stdout)
+    assert second.returncode == 0, resumed
+    assert resumed["decision"] == "pass", resumed
+    assert [item.get("cache_reused") for item in resumed["results"][:5]] == [True] * 5
+    assert all(item["status"] == "passed" for item in resumed["results"][5:])
+    assert resumed["reused"] == 5
+    assert ledger.read_text(encoding="utf-8").splitlines() == [str(index) for index in range(1, 11)]
+    saved = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"]
+    assert [item["status"] for item in saved] == ["verified"] * 10
+
+
+def test_deadline_incomplete_marks_unstarted_checks_without_failed_or_verified(tmp_path: Path) -> None:
+    """[B-04] 全局 deadline 到期返回 incomplete；不标 failed/verified。"""
+    slow_marker = tmp_path / "slow.txt"
+    late_marker = tmp_path / "late.txt"
+    slow = [
+        sys.executable, "-c",
+        "import time\n"
+        "from pathlib import Path\n"
+        "time.sleep(0.6)\n"
+        f"Path({str(slow_marker)!r}).write_text('ran')\n",
+    ]
+    fast = [
+        sys.executable, "-c",
+        f"from pathlib import Path; Path({str(late_marker)!r}).write_text('ran')\n",
+    ]
+    manifest = tmp_path / ".acceptance-manifest.json"
+    _write_check_manifest(manifest, [slow, fast, fast, fast])
+
+    started = time.monotonic()
+    result = run_manifest(str(manifest), str(tmp_path), write_evidence=True, deadline=started + 0.25)
+    elapsed = time.monotonic() - started
+
+    assert result["decision"] == "block"
+    assert [item["status"] for item in result["results"]] == ["incomplete"] * 4
+    assert result["incomplete"] == 4
+    assert result["failed"] == []
+    assert result["error"].startswith("incomplete:")
+    assert [item["status"] for item in result["checks"]] == ["incomplete"] * 4
+    assert elapsed < 2.0
+    assert slow_marker.exists() is False, "deadline 到期必须终止正在运行的 check"
+    assert late_marker.exists() is False, "deadline 后不得启动后续 check"
+
+    saved = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"]
+    assert all(item.get("status") not in ("verified", "failed") for item in saved), saved
+
+
+def test_independent_checks_parallelize_but_dependencies_serialize(tmp_path: Path) -> None:
+    """[parallel] 独立 isolated check 并行；depends_on 串行。"""
+    stamps = tmp_path / "stamps"
+    stamps.mkdir()
+    code = (
+        "import sys, time\n"
+        "from pathlib import Path\n"
+        "start = time.time()\n"
+        "time.sleep(float(sys.argv[2]))\n"
+        "Path(sys.argv[1]).write_text(f'{start} {time.time()}')\n"
+    )
+
+    def command(name: str, delay: float) -> list[str]:
+        return [sys.executable, "-c", code, str(stamps / f"{name}.txt"), str(delay)]
+
+    first, second, third = command("a", 0.5), command("b", 0.2), command("c", 0.05)
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [
+            {"id": "CHK-A", "command": first, "env_scope": "isolated", "parallel_safe": True},
+            {"id": "CHK-B", "command": second, "env_scope": "isolated", "parallel_safe": True},
+            {"id": "CHK-C", "command": third, "env_scope": "isolated", "parallel_safe": True},
+        ],
+        "scenarios": [
+            {"id": "S-A", "kind": "functional", "check": "CHK-A", "command": first},
+            {"id": "S-B", "kind": "functional", "check": "CHK-B", "command": second},
+            {"id": "S-C", "kind": "functional", "check": "CHK-C", "command": third,
+             "depends_on": ["S-A"]},
+        ],
+    }), encoding="utf-8")
+
+    result = run_manifest(str(manifest), str(tmp_path))
+
+    assert result["decision"] == "pass", result
+    assert [item["id"] for item in result["results"]] == ["S-A", "S-B", "S-C"]
+    a_start, a_end = (float(value) for value in (stamps / "a.txt").read_text().split())
+    b_start, b_end = (float(value) for value in (stamps / "b.txt").read_text().split())
+    c_start, _ = (float(value) for value in (stamps / "c.txt").read_text().split())
+    assert b_start < a_end and a_start < b_end, "独立 check 必须并行"
+    assert c_start >= a_end, "depends_on 必须在依赖完成后串行执行"
+
+
+def test_max_failures_stops_after_limit_and_keeps_completed_evidence(tmp_path: Path) -> None:
+    """[max-failures] 达到上限后停止后续 check，已完成证据保留。"""
+    ledger = tmp_path / "ledger.txt"
+    passing = _ledger_command(ledger, 1)
+    failing = [sys.executable, "-c",
+               "from pathlib import Path\n"
+               f"path = Path({str(ledger)!r})\n"
+               "path.write_text((path.read_text() if path.exists() else '') + '2\\n', encoding='utf-8')\n"
+               "raise SystemExit(3)\n"]
+    later = [_ledger_command(ledger, index) for index in (3, 4)]
+    manifest = tmp_path / ".acceptance-manifest.json"
+    _write_check_manifest(manifest, [passing, failing, *later])
+
+    result = run_manifest(str(manifest), str(tmp_path), write_evidence=True, max_failures=1)
+
+    assert result["decision"] == "block"
+    assert [item["status"] for item in result["results"]] == ["passed", "failed", "incomplete", "incomplete"]
+    assert ledger.read_text(encoding="utf-8").splitlines() == ["1", "2"]
+    assert result["failed"] == ["S-02"]
+    assert result["incomplete"] == 2
+    saved = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"]
+    assert saved[0]["status"] == "verified"
+    assert saved[1]["status"] == "failed"
+    assert all(item["status"] != "verified" for item in saved[2:])
+    assert all("evidence" in item for item in saved[:2]), "已完成/失败的 check 必须保留证据"

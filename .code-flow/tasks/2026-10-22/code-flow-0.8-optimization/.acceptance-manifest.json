@@ -611,7 +611,7 @@
       "kind": "functional",
       "boundary": "真实 runner + checkpoint",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -624,7 +624,73 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "check": "CHK-dc460227a549"
+      "check": "CHK-dc460227a549",
+      "revision": 2,
+      "evidence": {
+        "id": "S-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "861bee3694e84f0fb5620d16d7d6651a",
+        "executed_at": "2026-10-22T06:26:23.534236+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_acceptance_runner.py",
+          "-k",
+          "resume"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "63aeba8b7a60e4f2d630468641f9bbb5657a52934f05ff109a96d8f2dd85ef8e"
+      },
+      "runs": [
+        {
+          "id": "S-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "48c2580e2c2542dbbe3edcc59340a891",
+          "executed_at": "2026-10-22T06:22:47.833960+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_acceptance_runner.py",
+            "-k",
+            "resume"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b562d449076ed2caef8211f20aa543baf617877bc87a5582e350142111e8db07"
+        },
+        {
+          "id": "S-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "861bee3694e84f0fb5620d16d7d6651a",
+          "executed_at": "2026-10-22T06:26:23.534236+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_acceptance_runner.py",
+            "-k",
+            "resume"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "63aeba8b7a60e4f2d630468641f9bbb5657a52934f05ff109a96d8f2dd85ef8e"
+        }
+      ]
     },
     {
       "id": "S-05",
@@ -1429,7 +1495,7 @@
       "kind": "functional",
       "boundary": "真实 deadline",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -1442,7 +1508,73 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "check": "CHK-3702c63dc631"
+      "check": "CHK-3702c63dc631",
+      "revision": 2,
+      "evidence": {
+        "id": "B-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "861bee3694e84f0fb5620d16d7d6651a",
+        "executed_at": "2026-10-22T06:26:23.534236+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_acceptance_runner.py",
+          "-k",
+          "deadline_incomplete"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "63aeba8b7a60e4f2d630468641f9bbb5657a52934f05ff109a96d8f2dd85ef8e"
+      },
+      "runs": [
+        {
+          "id": "B-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "48c2580e2c2542dbbe3edcc59340a891",
+          "executed_at": "2026-10-22T06:22:47.833960+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_acceptance_runner.py",
+            "-k",
+            "deadline_incomplete"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b562d449076ed2caef8211f20aa543baf617877bc87a5582e350142111e8db07"
+        },
+        {
+          "id": "B-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "861bee3694e84f0fb5620d16d7d6651a",
+          "executed_at": "2026-10-22T06:26:23.534236+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_acceptance_runner.py",
+            "-k",
+            "deadline_incomplete"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "63aeba8b7a60e4f2d630468641f9bbb5657a52934f05ff109a96d8f2dd85ef8e"
+        }
+      ]
     }
   ]
 }

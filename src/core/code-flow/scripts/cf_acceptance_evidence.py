@@ -5,7 +5,7 @@ import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Mapping, Optional, Sequence
 from uuid import uuid4
 
 from cf_evidence_store import EvidenceStore, discover_project_root, git_commit
@@ -142,6 +142,58 @@ def _store_evidence_runs(path: Path, rows: Mapping[str, Mapping[str, object]],
     return {"created": created, "duplicates": duplicates}
 
 
+def _record_result(row: dict[str, object], result: Mapping[str, object], run_key: str,
+                   executed_at: str, fingerprint: str) -> Optional[tuple[dict[str, object], str]]:
+    """Apply one result to a manifest row; None means keep the row unchanged."""
+    state = str(result["status"])
+    if result.get("cache_reused") is True:
+        # Checkpoint resume: an interrupted run never rewrote the manifest, so a
+        # reused check restores its prior verified conclusion without inventing
+        # a new execution record. Manifest-based reuse is already verified.
+        if state != "passed" or row.get("status") == "verified":
+            return None
+        row["revision"] = int(row.get("revision", 0)) + 1
+        record: dict[str, object] = {
+            "id": result["id"],
+            "kind": str(result.get("kind", "functional")),
+            "status": "passed",
+            "exit_code": 0,
+            "cache_reused": True,
+            "checkpoint_reused": True,
+            "revision": row["revision"],
+            "run_id": run_key,
+            "executed_at": executed_at,
+            "command": row.get("command"),
+            "cwd": row.get("cwd", "."),
+            "timeout": row.get("timeout", 60),
+        }
+        if fingerprint:
+            record["fingerprint"] = fingerprint
+        row["status"] = "verified"
+        return record, "verified"
+    # A deferral placeholder (e2e skipped in a non-E2E run) must never
+    # downgrade a verified terminal scenario: verify-e2e runs first, then
+    # later Done/finish passes would otherwise silently un-verify it.
+    if state == "e2e_deferred" and row.get("status") == "verified":
+        return None
+    # An unavailable environment is not new product evidence: keep a prior
+    # verified conclusion, but never promote an unverified row.
+    if state == "env_blocked" and row.get("status") == "verified":
+        return None
+    row["revision"] = int(row.get("revision", 0)) + 1
+    status = "verified" if state == "passed" else state
+    row["status"] = status
+    record = {**result, "revision": row["revision"], "run_id": run_key, "executed_at": executed_at}
+    # Identity for cross-run reuse checks: command/cwd/timeout + content
+    # fingerprint of the worktree the command actually ran against.
+    record["command"] = row.get("command")
+    record["cwd"] = row.get("cwd", ".")
+    record["timeout"] = row.get("timeout", 60)
+    if fingerprint and status == "verified":
+        record["fingerprint"] = fingerprint
+    return record, status
+
+
 def persist_results(path: Path, data: dict[str, object], results: Sequence[Mapping[str, object]],
                     fingerprint: str = "", run_id: str = "") -> None:
     rows = {row["id"]: row for row in data["scenarios"]}
@@ -152,31 +204,13 @@ def persist_results(path: Path, data: dict[str, object], results: Sequence[Mappi
         if state in ("not_included", "manual_pending"):
             continue
         row = rows[result["id"]]
-        # A deferral placeholder (e2e skipped in a non-E2E run) must never
-        # downgrade a verified terminal scenario: verify-e2e runs first, then
-        # later Done/finish passes would otherwise silently un-verify it.
-        if state == "e2e_deferred" and row.get("status") == "verified":
+        applied = _record_result(row, result, run_key, executed_at, fingerprint)
+        if applied is None:
             continue
-        # An unavailable environment is not new product evidence: keep a prior
-        # verified conclusion, but never promote an unverified row.
-        if state == "env_blocked" and row.get("status") == "verified":
-            continue
-        # Content-fingerprint reuse: nothing executed, evidence unchanged.
-        if result.get("cache_reused") is True:
-            continue
-        row["revision"] = int(row.get("revision", 0)) + 1
-        status = "verified" if state == "passed" else state
-        row["status"] = status
-        record = {**result, "revision": row["revision"], "run_id": run_key, "executed_at": executed_at}
-        # Identity for cross-run reuse checks: command/cwd/timeout + content
-        # fingerprint of the worktree the command actually ran against.
-        record["command"] = row.get("command")
-        record["cwd"] = row.get("cwd", ".")
-        record["timeout"] = row.get("timeout", 60)
-        if fingerprint and status == "verified":
-            record["fingerprint"] = fingerprint
+        record, status = applied
         row["evidence"] = record
-        row.setdefault("runs", []).append(record)
+        if result.get("cache_reused") is not True:
+            row.setdefault("runs", []).append(record)
         updates.append((row, record, status))
     from cf_spec_context import _atomic_text
     _atomic_text(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
