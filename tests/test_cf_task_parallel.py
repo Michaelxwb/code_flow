@@ -5,8 +5,10 @@
 """
 import json
 import io
+import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest  # noqa: E402
@@ -15,6 +17,9 @@ import pytest  # noqa: E402
 SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
+from cf_acceptance_manifest import write_manifest  # noqa: E402
+from cf_acceptance_runner import run_manifest  # noqa: E402
+from cf_evidence_store import EvidenceStore  # noqa: E402
 from cf_task_parallel import ParallelError, cleanup, collect, main, merge, prepare  # noqa: E402
 
 
@@ -452,3 +457,187 @@ def test_prepare_copies_ignored_managed_artifacts(tmp_path: Path) -> None:
     assert result["ok"] is True
     copied = Path(result["worktrees"][0]["path"]) / ".claude/settings.local.json"
     assert copied.read_text(encoding="utf-8") == '{"hooks": {}}\n'
+
+
+EVIDENCE_TASK_FILE = ".code-flow/tasks/2026-09-29/evidence/evidence.md"
+
+EVIDENCE_TASK_BODY = """# 并行证据演示
+
+- **Updated**: 2026-09-29
+
+## Acceptance Coverage
+
+| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |
+|--------|---------|---------|-------------|---------|------|---------|
+| S-01 | demo.design.md#2.5 | integration | 真实 runner | TASK-001 | planned | ["python3", "-c", "print('ok')"] |
+| S-02 | demo.design.md#2.5 | integration | 真实 runner | TASK-002 | planned | ["python3", "-c", "print('ok')"] |
+| S-03 | demo.design.md#2.5 | integration | 真实 runner | TASK-003 | planned | ["python3", "-c", "print('ok')"] |
+
+---
+
+## TASK-001: A
+
+- **Status**: draft
+- **Depends**:
+- **Acceptance-Refs**: S-01
+
+### Log
+- [2026-09-29] created (draft)
+
+---
+
+## TASK-002: B
+
+- **Status**: draft
+- **Depends**:
+- **Acceptance-Refs**: S-02
+
+### Log
+- [2026-09-29] created (draft)
+
+---
+
+## TASK-003: C
+
+- **Status**: draft
+- **Depends**:
+- **Acceptance-Refs**: S-03
+
+### Log
+- [2026-09-29] created (draft)
+"""
+
+
+def _evidence_repo(tmp_path: Path) -> Path:
+    """真实 git 仓库 + 真实 schema3 manifest，三个独立 TASK 共享一个 check。"""
+    root = tmp_path / "evidence-proj"
+    root.mkdir()
+    _git(root, "init", "-q")
+    _git(root, "config", "user.email", "cf@test")
+    _git(root, "config", "user.name", "cf-test")
+    (root / ".code-flow").mkdir()
+    (root / ".code-flow/.gitignore").write_text(GITIGNORE, encoding="utf-8")
+    task_dir = root / Path(EVIDENCE_TASK_FILE).parent
+    task_dir.mkdir(parents=True)
+    task_path = root / EVIDENCE_TASK_FILE
+    task_path.write_text(EVIDENCE_TASK_BODY, encoding="utf-8")
+    write_manifest(str(task_path), str(task_dir / ".acceptance-manifest.json"))
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "init evidence")
+    return root
+
+
+def _force_status(worktree: Path, task: str, status: str) -> None:
+    """把 TASK 区 Status 改成任意状态（draft → provisional → blocked → done）。"""
+    task_path = worktree / EVIDENCE_TASK_FILE
+    text = task_path.read_text(encoding="utf-8")
+    index = text.index(f"## {task}:")
+    head, tail = text[:index], text[index:]
+    tail, count = re.subn(r"(?m)^- \*\*Status\*\*:[ \t]*[^\n]+", f"- **Status**: {status}", tail, count=1)
+    assert count == 1, f"{task}: Status 行缺失"
+    task_path.write_text(head + tail, encoding="utf-8")
+
+
+def _commit_worktree(worktree: Path, task: str) -> None:
+    _git(worktree, "add", "-A")
+    _git(worktree, "commit", "-q", "-m", f"cf-task({task}): fixture")
+
+
+def _manifest_path(worktree: Path) -> Path:
+    return worktree / Path(EVIDENCE_TASK_FILE).parent / ".acceptance-manifest.json"
+
+
+def test_s06_three_worktrees_share_central_evidence_without_committing(tmp_path: Path) -> None:
+    """S-06: 3 个真实 worktree 并行执行同一 check，证据集中且无冲突，collect 通过。"""
+    root = _evidence_repo(tmp_path)
+    tasks = ["TASK-001", "TASK-002", "TASK-003"]
+    prepared = prepare(root, EVIDENCE_TASK_FILE, tasks, "run-central")
+    assert prepared["ok"] is True
+    by_task = {item["task"]: Path(item["path"]) for item in prepared["worktrees"]}
+
+    def worker(task: str) -> dict[str, object]:
+        worktree = by_task[task]
+        (worktree / f"impl-{task}.txt").write_text(task + "\n", encoding="utf-8")
+        outcome = run_manifest(str(_manifest_path(worktree)), str(worktree), write_evidence=True, owner=task)
+        _force_status(worktree, task, "done")
+        _commit_worktree(worktree, task)
+        return {"task": task, "outcome": outcome}
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = [pool.submit(worker, task) for task in tasks]
+        outcomes = [future.result() for future in futures]
+
+    for item in outcomes:
+        assert item["outcome"]["decision"] == "pass", item
+
+    common = Path(_git(root, "rev-parse", "--git-common-dir").strip())
+    if not common.is_absolute():
+        common = (root / common).resolve()
+    requirement = Path(EVIDENCE_TASK_FILE).parent.name
+    store = EvidenceStore(root, requirement=requirement)
+    assert store.directory.resolve() == (common / "code-flow/evidence" / requirement).resolve()
+
+    manifest = json.loads(_manifest_path(root).read_text(encoding="utf-8"))
+    check_ids = {str(item["check"]) for item in manifest["scenarios"]}
+    assert len(check_ids) == 1, check_ids
+    check_id = check_ids.pop()
+    runs = store.list_runs(check_id)
+    assert len(runs) == 3, runs
+    assert len({str(run["run_id"]) for run in runs}) == 3
+    assert all(run["exit_code"] == 0 and run["status"] == "passed" for run in runs)
+    assert all(isinstance(run.get("input_hash"), str) and run["input_hash"] for run in runs)
+    assert len({str(run["input_hash"]) for run in runs}) == 3, "三个 worktree 的内容指纹应各自独立"
+
+    collected = collect(root, "run-central", None)
+    assert collected["ok"] is True, collected
+    assert {item["status"] for item in collected["results"]} == {"done"}
+    assert collected["batch_smoke"] == "pending"
+    for item in collected["results"]:
+        assert item["evidence"]["required_checks"] == [check_id]
+        assert item["evidence"]["verified_checks"] == [check_id]
+        assert any(path.startswith("impl-") for path in item["files"])
+        assert all("code-flow/evidence" not in path for path in item["files"])
+
+    for task, worktree in by_task.items():
+        assert not (worktree / ".code-flow/evidence").exists()
+        assert _git(worktree, "status", "--porcelain", "--untracked-files=all") == "", task
+
+
+def test_e03_provisional_collect_rejects_and_lists_missing_checks(tmp_path: Path) -> None:
+    """E-03: provisional/blocked 一律拒绝；提示先补 required 检查；补齐后放行。"""
+    root = _evidence_repo(tmp_path)
+    prepared = prepare(root, EVIDENCE_TASK_FILE, ["TASK-001"], "run-provisional")
+    worktree = Path(prepared["worktrees"][0]["path"])
+    (worktree / "impl-TASK-001.txt").write_text("impl\n", encoding="utf-8")
+
+    _force_status(worktree, "TASK-001", "provisional")
+    _commit_worktree(worktree, "TASK-001")
+    provisional = collect(root, "run-provisional", ["TASK-001"])
+    assert provisional["ok"] is False
+    result = provisional["results"][0]
+    assert result["code"] == "task_provisional"
+    assert result["missing_checks"], result
+    assert result["missing_checks"][0]["check_id"].startswith("CHK-")
+    assert "S-01" in result["missing_checks"][0]["scenarios"]
+    assert "required" in result["message"] and "先补" in result["message"]
+
+    _force_status(worktree, "TASK-001", "blocked")
+    _commit_worktree(worktree, "TASK-001")
+    blocked = collect(root, "run-provisional", ["TASK-001"])
+    assert blocked["ok"] is False
+    assert blocked["results"][0]["code"] == "task_blocked"
+
+    _force_status(worktree, "TASK-001", "done")
+    _commit_worktree(worktree, "TASK-001")
+    unverified = collect(root, "run-provisional", ["TASK-001"])
+    assert unverified["ok"] is False
+    assert unverified["results"][0]["code"] == "required_evidence_missing"
+    assert unverified["results"][0]["missing_checks"]
+
+    outcome = run_manifest(str(_manifest_path(worktree)), str(worktree), write_evidence=True, owner="TASK-001")
+    assert outcome["decision"] == "pass", outcome
+    recovered = collect(root, "run-provisional", ["TASK-001"])
+    assert recovered["ok"] is True, recovered
+    assert recovered["results"][0]["status"] == "done"
+    assert recovered["batch_smoke"] == "pending"
+    assert all("code-flow/evidence" not in path for path in recovered["results"][0]["files"])

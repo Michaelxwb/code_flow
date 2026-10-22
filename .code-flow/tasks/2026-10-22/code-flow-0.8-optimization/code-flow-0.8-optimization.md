@@ -26,7 +26,7 @@
 | S-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 manifest + subprocess | TASK-005 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "checks_scenarios"] |
 | S-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 runner + checkpoint | TASK-007 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "resume"] |
 | S-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree + sidecar | TASK-004 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "relock_compaction"] |
-| S-06 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree ×3 | TASK-009 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "central_evidence"] |
+| S-06 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree ×3 | TASK-009 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "central_evidence"] |
 | S-07 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实批次 worktree + shared env | TASK-011 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"] |
 | S-08 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 plan 模板 + 任务文件 | TASK-012 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"] |
 | S-09 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 design + manifest + evidence | TASK-015 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"] |
@@ -34,7 +34,7 @@
 | S-11 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实四平台安装产物 | TASK-017 | planned | ["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"] |
 | E-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 preflight + 服务探测 | TASK-008 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "env_blocked"] |
 | E-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + manifest | TASK-010 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "check_conflict"] |
-| E-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 collect | TASK-009 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "provisional_collect"] |
+| E-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 collect | TASK-009 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "provisional_collect"] |
 | E-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 task md + spec-context | TASK-002 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_service.py", "-k", "doc_state_drift"] |
 | E-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 merge + input_hash | TASK-010 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_merge.py", "-k", "stale_after_merge"] |
 | B-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 schema2 manifest | TASK-005 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "schema2_compat"] |
@@ -427,13 +427,13 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 ## TASK-009: 并行 worktree：central evidence 与 collect
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-004,TASK-005
 - **Source**: code-flow-0.8-optimization.design.md#7 并行 worktree, code-flow-0.8-optimization.design.md#3.5.2 并发与原子性
 - **Spec-Refs**: N/A
 - **Acceptance-Refs**: S-06, E-03
-- **Files**: `cf_task_parallel.py`, `cf_workflow_service.py`, `cf_task_merge.py`
+- **Files**: `cf_task_parallel.py`, `cf_workflow_service.py`, `cf_task_merge.py`, `cf_task_runtime.py`
 - **Estimate**: 2d
 
 ### Description
@@ -442,27 +442,42 @@ validators/review/e2e 可独立运行；默认 changed，smoke/full 显式。
 
 ### Checklist
 
-- [ ] worktree 共享 central evidence store，不提交证据。
-- [ ] collect 校验 run_id/input_hash。
-- [ ] collect 接受 done/verified，拒绝 provisional/blocked。
-- [ ] worker 不再提交证据文件。
-- [ ] [S-06][integration] 编写/更新验收测试（真实边界：真实 git worktree ×3）；断言：3 worker 并行同一 check；证据集中无冲突；任务 done；批次 smoke 待执行
-- [ ] [E-03][integration] 编写/更新验收测试（真实边界：真实 collect）；断言：worktree 返回 provisional；collect 拒绝；提示先补 required 检查
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] worktree 共享 central evidence store，不提交证据。
+- [x] collect 校验 run_id/input_hash。
+- [x] collect 接受 done/verified，拒绝 provisional/blocked。
+- [x] worker 不再提交证据文件。
+- [x] 修复跨 worktree 继承的 stale verified 证据在 deferral 后仍被保留（否则并行 Done Gate 会被无关 Spec 卡死）。
+- [x] [S-06][integration] 编写/更新验收测试（真实边界：真实 git worktree ×3）；断言：3 worker 并行同一 check；证据集中无冲突；任务 done；批次 smoke 待执行
+- [x] [E-03][integration] 编写/更新验收测试（真实边界：真实 collect）；断言：worktree 返回 provisional；collect 拒绝；提示先补 required 检查
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-06 | integration | 真实 git worktree ×3 | 3 worker 并行同一 check；证据集中无冲突；任务 done；批次 smoke 待执行 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "central_evidence"] | planned |
-| E-03 | integration | 真实 collect | worktree 返回 provisional；collect 拒绝；提示先补 required 检查 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "provisional_collect"] | planned |
+| S-06 | integration | 真实 git worktree ×3 | 3 worker 并行同一 check；证据集中无冲突；任务 done；批次 smoke 待执行 | `tests/test_cf_task_parallel.py::test_s06_three_worktrees_share_central_evidence_without_committing` | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "central_evidence"] | verified |
+| E-03 | integration | 真实 collect | worktree 返回 provisional；collect 拒绝；提示先补 required 检查 | `tests/test_cf_task_parallel.py::test_e03_provisional_collect_rejects_and_lists_missing_checks` | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "provisional_collect"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-06 | `python3 -m pytest -q tests/test_cf_task_parallel.py -k central_evidence` → **1 failed**（`KeyError: 'batch_smoke'`：旧 collect 只校验 Status/dirty/commit，未校验 central evidence，也未标记批次 smoke） | 同命令 → **1 passed**；`tests/test_cf_task_parallel.py tests/test_cf_evidence_store.py` → **27 passed** | `test_s06_three_worktrees_share_central_evidence_without_committing` | 真实 git 仓库 + `prepare` 建 3 个 `git worktree`；3 线程并行跑真实 `run_manifest`（同一 check 命令）；evidence 落在 `git-common-dir/code-flow/evidence/evidence/`，3 条 run_id/input_hash 唯一且 exit=0；worktree 无 `.code-flow/evidence`，分支 diff 无证据文件；collect 返回 `batch_smoke=pending` | verified |
+| E-03 | `python3 -m pytest -q tests/test_cf_task_parallel.py -k provisional_collect` → **1 failed**（`assert 'task_not_finished' == 'task_provisional'`：旧 collect 不区分 provisional/blocked，也不输出 missing_checks） | 同命令 → **1 passed** | `test_e03_provisional_collect_rejects_and_lists_missing_checks` | 真实 worktree 内 real `collect`：provisional → `task_provisional` 且列出 `CHK-*`/`S-01` 缺失检查；blocked → `task_blocked`；done 无证据 → `required_evidence_missing`；真实 `run_manifest` 补跑写入 central evidence 后 collect 通过 | verified |
+- S-06: verified — automated command passed; run_id=25e562e9d1a440ebaf7d38572f1c7159 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=25e562e9d1a440ebaf7d38572f1c7159 (confirmed_by: runner)
+
+相关回归修复：`cf_task_runtime._update_rule` 只在旧 verified 证据的 rule/diff 仍匹配时才保留状态；跨 worktree 继承的 stale verified 遇到 deferral 会降为 unverified。回归 `tests/test_cf_evidence_store.py tests/test_cf_task_runtime.py` → **31 passed**（含 `test_s05_stale_verified_evidence_is_downgraded_by_deferral`）。
+- S-06: verified — automated command passed; run_id=f26759c7b85a442facf5dff65fa54cf2 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=f26759c7b85a442facf5dff65fa54cf2 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] RED：S-06 `KeyError: 'batch_smoke'`；E-03 旧 collect 返回 `task_not_finished`，不识别 provisional/blocked。
+- [2026-10-22] TASK-009 GREEN：collect 复用 `EvidenceStore`，按 worktree `input_hash` + `run_id` + exit=0 校验 required code checks；provisional/blocked 返回 `missing_checks`；S-06/E-03 通过，全仓 599 passed。
+- [2026-10-22] 并行 Done Gate 修复：清除跨 worktree 继承的 stale verified 证据（deferral 不再保留旧 diff 的绿灯）；补 regression test。
+- [2026-10-22] completed (done)
 
 ---
 

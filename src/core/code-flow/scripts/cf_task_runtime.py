@@ -142,6 +142,26 @@ def _evidence_data(evidence: VerificationEvidence) -> Mapping[str, object]:
 _NON_BLOCKING_EVIDENCE = frozenset(("skipped_in_cheap_gate", "deferred_to_review", "verifier_budget_exhausted"))
 
 
+def _verified_is_stale(rule: RuleBinding, current: RuleStageStatus, evidence: Mapping[str, object]) -> bool:
+    """True when preserved verified evidence no longer matches this scope.
+
+    A deferral/cheap skip must not un-verify a rule that is still fresh (the
+    verifier did not run but the old proof applies to the same diff). Once the
+    diff or rule text changes, keeping the verified status would be a stale
+    green: fail closed and let the deferral downgrade it.
+    """
+    latest = current.evidence[-1] if current.evidence else None
+    if not isinstance(latest, Mapping):
+        return True
+    if latest.get("rule_text_sha256") != rule.text_sha256:
+        return True
+    incoming = evidence.get("diff_sha256")
+    existing = latest.get("diff_sha256")
+    if isinstance(incoming, str) and incoming and isinstance(existing, str) and existing:
+        return incoming != existing
+    return False
+
+
 def _update_rule(rule: RuleBinding, evidence: Mapping[str, object]) -> RuleBinding:
     stage = rule.verifier_stage or "code"
     if stage not in rule.stage_status:
@@ -152,9 +172,10 @@ def _update_rule(rule: RuleBinding, evidence: Mapping[str, object]) -> RuleBindi
         return rule
     # A cheap skip/deferral means "not executed in this pass", not a product
     # failure: never un-verify an already verified rule (and never append
-    # deferral noise that hides the real evidence).
+    # deferral noise that hides the real evidence). Stale proof does not count.
     if current.status == "verified" and evidence.get("status") != "verified" and \
-            evidence.get("error_code") in _NON_BLOCKING_EVIDENCE:
+            evidence.get("error_code") in _NON_BLOCKING_EVIDENCE and \
+            not _verified_is_stale(rule, current, evidence):
         statuses[stage] = current
         return replace(rule, stage_status=statuses)
     status = "verified" if evidence.get("status") == "verified" else "unverified"
