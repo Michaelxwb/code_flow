@@ -139,6 +139,9 @@ def _evidence_data(evidence: VerificationEvidence) -> Mapping[str, object]:
     }
 
 
+_NON_BLOCKING_EVIDENCE = frozenset(("skipped_in_cheap_gate", "deferred_to_review", "verifier_budget_exhausted"))
+
+
 def _update_rule(rule: RuleBinding, evidence: Mapping[str, object]) -> RuleBinding:
     stage = rule.verifier_stage or "code"
     if stage not in rule.stage_status:
@@ -147,6 +150,13 @@ def _update_rule(rule: RuleBinding, evidence: Mapping[str, object]) -> RuleBindi
     current = statuses[stage]
     if current.status in ("not_applicable", "waived"):
         return rule
+    # A cheap skip/deferral means "not executed in this pass", not a product
+    # failure: never un-verify an already verified rule (and never append
+    # deferral noise that hides the real evidence).
+    if current.status == "verified" and evidence.get("status") != "verified" and \
+            evidence.get("error_code") in _NON_BLOCKING_EVIDENCE:
+        statuses[stage] = current
+        return replace(rule, stage_status=statuses)
     status = "verified" if evidence.get("status") == "verified" else "unverified"
     # Cheap-gate skips carry no per-run diff freshness requirement: dedup on
     # (verifier_ref, result_sha256) — the third slot stays None on BOTH sides.

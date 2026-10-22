@@ -36,12 +36,16 @@ def _task_section(text: str, task_id: str) -> str:
     return text[match.start():end]
 
 
+_EMPTY_REF_MARKERS = frozenset(("n/a", "none", "null", "-", "—"))
+
+
 def _refs(section: str) -> tuple[str, ...]:
     # [ \t]* 而非 \s*：空 Spec-Refs 不得跨行吞掉下一字段（Acceptance-Refs 等）
     match = re.search(r"(?m)^- \*\*Spec-Refs\*\*:[ \t]*(.*)$", section)
     if match is None:
         raise ValueError("spec_refs_missing")
-    return tuple(item.strip() for item in match.group(1).split(",") if item.strip())
+    cleaned = (item.strip() for item in match.group(1).split(","))
+    return tuple(item for item in cleaned if item and item.lower() not in _EMPTY_REF_MARKERS)
 
 
 def _rule_index(context: SpecContext) -> Mapping[str, RuleBinding]:

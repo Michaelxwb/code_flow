@@ -8,7 +8,16 @@ from pathlib import Path
 from typing import Mapping, Sequence
 from uuid import uuid4
 
+from cf_evidence_store import EvidenceStore, discover_project_root, git_commit
+
 STATES = frozenset(("planned", "pending", "tbd", "verified", "unverified", "failed", "incomplete", "not_configured", "e2e_deferred", "manual_pending"))
+_EVIDENCE_STATUS = {
+    "passed": "passed",
+    "failed": "failed",
+    "incomplete": "incomplete",
+    "not_configured": "not_configured",
+    "e2e_deferred": "deferred",
+}
 
 
 def scenario_line(line: str, scenario_id: str) -> bool:
@@ -85,6 +94,53 @@ def sync_task_evidence(task: Path, scenario_id: str, confirmed_by: str, evidence
     return "synced"
 
 
+def _run_record(row: Mapping[str, object], result: Mapping[str, object], run_id: str,
+                executed_at: str, fingerprint: str, commit: str) -> dict[str, object]:
+    command = row.get("command")
+    if not isinstance(command, list):
+        command = []
+    timeout = row.get("timeout", 60)
+    cwd = row.get("cwd", ".")
+    state = str(result.get("status"))
+    exit_code = result.get("exit_code")
+    return {
+        "run_id": run_id,
+        "check_id": str(row.get("check") or row.get("id")),
+        "scenario_id": str(row.get("id")),
+        "command": command,
+        "cwd": cwd if isinstance(cwd, str) else ".",
+        "timeout": timeout if isinstance(timeout, (int, float)) else 60,
+        "input_hash": fingerprint if isinstance(fingerprint, str) else "",
+        "exit_code": exit_code if isinstance(exit_code, int) else (0 if state == "passed" else 1),
+        "status": _EVIDENCE_STATUS[state],
+        "executed_at": executed_at,
+        "source": str(result.get("source") or "local"),
+        "commit": commit,
+        "run_url": str(result.get("run_url") or ""),
+    }
+
+
+def _store_evidence_runs(path: Path, rows: Mapping[str, Mapping[str, object]],
+                         results: Sequence[Mapping[str, object]], run_id: str,
+                         executed_at: str, fingerprint: str) -> dict[str, int]:
+    project = discover_project_root(path.parent)
+    store = EvidenceStore(project, path.parent.name)
+    commit = git_commit(project)
+    created = duplicates = 0
+    for result in results:
+        state = str(result.get("status"))
+        if state not in _EVIDENCE_STATUS or result.get("cache_reused") is True:
+            continue
+        row = rows.get(str(result.get("id")))
+        if row is None:
+            continue
+        outcome = store.write_run(str(row.get("check") or row.get("id")),
+                                  _run_record(row, result, run_id, executed_at, fingerprint, commit))
+        created += outcome["status"] == "created"
+        duplicates += outcome["status"] == "duplicate"
+    return {"created": created, "duplicates": duplicates}
+
+
 def persist_results(path: Path, data: dict[str, object], results: Sequence[Mapping[str, object]],
                     fingerprint: str = "") -> None:
     rows = {row["id"]: row for row in data["scenarios"]}
@@ -119,6 +175,7 @@ def persist_results(path: Path, data: dict[str, object], results: Sequence[Mappi
         updates.append((row, record, status))
     from cf_spec_context import _atomic_text
     _atomic_text(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+    _store_evidence_runs(path, rows, results, run_id, executed_at, fingerprint)
     task_name = data.get("task_file")
     if isinstance(task_name, str) and task_name:
         task = Path(task_name) if Path(task_name).is_absolute() else path.parent / task_name

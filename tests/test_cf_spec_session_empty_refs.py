@@ -58,3 +58,20 @@ def test_spec_refs_with_spaces_around_commas():
 """
     result = _refs(section)
     assert result == ("cli#RULE-001", "core#RULE-002", "scripts#RULE-003")
+
+
+def test_na_spec_refs_is_treated_as_no_behavior_contract():
+    """非行为任务写 `N/A` 时与空 Spec-Refs 等价，start 不应报 unknown_spec_refs。"""
+    section = """## TASK-004: Non-behavior Task
+- **Spec-Refs**: N/A
+- **Acceptance-Refs**: S-05
+"""
+    assert _refs(section) == ()
+
+
+def test_none_marker_is_treated_as_empty():
+    section = """## TASK-004: Non-behavior Task
+- **Spec-Refs**: none
+- **Acceptance-Refs**: S-05
+"""
+    assert _refs(section) == ()
