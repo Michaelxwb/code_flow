@@ -988,7 +988,7 @@
       "kind": "functional",
       "boundary": "真实 design + manifest + evidence",
       "owner": "TASK-015",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -1001,7 +1001,52 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "check": "CHK-9b173136f0a4"
+      "check": "CHK-9b173136f0a4",
+      "revision": 1,
+      "evidence": {
+        "id": "S-09",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "7f67e28b791a4092bbf1afc2cd7c35db",
+        "executed_at": "2026-10-22T06:35:43.908037+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_audit.py",
+          "-k",
+          "invariants"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b80326bd6c83bd9b58ee4a961b2807953b7aac0c6d62916bfaba792134c662fb"
+      },
+      "runs": [
+        {
+          "id": "S-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7f67e28b791a4092bbf1afc2cd7c35db",
+          "executed_at": "2026-10-22T06:35:43.908037+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_audit.py",
+            "-k",
+            "invariants"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b80326bd6c83bd9b58ee4a961b2807953b7aac0c6d62916bfaba792134c662fb"
+        }
+      ]
     },
     {
       "id": "S-10",
