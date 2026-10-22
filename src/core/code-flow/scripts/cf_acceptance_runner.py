@@ -263,6 +263,9 @@ def _executable(items: list[Mapping[str, object]]) -> bool:
         command = item.get("command")
         if isinstance(command, list) and command and all(isinstance(value, str) for value in command):
             return True
+        checks = item.get("checks")
+        if isinstance(checks, list) and checks and all(isinstance(value, str) for value in checks):
+            return True
         if str(item.get("kind", "")) in ("manual", "e2e"):
             return True
     return False
@@ -1054,6 +1057,70 @@ def _select_profile(data: Mapping[str, object], root: str, profile: str,
     return result
 
 
+def _expand_multi_checks(items: Sequence[Mapping[str, object]]) -> tuple[list[dict[str, object]], dict[str, list[str]]]:
+    """Expand scenarios with a checks list into one pseudo-scenario per check."""
+    expanded: list[dict[str, object]] = []
+    aggregates: dict[str, list[str]] = {}
+    for item in items:
+        checks = item.get("checks")
+        if not isinstance(checks, list) or len(checks) <= 1:
+            expanded.append(dict(item))
+            continue
+        scenario_id = str(item.get("id"))
+        ids: list[str] = []
+        for check_id in checks:
+            pseudo = dict(item)
+            pseudo["id"] = f"{scenario_id}::{check_id}"
+            pseudo["check"] = str(check_id)
+            pseudo.pop("checks", None)
+            expanded.append(pseudo)
+            ids.append(pseudo["id"])
+        aggregates[scenario_id] = ids
+    return expanded, aggregates
+
+
+def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
+                             aggregates: Mapping[str, Sequence[str]]) -> list[dict[str, object]]:
+    """Collapse pseudo-scenario results back to AND semantics on the real ID."""
+    if not aggregates:
+        return list(results)
+    by_id = {str(item.get("id")): item for item in results}
+    collapsed: list[dict[str, object]] = []
+    consumed: set[str] = set()
+    for result in results:
+        result_id = str(result.get("id"))
+        if "::" in result_id:
+            consumed.add(result_id)
+            continue
+        collapsed.append(dict(result))
+    for scenario_id, pseudo_ids in aggregates.items():
+        members = [by_id[pseudo] for pseudo in pseudo_ids if pseudo in by_id]
+        if not members:
+            collapsed.append({"id": scenario_id, "status": "failed", "error": "checks_missing"})
+            continue
+        states = [str(member.get("status")) for member in members]
+        if all(state in ("passed", "verified") for state in states):
+            status = "passed"
+        elif any(state in ("failed", "not_configured") for state in states):
+            status = "failed"
+        elif "env_blocked" in states:
+            status = "env_blocked"
+        elif "incomplete" in states:
+            status = "incomplete"
+        elif "e2e_deferred" in states:
+            status = "e2e_deferred"
+        else:
+            status = "not_included"
+        record = {"id": scenario_id, "status": status}
+        if status == "passed":
+            record["exit_code"] = 0
+        else:
+            record["error"] = ",".join(states)
+        collapsed.append(record)
+    del consumed
+    return collapsed
+
+
 def run_manifest(
     manifest_file: str,
     root: str,
@@ -1084,6 +1151,7 @@ def run_manifest(
         # 视为空集通过；"零可执行场景"阻断只针对整体无场景的 manifest。
         return {"decision": "pass", "results": [], "reason": "no_owned_scenarios"}
     ordered = _ordered(items)
+    expanded, aggregates = _expand_multi_checks(ordered)
     rows = _scenario_rows(scenarios)
     check_list, check_map = _check_plan(data)
     for item in items:
@@ -1094,11 +1162,12 @@ def run_manifest(
     fingerprint = worktree_fingerprint(str(root), include_untracked=False) if use_cache else ""
     limit = 1 if fail_fast else max(0, int(max_failures))
     checkpoint = _make_checkpoint(manifest_file, root, fingerprint, use_cache, resume)
-    units, _ = _build_units(ordered, Path(root), check_map, include_e2e or only_e2e, only_e2e)
+    units, _ = _build_units(expanded, Path(root), check_map, include_e2e or only_e2e, only_e2e)
     engine = _UnitEngine(units, Path(root), include_e2e or only_e2e, only_e2e, deadline,
                          namespace, rows, fingerprint, use_cache, limit, checkpoint, jobs)
     results_by_id, state = engine.run()
-    results = _ordered_results(ordered, results_by_id)
+    results = _ordered_results(expanded if aggregates else ordered, results_by_id)
+    results = _aggregate_multi_results(results, aggregates)
     for result, item in zip(results, ordered):
         if isinstance(result, dict) and isinstance(item, dict) and item.get("check_config"):
             result["check_config"] = item.get("check_config")

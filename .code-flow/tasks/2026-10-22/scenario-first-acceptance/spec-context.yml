@@ -54,11 +54,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
-          executed_at: '2026-10-22T15:08:47.299460+00:00'
+          executed_at: '2026-10-22T15:20:21.015637+00:00'
           status: verified
           rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
           artifact_sha256: null
-          diff_sha256: head:93a23e92fd2718c9dc6c617a3b7d98f4bbe3504f
+          diff_sha256: head:bc7737813aefa13559ae1763f45afe10d3e6600e
           result_sha256: 1085c4cab6098edb47d916a3f61807f8941bff345e264feb00b9abd8a1d910cf
           error_code: null
           details:
@@ -117,11 +117,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
-          executed_at: '2026-10-22T15:08:47.315744+00:00'
+          executed_at: '2026-10-22T15:20:21.032156+00:00'
           status: verified
           rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
           artifact_sha256: null
-          diff_sha256: head:93a23e92fd2718c9dc6c617a3b7d98f4bbe3504f
+          diff_sha256: head:bc7737813aefa13559ae1763f45afe10d3e6600e
           result_sha256: b993aeefb614fe0bf53e1d4c9059ce0c76d04eb18efd68f4adbdb2bb9b9737d9
           error_code: null
           details:
@@ -190,11 +190,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
-          executed_at: '2026-10-22T15:08:47.461051+00:00'
+          executed_at: '2026-10-22T15:20:21.052950+00:00'
           status: verified
           rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
           artifact_sha256: null
-          diff_sha256: head:93a23e92fd2718c9dc6c617a3b7d98f4bbe3504f
+          diff_sha256: head:bc7737813aefa13559ae1763f45afe10d3e6600e
           result_sha256: e5f1387cd8b51acb45cffab067f3aa409519def55572a9fff4aae96c0158dcbf
           error_code: null
           details:
@@ -205,13 +205,159 @@ bindings:
             - -q
             - tests/test_adapter_parity.py
             exit_code: 0
-            stdout_sha256: 1698cf53738fece3fc128f68a2005bf90098cb09ffc528d80a18fe683159d622
-            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '........                                                                 [100%]
 
               8 passed in 0.03s
 
               '
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            stdout_sha256: 1698cf53738fece3fc128f68a2005bf90098cb09ffc528d80a18fe683159d622
+            cache_reused: true
+            scope_files:
+            - .agents/skills/cf-init/SKILL.md
+            - .agents/skills/cf-learn/SKILL.md
+            - .agents/skills/cf-spec/SKILL.md
+            - .agents/skills/cf-stats/SKILL.md
+            - .agents/skills/cf-sync/SKILL.md
+            - .agents/skills/cf-task-align/SKILL.md
+            - .agents/skills/cf-task-archive/SKILL.md
+            - .agents/skills/cf-task-block/SKILL.md
+            - .agents/skills/cf-task-graph/SKILL.md
+            - .agents/skills/cf-task-note/SKILL.md
+            - .agents/skills/cf-task-plan/SKILL.md
+            - .agents/skills/cf-task-prd/SKILL.md
+            - .agents/skills/cf-task-start/SKILL.md
+            - .agents/skills/cf-task-status/SKILL.md
+            - .agents/skills/cf-task-verify-e2e/SKILL.md
+            - .agents/skills/cf-validate/SKILL.md
+            - .claude/commands/cf-init.md
+            - .claude/commands/cf-learn.md
+            - .claude/commands/cf-spec.md
+            - .claude/commands/cf-stats.md
+            - .claude/commands/cf-sync.md
+            - .claude/commands/cf-task/align.md
+            - .claude/commands/cf-task/archive.md
+            - .claude/commands/cf-task/block.md
+            - .claude/commands/cf-task/graph.md
+            - .claude/commands/cf-task/note.md
+            - .claude/commands/cf-task/plan.md
+            - .claude/commands/cf-task/prd.md
+            - .claude/commands/cf-task/start.md
+            - .claude/commands/cf-task/status.md
+            - .claude/commands/cf-task/verify-e2e.md
+            - .claude/commands/cf-validate.md
+            - .costrict/commands/cf-init.md
+            - .costrict/commands/cf-learn.md
+            - .costrict/commands/cf-spec.md
+            - .costrict/commands/cf-stats.md
+            - .costrict/commands/cf-sync.md
+            - .costrict/commands/cf-task/align.md
+            - .costrict/commands/cf-task/archive.md
+            - .costrict/commands/cf-task/block.md
+            - .costrict/commands/cf-task/graph.md
+            - .costrict/commands/cf-task/note.md
+            - .costrict/commands/cf-task/plan.md
+            - .costrict/commands/cf-task/prd.md
+            - .costrict/commands/cf-task/start.md
+            - .costrict/commands/cf-task/status.md
+            - .costrict/commands/cf-task/verify-e2e.md
+            - .costrict/commands/cf-validate.md
+            - .costrict/settings.local.json
+            - .opencode/commands/cf-init.md
+            - .opencode/commands/cf-learn.md
+            - .opencode/commands/cf-spec.md
+            - .opencode/commands/cf-stats.md
+            - .opencode/commands/cf-sync.md
+            - .opencode/commands/cf-task/align.md
+            - .opencode/commands/cf-task/archive.md
+            - .opencode/commands/cf-task/block.md
+            - .opencode/commands/cf-task/graph.md
+            - .opencode/commands/cf-task/note.md
+            - .opencode/commands/cf-task/plan.md
+            - .opencode/commands/cf-task/prd.md
+            - .opencode/commands/cf-task/start.md
+            - .opencode/commands/cf-task/status.md
+            - .opencode/commands/cf-task/verify-e2e.md
+            - .opencode/commands/cf-validate.md
+            - .opencode/plugins/code-flow/index.js
+            - .opencode/plugins/code-flow/package.json
+            - src/adapters/claude/CLAUDE.md
+            - src/adapters/claude/commands/cf-init.md
+            - src/adapters/claude/commands/cf-learn.md
+            - src/adapters/claude/commands/cf-spec.md
+            - src/adapters/claude/commands/cf-stats.md
+            - src/adapters/claude/commands/cf-sync.md
+            - src/adapters/claude/commands/cf-task/align.md
+            - src/adapters/claude/commands/cf-task/archive.md
+            - src/adapters/claude/commands/cf-task/block.md
+            - src/adapters/claude/commands/cf-task/graph.md
+            - src/adapters/claude/commands/cf-task/note.md
+            - src/adapters/claude/commands/cf-task/plan.md
+            - src/adapters/claude/commands/cf-task/prd.md
+            - src/adapters/claude/commands/cf-task/start.md
+            - src/adapters/claude/commands/cf-task/status.md
+            - src/adapters/claude/commands/cf-task/verify-e2e.md
+            - src/adapters/claude/commands/cf-validate.md
+            - src/adapters/claude/settings.local.json
+            - src/adapters/codex/AGENTS.md
+            - src/adapters/codex/config.toml
+            - src/adapters/codex/hooks.json
+            - src/adapters/codex/skills/cf-init/SKILL.md
+            - src/adapters/codex/skills/cf-learn/SKILL.md
+            - src/adapters/codex/skills/cf-spec/SKILL.md
+            - src/adapters/codex/skills/cf-stats/SKILL.md
+            - src/adapters/codex/skills/cf-sync/SKILL.md
+            - src/adapters/codex/skills/cf-task-align/SKILL.md
+            - src/adapters/codex/skills/cf-task-archive/SKILL.md
+            - src/adapters/codex/skills/cf-task-block/SKILL.md
+            - src/adapters/codex/skills/cf-task-graph/SKILL.md
+            - src/adapters/codex/skills/cf-task-note/SKILL.md
+            - src/adapters/codex/skills/cf-task-plan/SKILL.md
+            - src/adapters/codex/skills/cf-task-prd/SKILL.md
+            - src/adapters/codex/skills/cf-task-start/SKILL.md
+            - src/adapters/codex/skills/cf-task-status/SKILL.md
+            - src/adapters/codex/skills/cf-task-verify-e2e/SKILL.md
+            - src/adapters/codex/skills/cf-validate/SKILL.md
+            - src/adapters/commands.json
+            - src/adapters/costrict/CLAUDE.md
+            - src/adapters/costrict/commands/cf-init.md
+            - src/adapters/costrict/commands/cf-learn.md
+            - src/adapters/costrict/commands/cf-spec.md
+            - src/adapters/costrict/commands/cf-stats.md
+            - src/adapters/costrict/commands/cf-sync.md
+            - src/adapters/costrict/commands/cf-task/align.md
+            - src/adapters/costrict/commands/cf-task/archive.md
+            - src/adapters/costrict/commands/cf-task/block.md
+            - src/adapters/costrict/commands/cf-task/graph.md
+            - src/adapters/costrict/commands/cf-task/note.md
+            - src/adapters/costrict/commands/cf-task/plan.md
+            - src/adapters/costrict/commands/cf-task/prd.md
+            - src/adapters/costrict/commands/cf-task/start.md
+            - src/adapters/costrict/commands/cf-task/status.md
+            - src/adapters/costrict/commands/cf-task/verify-e2e.md
+            - src/adapters/costrict/commands/cf-validate.md
+            - src/adapters/costrict/settings.local.json
+            - src/adapters/opencode/AGENTS.md
+            - src/adapters/opencode/commands/cf-init.md
+            - src/adapters/opencode/commands/cf-learn.md
+            - src/adapters/opencode/commands/cf-spec.md
+            - src/adapters/opencode/commands/cf-stats.md
+            - src/adapters/opencode/commands/cf-sync.md
+            - src/adapters/opencode/commands/cf-task/align.md
+            - src/adapters/opencode/commands/cf-task/archive.md
+            - src/adapters/opencode/commands/cf-task/block.md
+            - src/adapters/opencode/commands/cf-task/graph.md
+            - src/adapters/opencode/commands/cf-task/note.md
+            - src/adapters/opencode/commands/cf-task/plan.md
+            - src/adapters/opencode/commands/cf-task/prd.md
+            - src/adapters/opencode/commands/cf-task/start.md
+            - src/adapters/opencode/commands/cf-task/status.md
+            - src/adapters/opencode/commands/cf-task/verify-e2e.md
+            - src/adapters/opencode/commands/cf-validate.md
+            - src/adapters/opencode/opencode.json
+            - src/adapters/opencode/plugins/code-flow/index.js
+            - src/adapters/opencode/plugins/code-flow/package.json
+            - tests/test_adapter_parity.py
       review:
         status: pending
         refs: []
@@ -249,11 +395,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
-          executed_at: '2026-10-22T15:08:48.112196+00:00'
+          executed_at: '2026-10-22T15:20:21.694571+00:00'
           status: verified
           rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
           artifact_sha256: null
-          diff_sha256: head:93a23e92fd2718c9dc6c617a3b7d98f4bbe3504f
+          diff_sha256: head:bc7737813aefa13559ae1763f45afe10d3e6600e
           result_sha256: 757be50ac6ac62b5a660d055007a15756e46994e06893a601bb25cea7beec623
           error_code: null
           details:
@@ -308,39 +454,39 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
-          executed_at: '2026-10-22T15:08:49.363051+00:00'
+          executed_at: '2026-10-22T15:20:22.919169+00:00'
           status: verified
           rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
           artifact_sha256: null
-          diff_sha256: head:93a23e92fd2718c9dc6c617a3b7d98f4bbe3504f
-          result_sha256: 278a8444b15d241992f0b08bcdd46a24745125be23d1057e1b57720f99f95ab7
+          diff_sha256: head:bc7737813aefa13559ae1763f45afe10d3e6600e
+          result_sha256: e0c451f917adc861dd88d491d415ff8e82f51793732b37e082f033e99a504339
           error_code: null
           details:
             argv:
             - node
             - tests/test_spec_workflow_migrate.js
             exit_code: 0
-            stdout_sha256: c8a3788a3844c60b38bb7da2eea516e11eaa70345eeb4b2a9e540916cf8bc227
+            stdout_sha256: 228591436dda3da9ed6d338f5689136cb9daf9a9f3f879c913729d4663862d15
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '✔ B-08 dry-run is a single in-memory preview with zero writes
-              (55.0625ms)
+              (53.098334ms)
 
               ✔ prepare creates bound plan, byte backup, empty staging and journal
-              (54.592291ms)
+              (52.492334ms)
 
-              ✔ S-12 apply is idempotent and writes version last (171.098541ms)
+              ✔ S-12 apply is idempotent and writes version last (168.700625ms)
 
-              ✔ E-08 injected rename failure restores all original bytes (298.328542ms)
+              ✔ E-08 injected rename failure restores all original bytes (291.255584ms)
 
               ✔ B-05 interruption before version is completed from proven target hashes
-              (165.787791ms)
+              (163.843709ms)
 
               ✔ EXDEV fails closed and rolls back without copy-delete commit fallback
-              (148.426417ms)
+              (146.355042ms)
 
-              ✔ re-apply after rollback succeeds (staging is reset) (260.19225ms)
+              ✔ re-apply after rollback succeeds (staging is reset) (254.228334ms)
 
-              ✔ apply refuses a plan whose project_root differs from cwd (54.287875ms)
+              ✔ apply refuses a plan whose project_root differs from cwd (52.477625ms)
 
               ℹ tests 8
 
@@ -356,7 +502,7 @@ bindings:
 
               ℹ todo 0
 
-              ℹ duration_ms 1210.627667
+              ℹ duration_ms 1185.211
 
               '
       review:
@@ -397,11 +543,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
-          executed_at: '2026-10-22T15:08:50.725506+00:00'
+          executed_at: '2026-10-22T15:20:24.235614+00:00'
           status: verified
           rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
           artifact_sha256: null
-          diff_sha256: head:93a23e92fd2718c9dc6c617a3b7d98f4bbe3504f
+          diff_sha256: head:bc7737813aefa13559ae1763f45afe10d3e6600e
           result_sha256: 3cd1ee3e105ef106eaf349c7f44dbe753eef65fb606a2a7258e3beef3f4d9ba5
           error_code: null
           details:
@@ -631,11 +777,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
-          executed_at: '2026-10-22T15:09:10.648355+00:00'
+          executed_at: '2026-10-22T15:20:45.712510+00:00'
           status: verified
           rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
           artifact_sha256: null
-          diff_sha256: head:93a23e92fd2718c9dc6c617a3b7d98f4bbe3504f
+          diff_sha256: head:bc7737813aefa13559ae1763f45afe10d3e6600e
           result_sha256: 22c068054a541e609d992fd69ae16346c86ce57d362acbfdb984cefbcb19d589
           error_code: null
           details:
@@ -678,11 +824,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
-          executed_at: '2026-10-22T15:09:10.674467+00:00'
+          executed_at: '2026-10-22T15:20:45.740258+00:00'
           status: verified
           rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
           artifact_sha256: null
-          diff_sha256: head:93a23e92fd2718c9dc6c617a3b7d98f4bbe3504f
+          diff_sha256: head:bc7737813aefa13559ae1763f45afe10d3e6600e
           result_sha256: 4c633b527b50710bcbb57a6bb3f7bda844a91cce97bf40d6a6813614c1adaf02
           error_code: null
           details:
@@ -725,12 +871,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
-          executed_at: '2026-10-22T15:09:01.980174+00:00'
+          executed_at: '2026-10-22T15:20:35.321031+00:00'
           status: verified
           rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
           artifact_sha256: null
-          diff_sha256: head:93a23e92fd2718c9dc6c617a3b7d98f4bbe3504f
-          result_sha256: f9d7b30ac80fe8f29fc71becdaf3552008c47812ce463a947cfd47dd6b837a55
+          diff_sha256: head:bc7737813aefa13559ae1763f45afe10d3e6600e
+          result_sha256: 0d4018ee60e9b39b672b2ad21b87e12824cb2077158eb77d1b4fe3fd4d3d8895
           error_code: null
           details:
             argv:
@@ -745,11 +891,11 @@ bindings:
             - tests/test_opencode_native.py
             - tests/test_runtime_contract.py
             exit_code: 0
-            stdout_sha256: 2cab6285589e396b7faed1264ecd91f0c2987e2e94afb1bcfe1fae1a75780799
+            stdout_sha256: 75d948c52285963d21e0394022ec66c453fe52f234d96077ec158e1335c47f93
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '.....................................................................    [100%]
 
-              69 passed in 10.73s
+              69 passed in 10.76s
 
               '
       review:
@@ -789,12 +935,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
-          executed_at: '2026-10-22T15:09:08.814248+00:00'
+          executed_at: '2026-10-22T15:20:43.836003+00:00'
           status: verified
           rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
           artifact_sha256: null
-          diff_sha256: head:93a23e92fd2718c9dc6c617a3b7d98f4bbe3504f
-          result_sha256: 248e01bcd1fdf605e474539b3b451a658be6a4f3f49710fabf3d3a3192c4e53c
+          diff_sha256: head:bc7737813aefa13559ae1763f45afe10d3e6600e
+          result_sha256: b4c397124ffa7fc74fb73c557363a7d293ea5a8f8f76fa4c36e49466da62073c
           error_code: null
           details:
             argv:
@@ -806,11 +952,11 @@ bindings:
             - tests/test_cf_spec_gate.py
             - tests/test_cf_task_runtime.py
             exit_code: 0
-            stdout_sha256: 30f5236ec6c2512d4c3c7dabf9f3172f37193f5de1ef4f1cde3f95f3c29fa8ad
+            stdout_sha256: fba7f5655d4e8d9b983209473ee0d74c9de40ce60da53a85e75e086eb9908b6a
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '..............................................................           [100%]
 
-              62 passed in 6.69s
+              62 passed in 6.95s
 
               '
       review:
@@ -850,12 +996,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
-          executed_at: '2026-10-22T15:09:10.642061+00:00'
+          executed_at: '2026-10-22T15:20:45.703318+00:00'
           status: verified
           rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
           artifact_sha256: null
-          diff_sha256: head:93a23e92fd2718c9dc6c617a3b7d98f4bbe3504f
-          result_sha256: 5224a97e75d4c8afa50892114a3e5230d0a5de6f7b7da985091f3ba5ee862b88
+          diff_sha256: head:bc7737813aefa13559ae1763f45afe10d3e6600e
+          result_sha256: aa05411e5abd9204212f2a6a08c5a5305e96c74972d9b179846425ab1a657b38
           error_code: null
           details:
             argv:
@@ -867,11 +1013,11 @@ bindings:
             - tests/test_adapter_parity.py
             - tests/test_spec_workflow_residue.py
             exit_code: 0
-            stdout_sha256: f76dd8c0d124530873de7bfce5826885cb1fcde06b9e5688c0c762bcee2db6dd
+            stdout_sha256: 4ce1ebaa3c1830b0b6c1b675e76b540168e51235a7fd660bb4d04d022811631b
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '........................                                                 [100%]
 
-              24 passed in 0.39s
+              24 passed in 0.42s
 
               '
       review:

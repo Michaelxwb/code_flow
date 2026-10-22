@@ -175,8 +175,21 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
         command = sub.add_parser(name)
         command.add_argument("--file", action="append", required=True)
         command.add_argument("--json", action="store_true")
+    migrate = sub.add_parser("migrate")
+    migrate.add_argument("--task-file", required=True)
+    migrate.add_argument("--output", default="")
+    migrate.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
+        if args.action == "migrate":
+            from cf_acceptance_manifest import extract_manifest
+            coverage = extract_manifest(args.task_file)["scenarios"]
+            result = migrate_from_coverage(coverage)
+            if args.output:
+                text = "---\n" + yaml.safe_dump(result, sort_keys=False, allow_unicode=True) + "---\n"
+                Path(args.output).write_text(text, encoding="utf-8")
+            stdout.write(json.dumps(result, ensure_ascii=False))
+            return 0
         sets = [parse_scenarios(path) for path in args.file]
         if args.action == "parse" and len(sets) > 1:
             raise ScenarioError("invalid_action", "parse 只接受一个文件；多文件用 merge")
@@ -265,9 +278,11 @@ def audit_scenario_source(scenarios: Sequence[Mapping[str, object]],
 def migrate_from_coverage(coverage: Sequence[Mapping[str, object]]) -> dict[str, object]:
     """Build an initial scenarios source from legacy Acceptance Coverage."""
     scenarios: list[dict[str, object]] = []
+    invalid: list[str] = []
     for row in coverage:
         scenario_id = str(row.get("scenario_id") or row.get("id") or "")
         if not SCENARIO_ID.fullmatch(scenario_id):
+            invalid.append(scenario_id)
             continue
         priority = str(row.get("priority") or "P1").upper()
         level = str(row.get("level") or "integration").lower()
@@ -292,4 +307,4 @@ def migrate_from_coverage(coverage: Sequence[Mapping[str, object]]) -> dict[str,
             "checks": [],
             "sources": ["legacy-coverage"],
         })
-    return {"schema": SCHEMA_VERSION, "scenarios": scenarios, "migrated": True}
+    return {"schema": SCHEMA_VERSION, "scenarios": scenarios, "migrated": True, "invalid": invalid}

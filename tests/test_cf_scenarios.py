@@ -254,3 +254,24 @@ scenarios:
     ]}), encoding="utf-8")
     findings = _scenario_source_findings(str(source), manifest, design, json.loads(manifest.read_text()))
     assert any(item["code"] == "design_scenario_duplicate" for item in findings)
+
+
+def test_multi_check_runner_and_semantics(tmp_path: Path) -> None:
+    from cf_acceptance_runner import run_manifest
+    passing = [sys.executable, "-c", "pass"]
+    failing = [sys.executable, "-c", "raise SystemExit(3)"]
+    manifest = tmp_path / ".acceptance-manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [
+            {"id": "CHK-A", "command": passing, "cwd": ".", "timeout": 30},
+            {"id": "CHK-B", "command": failing, "cwd": ".", "timeout": 30},
+        ],
+        "scenarios": [
+            {"id": "S-01", "kind": "functional", "checks": ["CHK-A", "CHK-B"],
+             "owner": "TASK-001", "status": "planned"},
+        ],
+    }), encoding="utf-8")
+    result = run_manifest(str(manifest), str(tmp_path))
+    assert result["decision"] == "block"
+    assert result["results"][0]["status"] == "failed"

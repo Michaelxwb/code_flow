@@ -213,6 +213,13 @@
         "merge"
       ],
       "example_args": "--file a.scenarios.md --file b.scenarios.md --json"
+    },
+    "scenarios migrate": {
+      "module": "cf_scenarios",
+      "prefix": [
+        "migrate"
+      ],
+      "example_args": "--task-file \"<任务文件>\" --output \"<需求>.scenarios.md\" --json"
     }
   }
 }
