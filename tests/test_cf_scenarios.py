@@ -150,3 +150,38 @@ def test_missing_scenarios_source_blocks_plan(tmp_path: Path) -> None:
     with pytest.raises(ScenarioError) as error:
         require_source(tmp_path)
     assert error.value.code == "scenario_source_missing"
+
+
+def test_scenario_source_three_way_audit() -> None:
+    from cf_scenarios import audit_scenario_source
+    scenarios = [{"id": "S-01"}, {"id": "S-02"}]
+    coverage = [{"scenario_id": "S-01", "owner": "TASK-001"},
+                {"scenario_id": "S-02", "owner": "TASK-002"}]
+    report = audit_scenario_source(scenarios, coverage, ["S-01", "S-02"])
+    assert report["ok"] is True
+    assert report["manifest_missing"] == []
+
+
+def test_fallback_marks_legacy_without_scenarios_file(tmp_path: Path) -> None:
+    from cf_scenarios import load_requirement_scenarios
+    result = load_requirement_scenarios(tmp_path, allow_legacy=True)
+    assert result["deprecated"] is True
+    assert result["scenarios"] == []
+
+
+def test_unknown_scenario_is_reported() -> None:
+    from cf_scenarios import audit_scenario_source
+    report = audit_scenario_source([{"id": "S-01"}], [
+        {"scenario_id": "S-01", "owner": "TASK-001"},
+        {"scenario_id": "S-99", "owner": "TASK-002"},
+    ])
+    assert report["ok"] is False
+    assert report["unknown"] == ["S-99"]
+
+
+def test_migrate_legacy_coverage_to_scenarios() -> None:
+    from cf_scenarios import migrate_from_coverage
+    result = migrate_from_coverage([{"scenario_id": "S-01", "boundary": "api"}])
+    assert result["migrated"] is True
+    assert result["scenarios"][0]["id"] == "S-01"
+    assert result["scenarios"][0]["sources"] == ["legacy-coverage"]

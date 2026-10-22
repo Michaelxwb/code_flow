@@ -227,3 +227,58 @@ def reconcile_coverage(scenarios: Sequence[Mapping[str, object]],
         "duplicate_owner": duplicate,
         "unowned": unowned,
     }
+
+
+def load_requirement_scenarios(task_dir: object, allow_legacy: bool = False) -> dict[str, object]:
+    """Load the requirement source, or an explicit deprecated legacy marker."""
+    directory = Path(task_dir)
+    try:
+        source = require_source(directory)
+    except ScenarioError as exc:
+        if exc.code != "scenario_source_missing" or not allow_legacy:
+            raise
+        return {"schema": SCHEMA_VERSION, "requirement": directory.name,
+                "source": "", "scenarios": [], "deprecated": True}
+    return parse_scenarios(source)
+
+
+def audit_scenario_source(scenarios: Sequence[Mapping[str, object]],
+                          coverage: Sequence[Mapping[str, object]],
+                          manifest_ids: Sequence[str] = ()) -> dict[str, object]:
+    """Three-way audit: scenarios, coverage, manifest."""
+    report = reconcile_coverage(scenarios, coverage)
+    scenario_ids = {str(item.get("id")) for item in scenarios}
+    coverage_ids = {str(item.get("scenario_id") or item.get("id")) for item in coverage}
+    manifest = {str(item) for item in manifest_ids}
+    report["manifest_missing"] = sorted(scenario_ids - manifest) if manifest else []
+    report["manifest_unknown"] = sorted(manifest - scenario_ids) if manifest else []
+    report["coverage_unknown"] = sorted(coverage_ids - scenario_ids)
+    report["ok"] = bool(report["ok"] and not report["manifest_missing"] and not report["manifest_unknown"])
+    return report
+
+
+def migrate_from_coverage(coverage: Sequence[Mapping[str, object]]) -> dict[str, object]:
+    """Build an initial scenarios source from legacy Acceptance Coverage."""
+    scenarios: list[dict[str, object]] = []
+    for row in coverage:
+        scenario_id = str(row.get("scenario_id") or row.get("id") or "")
+        if not SCENARIO_ID.fullmatch(scenario_id):
+            continue
+        scenarios.append({
+            "id": scenario_id,
+            "title": str(row.get("title") or scenario_id),
+            "priority": str(row.get("priority") or "P1"),
+            "level": str(row.get("level") or "integration"),
+            "exec": "auto",
+            "env": "none",
+            "components": [],
+            "boundary": str(row.get("boundary") or ""),
+            "preconditions": [],
+            "steps": [],
+            "expected": [],
+            "design_refs": [],
+            "rules": [],
+            "checks": [],
+            "sources": ["legacy-coverage"],
+        })
+    return {"schema": SCHEMA_VERSION, "scenarios": scenarios, "migrated": True}

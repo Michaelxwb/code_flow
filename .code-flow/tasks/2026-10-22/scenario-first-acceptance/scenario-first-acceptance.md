@@ -22,14 +22,14 @@
 |---|---|---|---|---|---|---|
 | S-01 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 真实 scenarios.md + parser | TASK-001 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "parse"] |
 | S-02 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 两份 design 引用同一全局 ID | TASK-001 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "merge_conflict"] |
-| S-03 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 真实 plan + coverage | TASK-002 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "scenario_owner"] |
+| S-03 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 真实 plan + coverage | TASK-002 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "scenario_owner"] |
 | S-04 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 真实 manifest + 多 check | TASK-001 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "multi_check"] |
-| S-05 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 真实 design + scenarios + manifest | TASK-003 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "scenario_source"] |
-| S-06 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 无 scenarios.md 的 0.8 需求 | TASK-003 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "fallback"] |
-| E-01 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 新需求缺少 scenarios.md | TASK-002 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "missing_scenarios"] |
-| E-02 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | Coverage 引用未知场景 | TASK-003 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "unknown_scenario"] |
+| S-05 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 真实 design + scenarios + manifest | TASK-003 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "scenario_source"] |
+| S-06 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 无 scenarios.md 的 0.8 需求 | TASK-003 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "fallback"] |
+| E-01 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 新需求缺少 scenarios.md | TASK-002 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "missing_scenarios"] |
+| E-02 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | Coverage 引用未知场景 | TASK-003 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "unknown_scenario"] |
 | E-03 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 同一 ID 两份冲突定义 | TASK-001 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "definition_conflict"] |
-| B-01 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 0.8 旧需求 | TASK-003 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "migrate_legacy"] |
+| B-01 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 0.8 旧需求 | TASK-003 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "migrate_legacy"] |
 | B-02 | scenario-first-acceptance.design.md#2.5 验收条件 | integration | 单域需求（仅后端） | TASK-001 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "single_domain"] |
 
 > 本表覆盖 design §2.5 全部场景；每个场景唯一 owner。
@@ -38,7 +38,7 @@
 
 ## TASK-001: 场景源模型：解析、合并、多 check 派生
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: 无
 - **Source**: scenario-first-acceptance.design.md#3.3 数据设计, scenario-first-acceptance.design.md#3.5 质量实现
@@ -97,6 +97,11 @@
 - E-03: verified — automated command passed; run_id=f27bdde89e7e428a8cccc0f74808e67c (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=f27bdde89e7e428a8cccc0f74808e67c (confirmed_by: runner)
 - S-02: verified — automated command passed; run_id=e204364246694b8ca7f6f6bd93b8cda7 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=bf2ce5d8c554438086fcd3420a9bf40b (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=bf2ce5d8c554438086fcd3420a9bf40b (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=bf2ce5d8c554438086fcd3420a9bf40b (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=bf2ce5d8c554438086fcd3420a9bf40b (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=bf2ce5d8c554438086fcd3420a9bf40b (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -108,7 +113,7 @@
 
 ## TASK-002: align/plan 接入场景文件与模板
 
-- **Status**: draft
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: scenario-first-acceptance.design.md#2.3 功能方案, scenario-first-acceptance.design.md#3.4 接口设计
@@ -150,15 +155,23 @@ align 产出 scenarios.md；plan 只从 scenarios.md 取场景并分配唯一 ow
 | E-01 | `-k missing_scenarios` 无阻断 | **1 passed** | `test_missing_scenarios_source_blocks_plan` | 真实空任务目录 | verified |
 
 文档/模板：`specs/shared/scenarios-template.md` 新增；design 三模板 2.5 标注场景源；align/plan 四平台说明同步。全仓 **694 passed**。
+- S-03: failed — automated command failed; run_id=8325d9a4383a4db6b0b3e975b6736304 (confirmed_by: runner)
+- E-01: failed — automated command failed; run_id=8325d9a4383a4db6b0b3e975b6736304 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=ca0e951556c24a01a9b04d99387ff525 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=ca0e951556c24a01a9b04d99387ff525 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=bf2ce5d8c554438086fcd3420a9bf40b (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=bf2ce5d8c554438086fcd3420a9bf40b (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] completed (done)
 
 ---
 
 ## TASK-003: audit 三方对账、0.8 回退与迁移
 
-- **Status**: draft
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-001,TASK-002
 - **Source**: scenario-first-acceptance.design.md#3.2 架构, scenario-first-acceptance.design.md#4 部署与迁移
@@ -173,34 +186,48 @@ audit 只对账 scenarios/Coverage/manifest；无 scenarios.md 的 0.8 需求回
 
 ### Checklist
 
-- [ ] audit 读取 scenarios.md + Coverage + manifest，三方 ID 集合必须一致。
-- [ ] design 只检查引用，不再解析场景定义；重复定义报 `design_scenario_conflict`。
-- [ ] 无 scenarios.md 时回退 0.8 双 design 逻辑合并，输出 `deprecated: true`。
-- [ ] 提供从 Coverage + design 生成初始 scenarios.md 的迁移入口。
-- [ ] 文档与四平台归档/plan 说明同步。
-- [ ] 实现并运行 verifier scripts-code-standards#RULE-scripts-canonical-parity-001。
-- [ ] 实现并运行 verifier cli-code-standards#RULE-cli-user-content-preservation-001。
-- [ ] 实现并运行 verifier cli-code-standards#RULE-cli-migration-transaction-001。
-- [ ] [S-05][integration] 编写/更新验收测试（真实边界：真实 design + scenarios + manifest）
-- [ ] [S-06][integration] 编写/更新验收测试（真实边界：无 scenarios.md 的 0.8 需求）
-- [ ] [E-02][integration] 编写/更新验收测试（真实边界：Coverage 引用未知场景）
-- [ ] [B-01][integration] 编写/更新验收测试（真实边界：0.8 旧需求）
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] audit 读取 scenarios.md + Coverage + manifest，三方 ID 集合必须一致。
+- [x] design 只检查引用，不再解析场景定义；重复定义报 `design_scenario_conflict`。
+- [x] 无 scenarios.md 时回退 0.8 双 design 逻辑合并，输出 `deprecated: true`。
+- [x] 提供从 Coverage + design 生成初始 scenarios.md 的迁移入口。
+- [x] 文档与四平台归档/plan 说明同步。
+- [x] 实现并运行 verifier scripts-code-standards#RULE-scripts-canonical-parity-001。
+- [x] 实现并运行 verifier cli-code-standards#RULE-cli-user-content-preservation-001。
+- [x] 实现并运行 verifier cli-code-standards#RULE-cli-migration-transaction-001。
+- [x] [S-05][integration] 编写/更新验收测试（真实边界：真实 design + scenarios + manifest）
+- [x] [S-06][integration] 编写/更新验收测试（真实边界：无 scenarios.md 的 0.8 需求）
+- [x] [E-02][integration] 编写/更新验收测试（真实边界：Coverage 引用未知场景）
+- [x] [B-01][integration] 编写/更新验收测试（真实边界：0.8 旧需求）
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 执行命令 | 状态 |
 |---|---|---|---|---|---|
-| S-05 | integration | 真实 design + scenarios + manifest | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "scenario_source"] | planned |
-| S-06 | integration | 无 scenarios.md 的 0.8 需求 | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "fallback"] | planned |
-| E-02 | integration | Coverage 引用未知场景 | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "unknown_scenario"] | planned |
-| B-01 | integration | 0.8 旧需求 | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "migrate_legacy"] | planned |
+| S-05 | integration | 真实 design + scenarios + manifest | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "scenario_source"] | verified |
+| S-06 | integration | 无 scenarios.md 的 0.8 需求 | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "fallback"] | verified |
+| E-02 | integration | Coverage 引用未知场景 | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "unknown_scenario"] | verified |
+| B-01 | integration | 0.8 旧需求 | 场景源/对账/状态派生 | ["python3", "-m", "pytest", "-q", "tests/test_cf_scenarios.py", "-k", "migrate_legacy"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 RED/GREEN、断言位置与真实边界证据。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|---|---|---|---|---|---|
+| S-05 | `-k scenario_source` 无三方对账 | **1 passed** | `test_scenario_source_three_way` | scenarios + coverage + manifest | verified |
+| S-06 | `-k fallback` 无 deprecated 标记 | **1 passed** | `test_fallback_marks_legacy_without_scenarios_file` | 空需求目录 | verified |
+| E-02 | `-k unknown_scenario` 无 unknown 检测 | **1 passed** | `test_unknown_scenario_reported` | 未知 coverage ID | verified |
+| B-01 | `-k migrate_legacy` 无迁移入口 | **1 passed** | `test_migrate_legacy_coverage_to_scenarios` | 旧 coverage 行 | verified |
+
+全仓 `tests/test_cf_scenarios.py tests/test_cf_audit.py` 相关用例通过。
+- S-05: verified — automated command passed; run_id=bc789c82b510461cb30449e85dec4a33 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=bc789c82b510461cb30449e85dec4a33 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=bc789c82b510461cb30449e85dec4a33 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=bc789c82b510461cb30449e85dec4a33 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] TASK-003 GREEN：三方对账/回退/迁移 helpers 与测试落地。
+- [2026-10-22] completed (done)
 
 ---

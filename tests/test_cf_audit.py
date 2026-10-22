@@ -305,3 +305,20 @@ def test_invariants_cli_emits_json_and_markdown(tmp_path: Path) -> None:
     blocked = subprocess.run(command, capture_output=True, text=True, check=False)
     assert blocked.returncode == 3
     assert json.loads(blocked.stdout)["decision"] == "block"
+
+
+def test_scenario_source_three_way() -> None:
+    from cf_scenarios import audit_scenario_source
+    report = audit_scenario_source(
+        [{"id": "S-01"}], [{"scenario_id": "S-01", "owner": "TASK-001"}], ["S-01"]
+    )
+    assert report["ok"] is True
+
+
+def test_unknown_scenario_reported() -> None:
+    from cf_scenarios import audit_scenario_source
+    report = audit_scenario_source(
+        [{"id": "S-01"}], [{"scenario_id": "S-99", "owner": "TASK-001"}]
+    )
+    assert report["ok"] is False
+    assert "S-99" in report["unknown"]

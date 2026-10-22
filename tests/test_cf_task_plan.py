@@ -200,3 +200,20 @@ def test_capability_budget_cli_reports_json_and_exit_code(tmp_path: Path) -> Non
     assert blocked.returncode == 1
     blocked_payload = json.loads(blocked.stdout)
     assert blocked_payload["budget"]["requires_merge"] is True
+
+
+def test_scenario_owner_reconciliation_requires_unique_owner() -> None:
+    from cf_scenarios import reconcile_coverage
+    scenarios = [{"id": "S-01"}, {"id": "S-02"}]
+    report = reconcile_coverage(scenarios, [
+        {"scenario_id": "S-01", "owner": "TASK-001"},
+        {"scenario_id": "S-02", "owner": "TASK-002"},
+    ])
+    assert report["ok"] is True
+
+
+def test_missing_scenarios_source_blocks_plan(tmp_path: Path) -> None:
+    from cf_scenarios import ScenarioError, require_source
+    with pytest.raises(ScenarioError) as error:
+        require_source(tmp_path)
+    assert error.value.code == "scenario_source_missing"
