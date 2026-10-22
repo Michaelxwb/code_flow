@@ -28,7 +28,7 @@
 | S-05 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree + sidecar | TASK-004 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "relock_compaction"] |
 | S-06 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 git worktree ×3 | TASK-009 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "central_evidence"] |
 | S-07 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实批次 worktree + shared env | TASK-011 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_parallel.py", "-k", "batch_smoke"] |
-| S-08 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 plan 模板 + 任务文件 | TASK-012 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"] |
+| S-08 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 plan 模板 + 任务文件 | TASK-012 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"] |
 | S-09 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 design + manifest + evidence | TASK-015 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_audit.py", "-k", "invariants"] |
 | S-10 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 JUnit/Playwright 报告 | TASK-016 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_evidence_store.py", "-k", "ci_import"] |
 | S-11 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实四平台安装产物 | TASK-017 | planned | ["python3", "-m", "pytest", "-q", "tests/test_adapter_parity.py"] |
@@ -526,11 +526,11 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 ## TASK-012: 能力级 plan 与计划预算
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-002
 - **Source**: code-flow-0.8-optimization.design.md#2.3 功能方案, code-flow-0.8-optimization.design.md#3.4 接口设计
-- **Spec-Refs**: N/A
+- **Spec-Refs**:
 - **Acceptance-Refs**: S-08
 - **Files**: `cf-task-plan` skill/template, `cf_task_index.py`
 - **Estimate**: 1.5d
@@ -541,25 +541,33 @@ manifest checks 按 ID union；冲突 fail closed；merge 后 input_hash 变化�
 
 ### Checklist
 
-- [ ] 实现 plan --task-size capability|file，默认 capability。
-- [ ] 输出任务数、总工时、平均任务时长、每任务场景数。
-- [ ] 超过 25 任务或平均 <2h 警告并要求合并。
-- [ ] 任务必须可演示、可独立验收。
-- [ ] [S-08][integration] 编写/更新验收测试（真实边界：真实 plan 模板 + 任务文件）；断言：任务数 ≤25 或明确预算警告；每任务有可演示能力
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 实现 plan --task-size capability|file，默认 capability。
+- [x] 输出任务数、总工时、平均任务时长、每任务场景数。
+- [x] 超过 25 任务或平均 <2h 警告并要求合并。
+- [x] 任务必须可演示、可独立验收。
+- [x] [S-08][integration] 编写/更新验收测试（真实边界：真实 plan 模板 + 任务文件）；断言：任务数 ≤25 或明确预算警告；每任务有可演示能力
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-08 | integration | 真实 plan 模板 + 任务文件 | 任务数 ≤25 或明确预算警告；每任务有可演示能力 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"] | planned |
+| S-08 | integration | 真实 plan 模板 + 任务文件 | 任务数 ≤25 或明确预算警告；每任务有可演示能力 | `tests/test_cf_task_plan.py::test_capability_budget_*` | ["python3", "-m", "pytest", "-q", "tests/test_cf_task_plan.py", "-k", "capability_budget"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-08 | `python3 -m pytest -q tests/test_cf_task_plan.py -k capability_budget` → ModuleNotFoundError: cf_task_plan；实现核心后模板断言仍 1 failed（四平台 plan 缺 capability/budget） | 同命令 → **8 passed in 0.09s** | `test_capability_budget_defaults_in_real_plan_template`、`test_capability_budget_passes_balanced_capability_plan`、`test_capability_budget_requires_merge_above_task_count`、`test_capability_budget_requires_merge_below_average_hours`、`test_capability_budget_file_mode_keeps_legacy_granularity`、`test_capability_budget_parses_estimate_units`、`test_capability_budget_reads_real_requirement_task_file`、`test_capability_budget_cli_reports_json_and_exit_code` | 真实四平台 plan 文档 + 真实 `code-flow-0.8-optimization.md`（17 任务 / 244h / 平均 14.35h）+ 真实 `task index --budget` 子进程 | verified |
+
+RED 补充：首次运行在收集阶段报 `ModuleNotFoundError: No module named 'cf_task_plan'`；核心函数 GREEN 后模板守护仍 RED（`src/adapters/.../plan.md` 缺 `--task-size capability`）。全量回归 `python3 -m pytest -q` → **582 passed in 35.68s**。
+- S-08: verified — automated command passed; run_id=3e20ae49819f4741b8ccd1984b72cc00 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] TASK-012 GREEN：8 passed；`cf_task_plan.evaluate_plan` + `task index --budget` 解析 Estimate/Capability；四平台 plan 模板同步；全量 582 passed。
+- [2026-10-22] completed (done)
 
 ---
 
