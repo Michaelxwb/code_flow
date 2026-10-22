@@ -26,13 +26,17 @@ import re
 import subprocess
 import tempfile
 from typing import Iterable, Mapping, Optional, Sequence
+from urllib.parse import urlparse
 
 SCHEMA_VERSION = 1
 DEFAULT_HISTORY_LIMIT = 200
 LATEST_NAME = "latest.json"
 HISTORY_DIR = "_context"
+CI_STATUSES = frozenset(("passed", "failed", "incomplete"))
 _DEFAULT_REQUIREMENT = "_default"
 _UNSAFE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+_COMMIT = re.compile(r"^[0-9a-f]{7,40}$")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 class EvidenceStoreError(ValueError):
@@ -143,6 +147,36 @@ def _read_mapping(path: Path) -> Optional[dict[str, object]]:
     return dict(loaded) if isinstance(loaded, Mapping) else None
 
 
+def _ci_text(run: Mapping[str, object], field: str) -> str:
+    value = run.get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise EvidenceStoreError("invalid_ci_run", field, f"CI evidence requires a non-empty {field}")
+    return value.strip()
+
+
+def validate_ci_run(run: Mapping[str, object]) -> None:
+    """Reject CI evidence without commit/run_url/exit_code/input_hash provenance."""
+    if run.get("source") != "ci":
+        raise EvidenceStoreError("invalid_ci_run", "source", "CI evidence requires source=ci")
+    run_url = _ci_text(run, "run_url")
+    parsed = urlparse(run_url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise EvidenceStoreError("invalid_ci_run", "run_url", "run_url must be an http(s) CI run URL")
+    commit = _ci_text(run, "commit")
+    if not _COMMIT.match(commit):
+        raise EvidenceStoreError("invalid_ci_run", "commit", "commit must be a 7-40 char git sha")
+    input_hash = _ci_text(run, "input_hash")
+    if not _SHA256.match(input_hash):
+        raise EvidenceStoreError("invalid_ci_run", "input_hash", "input_hash must be a sha256 hex digest")
+    exit_code = run.get("exit_code")
+    if isinstance(exit_code, bool) or not isinstance(exit_code, int):
+        raise EvidenceStoreError("invalid_ci_run", "exit_code", "exit_code must be an integer")
+    status = _ci_text(run, "status")
+    if status not in CI_STATUSES:
+        raise EvidenceStoreError("invalid_ci_run", "status", "status must be passed/failed/incomplete")
+    _ci_text(run, "run_id")
+
+
 def _timestamp(value: object) -> float:
     if not isinstance(value, str) or not value.strip():
         return 0.0
@@ -239,6 +273,8 @@ class EvidenceStore:
         run_id = data.get("run_id")
         if not isinstance(run_id, str) or not run_id.strip():
             raise EvidenceStoreError("invalid_run", "run_id", "run_id must be non-empty")
+        if data.get("source") == "ci":
+            validate_ci_run(data)
         data["check_id"] = identity
         target = self.run_path(identity, run_id)
         if target.exists():

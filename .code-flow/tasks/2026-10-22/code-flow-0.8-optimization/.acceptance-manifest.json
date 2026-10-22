@@ -1055,7 +1055,7 @@
       "kind": "functional",
       "boundary": "真实 JUnit/Playwright 报告",
       "owner": "TASK-016",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -1068,7 +1068,52 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "check": "CHK-66220de35ac7"
+      "check": "CHK-66220de35ac7",
+      "revision": 1,
+      "evidence": {
+        "id": "S-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "e833572ad8d948308a1b7a52b0dca31f",
+        "executed_at": "2026-10-22T06:37:13.734312+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_evidence_store.py",
+          "-k",
+          "ci_import"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b670bd984817f6f7f8099e9d601219857d8cf207b079087ccb8dba9cf12f81a5"
+      },
+      "runs": [
+        {
+          "id": "S-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "e833572ad8d948308a1b7a52b0dca31f",
+          "executed_at": "2026-10-22T06:37:13.734312+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_evidence_store.py",
+            "-k",
+            "ci_import"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b670bd984817f6f7f8099e9d601219857d8cf207b079087ccb8dba9cf12f81a5"
+        }
+      ]
     },
     {
       "id": "S-11",

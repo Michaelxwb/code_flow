@@ -350,6 +350,29 @@ code-flow --help                          # 查看帮助
 | current | 版本一致 | 跳过（输出提示） |
 | force | `--force` 参数 | 强制覆盖工具文件 |
 
+### `code-flow evidence import` — CI 证据导入
+
+全量 E2E 在 CI 执行后，把 JUnit / Playwright 报告导入 central evidence sidecar；本地 `task verify`、collect 与 archive 直接消费该证据，不再重跑同一 check。
+
+```bash
+code-flow evidence import --format junit --file ci/junit.xml \
+  --commit "$(git rev-parse HEAD)" --run-url "https://ci.example.com/runs/42" --json
+
+code-flow evidence import --format playwright --file ci/playwright.json \
+  --commit "$(git rev-parse HEAD)" --run-url "https://ci.example.com/runs/42" \
+  --check CHK-0123456789ab --json
+```
+
+映射与校验规则（全部 fail-closed，缺失即拒绝导入）：
+
+- `--commit` 必须解析为当前 `HEAD`；不同 commit 的报告不能证明当前工作区。
+- 工作区必须干净（忽略 `.code-flow/`）；报告请放在仓库外，或加入 `.gitignore`。
+- `--run-url` 必须是非空 http(s) 地址；证据固定写入 `source=ci`，并绑定当前 `input_hash`。
+- 用例名包含场景 ID（如 `test_acceptance[S-01]`）或 check ID（`CHK-...`）即映射到对应 check；也可通过 manifest 的 `assertions`（`file:line`）映射；显式 `--check` 表示整个报告属于该 check。
+- 无法映射的用例、`skipped` 用例不会被伪装成通过：映射失败拒绝导入，`skipped` 记为 `incomplete`。
+- 报告推导的 exit code 与 `--exit-code` 不一致时拒绝导入（CI job 因基础设施失败但报告全绿的情况不会被误收）。
+- 导入结果按 check 聚合：全部通过才写 `passed` / `verified`，任一失败写 `failed`；重复导入同一报告是幂等的。
+
 ### `/cf-init` / `$cf-init`
 
 在 AI 工具会话中执行的交互式初始化，功能更丰富：

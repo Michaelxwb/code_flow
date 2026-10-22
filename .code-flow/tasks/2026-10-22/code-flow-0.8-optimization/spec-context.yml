@@ -1,7 +1,7 @@
 version: 1
 task: code-flow-0.8-optimization
 enforcement: required
-updated_at: '2026-10-22T06:30:14.332917+00:00'
+updated_at: '2026-10-22T06:31:00.028532+00:00'
 sources:
 - type: cli
   ref: bind

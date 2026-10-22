@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""[S-05][B-02] Central evidence sidecar and spec-context compaction.
+"""[S-05][B-02][S-10] Central evidence sidecar, CI import and compaction.
 
-The tests use real git repositories / worktrees and the real acceptance
-runner; no store, git or compaction behaviour is mocked.
+The tests use real git repositories / worktrees, real JUnit/Playwright
+reports and the real acceptance runner; no store, git, report or compaction
+behaviour is mocked.
 """
 
 from __future__ import annotations
@@ -16,18 +17,24 @@ import pytest
 import yaml
 
 
-SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = ROOT / "src/core/code-flow/scripts"
+CI_SCRIPT = SCRIPTS / "cf_evidence_import.py"
+CI_RUN_URL = "https://ci.example.com/actions/runs/4242"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_manifest import write_manifest  # noqa: E402
 from cf_acceptance_runner import run_manifest  # noqa: E402
+from cf_acceptance_schema import verified_evidence  # noqa: E402
 from cf_evidence_store import (  # noqa: E402
     DEFAULT_HISTORY_LIMIT,
     EvidenceStore,
+    EvidenceStoreError,
     compact_context,
     compact_evidence,
     evidence_root,
 )
+from cf_exec_base import worktree_fingerprint  # noqa: E402
 from cf_spec_context import (  # noqa: E402
     ContextSource,
     RuleBinding,
@@ -371,3 +378,281 @@ def test_s05_stale_verified_evidence_is_downgraded_by_deferral() -> None:
     stage = updated.stage_status["code"]
     assert stage.status == "unverified", "stale verified evidence must not survive a new diff"
     assert stage.evidence[-1]["error_code"] == "deferred_to_review"
+
+
+# ---------------------------------------------------------------------------
+# [S-10] CI evidence import: real JUnit / Playwright reports, central sidecar.
+# ---------------------------------------------------------------------------
+
+
+def _ci_task_document() -> str:
+    """Locked plan with three independent checks and real executable commands."""
+    scenarios = (
+        ("S-01", "TASK-001", [sys.executable, "-c", "pass"]),
+        ("S-02", "TASK-002", [sys.executable, "-c", "raise SystemExit(1)"]),
+        ("S-03", "TASK-003", [sys.executable, "-c", "print('e2e')"]),
+    )
+    coverage = [
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任任务 | 状态 | 执行命令 | cwd | timeout | depends |",
+        "|--------|---------|---------|-------------|---------|------|---------|-----|---------|---------|",
+    ]
+    sections = []
+    for scenario_id, owner, argv in scenarios:
+        encoded = json.dumps(argv)
+        coverage.append(
+            f"| {scenario_id} | demo.design.md#2.5 | integration | real report | {owner} | planned | {encoded} | . | 30 | |"
+        )
+        sections.append(
+            f"## {owner}: Demo {scenario_id}\n\n"
+            f"- **Status**: draft\n- **Acceptance-Refs**: {scenario_id}\n\n"
+            "### Acceptance Contract\n\n"
+            "| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |\n"
+            "|--------|---------|--------------------|---------|----------------|---------|------|\n"
+            f"| {scenario_id} | integration | real report | maps to check | `tests/test_e2e.py` | {encoded} | planned |\n"
+        )
+    return "# Demo demand\n\n## Acceptance Coverage\n\n" + "\n".join(coverage) + "\n\n" + "\n".join(sections)
+
+
+@pytest.fixture()
+def ci_repo(tmp_path: Path) -> tuple[Path, Path, Path, str]:
+    repo = tmp_path / "repo"
+    _git_repo(repo)
+    task_dir = repo / ".code-flow" / "tasks" / "demo"
+    task_dir.mkdir(parents=True)
+    task = task_dir / "demo.md"
+    task.write_text(_ci_task_document(), encoding="utf-8")
+    manifest = task_dir / ".acceptance-manifest.json"
+    write_manifest(str(task), str(manifest))
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "lock acceptance plan")
+    return repo, task, manifest, _git(repo, "rev-parse", "HEAD")
+
+
+def _run_import(
+    repo: Path,
+    manifest: Path,
+    report: Path,
+    *,
+    fmt: str = "junit",
+    commit: str = "",
+    run_url: str = CI_RUN_URL,
+    extra: tuple[str, ...] = (),
+) -> subprocess.CompletedProcess:
+    argv = [
+        sys.executable,
+        str(CI_SCRIPT),
+        "import",
+        "--format", fmt,
+        "--file", str(report),
+        "--commit", commit,
+        "--run-url", run_url,
+        "--manifest", str(manifest),
+        "--root", str(repo),
+        "--json",
+        *extra,
+    ]
+    return subprocess.run(argv, text=True, encoding="utf-8", capture_output=True, check=False)
+
+
+def _rows(manifest: Path) -> dict[str, dict[str, object]]:
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    return {str(row["id"]): row for row in data["scenarios"]}
+
+
+def test_s10_ci_import_junit_maps_checks_and_feeds_verify(ci_repo, tmp_path: Path) -> None:
+    repo, unused_task, manifest, head = ci_repo
+    del unused_task
+    report = tmp_path / "junit.xml"
+    report.write_text(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+        "<testsuites name=\"ci\">\n"
+        "  <testsuite name=\"pytest\" tests=\"3\" failures=\"1\" errors=\"0\" skipped=\"1\">\n"
+        "    <testcase classname=\"tests.e2e.test_checkout\" name=\"test_acceptance[S-01]\"\n"
+        "              file=\"tests/e2e/test_checkout.py\" line=\"12\" time=\"0.2\" />\n"
+        "    <testcase classname=\"tests.e2e.test_checkout\" name=\"test_acceptance[S-02]\"\n"
+        "              file=\"tests/e2e/test_checkout.py\" line=\"31\" time=\"0.3\">\n"
+        "      <failure message=\"cart badge missing\">AssertionError: expected 1 badge</failure>\n"
+        "    </testcase>\n"
+        "    <testcase classname=\"tests.e2e.test_checkout\" name=\"test_acceptance[S-03]\"\n"
+        "              file=\"tests/e2e/test_checkout.py\" line=\"48\" time=\"0.0\">\n"
+        "      <skipped message=\"browser not available\" />\n"
+        "    </testcase>\n"
+        "  </testsuite>\n"
+        "</testsuites>\n",
+        encoding="utf-8",
+    )
+
+    completed = _run_import(repo, manifest, report, commit=head)
+    assert completed.returncode == 0, completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["source"] == "ci"
+    assert payload["decision"] == "block", "one failed and one skipped check must not pass"
+    assert payload["commit"] == head
+    assert payload["run_url"] == CI_RUN_URL
+    assert payload["input_hash"] == worktree_fingerprint(str(repo))
+    assert payload["scenarios"] == ["S-01", "S-02", "S-03"]
+
+    rows = _rows(manifest)
+    assert rows["S-01"]["status"] == "verified"
+    assert rows["S-02"]["status"] == "failed"
+    assert rows["S-03"]["status"] == "incomplete", "skipped tests are not passes"
+    assert verified_evidence(rows["S-01"]) is True
+    assert verified_evidence(rows["S-02"]) is False
+
+    store = EvidenceStore(repo, "demo")
+    expected = {"S-01": ("passed", 0), "S-02": ("failed", 1), "S-03": ("incomplete", 1)}
+    for scenario_id, (status, exit_code) in expected.items():
+        latest = store.read_latest(str(rows[scenario_id]["check"]))
+        assert latest is not None
+        assert latest["status"] == status
+        assert latest["exit_code"] == exit_code
+        assert latest["source"] == "ci"
+        assert latest["commit"] == head
+        assert latest["run_url"] == CI_RUN_URL
+        assert latest["input_hash"] == worktree_fingerprint(str(repo))
+
+    # The passing check is consumed by the verify runner without re-execution.
+    reused = run_manifest(str(manifest), str(repo), owner="TASK-001")
+    assert reused["decision"] == "pass", reused
+    assert reused["executed"] == 0
+    assert reused["reused"] == 1
+    assert reused["results"][0]["cache_reused"] is True
+
+
+def test_s10_ci_import_playwright_failures_and_commit_mismatch(ci_repo, tmp_path: Path) -> None:
+    repo, unused_task, manifest, head = ci_repo
+    del unused_task
+    report = tmp_path / "playwright.json"
+    report.write_text(
+        json.dumps(
+            {
+                "config": {"rootDir": "."},
+                "suites": [
+                    {
+                        "title": "checkout.spec.ts",
+                        "file": "e2e/checkout.spec.ts",
+                        "specs": [
+                            {
+                                "title": "S-03 checkout completes",
+                                "file": "e2e/checkout.spec.ts",
+                                "line": 20,
+                                "tests": [
+                                    {
+                                        "status": "unexpected",
+                                        "results": [
+                                            {"status": "failed", "duration": 120, "error": {"message": "timeout"}}
+                                        ],
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+                "stats": {"expected": 0, "unexpected": 1, "flaky": 0, "skipped": 0},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    imported = _run_import(repo, manifest, report, fmt="playwright", commit=head)
+    assert imported.returncode == 0, imported.stderr
+    payload = json.loads(imported.stdout)
+    assert payload["decision"] == "block"
+    assert payload["checks"][0]["check_id"] == _rows(manifest)["S-03"]["check"]
+    assert payload["checks"][0]["status"] == "failed"
+
+    rows = _rows(manifest)
+    assert rows["S-03"]["status"] == "failed"
+    store = EvidenceStore(repo, "demo")
+    latest = store.read_latest(str(rows["S-03"]["check"]))
+    assert latest is not None
+    assert latest["status"] == "failed"
+    assert latest["exit_code"] == 1
+    assert latest["source"] == "ci"
+    assert latest["commit"] == head
+    assert latest["run_url"] == CI_RUN_URL
+
+    # A later commit invalidates the CI report: importing it must be refused.
+    (repo / "src" / "app.py").write_text("VALUE = 2\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "advance")
+    before = len(store.list_runs(str(rows["S-03"]["check"])))
+    rejected = _run_import(repo, manifest, report, fmt="playwright", commit=head)
+    assert rejected.returncode == 2, rejected.stdout
+    error = json.loads(rejected.stdout)
+    assert error["error_code"] == "commit_mismatch"
+    assert error["field"] == "commit"
+    assert len(store.list_runs(str(rows["S-03"]["check"]))) == before
+
+
+def test_s10_ci_import_rejects_missing_provenance_and_unmapped_cases(ci_repo, tmp_path: Path) -> None:
+    repo, unused_task, manifest, head = ci_repo
+    del unused_task
+    rows = _rows(manifest)
+    check_id = str(rows["S-01"]["check"])
+    store = EvidenceStore(repo, "demo")
+    report = tmp_path / "junit.xml"
+    report.write_text(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+        "<testsuite name=\"pytest\">\n"
+        "  <testcase classname=\"tests.e2e.test_checkout\" name=\"test_acceptance[S-01]\" />\n"
+        "</testsuite>\n",
+        encoding="utf-8",
+    )
+
+    missing_url = _run_import(repo, manifest, report, commit=head, run_url="")
+    assert missing_url.returncode == 2
+    assert json.loads(missing_url.stdout)["error_code"] == "missing_run_url"
+
+    unmapped = tmp_path / "unmapped.xml"
+    unmapped.write_text(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+        "<testsuite name=\"pytest\">\n"
+        "  <testcase classname=\"tests.unit.test_misc\" name=\"test_unrelated_behaviour\" />\n"
+        "</testsuite>\n",
+        encoding="utf-8",
+    )
+    rejected = _run_import(repo, manifest, unmapped, commit=head)
+    assert rejected.returncode == 2
+    error = json.loads(rejected.stdout)
+    assert error["error_code"] == "unmapped_test_cases"
+    assert "test_unrelated_behaviour" in error["message"]
+
+    # The CI job exit code must agree with the report: no optimistic import.
+    mismatch = _run_import(repo, manifest, report, commit=head, extra=("--exit-code", "1"))
+    assert mismatch.returncode == 2
+    assert json.loads(mismatch.stdout)["error_code"] == "exit_code_mismatch"
+    assert store.list_runs(check_id) == []
+
+    # The store itself refuses CI runs without provenance, even if called directly.
+    with pytest.raises(EvidenceStoreError) as exc:
+        store.write_run(
+            check_id,
+            {
+                "run_id": "forged-ci-run",
+                "source": "ci",
+                "status": "passed",
+                "exit_code": 0,
+                "input_hash": "a" * 64,
+                "run_url": CI_RUN_URL,
+            },
+        )
+    assert exc.value.field == "commit"
+    assert store.list_runs(check_id) == []
+
+
+def test_ci_import_runtime_command_registry_entry() -> None:
+    registry = json.loads((SCRIPTS.parent / "runtime-commands.json").read_text(encoding="utf-8"))
+    entry = registry["commands"]["evidence import"]
+    assert entry["module"] == "cf_evidence_import"
+    assert entry["prefix"] == ["import"]
+    script = SCRIPTS / f"{entry['module']}.py"
+    assert script.is_file()
+    # The deployed copy is what `code-flow evidence import` actually runs.
+    assert (ROOT / ".code-flow" / "scripts" / script.name).read_bytes() == script.read_bytes()
+    help_result = subprocess.run(
+        [sys.executable, str(script), "import", "--help"],
+        text=True, encoding="utf-8", capture_output=True, check=False,
+    )
+    assert help_result.returncode == 0, help_result.stderr
+    assert "--format" in help_result.stdout
