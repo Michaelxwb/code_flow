@@ -1153,7 +1153,8 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
             layers = _verify_layers_argument(args.layers, args.checks)
             result = verify_layers(
                 root, directory, layers, args.profile or None,
-                resume=args.resume, deadline=args.deadline or None,
+                resume=args.resume,
+                deadline=(time.monotonic() + args.deadline) if args.deadline else None,
                 max_failures=args.max_failures, fail_fast=args.fail_fast, jobs=args.jobs,
             )
         elif args.action == "verify-e2e":
