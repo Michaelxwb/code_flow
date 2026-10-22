@@ -4,6 +4,7 @@
 真实边界：真实 verify runner 子进程 + 真实 acceptance manifest + 真实临时 git 仓库。
 """
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -195,6 +196,8 @@ def test_empty_noop_returns_nothing_to_verify_without_execution(tmp_path: Path) 
     """[B-03] 无 required 检查/无 E2E：nothing_to_verify pass，不伪造执行。"""
     fixture = _requirement(tmp_path, with_review=False, with_manifest=False)
     (fixture["root"] / ".code-flow/validation.yml").unlink()
+    task_path = fixture["task_file"]
+    task_path.write_text(re.sub(r"(?m)^- \*\*Acceptance-Refs\*\*:.*$", "- **Acceptance-Refs**:", task_path.read_text(encoding="utf-8")), encoding="utf-8")
 
     completed = _cli(fixture, "verify", "--task-dir", str(fixture["req"]), "--json")
 

@@ -5,6 +5,7 @@
 """
 import json
 import subprocess
+import re
 import sys
 from pathlib import Path
 
@@ -249,6 +250,12 @@ def test_b_02_empty_noop(tmp_path: Path) -> None:
         tmp_path, _review_argv(tmp_path / "runs.txt"), with_contexts=False, with_manifest=False
     )
 
+    task_path = req / "req.md"
+    task_path.write_text(
+        re.sub(r"(?m)^- \*\*Acceptance-Refs\*\*:.*$", "- **Acceptance-Refs**:",
+               task_path.read_text(encoding="utf-8")),
+        encoding="utf-8",
+    )
     result = verify_e2e(str(root), str(req))
 
     assert result["decision"] == "pass"

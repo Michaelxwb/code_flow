@@ -66,7 +66,9 @@ _RULE_STATUS_PRIORITY = {
 }
 
 # Manifest v3 execution identity: equal IDs must describe the same execution.
-_CHECK_IDENTITY_FIELDS = ("command", "cwd", "timeout", "env", "inputs")
+_CHECK_IDENTITY_FIELDS = (
+    "command", "cwd", "timeout", "env", "env_scope", "preflight", "parallel_safe", "profile", "inputs",
+)
 
 
 class MergeConflictError(ValueError):
@@ -424,13 +426,19 @@ def _normalized_check_field(field: str, value: object) -> object:
         return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else value
     if field == "inputs":
         return sorted(str(item) for item in value) if isinstance(value, list) else value
+    if field == "preflight":
+        return sorted(str(item) for item in value) if isinstance(value, list) else value
     if field == "command":
         return [str(item) for item in value] if isinstance(value, list) else value
     return value
 
 
 def _check_identity(check: Mapping[str, object]) -> dict[str, object]:
-    defaults = {"command": [], "cwd": ".", "timeout": 60, "env": "none", "inputs": []}
+    defaults = {
+        "command": [], "cwd": ".", "timeout": 60, "env": "none",
+        "env_scope": "shared", "preflight": [], "parallel_safe": False,
+        "profile": "changed", "inputs": [],
+    }
     return {
         field: _normalized_check_field(field, check.get(field, defaults[field]))
         for field in _CHECK_IDENTITY_FIELDS
@@ -461,6 +469,20 @@ def _check_conflicts(main: object, branch: object) -> list[dict[str, object]]:
     conflicts: list[dict[str, object]] = []
     for check_id in sorted(set(main_by) & set(branch_by)):
         conflict = _check_conflict(check_id, main_by[check_id], branch_by[check_id])
+        if conflict is not None:
+            conflicts.append(conflict)
+    # A check id can change when config changes; the same command identity must
+    # still not silently take two different environments.
+    main_cmd = {
+        (tuple(item.get("command") or []), str(item.get("cwd", ".")), float(item.get("timeout", 60))): item
+        for item in _as_dicts(main)
+    }
+    for item in _as_dicts(branch):
+        key = (tuple(item.get("command") or []), str(item.get("cwd", ".")), float(item.get("timeout", 60)))
+        other = main_cmd.get(key)
+        if other is None or str(other.get("id")) == str(item.get("id")):
+            continue
+        conflict = _check_conflict(str(other.get("id", "")), other, item)
         if conflict is not None:
             conflicts.append(conflict)
     return conflicts

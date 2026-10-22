@@ -221,3 +221,112 @@ def test_full_verify_reruns_stale_functional_and_blocks(tmp_path: Path) -> None:
     assert blocked["decision"] == "block", blocked
     assert blocked["layers"]["e2e"]["reason"] == "e2e_failed", blocked
     assert blocked["layers"]["e2e"]["failed"] == ["S-01"], blocked
+
+
+def test_profile_run_does_not_truncate_manifest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = _repo(tmp_path)
+    manifest = root / ".acceptance-manifest.json"
+    command = [sys.executable, "-c", "pass"]
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [
+            {"id": "CHK-P0", "command": command, "cwd": ".", "timeout": 30, "profile": "smoke"},
+            {"id": "CHK-P1", "command": command, "cwd": ".", "timeout": 30, "profile": "changed"},
+        ],
+        "scenarios": [
+            {"id": "S-01", "kind": "functional", "check": "CHK-P0", "priority": "P0",
+             "command": command, "cwd": ".", "timeout": 30, "status": "planned"},
+            {"id": "S-02", "kind": "functional", "check": "CHK-P1", "priority": "P1",
+             "command": command, "cwd": ".", "timeout": 30, "status": "planned"},
+        ],
+    }), encoding="utf-8")
+    monkeypatch.setattr(runner, "_changed_paths", lambda root: set())
+    result = runner.run_manifest(str(manifest), str(root), write_evidence=True, profile="smoke")
+    assert result["decision"] == "pass"
+    saved = json.loads(manifest.read_text(encoding="utf-8"))
+    assert {item["id"] for item in saved["scenarios"]} == {"S-01", "S-02"}
+    assert {item["id"] for item in saved["checks"]} == {"CHK-P0", "CHK-P1"}
+
+
+def test_manifest_missing_blocks_when_acceptance_is_declared(tmp_path: Path) -> None:
+    from cf_task_workflow import verify_layers
+
+    root = _repo(tmp_path)
+    task_dir = root / ".code-flow/tasks/2026-10-22/demo"
+    task_dir.mkdir(parents=True)
+    (task_dir / "demo.md").write_text(
+        "# Demo\n\n## Acceptance Coverage\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n"
+        "|--------|---------|---------|-------------|---------|------|---------|\n"
+        '| S-01 | d#2.5 | integration | runner | TASK-001 | planned | ["python3", "-c", "pass"] |\n\n'
+        "## TASK-001: A\n- **Status**: done\n- **Acceptance-Refs**: S-01\n",
+        encoding="utf-8",
+    )
+    result = verify_layers(str(root), str(task_dir), layers="e2e", profile="full")
+    assert result["decision"] == "block"
+    assert result["layers"]["e2e"]["reason"] == "acceptance_manifest_missing"
+
+
+def test_functional_only_stale_full_reruns_and_blocks(tmp_path: Path) -> None:
+    from cf_acceptance_manifest import write_manifest
+    from cf_task_workflow import verify_layers
+
+    root = _repo(tmp_path)
+    task_dir = root / ".code-flow/tasks/2026-10-22/demo"
+    task_dir.mkdir(parents=True)
+    task = task_dir / "demo.md"
+    command = [sys.executable, "-c",
+               "import sys; sys.exit(0 if open('src/app.py').read().strip() == 'VALUE = 1' else 9)"]
+    task.write_text(
+        "# Demo\n\n## Acceptance Coverage\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n"
+        "|--------|---------|---------|-------------|---------|------|---------|\n"
+        f'| S-01 | d#2.5 | integration | runner | TASK-001 | planned | {json.dumps(command)} |\n\n'
+        "## TASK-001: A\n- **Status**: done\n- **Acceptance-Refs**: S-01\n",
+        encoding="utf-8",
+    )
+    manifest = task_dir / ".acceptance-manifest.json"
+    write_manifest(str(task), str(manifest))
+    assert runner.run_manifest(str(manifest), str(root), write_evidence=True)["decision"] == "pass"
+    (root / "src/app.py").write_text("VALUE = 2\n", encoding="utf-8")
+    result = verify_layers(str(root), str(task_dir), layers="validators,review,e2e", profile="full")
+    assert result["decision"] == "block", result
+    assert result["layers"]["e2e"]["failed"] == ["S-01"], result
+
+
+def test_smoke_selection_includes_e2e_even_with_p0_functional(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(runner, "_changed_paths", lambda root: set())
+    data = {
+        "schema": 3,
+        "checks": [
+            {"id": "CHK-F", "command": ["true"], "cwd": ".", "timeout": 30},
+            {"id": "CHK-E", "command": ["true"], "cwd": ".", "timeout": 30},
+        ],
+        "scenarios": [
+            {"id": "S-01", "kind": "functional", "check": "CHK-F", "priority": "P0"},
+            {"id": "E-01", "kind": "e2e", "check": "CHK-E", "priority": "P1"},
+        ],
+    }
+    selected = runner._select_profile(data, "/tmp", "smoke")
+    assert {item["id"] for item in selected["scenarios"]} == {"S-01", "E-01"}
+
+
+def test_archive_runtime_moves_only_after_pass(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from cf_task_workflow import archive_requirement
+    import cf_task_workflow as workflow
+
+    root = tmp_path / "repo"
+    source = root / ".code-flow/tasks/2026-10-22/demo"
+    source.mkdir(parents=True)
+    (source / "demo.md").write_text("# Demo\n", encoding="utf-8")
+
+    monkeypatch.setattr(workflow, "verify_layers", lambda *args, **kwargs: {"decision": "block"})
+    blocked = archive_requirement(str(root), str(source))
+    assert blocked["decision"] == "block"
+    assert source.is_dir()
+
+    monkeypatch.setattr(workflow, "verify_layers", lambda *args, **kwargs: {"decision": "pass"})
+    passed = archive_requirement(str(root), str(source))
+    assert passed["decision"] == "pass"
+    assert not source.exists()
+    assert Path(passed["archived_to"]).is_dir()

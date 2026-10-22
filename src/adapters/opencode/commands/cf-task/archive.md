@@ -82,6 +82,9 @@ PASS → 继续。WARN → 提示用户确认。FAIL → 阻塞归档，列出�
 
 ### 3. 执行归档
 
+> **0.8 运行时门禁**：必须调用 `code-flow task archive --task-dir <需求目录> --root "$PWD" --json`。只有 `decision=pass` 才由命令移动目录；不得手工 `mv` 绕过 active marker / full verify。
+
+
 校验通过后，先判断布局（任务文件路径形态）：
 
 **A. 需求目录布局**（任务文件位于 `.code-flow/tasks/<日期>/<需求>/<需求>.md`）——**整个需求目录一并归档**：
@@ -179,6 +182,7 @@ code-flow spec gate --help
 code-flow acceptance manifest --help
 code-flow acceptance run --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --write-evidence
 code-flow validate --root "$PWD" --json
+code-flow task archive --task-dir "<需求目录>" --root "$PWD" --json
 ```
 
 <!-- code-flow:runtime-commands end -->

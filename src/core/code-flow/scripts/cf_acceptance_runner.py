@@ -96,6 +96,8 @@ def _reusable(row: Optional[Mapping[str, object]], item: Mapping[str, object], f
         return False
     if row.get("check") != item.get("check"):
         return False
+    if row.get("check_config") and item.get("check_config") and row.get("check_config") != item.get("check_config"):
+        return False
     evidence = row.get("evidence")
     if not isinstance(evidence, Mapping):
         return False
@@ -1014,7 +1016,8 @@ def _select_profile(data: Mapping[str, object], root: str, profile: str) -> dict
         priority = str(scenario.get("priority", ""))
         if profile == "smoke":
             if explicit_priority:
-                if priority.upper() == "P0" or str((check or {}).get("profile", "")) == "smoke":
+                if (priority.upper() == "P0" or str((check or {}).get("profile", "")) == "smoke"
+                        or str(scenario.get("kind", "")) == "e2e"):
                     selected.append(scenario)
             elif has_smoke_profile:
                 if str((check or {}).get("profile", "")) == "smoke":
@@ -1064,8 +1067,9 @@ def run_manifest(
 ) -> dict[str, object]:
     if profile not in ("smoke", "changed", "full"):
         raise ValueError(f"invalid verify profile: {profile}")
-    data = _select_profile(load_manifest(Path(manifest_file)), root, profile)
-    validate_execution_baseline(Path(manifest_file), data)
+    full_data = load_manifest(Path(manifest_file))
+    data = _select_profile(full_data, root, profile)
+    validate_execution_baseline(Path(manifest_file), full_data)
     scenarios = data["scenarios"]
     _ordered(scenarios)  # Validate the complete DAG before owner filtering.
     items = _owned(scenarios, owner)
@@ -1076,6 +1080,9 @@ def run_manifest(
     ordered = _ordered(items)
     rows = _scenario_rows(scenarios)
     check_list, check_map = _check_plan(data)
+    for item in items:
+        if isinstance(item, dict):
+            item["check_config"] = check_map.get(str(item.get("check", "")), {})
     run_key = resolve_run_id(run_id)
     namespace = _run_namespace(str(root), check_map, owner, items, run_key)
     fingerprint = worktree_fingerprint(str(root), include_untracked=False) if use_cache else ""
@@ -1086,10 +1093,13 @@ def run_manifest(
                          namespace, rows, fingerprint, use_cache, limit, checkpoint, jobs)
     results_by_id, state = engine.run()
     results = _ordered_results(ordered, results_by_id)
+    for result, item in zip(results, ordered):
+        if isinstance(result, dict) and isinstance(item, dict) and item.get("check_config"):
+            result["check_config"] = item.get("check_config")
     # An interruption keeps the manifest untouched: the checkpoint sidecar is
     # the only progress record, so rows are never partially verified.
     if not state.get("interrupted") and (write_evidence or resume):
-        persist_results(Path(manifest_file), data, results, fingerprint=fingerprint, run_id=run_key)
+        persist_results(Path(manifest_file), full_data, results, fingerprint=fingerprint, run_id=run_key)
     outcome = _payload(items, check_list, check_map, results, state)
     if state.get("interrupted"):
         raise AcceptanceInterrupted(outcome)

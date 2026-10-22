@@ -14,7 +14,7 @@ def verified_evidence(row: Mapping[str, object], fingerprint: str = "") -> bool:
     evidence = row.get("evidence")
     if row.get("status") != "verified" or not isinstance(evidence, dict):
         return False
-    if row.get("kind") != "manual":
+    if row.get("kind") != "manual" and row.get("exec") != "manual":
         if fingerprint and evidence.get("fingerprint") != fingerprint:
             return False
         return evidence.get("status") == "passed" and evidence.get("exit_code") == 0

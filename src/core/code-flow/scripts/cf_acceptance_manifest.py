@@ -557,7 +557,7 @@ def record_manual_evidence(manifest_file: str, scenario_id: str, confirmed_by: s
     task_file = data.get("task_file")
     for item in scenarios:
         if isinstance(item, dict) and item.get("id") == scenario_id:
-            if item.get("kind") != "manual":
+            if item.get("kind") != "manual" and item.get("exec") != "manual":
                 raise ValueError("scenario is not manual")
             item["status"] = "verified"
             item["evidence"] = {"confirmed_by": confirmed_by, "evidence": evidence}

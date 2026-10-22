@@ -36,11 +36,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
-          executed_at: '2026-10-22T10:32:52.867268+00:00'
+          executed_at: '2026-10-22T11:20:08.302368+00:00'
           status: verified
           rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
           artifact_sha256: null
-          diff_sha256: head:e226ca915145f7122845a2047c5630777f9265b8
+          diff_sha256: head:8af7a0fd6961fe9146385073de87472b0217dede
           result_sha256: 1085c4cab6098edb47d916a3f61807f8941bff345e264feb00b9abd8a1d910cf
           error_code: null
           details:
@@ -103,11 +103,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
-          executed_at: '2026-10-22T10:32:52.884813+00:00'
+          executed_at: '2026-10-22T11:20:08.319466+00:00'
           status: verified
           rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
           artifact_sha256: null
-          diff_sha256: head:e226ca915145f7122845a2047c5630777f9265b8
+          diff_sha256: head:8af7a0fd6961fe9146385073de87472b0217dede
           result_sha256: b993aeefb614fe0bf53e1d4c9059ce0c76d04eb18efd68f4adbdb2bb9b9737d9
           error_code: null
           details:
@@ -180,11 +180,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
-          executed_at: '2026-10-22T10:32:52.905666+00:00'
+          executed_at: '2026-10-22T11:20:08.341705+00:00'
           status: verified
           rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
           artifact_sha256: null
-          diff_sha256: head:e226ca915145f7122845a2047c5630777f9265b8
+          diff_sha256: head:8af7a0fd6961fe9146385073de87472b0217dede
           result_sha256: e5f1387cd8b51acb45cffab067f3aa409519def55572a9fff4aae96c0158dcbf
           error_code: null
           details:
@@ -389,12 +389,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
-          executed_at: '2026-10-22T10:32:53.551407+00:00'
+          executed_at: '2026-10-22T11:25:28.180299+00:00'
           status: verified
           rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
           artifact_sha256: null
-          diff_sha256: head:e226ca915145f7122845a2047c5630777f9265b8
-          result_sha256: 757be50ac6ac62b5a660d055007a15756e46994e06893a601bb25cea7beec623
+          diff_sha256: head:8af7a0fd6961fe9146385073de87472b0217dede
+          result_sha256: df5ef09329392f4b96dce841678017bd07fc1bde2746f27804d6864c88a96d6b
           error_code: null
           details:
             argv:
@@ -404,11 +404,11 @@ bindings:
             - -q
             - tests/test_hook_command_robustness.py
             exit_code: 0
-            stdout_sha256: 32474846ae4372c596eb55783e16b294e33c945a8fe0076ae5634338fd1acc37
+            stdout_sha256: 00a8614270ba8472fd66ad756931ce6c941c964e72fa1dd797d89853abcf36dd
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '......                                                                   [100%]
 
-              6 passed in 0.53s
+              6 passed in 0.52s
 
               '
       design:
@@ -452,39 +452,39 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
-          executed_at: '2026-10-22T10:32:54.787206+00:00'
+          executed_at: '2026-10-22T11:20:10.184616+00:00'
           status: verified
           rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
           artifact_sha256: null
-          diff_sha256: head:e226ca915145f7122845a2047c5630777f9265b8
-          result_sha256: 82889ed11fd3d57df3b6dc1be78dbb68768e0d59eb26fa238506c0fb0b9e47be
+          diff_sha256: head:8af7a0fd6961fe9146385073de87472b0217dede
+          result_sha256: c23cf755948f5904db064fef4e1247cfd899dbb09d3efd77c637119227dd0ca4
           error_code: null
           details:
             argv:
             - node
             - tests/test_spec_workflow_migrate.js
             exit_code: 0
-            stdout_sha256: 1a2cddbfa8198671c715b27d3b5e68778270dd228d0e43808dae9b6eee4a7832
+            stdout_sha256: 46d382f3c1a104e32291a41c80b278e7375e80344644b310efbddc5da64e5445
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '✔ B-08 dry-run is a single in-memory preview with zero writes
-              (53.943916ms)
+              (53.134416ms)
 
               ✔ prepare creates bound plan, byte backup, empty staging and journal
-              (54.127167ms)
+              (52.290167ms)
 
-              ✔ S-12 apply is idempotent and writes version last (170.941167ms)
+              ✔ S-12 apply is idempotent and writes version last (167.640667ms)
 
-              ✔ E-08 injected rename failure restores all original bytes (294.387041ms)
+              ✔ E-08 injected rename failure restores all original bytes (292.708417ms)
 
               ✔ B-05 interruption before version is completed from proven target hashes
-              (163.450375ms)
+              (162.885375ms)
 
               ✔ EXDEV fails closed and rolls back without copy-delete commit fallback
-              (146.74025ms)
+              (146.126958ms)
 
-              ✔ re-apply after rollback succeeds (staging is reset) (256.202916ms)
+              ✔ re-apply after rollback succeeds (staging is reset) (258.432584ms)
 
-              ✔ apply refuses a plan whose project_root differs from cwd (53.964625ms)
+              ✔ apply refuses a plan whose project_root differs from cwd (53.580709ms)
 
               ℹ tests 8
 
@@ -500,7 +500,7 @@ bindings:
 
               ℹ todo 0
 
-              ℹ duration_ms 1196.444958
+              ℹ duration_ms 1189.457584
 
               '
       design:
@@ -545,11 +545,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
-          executed_at: '2026-10-22T10:32:56.144612+00:00'
+          executed_at: '2026-10-22T11:20:11.515709+00:00'
           status: verified
           rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
           artifact_sha256: null
-          diff_sha256: head:e226ca915145f7122845a2047c5630777f9265b8
+          diff_sha256: head:8af7a0fd6961fe9146385073de87472b0217dede
           result_sha256: 3cd1ee3e105ef106eaf349c7f44dbe753eef65fb606a2a7258e3beef3f4d9ba5
           error_code: null
           details:
@@ -783,11 +783,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
-          executed_at: '2026-10-22T10:33:16.881877+00:00'
+          executed_at: '2026-10-22T11:20:33.059078+00:00'
           status: verified
           rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
           artifact_sha256: null
-          diff_sha256: head:e226ca915145f7122845a2047c5630777f9265b8
+          diff_sha256: head:8af7a0fd6961fe9146385073de87472b0217dede
           result_sha256: 22c068054a541e609d992fd69ae16346c86ce57d362acbfdb984cefbcb19d589
           error_code: null
           details:
@@ -830,11 +830,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
-          executed_at: '2026-10-22T10:33:16.905197+00:00'
+          executed_at: '2026-10-22T11:20:33.086201+00:00'
           status: verified
           rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
           artifact_sha256: null
-          diff_sha256: head:e226ca915145f7122845a2047c5630777f9265b8
+          diff_sha256: head:8af7a0fd6961fe9146385073de87472b0217dede
           result_sha256: 5183935ab30ffd11bb24e9be45aae6fd71a73926cbb08b2fcc9923077229c2e3
           error_code: null
           details:
@@ -877,12 +877,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
-          executed_at: '2026-10-22T10:33:07.267903+00:00'
+          executed_at: '2026-10-22T11:25:40.831785+00:00'
           status: verified
           rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
           artifact_sha256: null
-          diff_sha256: head:e226ca915145f7122845a2047c5630777f9265b8
-          result_sha256: 9c83a59d4ab650518360fde8ea3175740d7c7e690621fb9563d4c1b02e7ed2aa
+          diff_sha256: head:8af7a0fd6961fe9146385073de87472b0217dede
+          result_sha256: 3dc02b558d4945c5fafc35ad7c238f35b3f5558a77ea0b76ea3274e814496e9d
           error_code: null
           details:
             argv:
@@ -897,11 +897,11 @@ bindings:
             - tests/test_opencode_native.py
             - tests/test_runtime_contract.py
             exit_code: 0
-            stdout_sha256: d8576d71f0a513dc8804833d30f8bd6cbf6077c18cb5d3eafab205daffe5178e
+            stdout_sha256: 66be94cfa8d042f5f187a72df02b60faf941af568113b69c6369235d70a2858b
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '.....................................................................    [100%]
 
-              69 passed in 10.78s
+              69 passed in 10.71s
 
               '
       design:
@@ -941,12 +941,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
-          executed_at: '2026-10-22T10:33:15.031956+00:00'
+          executed_at: '2026-10-22T11:20:31.178632+00:00'
           status: verified
           rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
           artifact_sha256: null
-          diff_sha256: head:e226ca915145f7122845a2047c5630777f9265b8
-          result_sha256: d892913ef3de50604006c9e4aff0281e6895033f0c1db0f2f3394a4f492c41b3
+          diff_sha256: head:8af7a0fd6961fe9146385073de87472b0217dede
+          result_sha256: 135097929a9185a509e9022d25e2698779346958f80be8472a154da84598f363
           error_code: null
           details:
             argv:
@@ -958,11 +958,11 @@ bindings:
             - tests/test_cf_spec_gate.py
             - tests/test_cf_task_runtime.py
             exit_code: 0
-            stdout_sha256: 6b4cbaf38d4c00334b7613d627b2c7dc3a73dd1df1ef743830388e3780ea6209
+            stdout_sha256: df203f8c01b6d3d970c26f9f56449d7bc1b27bdb3628c6e7a316f68885e50ff8
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '..............................................................           [100%]
 
-              62 passed in 6.36s
+              62 passed in 6.16s
 
               '
       design:
@@ -1002,12 +1002,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
-          executed_at: '2026-10-22T10:33:16.872909+00:00'
+          executed_at: '2026-10-22T11:25:42.868085+00:00'
           status: verified
           rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
           artifact_sha256: null
-          diff_sha256: head:e226ca915145f7122845a2047c5630777f9265b8
-          result_sha256: 2bc250eb6fd2fd16959f6fbc1a8885462a474d3a983535d68b8ecb7dd96c6d1b
+          diff_sha256: head:8af7a0fd6961fe9146385073de87472b0217dede
+          result_sha256: dbd5249bafcc7e711ff7bdb40afe5b375a99567a630691bfc1e7c1f47a2ecf2c
           error_code: null
           details:
             argv:
@@ -1019,11 +1019,11 @@ bindings:
             - tests/test_adapter_parity.py
             - tests/test_spec_workflow_residue.py
             exit_code: 0
-            stdout_sha256: d2c626bed8d67a9d80b40ccddfcf5fa2c6f1f7da444d727fbbe290ef23475103
+            stdout_sha256: 7e96a15cc5c7a2280ccc3a0a714e37a47b5065f016a97f5e45b5e7130c0f28b7
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '........................                                                 [100%]
 
-              24 passed in 0.41s
+              24 passed in 0.43s
 
               '
       design:

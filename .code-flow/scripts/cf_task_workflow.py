@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 from typing import IO, Mapping, Optional, Sequence
+import shutil
 import sys
 import time
 
@@ -782,7 +783,7 @@ def _e2e_preflight(manifest: Path, tasks: Sequence[tuple[Path, str, str]],
                 "owner": row.get("owner", ""),
                 "boundary": row.get("boundary", ""),
             })
-        elif row.get("kind", "functional") != "e2e":
+        elif row.get("kind", "functional") != "e2e" and row.get("exec") != "deferred":
             functional_required.append(row["id"])
     if functional_required:
         return None, _layer_result("block", reason="functional_or_manual_evidence_missing",
@@ -795,8 +796,6 @@ def _e2e_preflight(manifest: Path, tasks: Sequence[tuple[Path, str, str]],
             next=("向用户展示待确认清单并取得明确回复后，运行 confirm-manual 批量写入确认，再重跑 verify；"
                   "Agent 不得代确认。"),
         )
-    if not any(row.get("kind") == "e2e" for row in data["scenarios"]) and not functional_required:
-        return None, _nothing_to_verify()
     return data, None
 
 
@@ -826,12 +825,30 @@ def _unverified_functional_rows(data: Mapping[str, object]) -> list[str]:
     return rows
 
 
+def _acceptance_required(tasks: Sequence[tuple[Path, str, str]]) -> bool:
+    for task_file, task_id, _ in tasks:
+        try:
+            text = Path(task_file).read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            continue
+        section = re.search(rf"(?ms)^##\s+{re.escape(task_id)}:.*?(?=^##\s+TASK-|\Z)", text)
+        if section is None:
+            continue
+        body = section.group(0)
+        refs = re.search(r"(?m)^- \*\*Acceptance-Refs\*\*:[ \t]*([^\n]*)", body)
+        if refs and refs.group(1).strip().upper() not in ("", "N/A"):
+            return True
+    return False
+
+
 def _e2e_layer(root: str, directory: str, tasks: Sequence[tuple[Path, str, str]],
                requirement_gate: bool, profile: str = "changed", resume: bool = True,
                deadline: Optional[float] = None, max_failures: int = 0,
                fail_fast: bool = False, jobs: int = 0) -> dict[str, object]:
     manifest = Path(directory) / ".acceptance-manifest.json"
     if not manifest.exists():
+        if _acceptance_required(tasks):
+            return _layer_result("block", reason="acceptance_manifest_missing")
         return _nothing_to_verify()
     data, failure = _e2e_preflight(manifest, tasks, requirement_gate, profile)
     if failure is not None:
@@ -853,8 +870,8 @@ def _e2e_layer(root: str, directory: str, tasks: Sequence[tuple[Path, str, str]]
     try:
         acceptance = run_manifest(
             str(manifest), root, write_evidence=True,
-            include_e2e=bool(stale or unverified) or profile == "full",
-            only_e2e=not (stale or unverified) and profile != "full",
+            include_e2e=bool(stale or unverified) or profile in ("full", "smoke"),
+            only_e2e=not (stale or unverified) and profile not in ("full", "smoke"),
             profile=profile, resume=resume, deadline=deadline,
             max_failures=max_failures, fail_fast=fail_fast, jobs=jobs,
         )
@@ -928,10 +945,10 @@ def _promote_verified(tasks: Sequence[tuple[Path, str, str]]) -> None:
 
 def _compact_requirement_contexts(root: str, directory: str) -> None:
     """Keep spec-context bounded after a full requirement gate passes."""
-    from cf_evidence_store import compact_context_file
+    from cf_evidence_store import compact_context_file, requirement_key
     for path in sorted(Path(directory).rglob("spec-context.yml")):
         try:
-            compact_context_file(path, root=root, requirement=Path(directory).name)
+            compact_context_file(path, root=root, requirement=requirement_key(directory))
         except (OSError, ValueError) as exc:
             sys.stderr.write(f"cf_task_workflow: context compaction failed: {exc}\n")
 
@@ -976,7 +993,8 @@ def verify_layers(root: str, directory: str, layers: Optional[str] = None,
                 max_failures=max_failures, fail_fast=fail_fast, jobs=jobs,
             )
     result = _aggregate_layers(layer_results, resolved_profile, selected)
-    if requirement_gate and resolved_profile == "full" and result["decision"] == "pass":
+    if (requirement_gate and resolved_profile == "full" and result["decision"] == "pass"
+            and (result.get("reason") != "nothing_to_verify" or not _acceptance_required(tasks))):
         context_path = Path(directory) / "spec-context.yml"
         if context_path.is_file():
             context = load_context(str(context_path))
@@ -1088,7 +1106,7 @@ def confirm_manual(root: str, directory: str, refs: Sequence[str], scenarios: Se
                                 if row.get("kind") == "manual" and not verified_evidence(row)]
         for sid in chosen_scenarios:
             row = rows.get(sid)
-            if row is None or row.get("kind") != "manual":
+            if row is None or (row.get("kind") != "manual" and row.get("exec") != "manual"):
                 raise ValueError(f"unknown_manual_scenario: {sid}")
             if verified_evidence(row):
                 continue

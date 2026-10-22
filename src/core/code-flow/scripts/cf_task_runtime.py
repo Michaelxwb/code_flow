@@ -367,6 +367,10 @@ def _run_acceptance(root: str, task_dir: str, owner: str, include_e2e: bool,
                 for item in scenario_result.get("results", [])
                 if isinstance(item, dict)
             ]
+            failed = [value for value in statuses if value in ("failed", "not_configured")]
+            if failed:
+                reason = scenario_result.get("error") or "acceptance scenario failed"
+                return f"acceptance scenario failed: {reason}", "block"
             if "env_blocked" in statuses:
                 return "acceptance env_blocked: " + (scenario_result.get("error") or "environment unavailable"), "env_blocked"
             if "incomplete" in statuses:

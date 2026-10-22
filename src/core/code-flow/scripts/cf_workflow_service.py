@@ -435,12 +435,14 @@ def resume_task(root: str, task_dir: str, task_file: str, task_id: str) -> dict[
     _, target = _resolve_paths(root, task_dir, task_file)
     task_file = str(target)
     active = None
+    section = read_task_section(task_file, task_id)
     if (Path(root) / ".code-flow/.active-task.json").exists():
         _require_marker_task(root, task_id, task_dir, task_file)
         active = load_active_task(root)
-        if active.status not in ("blocked", "paused", "provisional"):
+        allowed_active = active.status in ("blocked", "paused", "provisional")
+        provisional_active = active.status == "active" and section_status(section) == "provisional"
+        if not allowed_active and not provisional_active:
             raise WorkflowError("resume_unexpected_state", active.status, (task_id,))
-    section = read_task_section(task_file, task_id)
     if active is None and section_status(section) not in ("blocked", "provisional"):
         raise WorkflowError("resume_unexpected_state", section_status(section), (task_id,))
     notes = section_notes(section)

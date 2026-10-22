@@ -386,30 +386,30 @@ def _required_check_map(manifest: Mapping[str, object], task: str) -> dict[str, 
             continue
         check_id = item.get("check")
         scenario_id = item.get("id")
-        if not isinstance(check_id, str) or not check_id.strip():
-            continue
         if not isinstance(scenario_id, str) or not scenario_id:
             continue
+        if not isinstance(check_id, str) or not check_id.strip():
+            # schema2 has no check link: the scenario id is the evidence key.
+            check_id = scenario_id
         required.setdefault(check_id, []).append(scenario_id)
     return required
 
 
-def _required_spec_refs(task_file: str, task: str) -> tuple[str, ...]:
-    """Spec refs explicitly owned by this TASK (N/A/empty means none)."""
+def _requires_acceptance(task_file: str, task: str) -> bool:
+    """True when the TASK owns Spec rules or acceptance scenarios."""
     try:
         text = Path(task_file).read_text(encoding="utf-8")
     except (OSError, UnicodeError):
-        return ()
+        return False
     match = re.search(rf"(?ms)^##\s+{re.escape(task)}:.*?(?=^##\s+TASK-|\Z)", text)
     if match is None:
-        return ()
-    refs = re.search(r"(?m)^- \*\*Spec-Refs\*\*:[ \t]*([^\n]*)", match.group(0))
-    if refs is None:
-        return ()
-    value = refs.group(1).strip()
-    if not value or value.upper() == "N/A":
-        return ()
-    return tuple(item.strip() for item in value.split(",") if item.strip())
+        return False
+    body = match.group(0)
+    for field in ("Spec-Refs", "Acceptance-Refs"):
+        refs = re.search(rf"(?m)^- \*\*{field}\*\*:[ \t]*([^\n]*)", body)
+        if refs and refs.group(1).strip().upper() not in ("", "N/A"):
+            return True
+    return False
 
 
 def _task_manifest(worktree: Path, task_file: str) -> Optional[dict[str, object]]:
@@ -481,7 +481,7 @@ def _evidence_state(
 ) -> tuple[list[dict[str, object]], list[str]]:
     manifest = _task_manifest(worktree, task_file)
     if manifest is None:
-        if _required_spec_refs(str(worktree / task_file), task):
+        if _requires_acceptance(str(worktree / task_file), task):
             raise ParallelEvidenceError(
                 "required_evidence_missing",
                 f"{task}: 有 Spec-Refs 但缺少 .acceptance-manifest.json；先锁定验收计划并执行 required 检查",
