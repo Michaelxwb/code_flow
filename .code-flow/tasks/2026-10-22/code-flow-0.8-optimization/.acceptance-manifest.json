@@ -1134,15 +1134,15 @@
       "timeout": 60.0,
       "depends_on": [],
       "check": "CHK-b35dacdfee1b",
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-11",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "91f198ad072b4a779ca0f10b00caecca",
-        "executed_at": "2026-10-22T07:14:57.067486+00:00",
+        "revision": 2,
+        "run_id": "b938e149f8554761963e7cf769da319f",
+        "executed_at": "2026-10-22T07:20:25.339982+00:00",
         "command": [
           "python3",
           "-m",
@@ -1152,7 +1152,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "cdd82b7eb464068a725f5735217d22159812dc886d598bd97e4765ea71539c31"
+        "fingerprint": "f5cee36c6c5eafc290557cc700de1565db33a132b696f93d83f02f6984b4578c"
       },
       "runs": [
         {
@@ -1173,6 +1173,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "cdd82b7eb464068a725f5735217d22159812dc886d598bd97e4765ea71539c31"
+        },
+        {
+          "id": "S-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "b938e149f8554761963e7cf769da319f",
+          "executed_at": "2026-10-22T07:20:25.339982+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_adapter_parity.py"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "f5cee36c6c5eafc290557cc700de1565db33a132b696f93d83f02f6984b4578c"
         }
       ]
     },
