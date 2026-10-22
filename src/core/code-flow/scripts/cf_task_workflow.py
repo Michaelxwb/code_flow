@@ -22,14 +22,28 @@ from cf_task_index import parse_task_file
 from cf_task_runtime import _apply_evidence, _evidence_data, run_done_gate
 from cf_workflow_service import (FINISHED_STATUSES, _require_marker_task,
                                  _sync_markdown, block_task, cleanup_session_projections,
-                                 complete_task, locate_task_file, remove_session_projection,
-                                 resume_task, task_truth_issues)
+                                 complete_task, locate_task_file, provisional_task,
+                                 remove_session_projection, resume_task, task_truth_issues)
 from cf_workflow_transaction import recover_transition
 
 
 def finish_task(root: str, directory: str, task_file: str, task_id: str) -> dict[str, object]:
     _require_marker_task(root, task_id, directory, task_file)
     gate = run_done_gate(root, directory, task_id=task_id)
+    if gate.decision == "provisional":
+        transition = provisional_task(root, directory, task_file, task_id, gate.message)
+        return {
+            "decision": "provisional",
+            "reason": gate.message,
+            "missing_checks": list(gate.missing_checks),
+            "next": gate.next_action,
+            "deferred_review": gate.deferred_review,
+            "deferred_requirement": gate.deferred_requirement,
+            "deferred_budget": gate.deferred_budget,
+            "deferred_heavy": gate.deferred_heavy,
+            "evidence": gate.evidence,
+            **transition,
+        }
     if gate.decision != "pass":
         return {"decision": "block", "reason": gate.message, "evidence": gate.evidence}
     completed = complete_task(root, directory, task_file, task_id, True)
@@ -416,7 +430,7 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
             else:
                 result = resume_task(root, directory, str(task), args.task)
         stdout.write(json.dumps(result, ensure_ascii=False))
-        return 3 if result.get("decision") == "block" else 0
+        return 3 if result.get("decision") in ("block", "provisional") else 0
     except (OSError, ValueError) as exc:
         stdout.write(json.dumps({"decision": "block", "error": str(exc)}, ensure_ascii=False))
         return 2

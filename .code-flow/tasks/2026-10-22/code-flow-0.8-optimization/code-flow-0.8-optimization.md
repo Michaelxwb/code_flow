@@ -21,7 +21,7 @@
 
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |
 |--------|---------|---------|-------------|---------|------|---------|
-| S-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 task md + spec-context + runner | TASK-003 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_scale.py", "-k", "truthful_gate"] |
+| S-01 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 task md + spec-context + runner | TASK-003 | verified | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_scale.py", "-k", "truthful_gate"] |
 | S-02 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 verify runner + manifest | TASK-006 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_verify_layers.py", "-k", "layers"] |
 | S-03 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 manifest + subprocess | TASK-005 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_manifest.py", "-k", "checks_scenarios"] |
 | S-04 | code-flow-0.8-optimization.design.md#2.5 验收条件 | integration | 真实 runner + checkpoint | TASK-007 | planned | ["python3", "-m", "pytest", "-q", "tests/test_cf_acceptance_runner.py", "-k", "resume"] |
@@ -144,7 +144,7 @@ verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_
 
 ## TASK-003: deferral 语义与 Done Gate 真实性
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-002
 - **Source**: code-flow-0.8-optimization.design.md#3.5.1 状态机与门禁, code-flow-0.8-optimization.design.md#2.5.1 业务规则与约束
@@ -159,26 +159,32 @@ verifier 证据：`tests/test_hook_command_robustness.py`、`tests/test_cf_user_
 
 ### Checklist
 
-- [ ] 拆分 deferral 原因并记录到 evidence。
-- [ ] _binding_deferrals 不再把声明 timeout 超预算直接视为可接受。
-- [ ] allow_deferred_skips 只接受合法 deferral。
-- [ ] finish 返回 provisional 时任务不进入 done。
-- [ ] 实现并运行 verifier scripts-code-standards#RULE-scripts-context-gate-001：状态机、evidence、Gate 确定性 fail-closed。
-- [ ] [S-01][integration] 编写/更新验收测试（真实边界：真实 task md + spec-context + runner）；断言：required code check 未执行 → provisional；任务不得 done；输出缺失检查与下一步
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 拆分 deferral 原因并记录到 evidence。
+- [x] _binding_deferrals 不再把声明 timeout 超预算直接视为可接受。
+- [x] allow_deferred_skips 只接受合法 deferral。
+- [x] finish 返回 provisional 时任务不进入 done。
+- [x] 实现并运行 verifier scripts-code-standards#RULE-scripts-context-gate-001：状态机、evidence、Gate 确定性 fail-closed。
+- [x] [S-01][integration] 编写/更新验收测试（真实边界：真实 task md + spec-context + runner）；断言：required code check 未执行 → provisional；任务不得 done；输出缺失检查与下一步
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-01 | integration | 真实 task md + spec-context + runner | required code check 未执行 → provisional；任务不得 done；输出缺失检查与下一步 | -k | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_scale.py", "-k", "truthful_gate"] | planned |
+| S-01 | integration | 真实 task md + spec-context + runner | required code check 未执行 → provisional；任务不得 done；输出缺失检查与下一步 | `test_truthful_gate_unexecuted_required_check_is_provisional_and_recoverable`、`test_truthful_gate_declared_timeout_over_budget_is_not_a_deferral`、`test_truthful_gate_deferred_skips_accept_only_review_stage`、`test_truthful_gate_actual_failure_still_blocks` | ["python3", "-m", "pytest", "-q", "tests/test_cf_workflow_scale.py", "-k", "truthful_gate"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 functional 的 RED/GREEN、断言位置与真实组件证据；全部 functional verified 后任务才可 done。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-01 | `python3 -m pytest -q tests/test_cf_workflow_scale.py -k truthful_gate` → **3 failed**：旧 finish 在预算耗尽时仍返回 pass/done；声明 timeout 9999 直接延后不执行；legacy `over_finish_budget` 被 `allow_deferred_skips` 当成通过 | 同命令 → **4 passed** | `test_truthful_gate_unexecuted_required_check_is_provisional_and_recoverable`、`test_truthful_gate_declared_timeout_over_budget_is_not_a_deferral`、`test_truthful_gate_deferred_skips_accept_only_review_stage`、`test_truthful_gate_actual_failure_still_blocks` | 真实临时 git 仓库 + 真实 task md + spec-context + command verifier；`finish_task` 真实改写 marker/Markdown；预算恢复后重跑真实命令并转 done | verified |
+- S-01: verified — automated command passed; run_id=56a7a36311f44e83892572f222f43f50 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] implemented truthful deferral semantics (provisional, budget/env fail closed)
+- [2026-10-22] completed (done)
 
 ---
 

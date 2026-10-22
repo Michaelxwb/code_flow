@@ -407,8 +407,9 @@ def test_done_gate_budget_exhaustion_is_visible_in_evidence(tmp_path: Path) -> N
 
     result = run_done_gate(str(root), str(task_dir), budget=0.0)
 
-    assert result.decision == "block"
+    assert result.decision == "provisional", "未执行的 required check 不得进入 done"
     assert any(item.get("error_code") == "verifier_budget_exhausted" for item in result.evidence)
+    assert [item["kind"] for item in result.missing_checks] == ["budget"]
     assert load_context(str(task_dir / "spec-context.yml")).bindings[0].rules[0].stage_status["code"].status == "unverified"
 
 
@@ -608,8 +609,8 @@ def test_no_scope_sources_falls_back_to_all_bindings(tmp_path: Path) -> None:
     assert result.deferred_requirement == 0
 
 
-def test_over_budget_verifier_deferred(tmp_path: Path) -> None:
-    """声明 timeout 超预算（默认 300s）的 verifier 不执行；budget=0 恢复执行。"""
+def test_declared_timeout_over_budget_still_executes(tmp_path: Path) -> None:
+    """声明 timeout 大于 finish 预算不是延后理由：预算未真实耗尽就必须执行。"""
     root, task_dir = _scope_repo(tmp_path, other_timeout=9999)
     _write_task_refs(task_dir, "other-runtime#RULE-other-001")
     start_active_task(str(root), ".code-flow/tasks/demo", "TASK-001", "ctx")
@@ -618,8 +619,8 @@ def test_over_budget_verifier_deferred(tmp_path: Path) -> None:
     result = run_done_gate(str(root), str(task_dir))
 
     assert result.decision == "pass", result.message
-    assert not (root / "other-ran.txt").exists(), "超预算 verifier 不得执行"
-    assert result.deferred_budget == 1
+    assert (root / "other-ran.txt").exists(), "声明 timeout 超预算但预算未耗尽时必须执行"
+    assert result.deferred_budget == 0
 
     config_path = root / ".code-flow/config.yml"
     config = yaml.safe_load(config_path.read_text(encoding="utf-8"))

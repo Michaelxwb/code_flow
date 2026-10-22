@@ -24,7 +24,7 @@ from cf_spec_context import (
     resync_active_hash,
     save_context,
 )
-from cf_spec_gate import validate_stage
+from cf_spec_gate import evidence_deferral_kind, validate_stage
 from cf_spec_metadata import SpecMetadata, load_spec_metadata
 from cf_spec_resolver import resolve_candidates, SpecCandidate
 from cf_spec_session import context_sha256
@@ -52,6 +52,8 @@ class DoneResult:
     deferred_requirement: int = 0
     deferred_budget: int = 0
     deferred_heavy: int = 0
+    missing_checks: tuple[Mapping[str, object], ...] = ()
+    next_action: str = ""
 
 
 def _context_path(task_dir: str) -> str:
@@ -226,8 +228,8 @@ def _binding_deferrals(
 ) -> dict[str, str]:
     """计算本 binding 内 code 层 command/test verifier 的延后原因。
 
-    - `out_of_task_scope`：不属于本任务（需求级累积绑定）；
-    - `over_finish_budget`：声明 timeout 超预算，或本次 finish 已用满预算。
+    - `review_stage`：不属于本任务（需求级累积绑定），留到 verify-e2e 补跑；
+    - `budget`：本次 finish 的真实预算已经耗尽（声明 timeout 本身不是延后理由）。
     document/regex/ast 静态检查始终执行，不参与延后。
     """
     deferred: dict[str, str] = {}
@@ -240,17 +242,76 @@ def _binding_deferrals(
         if status is None or status.status in ("not_applicable", "waived"):
             continue
         if binding.spec_id not in scope_specs:
-            deferred[rule.ref] = "out_of_task_scope"
+            deferred[rule.ref] = "review_stage"
             continue
-        if budget > 0:
-            raw_timeout = verifier.config.get("timeout", 30)
-            try:
-                declared = float(raw_timeout)
-            except (TypeError, ValueError):
-                declared = 30.0
-            if declared > budget or (time.monotonic() - run_started) >= budget:
-                deferred[rule.ref] = "over_finish_budget"
+        # A declared timeout larger than the remaining budget does not prove
+        # exhaustion: run it and let the runner cap the subprocess deadline.
+        # Only an already exhausted wall-clock budget is a budget deferral.
+        if budget > 0 and (time.monotonic() - run_started) >= budget:
+            deferred[rule.ref] = "budget"
     return deferred
+
+
+_NON_EXECUTION_ERRORS = frozenset((
+    "skipped_in_cheap_gate",
+    "verifier_missing",
+    "command_unavailable",
+    "file_read_error",
+    "artifact_read_error",
+    "regex_unavailable",
+))
+
+_PROVISIONAL_NEXT = (
+    "补齐/修复阻塞项后重新运行 task finish；budget/env/未执行不算通过。"
+    "review_stage 延后项由需求级 task verify-e2e 补跑。"
+)
+
+
+def _required_code_gaps(context: SpecContext) -> tuple[tuple[Mapping[str, object], ...], tuple[str, ...]]:
+    """Collect required code checks that did not run vs. checks that failed.
+
+    Provisional is only allowed for non-execution (budget/env/missing). A real
+    failing assertion must stay a block so "not executed" never hides a broken
+    implementation.
+    """
+    missing: dict[str, Mapping[str, object]] = {}
+    failed: list[str] = []
+    for binding in context.bindings:
+        for rule in binding.rules:
+            if rule.enforcement != "required" or (rule.verifier_stage or "code") != "code":
+                continue
+            status = rule.stage_status.get("code")
+            if status is None or status.status in ("verified", "not_applicable", "waived", "applied"):
+                continue
+            latest = status.evidence[-1] if status.evidence else None
+            latest = latest if isinstance(latest, Mapping) else None
+            kind = evidence_deferral_kind(latest)
+            if kind in ("review_stage", "heavy"):
+                continue
+            ref = f"{binding.spec_id}#{rule.ref}"
+            error = latest.get("error_code") if latest is not None else None
+            if kind in ("budget", "env"):
+                missing[ref] = {
+                    "ref": ref,
+                    "kind": kind,
+                    "error_code": error or kind,
+                    "verifier_ref": rule.verifier_ref,
+                }
+            elif error is None or error in _NON_EXECUTION_ERRORS:
+                missing[ref] = {
+                    "ref": ref,
+                    "kind": "not_executed",
+                    "error_code": error or status.status,
+                    "verifier_ref": rule.verifier_ref,
+                }
+            else:
+                failed.append(ref)
+    return tuple(missing[key] for key in sorted(missing)), tuple(sorted(set(failed)))
+
+
+def _provisional_message(missing: tuple[Mapping[str, object], ...]) -> str:
+    detail = ", ".join(f"{item['ref']} ({item['kind']})" for item in missing)
+    return f"required code checks not executed: {detail}"
 
 
 def _run_acceptance(root: str, task_dir: str, owner: str, include_e2e: bool,
@@ -351,11 +412,11 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
         deferrals = {} if cheap else _binding_deferrals(binding, metadata, scope_specs, verifier_budget, run_started)
         deferred_requirement += sum(
             1 for rule in binding.rules
-            if deferrals.get(rule.ref) == "out_of_task_scope" and rule.enforcement == "required"
+            if deferrals.get(rule.ref) == "review_stage" and rule.enforcement == "required"
         )
         deferred_budget += sum(
             1 for rule in binding.rules
-            if deferrals.get(rule.ref) == "over_finish_budget" and rule.enforcement == "required"
+            if deferrals.get(rule.ref) == "budget" and rule.enforcement == "required"
         )
         confirmations: dict[str, Mapping[str, object]] = {}
         for rule in binding.rules:
@@ -374,6 +435,14 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
         save_context(_context_path(task_dir), updated)
     gate = validate_stage(updated, "code", diff_sha256=diff_hash, allow_cheap_skips=cheap,
                           allow_deferred_skips=True)
+    if gate.decision == "block" and not cheap:
+        missing, failed = _required_code_gaps(updated)
+        if missing and not failed:
+            budget_gaps = sum(1 for item in missing if item.get("kind") == "budget")
+            return DoneResult("provisional", scope_result.files, tuple(all_evidence),
+                              _provisional_message(missing), deferred_review,
+                              deferred_requirement, budget_gaps, deferred_heavy,
+                              missing, _PROVISIONAL_NEXT)
     if gate.decision == "pass" and not cheap:
         validation_issue, deferred_heavy = _run_finish_validation(root, scope_result.files)
         if validation_issue:

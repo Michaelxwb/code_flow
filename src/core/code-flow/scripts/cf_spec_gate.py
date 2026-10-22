@@ -83,12 +83,47 @@ def _cheap_skip(status: RuleStageStatus) -> bool:
     return isinstance(latest, Mapping) and latest.get("error_code") == "skipped_in_cheap_gate"
 
 
-def _deferred_skip(status: RuleStageStatus) -> bool:
-    """Latest evidence is a code-gate deferral (out-of-task-scope / over budget)."""
+def evidence_deferral_kind(evidence: Optional[Mapping[str, object]]) -> str:
+    """Classify a deferral without trusting the legacy catch-all error code.
+
+    Only ``review_stage`` (and heavy validators, represented outside the Spec
+    Gate) may be skipped by ``allow_deferred_skips``. Budget/env exhaustion is
+    never a pass: those checks were not executed for this task.
+    """
+    if not isinstance(evidence, Mapping):
+        return ""
+    details = evidence.get("details")
+    details = details if isinstance(details, Mapping) else {}
+    code = evidence.get("error_code")
+    if code == "verifier_budget_exhausted":
+        return "budget"
+    if code == "env_blocked":
+        return "env"
+    if code == "deferred_to_review":
+        declared = details.get("deferral_kind")
+        if declared in ("review_stage", "heavy", "budget", "env"):
+            return str(declared)
+        reason = details.get("reason")
+        if reason in ("out_of_task_scope", "review_stage"):
+            return "review_stage"
+        if reason in ("budget", "over_finish_budget"):
+            return "budget"
+        if reason in ("env", "env_blocked"):
+            return "env"
+        # Unknown legacy deferrals are not provably review-stage: fail closed.
+        return "unknown"
+    declared = details.get("deferral_kind")
+    if declared in ("review_stage", "heavy", "budget", "env"):
+        return str(declared)
+    return ""
+
+
+def _deferred_skip(status: RuleStageStatus, allowed: frozenset[str] = frozenset(("review_stage", "heavy"))) -> bool:
+    """Latest evidence is a legitimate deferral (requirement-level review/heavy)."""
     if not status.evidence:
         return False
     latest = status.evidence[-1]
-    return isinstance(latest, Mapping) and latest.get("error_code") == "deferred_to_review"
+    return evidence_deferral_kind(latest if isinstance(latest, Mapping) else None) in allowed
 
 
 def _status_issue(
