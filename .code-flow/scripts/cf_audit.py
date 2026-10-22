@@ -34,6 +34,11 @@ _TASK_RE = re.compile(r"^TASK-\d+$")
 _SEPARATOR_RE = re.compile(r"^:?-{2,}:?$")
 
 _TRACE_FINDINGS = {
+    "unknown_scenario": ("unknown_scenario", "scenario-source", "coverage_ids", "Coverage 引用了场景源中不存在的场景"),
+    "scenario_not_in_coverage": ("scenario_not_in_coverage", "scenario-source", "coverage_ids", "场景源场景未进入 Acceptance Coverage"),
+    "duplicate_scenario_owner": ("duplicate_scenario_owner", "scenario-source", "unique_owner", "同一场景存在多个 owner"),
+    "missing_check": ("missing_check", "scenario-source", "checks_exist", "场景引用了不存在的 check"),
+    "design_scenario_duplicate": ("design_scenario_duplicate", "scenario-source", "design_references_only", "design 仍重复定义验收场景"),
     "missing_in_manifest": (
         "design_scenario_missing_in_manifest",
         "RULE-10",
@@ -268,6 +273,39 @@ def _dedupe(findings: Sequence[Mapping[str, object]]) -> list[dict[str, object]]
     ))
 
 
+def _scenario_source_findings(scenarios_file: str, manifest_path: Path,
+                              design_path: Path, manifest: Mapping[str, object]) -> list[dict[str, str]]:
+    from cf_scenarios import audit_scenario_source, parse_scenarios
+    from cf_traceability import parse_design_scenarios
+    source = parse_scenarios(scenarios_file)
+    coverage: list[dict[str, object]] = []
+    task_name = manifest.get("task_file")
+    if isinstance(task_name, str) and task_name:
+        task = manifest_path.parent / task_name
+        try:
+            from cf_acceptance_manifest import extract_manifest
+            coverage = list(extract_manifest(str(task))["scenarios"])
+        except (OSError, ValueError):
+            coverage = []
+    manifest_ids = [str(item.get("id")) for item in manifest.get("scenarios", []) if isinstance(item, Mapping)]
+    report = audit_scenario_source(source.get("scenarios", []), coverage, manifest_ids)
+    violations: list[dict[str, str]] = []
+    for code, key in (("unknown_scenario", "unknown"), ("scenario_not_in_coverage", "missing"),
+                      ("duplicate_scenario_owner", "duplicate_owner"),
+                      ("missing_in_manifest", "manifest_missing"),
+                      ("extra_in_manifest", "manifest_unknown")):
+        for scenario_id in report.get(key, []):
+            violations.append({"code": code, "scenario": str(scenario_id), "message": f"{scenario_id}: {key}"})
+    try:
+        design_ids = {item.id for item in parse_design_scenarios(str(design_path))}
+    except (OSError, ValueError):
+        design_ids = set()
+    for scenario_id in sorted(design_ids):
+        violations.append({"code": "design_scenario_duplicate", "scenario": scenario_id,
+                           "message": f"{scenario_id} 仍在 design 中定义；场景源已接管"})
+    return violations
+
+
 def build_audit(design_file: str, manifest_file: str, root: str,
                 requirement: str = "", scenarios_file: str = "") -> dict[str, object]:
     """Build the read-only invariant report; raises ValueError on unreadable input."""
@@ -282,6 +320,8 @@ def build_audit(design_file: str, manifest_file: str, root: str,
     manifest = load_manifest(manifest_path)
     if scenarios_file:
         trace = build_traceability_from_scenarios(scenarios_file, str(manifest_path))
+        extra_findings = _scenario_source_findings(scenarios_file, manifest_path, design_path, manifest)
+        trace.setdefault("violations", []).extend(extra_findings)
     else:
         trace = build_traceability(str(design_path), str(manifest_path))
     scenarios = {
@@ -417,7 +457,8 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     args = parser.parse_args(argv)
     try:
         root, design, manifest = _resolve_paths(args.root, args.task_dir, args.design, args.manifest)
-        sources = sorted(Path(args.task_dir).glob("*.scenarios.md")) if Path(args.task_dir).is_dir() else []
+        resolved_dir = manifest.parent
+        sources = sorted(resolved_dir.glob("*.scenarios.md")) if resolved_dir.is_dir() else []
         scenarios_file = str(sources[0]) if len(sources) == 1 else ""
         if len(sources) > 1:
             raise ValueError("scenario_source_ambiguous")

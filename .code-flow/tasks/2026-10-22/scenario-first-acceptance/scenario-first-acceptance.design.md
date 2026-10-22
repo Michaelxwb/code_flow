@@ -71,19 +71,7 @@
 
 #### 2.5.2 功能验收场景
 
-| 场景ID | 功能ID | 优先级 | 测试层级 | 关键真实边界 | 操作步骤 | 预期结果 |
-|---|---|---|---|---|---|---|
-| S-01 | FEAT-01 | P0 | integration | 真实 scenarios.md + parser | 解析合法场景文件 | 返回规范化场景集；ID/字段完整 |
-| S-02 | FEAT-01 | P0 | integration | 两份 design 引用同一全局 ID | 合并场景定义 | 定义一致合并；不一致 fail closed |
-| S-03 | FEAT-03 | P0 | integration | 真实 plan + coverage | 从场景文件拆任务 | 每个场景唯一 owner，Coverage 完整 |
-| S-04 | FEAT-04 | P0 | integration | 真实 manifest + 多 check | 场景绑定 2 个 check | 任一失败则场景不通过；全通过才 verified |
-| S-05 | FEAT-05 | P0 | integration | 真实 design + scenarios + manifest | 执行 audit | design 场景表不再被解析；三方对账 |
-| S-06 | FEAT-05 | P1 | integration | 无 scenarios.md 的 0.8 需求 | 执行 plan/audit | 回退双 design 逻辑合并并标记 deprecated |
-| E-01 | FEAT-03 | P1 | integration | 新需求缺少 scenarios.md | 执行 plan | block，提示先生成场景文件 |
-| E-02 | FEAT-02 | P1 | integration | Coverage 引用未知场景 | 执行 audit | block，列出 unknown scenario |
-| E-03 | FEAT-01 | P1 | integration | 同一 ID 两份冲突定义 | 执行 merge | block，列出冲突字段和文件 |
-| B-01 | FEAT-06 | P1 | integration | 0.8 旧需求 | 执行 migrate | 生成初始 scenarios.md，人工确认后可用 |
-| B-02 | FEAT-01 | P1 | integration | 单域需求（仅后端） | 解析场景文件 | 不要求 frontend/backend 双文件 |
+> 场景定义已迁移到 `scenario-first-acceptance.scenarios.md`（场景唯一源）。本设计只保留规则、设计影响和引用，不再复制 S/E/B 场景表。
 
 #### 2.5.3 非功能指标
 

@@ -92,6 +92,9 @@ path_mapping:
             - path: "shared/_map.md"
               tags: ["*"]
               tier: 0
+            - path: "shared/scenarios-template.md"
+              tags: []          # 永不自动注入，仅 align 显式 Read
+              tier: 1
             - path: "shared/prd-template.md"
               tags: []          # 永不自动注入，仅 cf-task:prd 命令显式 Read
               tier: 1

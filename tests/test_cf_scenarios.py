@@ -209,3 +209,48 @@ scenarios:
     trace = build_traceability_from_scenarios(str(source), str(manifest))
     assert trace["decision"] == "pass"
     assert trace["summary"]["bound"] == 1
+
+
+def test_multi_check_missing_check_blocks(tmp_path: Path) -> None:
+    from cf_traceability import build_traceability_from_scenarios
+    source = _source(tmp_path, """
+schema: 1
+scenarios:
+  - id: S-01
+    title: journey
+    checks: [CHK-1, CHK-2]
+""")
+    manifest = tmp_path / ".acceptance-manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [{"id": "CHK-1", "command": ["true"], "cwd": ".", "timeout": 30}],
+        "scenarios": [{"id": "S-01", "kind": "functional", "check": "CHK-1",
+                       "owner": "TASK-001", "status": "verified"}],
+    }), encoding="utf-8")
+    trace = build_traceability_from_scenarios(str(source), str(manifest))
+    assert trace["decision"] == "block"
+    assert any(item["code"] == "missing_check" for item in trace["violations"])
+
+
+def test_design_scenario_duplicate_is_reported(tmp_path: Path) -> None:
+    from cf_audit import _scenario_source_findings
+    source = _source(tmp_path, """
+schema: 1
+scenarios:
+  - id: S-01
+    title: journey
+""")
+    design = tmp_path / "demo.design.md"
+    design.write_text(
+        "# Demo\n\n## 2.5 验收条件\n\n"
+        "| 场景ID | 功能ID | 优先级 | 测试层级 | 关键真实边界 |\n"
+        "|---|---|---|---|---|\n"
+        "| S-01 | FEAT-01 | P0 | integration | runner |\n",
+        encoding="utf-8",
+    )
+    manifest = tmp_path / ".acceptance-manifest.json"
+    manifest.write_text(json.dumps({"schema": 3, "checks": [], "scenarios": [
+        {"id": "S-01", "kind": "functional", "owner": "TASK-001", "status": "planned"},
+    ]}), encoding="utf-8")
+    findings = _scenario_source_findings(str(source), manifest, design, json.loads(manifest.read_text()))
+    assert any(item["code"] == "design_scenario_duplicate" for item in findings)

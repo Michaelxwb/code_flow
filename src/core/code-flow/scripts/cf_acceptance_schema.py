@@ -44,6 +44,12 @@ def validate_scenarios(value: object) -> list[dict[str, object]]:
         command = item.get("command")
         if command is not None and (not isinstance(command, list) or not all(isinstance(x, str) for x in command)):
             raise ValueError(f"invalid scenario {scenario_id}:command")
+        check = item.get("check")
+        if check is not None and not isinstance(check, str):
+            raise ValueError(f"invalid scenario {scenario_id}:check")
+        checks = item.get("checks")
+        if checks is not None and (not isinstance(checks, list) or not all(isinstance(x, str) for x in checks)):
+            raise ValueError(f"invalid scenario {scenario_id}:checks")
         timeout = item.get("timeout", 60)
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
             raise ValueError(f"invalid scenario {scenario_id}:timeout")

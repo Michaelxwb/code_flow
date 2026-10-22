@@ -392,14 +392,22 @@ def build_traceability_from_scenarios(scenarios_file: str, manifest_file: str) -
     for item in source["scenarios"]:
         scenario_id = str(item["id"])
         row = manifest_scenarios.get(scenario_id)
-        check_id = row.get("check") if row is not None else None
-        check = checks.get(check_id) if isinstance(check_id, str) else None
+        required = [str(value) for value in item.get("checks", [])] or (
+            [str(row.get("check"))] if row is not None and isinstance(row.get("check"), str) else []
+        )
+        check_id = required[0] if required else None
+        check = checks.get(check_id) if check_id else None
+        missing_checks = [value for value in required if value not in checks]
         exec_mode = str(item.get("exec") or "")
         if row is None:
             binding, status = "missing", "missing"
             violations.append({"code": "missing_in_manifest", "scenario": scenario_id,
                                "message": f"{scenario_id} 在场景源中声明，但未进入 manifest"})
-        elif check is not None:
+        elif missing_checks:
+            binding, status = "unbound", str(row.get("status") or "planned")
+            violations.append({"code": "missing_check", "scenario": scenario_id,
+                               "message": f"{scenario_id} 引用了不存在的 check: {', '.join(missing_checks)}"})
+        elif required and all(value in checks for value in required):
             binding, status = "check", str(row.get("status") or "planned")
         elif exec_mode == "aspirational":
             binding, status = "aspirational", "aspirational"
@@ -427,6 +435,9 @@ def build_traceability_from_scenarios(scenarios_file: str, manifest_file: str) -
     for row in extras:
         violations.append({"code": "extra_in_manifest", "scenario": str(row["id"]),
                            "message": f"{row['id']} 存在于 manifest，但场景源未声明"})
+        if row["binding"] == "unbound":
+            violations.append({"code": "unbound_scenario", "scenario": str(row["id"]),
+                               "message": f"{row['id']} 没有可执行 check，且未显式 aspirational"})
     all_rows = rows + extras
     summary = {
         "design_scenarios": len(source["scenarios"]),

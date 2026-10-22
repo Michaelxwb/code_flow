@@ -583,6 +583,7 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--task-file", required=True)
     parser.add_argument("--output", default="")
     parser.add_argument("--verify-plan", action="store_true")
+    parser.add_argument("--require-scenarios", action="store_true")
     parser.add_argument("--task-dir", default="")
     parser.add_argument("--record-manual", action="store_true")
     parser.add_argument("--scenario-id", default="")
@@ -599,6 +600,9 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
         if args.verify_plan:
             if not args.task_dir:
                 raise ValueError("--verify-plan requires --task-dir")
+            if args.require_scenarios:
+                from cf_scenarios import require_source
+                require_source(args.task_dir)
             from cf_spec_context import load_context
             from cf_spec_gate import result_to_data, validate_plan_coverage, validate_stage
 

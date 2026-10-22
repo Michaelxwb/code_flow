@@ -73,7 +73,8 @@ Read 设计文档后，**先扫描文档结构**，建立章节索引表：
 
 ```bash
 code-flow acceptance manifest \
-  --verify-plan --task-dir <需求目录> --task-file <任务文件>
+  code-flow scenarios parse --file <需求目录>/<需求>.scenarios.md --json
+  --verify-plan --require-scenarios --task-dir <需求目录> --task-file <任务文件>
 ```
 
 ### 2.5. Explore 模式（--explore）
@@ -417,6 +418,7 @@ code-flow spec gate --help
 code-flow task index --help
 code-flow acceptance manifest --help
 code-flow acceptance run --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --write-evidence
+code-flow scenarios parse --file "<需求>.scenarios.md" --json
 ```
 
 <!-- code-flow:runtime-commands end -->

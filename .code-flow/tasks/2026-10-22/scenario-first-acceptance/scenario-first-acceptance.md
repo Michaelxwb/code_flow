@@ -107,6 +107,11 @@
 - S-04: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
 - E-03: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=c3360244b2974b08ba9644c29e213ce8 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=c3360244b2974b08ba9644c29e213ce8 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=c3360244b2974b08ba9644c29e213ce8 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=c3360244b2974b08ba9644c29e213ce8 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=c3360244b2974b08ba9644c29e213ce8 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -168,6 +173,8 @@ align 产出 scenarios.md；plan 只从 scenarios.md 取场景并分配唯一 ow
 - E-01: verified — automated command passed; run_id=bf2ce5d8c554438086fcd3420a9bf40b (confirmed_by: runner)
 - S-03: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
 - E-01: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=c3360244b2974b08ba9644c29e213ce8 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=c3360244b2974b08ba9644c29e213ce8 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -234,6 +241,10 @@ audit 只对账 scenarios/Coverage/manifest；无 scenarios.md 的 0.8 需求回
 - S-06: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
 - E-02: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
 - B-01: verified — automated command passed; run_id=f49c445184e2489cbed155cbd88b4798 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=c3360244b2974b08ba9644c29e213ce8 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=c3360244b2974b08ba9644c29e213ce8 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=c3360244b2974b08ba9644c29e213ce8 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=c3360244b2974b08ba9644c29e213ce8 (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -285,4 +296,49 @@ audit 只对账 scenarios/Coverage/manifest；无 scenarios.md 的 0.8 需求回
 - [2026-10-22] created (draft)
 - [2026-10-22] started
 - [2026-10-22] TASK-004 GREEN：audit 场景源接入 + 回退标记 + scenarios CLI；703 passed。
+- [2026-10-22] completed (done)
+
+## TASK-005: 生产接线补齐（review remediation）
+
+- **Status**: verified
+- **Priority**: P0
+- **Depends**: TASK-004
+- **Source**: scenario-first-acceptance.design.md#3.2 架构, scenario-first-acceptance.design.md#3.4 接口设计
+- **Spec-Refs**:
+- **Acceptance-Refs**:
+- **Files**: `cf_audit.py`, `cf_traceability.py`, `cf_acceptance_schema.py`, `cf_scenarios.py`, `config.yml`, plan docs
+- **Estimate**: 1d
+
+### Description
+
+修复 review 发现的 P0/P1：audit 读 Coverage、三方对账、design 重复定义、多 check AND 在生产审计中成立、plan 场景源校验、模板 catalog 泄漏。
+
+### Checklist
+
+- [x] `cf_audit` 读取 task Coverage 并接入 `audit_scenario_source` 三方对账。
+- [x] manifest/schema 支持 scenario `checks` 列表；traceability 按全部 check AND 判定。
+- [x] design 场景表重复定义产生 RULE-01 finding。
+- [x] `acceptance manifest --verify-plan --require-scenarios` 校验场景源。
+- [x] `scenarios-template` 从 catalog 候选中排除；lite/frontend 模板补 0.9 说明。
+- [x] 修复 audit 路径、reconcile 语义、migrate 输出自校验、frontmatter/schema 边界。
+- [x] 全量回归 + 本需求 audit（deprecated=false，含 Coverage 对账）。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 执行命令 | 状态 |
+|---|---|---|---|---|---|
+| N/A | integration | 真实 design + scenarios + manifest + Coverage | 三方对账/多 check/重复定义 | `python3 -m pytest -q tests/test_cf_scenarios.py tests/test_cf_audit.py tests/test_cf_traceability.py` | planned |
+
+### Acceptance Evidence
+
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|---|---|---|---|---|---|
+| N/A | audit 不读 Coverage、多 check 无生产 caller、design 重复无检测 | **705 passed** | `test_multi_check_missing_check_blocks`、`test_design_scenario_duplicate_is_reported`、`_scenario_source_findings` | 真实 design + scenarios + manifest + Coverage | verified |
+
+`cf_audit` 现在读取 task Coverage 并做三方对账；多 check 缺失会在 traceability 报 `missing_check`；design 残留场景表报 `design_scenario_duplicate`；`--verify-plan --require-scenarios` 校验场景源。
+
+### Log
+- [2026-10-22] created (draft)
+- [2026-10-22] started
+- [2026-10-22] TASK-005 GREEN：audit Coverage 三方对账、多 check 校验、design 重复检测、plan 场景源校验；705 passed。
 - [2026-10-22] completed (done)

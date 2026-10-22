@@ -39,8 +39,9 @@ class ScenarioError(ValueError):
 def _frontmatter(text: str) -> str:
     if text.startswith("---"):
         end = text.find("\n---", 3)
-        if end != -1:
-            return text[3:end]
+        if end == -1:
+            raise ScenarioError("scenario_source_invalid_frontmatter", "frontmatter 缺少闭合 ---")
+        return text[3:end]
     return text
 
 
@@ -62,7 +63,7 @@ def _validate_one(item: Mapping[str, object]) -> dict[str, object]:
     scenario_id = item.get("id")
     if not isinstance(scenario_id, str) or not SCENARIO_ID.fullmatch(scenario_id):
         raise ScenarioError("invalid_scenario_id", f"非法场景 ID: {scenario_id!r}")
-    priority = item.get("priority", "P1")
+    priority = str(item.get("priority", "P1")).upper()
     if priority not in PRIORITIES:
         raise ScenarioError("invalid_priority", f"{scenario_id}: priority 非法: {priority!r}")
     level = str(item.get("level", "integration")).lower()
@@ -102,7 +103,8 @@ def parse_scenarios(path: object) -> dict[str, object]:
     except yaml.YAMLError as exc:
         raise ScenarioError("scenario_source_invalid_yaml", str(exc), {"path": str(target)}) from exc
     document = _mapping(data, "scenarios")
-    if document.get("schema") not in (None, SCHEMA_VERSION):
+    schema = document.get("schema")
+    if isinstance(schema, bool) or schema not in (None, SCHEMA_VERSION):
         raise ScenarioError("unsupported_scenario_schema", str(document.get("schema")))
     raw = document.get("scenarios")
     if not isinstance(raw, list) or not raw:
@@ -217,7 +219,9 @@ def reconcile_coverage(scenarios: Sequence[Mapping[str, object]],
         owner = row.get("owner")
         if isinstance(owner, str) and owner.strip():
             owners.setdefault(scenario_id, []).append(owner.strip())
-    missing = sorted(set(by_scenario) - set(owners))
+    covered = set(owners) | {str(row.get("scenario_id") or row.get("id")) for row in coverage
+                              if isinstance(row.get("scenario_id") or row.get("id"), str)}
+    missing = sorted(set(by_scenario) - covered)
     duplicate = sorted(key for key, values in owners.items() if len(set(values)) > 1)
     unowned = sorted(set(by_scenario) - set(owners))
     return {
@@ -244,16 +248,17 @@ def load_requirement_scenarios(task_dir: object, allow_legacy: bool = False) -> 
 
 def audit_scenario_source(scenarios: Sequence[Mapping[str, object]],
                           coverage: Sequence[Mapping[str, object]],
-                          manifest_ids: Sequence[str] = ()) -> dict[str, object]:
+                          manifest_ids: Optional[Sequence[str]] = None) -> dict[str, object]:
     """Three-way audit: scenarios, coverage, manifest."""
     report = reconcile_coverage(scenarios, coverage)
     scenario_ids = {str(item.get("id")) for item in scenarios}
     coverage_ids = {str(item.get("scenario_id") or item.get("id")) for item in coverage}
-    manifest = {str(item) for item in manifest_ids}
-    report["manifest_missing"] = sorted(scenario_ids - manifest) if manifest else []
-    report["manifest_unknown"] = sorted(manifest - scenario_ids) if manifest else []
+    manifest = {str(item) for item in manifest_ids} if manifest_ids is not None else None
+    report["manifest_missing"] = sorted(scenario_ids - manifest) if manifest is not None else []
+    report["manifest_unknown"] = sorted(manifest - scenario_ids) if manifest is not None else []
     report["coverage_unknown"] = sorted(coverage_ids - scenario_ids)
-    report["ok"] = bool(report["ok"] and not report["manifest_missing"] and not report["manifest_unknown"])
+    report["ok"] = bool(report["ok"] and not report["coverage_unknown"]
+                        and not report["manifest_missing"] and not report["manifest_unknown"])
     return report
 
 
@@ -264,11 +269,17 @@ def migrate_from_coverage(coverage: Sequence[Mapping[str, object]]) -> dict[str,
         scenario_id = str(row.get("scenario_id") or row.get("id") or "")
         if not SCENARIO_ID.fullmatch(scenario_id):
             continue
+        priority = str(row.get("priority") or "P1").upper()
+        level = str(row.get("level") or "integration").lower()
+        if priority not in PRIORITIES:
+            priority = "P1"
+        if level not in LEVELS:
+            level = "integration"
         scenarios.append({
             "id": scenario_id,
             "title": str(row.get("title") or scenario_id),
-            "priority": str(row.get("priority") or "P1"),
-            "level": str(row.get("level") or "integration"),
+            "priority": priority,
+            "level": level,
             "exec": "auto",
             "env": "none",
             "components": [],
