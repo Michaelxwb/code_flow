@@ -11,6 +11,8 @@
 - `/cf-task:plan <设计文档路径> --draft` — 仅生成任务草案，必须经过 `--verify-plan` 后才能启动
 - `/cf-task:plan <任务文件> --verify-plan` — 执行完整 Acceptance Coverage 与 Spec Rule 门禁
 - `/cf-task:plan <.design.md 路径>` — 从 cf-task:align 产出的设计简报拆解（自动跳过缺口分析）
+- `/cf-task:plan <设计文档路径> --task-size capability|file` — 拆解粒度；默认 `--task-size capability`（1-2 天可演示能力），`file` 仅作旧行为兼容
+- `/cf-task:plan <设计文档路径> --max-tasks 25 --min-average-hours 2` — 覆盖预算阈值（一般不需要）
 
 ## 执行步骤
 
@@ -146,10 +148,14 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 
 阅读设计文档内容，按以下原则拆解：
 
-**拆解粒度**：
-- 每个子任务应是一个可独立编码和验证的原子单元
-- 一个子任务对应 1-3 个文件的修改
-- 预估编码时间 15-60 分钟
+**拆解粒度（默认 capability）**：
+- 每个子任务是一个 **1-2 天可完成、可独立演示和验收的能力单元**
+- 一个任务可以跨多个文件/模块，只要它们共同交付一个用户可观察、可演示的能力
+- 禁止按“改一个函数/一个文件”机械切碎；禁止默认 15-60 分钟级任务
+- 每个任务必须写 `Capability`（用户可运行/可看到的结果）与 `Estimate`（如 `1.5d`）
+- 能力交付面超过 2 天时先合并或重新切分，不得为凑任务数按文件拆分
+
+`--task-size file` 仅用于兼容旧计划：1-3 文件 / 15-60 分钟；仍受任务数预算约束，并在计划摘要中标注为 legacy。
 
 **提取内容**：
 - 功能需求 → 子任务标题 + 描述（提炼重点，不必复制全文）
@@ -238,11 +244,14 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 - **Source**: docs/xxx.md#§3.1 数据模型(L83-L110)
 - **Spec-Refs**: product-rules#RULE-product-001
 - **Acceptance-Refs**: S-01, E-01, RULE-01
+- **Estimate**: 1.5d
+- **Capability**: <一句话：用户可运行/可演示的结果，例如“导入配置并看到成功摘要”>
 
 ### Description
 <从设计文档提取的需求重点，不必复制全文>
 
 ### Checklist
+- [ ] 交付 `<Capability>`，并提供可重复的演示命令/操作（1-2 天可完成）
 - [ ] <具体实现步骤1>
 - [ ] <具体实现步骤2>
 - [ ] [S-01][E2E] 编写 E2E 验收测试并登记可单独执行的命令（真实边界：API → Store → Renderer）；不在编码期执行 RED/GREEN，统一留给 verify-e2e
@@ -284,6 +293,8 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 
 TASK-001: <标题> [P0]
   来源: §3.1 数据模型 (L83-L110)
+  能力: <用户可演示的结果>
+  预估: 1.5d
   验收: S-01(E2E), E-01(integration)
   描述: ...
   Checklist: N 项
@@ -345,6 +356,26 @@ code-flow acceptance run \
 
 不得为了提速降低 design 指定的 E2E 层级。
 
+### 5.1. 计划预算门禁（capability 默认）
+
+写入任务文件后、绑定 Plan Gate / 锁定 manifest 前，必须执行：
+
+```bash
+code-flow task index \
+  --task-file <任务文件> \
+  --budget \
+  --task-size capability \
+  --json
+```
+
+- JSON 的 `budget` 字段输出任务数、总工时、平均任务时长、每任务场景数与每任务 `Capability`
+- `task_count > 25`：明确警告并要求合并（同能力任务合并为 1-2 天能力单元）
+- `average_hours < 2h`：任务过碎，要求合并后重新评估
+- 缺少 `Estimate` 或 `Capability`：不得进入 start
+- `requires_merge=true` 时只输出需合并的 TASK 清单，不继续 Plan Gate / manifest；合并后重跑直到 `decision=pass`
+- `--task-size file` 兼容旧粒度，不做平均 2h 检查，但仍禁止任务数 >25
+- 阈值可用 `--max-tasks` / `--min-average-hours` 显式覆盖，并在任务文件 Proposal 记录原因
+
 只有 Context Plan 状态与任务结构校验都 `decision=pass` 才输出 Start 下一步；缺唯一 owner、`verifier_ref`、测试层级或真实边界时必须回到拆解修复。
 
 ### 6. 输出摘要
@@ -352,6 +383,7 @@ code-flow acceptance run \
 ```
 已生成任务文件: .code-flow/tasks/2026-03-15/auth-module.md
 - 子任务数: N
+- 计划预算: 总工时 Xh / 平均 Yh（阈值：≤25 任务且平均 ≥2h；通过/需合并）
 - P0: x 个, P1: y 个, P2: z 个
 - 依赖链深度: N 层
 - 详设引用覆盖: §3.1, §3.2, §3.3, §3.5 (共 4 个章节)
@@ -375,6 +407,7 @@ code-flow acceptance run \
 
 ```bash
 code-flow spec gate --help
+code-flow task index --help
 code-flow acceptance manifest --help
 code-flow acceptance run --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --write-evidence
 ```

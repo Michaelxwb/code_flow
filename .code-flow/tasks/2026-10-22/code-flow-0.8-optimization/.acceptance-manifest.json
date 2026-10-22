@@ -247,7 +247,7 @@
       "kind": "functional",
       "boundary": "真实 plan 模板 + 任务文件",
       "owner": "TASK-012",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -259,7 +259,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "3e20ae49819f4741b8ccd1984b72cc00",
+        "executed_at": "2026-10-22T05:29:30.342276+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_task_plan.py",
+          "-k",
+          "capability_budget"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "fd9ad258c39aa2f0b5021270a62a50480b06068f0da34c2c7cf242221ce0987c"
+      },
+      "runs": [
+        {
+          "id": "S-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "3e20ae49819f4741b8ccd1984b72cc00",
+          "executed_at": "2026-10-22T05:29:30.342276+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_task_plan.py",
+            "-k",
+            "capability_budget"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "fd9ad258c39aa2f0b5021270a62a50480b06068f0da34c2c7cf242221ce0987c"
+        }
+      ]
     },
     {
       "id": "S-09",

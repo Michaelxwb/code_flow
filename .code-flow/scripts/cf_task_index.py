@@ -19,6 +19,11 @@ from pathlib import Path
 from typing import IO, Mapping, Optional, Sequence
 
 
+from cf_task_plan import (
+    DEFAULT_MAX_TASKS,
+    TASK_SIZES,
+    evaluate_plan,
+)
 from cf_task_state import FINISHED_STATUSES as _DONE_STATUSES
 
 
@@ -108,9 +113,16 @@ def independent_groups(nodes: Sequence[TaskNode]) -> list[list[str]]:
     return dependency_components(nodes)
 
 
-def index_data(task_file: str) -> dict[str, object]:
+def index_data(
+    task_file: str,
+    *,
+    budget: bool = False,
+    task_size: str = "capability",
+    max_tasks: int = DEFAULT_MAX_TASKS,
+    min_average_hours: Optional[float] = None,
+) -> dict[str, object]:
     nodes = parse_task_file(task_file)
-    return {
+    data: dict[str, object] = {
         "tasks": [
             {"id": node.task_id, "status": node.status, "depends": list(node.depends)}
             for node in nodes
@@ -120,16 +132,34 @@ def index_data(task_file: str) -> dict[str, object]:
         "dependency_components": dependency_components(nodes),
         "note": "batches 组内无依赖；dependency_components 仅组间独立（independent_groups 为兼容别名）；单 worktree 一次仅激活一个 TASK，批次内独立任务可由 cf-task:start 在各 worktree 并行派发",
     }
+    if budget:
+        data["budget"] = evaluate_plan(
+            task_file,
+            task_size=task_size,
+            max_tasks=max_tasks,
+            min_average_hours=min_average_hours,
+        )
+    return data
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
     parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND", "cf_task_index.py"))
     parser.add_argument("--task-file", required=True)
     parser.add_argument("--dag", action="store_true", help="输出拓扑批次与独立分组")
+    parser.add_argument("--budget", action="store_true", help="附加能力级计划预算评估")
+    parser.add_argument("--task-size", choices=TASK_SIZES, default="capability")
+    parser.add_argument("--max-tasks", type=int, default=DEFAULT_MAX_TASKS)
+    parser.add_argument("--min-average-hours", type=float, default=None)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
-        data = index_data(args.task_file)
+        data = index_data(
+            args.task_file,
+            budget=args.budget,
+            task_size=args.task_size,
+            max_tasks=args.max_tasks,
+            min_average_hours=args.min_average_hours,
+        )
     except (OSError, ValueError) as exc:
         stdout.write(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
         return 2
@@ -141,7 +171,18 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
             lines.append(f"  - {item['id']}: {item['status']} (依赖: {', '.join(item['depends']) or '无'})")
         for index, batch in enumerate(data["batches"], 1):
             lines.append(f"批次 {index}（可独立开发）: {', '.join(batch)}")
+        if args.budget:
+            budget_data = data["budget"]
+            lines.append(
+                f"计划预算: {budget_data['task_count']} 任务 / 总计 {budget_data['total_hours']}h"
+                f" / 平均 {budget_data['average_hours']}h（{budget_data['task_size']}）"
+            )
+            for warning in budget_data["warnings"]:
+                lines.append(f"  ! {warning['message']}")
+            lines.append(f"decision: {budget_data['decision']}")
         stdout.write("\n".join(lines) + "\n")
+    if args.budget and data["budget"]["requires_merge"]:
+        return 1
     return 0
 
 
