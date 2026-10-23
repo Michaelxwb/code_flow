@@ -23,6 +23,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 from typing import Iterable, Mapping, Optional, Sequence
@@ -249,6 +250,38 @@ class EvidenceStore:
     def __init__(self, root: object, requirement: str = "") -> None:
         self.root = discover_project_root(root)
         self.requirement = requirement or _active_requirement(self.root) or _DEFAULT_REQUIREMENT
+        self.migrated_runs = self.migrate_legacy()
+
+    def _legacy_directories(self) -> list[Path]:
+        """Pre-date--name evidence lived under the requirement basename."""
+        name = self.requirement.rsplit("--", 1)[-1]
+        if name == self.requirement:
+            return []
+        project = self.root
+        common = _git_common_dir(project)
+        central = ((common / "code-flow" / "evidence") if common is not None
+                   else (project / ".code-flow" / "evidence"))
+        return [path for path in (central / name, project / ".code-flow" / "evidence" / name)
+                if path.is_dir() and path.resolve() != self.directory.resolve()]
+
+    def migrate_legacy(self) -> int:
+        """Copy old basename evidence into the date--name store without overwriting."""
+        copied = 0
+        marker = self.directory / ".legacy-migrated"
+        if marker.is_file():
+            return 0
+        for legacy in self._legacy_directories():
+            for source in legacy.rglob("*"):
+                if not source.is_file():
+                    continue
+                target = self.directory / source.relative_to(legacy)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if not target.exists():
+                    shutil.copy2(source, target)
+                    copied += 1
+        if copied:
+            _atomic_text(marker, json.dumps({"copied": copied}) + "\n")
+        return copied
 
     @property
     def directory(self) -> Path:

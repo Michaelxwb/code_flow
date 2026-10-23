@@ -49,6 +49,14 @@ validators:
 
 执行统一验证入口：
 
+- 有 active TASK 时走任务验证入口（`--checks` 等价于 `--layers validators`）：
+
+```bash
+code-flow task verify --checks --task-dir "<需求目录>" --root "$PWD" --json
+```
+
+- 无 active TASK 或用户显式指定文件时走变更验证入口：
+
 ```bash
 code-flow validate --root "$PWD" --json
 ```
