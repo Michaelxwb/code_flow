@@ -246,12 +246,13 @@
       "timeout": 60.0,
       "depends_on": [],
       "check": "CHK-2ce35a172ab3",
-      "revision": 6,
+      "revision": 7,
       "evidence": {
         "id": "S-01",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
+        "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
         "check_config": {
           "id": "CHK-2ce35a172ab3",
           "command": [
@@ -272,9 +273,9 @@
           "inputs": [],
           "preflight": []
         },
-        "revision": 6,
-        "run_id": "4a06827e4e6d4bc397cffc695f4b2e93",
-        "executed_at": "2026-10-22T15:37:07.368738+00:00",
+        "revision": 7,
+        "run_id": "ebd22d482a45444d872a1df63a6fa470",
+        "executed_at": "2026-10-23T00:52:52.715527+00:00",
         "command": [
           "python3",
           "-m",
@@ -286,7 +287,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
       },
       "runs": [
         {
@@ -534,6 +535,48 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        },
+        {
+          "id": "S-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
+          "check_config": {
+            "id": "CHK-2ce35a172ab3",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_cf_scenarios.py",
+              "-k",
+              "parse"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [],
+            "preflight": []
+          },
+          "revision": 7,
+          "run_id": "ebd22d482a45444d872a1df63a6fa470",
+          "executed_at": "2026-10-23T00:52:52.715527+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_scenarios.py",
+            "-k",
+            "parse"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
         }
       ],
       "check_config": {
@@ -578,12 +621,13 @@
       "timeout": 60.0,
       "depends_on": [],
       "check": "CHK-4b83da4ec908",
-      "revision": 7,
+      "revision": 8,
       "evidence": {
         "id": "S-02",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
+        "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
         "check_config": {
           "id": "CHK-4b83da4ec908",
           "command": [
@@ -604,9 +648,9 @@
           "inputs": [],
           "preflight": []
         },
-        "revision": 7,
-        "run_id": "4a06827e4e6d4bc397cffc695f4b2e93",
-        "executed_at": "2026-10-22T15:37:07.368738+00:00",
+        "revision": 8,
+        "run_id": "ebd22d482a45444d872a1df63a6fa470",
+        "executed_at": "2026-10-23T00:52:52.715527+00:00",
         "command": [
           "python3",
           "-m",
@@ -618,7 +662,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
       },
       "runs": [
         {
@@ -908,6 +952,48 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        },
+        {
+          "id": "S-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
+          "check_config": {
+            "id": "CHK-4b83da4ec908",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_cf_scenarios.py",
+              "-k",
+              "merge_conflict"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [],
+            "preflight": []
+          },
+          "revision": 8,
+          "run_id": "ebd22d482a45444d872a1df63a6fa470",
+          "executed_at": "2026-10-23T00:52:52.715527+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_scenarios.py",
+            "-k",
+            "merge_conflict"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
         }
       ],
       "check_config": {
@@ -952,12 +1038,13 @@
       "timeout": 60.0,
       "depends_on": [],
       "check": "CHK-cf9a3a7e3fb1",
-      "revision": 7,
+      "revision": 8,
       "evidence": {
         "id": "S-03",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
+        "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
         "check_config": {
           "id": "CHK-cf9a3a7e3fb1",
           "command": [
@@ -978,9 +1065,9 @@
           "inputs": [],
           "preflight": []
         },
-        "revision": 7,
-        "run_id": "4a06827e4e6d4bc397cffc695f4b2e93",
-        "executed_at": "2026-10-22T15:37:07.368738+00:00",
+        "revision": 8,
+        "run_id": "ebd22d482a45444d872a1df63a6fa470",
+        "executed_at": "2026-10-23T00:52:52.715527+00:00",
         "command": [
           "python3",
           "-m",
@@ -992,7 +1079,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
       },
       "runs": [
         {
@@ -1282,6 +1369,48 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        },
+        {
+          "id": "S-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
+          "check_config": {
+            "id": "CHK-cf9a3a7e3fb1",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_cf_task_plan.py",
+              "-k",
+              "scenario_owner"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [],
+            "preflight": []
+          },
+          "revision": 8,
+          "run_id": "ebd22d482a45444d872a1df63a6fa470",
+          "executed_at": "2026-10-23T00:52:52.715527+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_task_plan.py",
+            "-k",
+            "scenario_owner"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
         }
       ],
       "check_config": {
@@ -1326,12 +1455,13 @@
       "timeout": 60.0,
       "depends_on": [],
       "check": "CHK-6c2b03e737a9",
-      "revision": 6,
+      "revision": 7,
       "evidence": {
         "id": "S-04",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
+        "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
         "check_config": {
           "id": "CHK-6c2b03e737a9",
           "command": [
@@ -1352,9 +1482,9 @@
           "inputs": [],
           "preflight": []
         },
-        "revision": 6,
-        "run_id": "4a06827e4e6d4bc397cffc695f4b2e93",
-        "executed_at": "2026-10-22T15:37:07.368738+00:00",
+        "revision": 7,
+        "run_id": "ebd22d482a45444d872a1df63a6fa470",
+        "executed_at": "2026-10-23T00:52:52.715527+00:00",
         "command": [
           "python3",
           "-m",
@@ -1366,7 +1496,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
       },
       "runs": [
         {
@@ -1614,6 +1744,48 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        },
+        {
+          "id": "S-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
+          "check_config": {
+            "id": "CHK-6c2b03e737a9",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_cf_scenarios.py",
+              "-k",
+              "multi_check"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [],
+            "preflight": []
+          },
+          "revision": 7,
+          "run_id": "ebd22d482a45444d872a1df63a6fa470",
+          "executed_at": "2026-10-23T00:52:52.715527+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_scenarios.py",
+            "-k",
+            "multi_check"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
         }
       ],
       "check_config": {
@@ -1658,12 +1830,13 @@
       "timeout": 60.0,
       "depends_on": [],
       "check": "CHK-840d1d79290d",
-      "revision": 5,
+      "revision": 6,
       "evidence": {
         "id": "S-05",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
+        "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
         "check_config": {
           "id": "CHK-840d1d79290d",
           "command": [
@@ -1684,9 +1857,9 @@
           "inputs": [],
           "preflight": []
         },
-        "revision": 5,
-        "run_id": "4a06827e4e6d4bc397cffc695f4b2e93",
-        "executed_at": "2026-10-22T15:37:07.368738+00:00",
+        "revision": 6,
+        "run_id": "ebd22d482a45444d872a1df63a6fa470",
+        "executed_at": "2026-10-23T00:52:52.715527+00:00",
         "command": [
           "python3",
           "-m",
@@ -1698,7 +1871,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
       },
       "runs": [
         {
@@ -1905,6 +2078,48 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        },
+        {
+          "id": "S-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
+          "check_config": {
+            "id": "CHK-840d1d79290d",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_cf_audit.py",
+              "-k",
+              "scenario_source"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [],
+            "preflight": []
+          },
+          "revision": 6,
+          "run_id": "ebd22d482a45444d872a1df63a6fa470",
+          "executed_at": "2026-10-23T00:52:52.715527+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_audit.py",
+            "-k",
+            "scenario_source"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
         }
       ],
       "check_config": {
@@ -1949,12 +2164,13 @@
       "timeout": 60.0,
       "depends_on": [],
       "check": "CHK-5fd490f59109",
-      "revision": 5,
+      "revision": 6,
       "evidence": {
         "id": "S-06",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
+        "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
         "check_config": {
           "id": "CHK-5fd490f59109",
           "command": [
@@ -1975,9 +2191,9 @@
           "inputs": [],
           "preflight": []
         },
-        "revision": 5,
-        "run_id": "4a06827e4e6d4bc397cffc695f4b2e93",
-        "executed_at": "2026-10-22T15:37:07.368738+00:00",
+        "revision": 6,
+        "run_id": "ebd22d482a45444d872a1df63a6fa470",
+        "executed_at": "2026-10-23T00:52:52.715527+00:00",
         "command": [
           "python3",
           "-m",
@@ -1989,7 +2205,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
       },
       "runs": [
         {
@@ -2196,6 +2412,48 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        },
+        {
+          "id": "S-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
+          "check_config": {
+            "id": "CHK-5fd490f59109",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_cf_scenarios.py",
+              "-k",
+              "fallback"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [],
+            "preflight": []
+          },
+          "revision": 6,
+          "run_id": "ebd22d482a45444d872a1df63a6fa470",
+          "executed_at": "2026-10-23T00:52:52.715527+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_scenarios.py",
+            "-k",
+            "fallback"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
         }
       ],
       "check_config": {
@@ -2240,12 +2498,13 @@
       "timeout": 60.0,
       "depends_on": [],
       "check": "CHK-7a9e6baeea63",
-      "revision": 7,
+      "revision": 8,
       "evidence": {
         "id": "E-01",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
+        "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
         "check_config": {
           "id": "CHK-7a9e6baeea63",
           "command": [
@@ -2266,9 +2525,9 @@
           "inputs": [],
           "preflight": []
         },
-        "revision": 7,
-        "run_id": "4a06827e4e6d4bc397cffc695f4b2e93",
-        "executed_at": "2026-10-22T15:37:07.368738+00:00",
+        "revision": 8,
+        "run_id": "ebd22d482a45444d872a1df63a6fa470",
+        "executed_at": "2026-10-23T00:52:52.715527+00:00",
         "command": [
           "python3",
           "-m",
@@ -2280,7 +2539,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
       },
       "runs": [
         {
@@ -2570,6 +2829,48 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        },
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
+          "check_config": {
+            "id": "CHK-7a9e6baeea63",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_cf_task_plan.py",
+              "-k",
+              "missing_scenarios"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [],
+            "preflight": []
+          },
+          "revision": 8,
+          "run_id": "ebd22d482a45444d872a1df63a6fa470",
+          "executed_at": "2026-10-23T00:52:52.715527+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_task_plan.py",
+            "-k",
+            "missing_scenarios"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
         }
       ],
       "check_config": {
@@ -2614,12 +2915,13 @@
       "timeout": 60.0,
       "depends_on": [],
       "check": "CHK-43845ce40756",
-      "revision": 5,
+      "revision": 6,
       "evidence": {
         "id": "E-02",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
+        "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
         "check_config": {
           "id": "CHK-43845ce40756",
           "command": [
@@ -2640,9 +2942,9 @@
           "inputs": [],
           "preflight": []
         },
-        "revision": 5,
-        "run_id": "4a06827e4e6d4bc397cffc695f4b2e93",
-        "executed_at": "2026-10-22T15:37:07.368738+00:00",
+        "revision": 6,
+        "run_id": "ebd22d482a45444d872a1df63a6fa470",
+        "executed_at": "2026-10-23T00:52:52.715527+00:00",
         "command": [
           "python3",
           "-m",
@@ -2654,7 +2956,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
       },
       "runs": [
         {
@@ -2861,6 +3163,48 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        },
+        {
+          "id": "E-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
+          "check_config": {
+            "id": "CHK-43845ce40756",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_cf_audit.py",
+              "-k",
+              "unknown_scenario"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [],
+            "preflight": []
+          },
+          "revision": 6,
+          "run_id": "ebd22d482a45444d872a1df63a6fa470",
+          "executed_at": "2026-10-23T00:52:52.715527+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_audit.py",
+            "-k",
+            "unknown_scenario"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
         }
       ],
       "check_config": {
@@ -2905,12 +3249,13 @@
       "timeout": 60.0,
       "depends_on": [],
       "check": "CHK-5020ec0882e1",
-      "revision": 6,
+      "revision": 7,
       "evidence": {
         "id": "E-03",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
+        "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
         "check_config": {
           "id": "CHK-5020ec0882e1",
           "command": [
@@ -2931,9 +3276,9 @@
           "inputs": [],
           "preflight": []
         },
-        "revision": 6,
-        "run_id": "4a06827e4e6d4bc397cffc695f4b2e93",
-        "executed_at": "2026-10-22T15:37:07.368738+00:00",
+        "revision": 7,
+        "run_id": "ebd22d482a45444d872a1df63a6fa470",
+        "executed_at": "2026-10-23T00:52:52.715527+00:00",
         "command": [
           "python3",
           "-m",
@@ -2945,7 +3290,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
       },
       "runs": [
         {
@@ -3193,6 +3538,48 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        },
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
+          "check_config": {
+            "id": "CHK-5020ec0882e1",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_cf_scenarios.py",
+              "-k",
+              "definition_conflict"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [],
+            "preflight": []
+          },
+          "revision": 7,
+          "run_id": "ebd22d482a45444d872a1df63a6fa470",
+          "executed_at": "2026-10-23T00:52:52.715527+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_scenarios.py",
+            "-k",
+            "definition_conflict"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
         }
       ],
       "check_config": {
@@ -3237,12 +3624,13 @@
       "timeout": 60.0,
       "depends_on": [],
       "check": "CHK-281c779eb9d4",
-      "revision": 5,
+      "revision": 6,
       "evidence": {
         "id": "B-01",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
+        "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
         "check_config": {
           "id": "CHK-281c779eb9d4",
           "command": [
@@ -3263,9 +3651,9 @@
           "inputs": [],
           "preflight": []
         },
-        "revision": 5,
-        "run_id": "4a06827e4e6d4bc397cffc695f4b2e93",
-        "executed_at": "2026-10-22T15:37:07.368738+00:00",
+        "revision": 6,
+        "run_id": "ebd22d482a45444d872a1df63a6fa470",
+        "executed_at": "2026-10-23T00:52:52.715527+00:00",
         "command": [
           "python3",
           "-m",
@@ -3277,7 +3665,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
       },
       "runs": [
         {
@@ -3484,6 +3872,48 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        },
+        {
+          "id": "B-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
+          "check_config": {
+            "id": "CHK-281c779eb9d4",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_cf_scenarios.py",
+              "-k",
+              "migrate_legacy"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [],
+            "preflight": []
+          },
+          "revision": 6,
+          "run_id": "ebd22d482a45444d872a1df63a6fa470",
+          "executed_at": "2026-10-23T00:52:52.715527+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_scenarios.py",
+            "-k",
+            "migrate_legacy"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
         }
       ],
       "check_config": {
@@ -3528,12 +3958,13 @@
       "timeout": 60.0,
       "depends_on": [],
       "check": "CHK-971df35924d6",
-      "revision": 6,
+      "revision": 7,
       "evidence": {
         "id": "B-02",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
+        "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
         "check_config": {
           "id": "CHK-971df35924d6",
           "command": [
@@ -3554,9 +3985,9 @@
           "inputs": [],
           "preflight": []
         },
-        "revision": 6,
-        "run_id": "4a06827e4e6d4bc397cffc695f4b2e93",
-        "executed_at": "2026-10-22T15:37:07.368738+00:00",
+        "revision": 7,
+        "run_id": "ebd22d482a45444d872a1df63a6fa470",
+        "executed_at": "2026-10-23T00:52:52.715527+00:00",
         "command": [
           "python3",
           "-m",
@@ -3568,7 +3999,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
       },
       "runs": [
         {
@@ -3816,6 +4247,48 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "abb6f0843ad0a156bd8d2924598480dd05eedbff8fea0c006aca84525fbba555"
+        },
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "input_hash": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7",
+          "check_config": {
+            "id": "CHK-971df35924d6",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_cf_scenarios.py",
+              "-k",
+              "single_domain"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [],
+            "preflight": []
+          },
+          "revision": 7,
+          "run_id": "ebd22d482a45444d872a1df63a6fa470",
+          "executed_at": "2026-10-23T00:52:52.715527+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_scenarios.py",
+            "-k",
+            "single_domain"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "31575c75ae82a030672f7b48642ca789b00649e858e25c5917ee553ef954d7e7"
         }
       ],
       "check_config": {

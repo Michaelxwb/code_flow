@@ -54,11 +54,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
-          executed_at: '2026-10-22T15:37:05.040991+00:00'
+          executed_at: '2026-10-23T00:52:50.334832+00:00'
           status: verified
           rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
           artifact_sha256: null
-          diff_sha256: head:7527f4dc9b81c54309565bcf7c6ce6e400f2ff73
+          diff_sha256: head:97d35a4b230c2df7e2167d5e047a8963c32e6466
           result_sha256: 1085c4cab6098edb47d916a3f61807f8941bff345e264feb00b9abd8a1d910cf
           error_code: null
           details:
@@ -117,11 +117,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
-          executed_at: '2026-10-22T15:37:05.064840+00:00'
+          executed_at: '2026-10-23T00:52:50.350780+00:00'
           status: verified
           rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
           artifact_sha256: null
-          diff_sha256: head:7527f4dc9b81c54309565bcf7c6ce6e400f2ff73
+          diff_sha256: head:97d35a4b230c2df7e2167d5e047a8963c32e6466
           result_sha256: b993aeefb614fe0bf53e1d4c9059ce0c76d04eb18efd68f4adbdb2bb9b9737d9
           error_code: null
           details:
@@ -190,11 +190,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
-          executed_at: '2026-10-22T15:37:05.089417+00:00'
+          executed_at: '2026-10-23T00:52:50.370216+00:00'
           status: verified
           rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
           artifact_sha256: null
-          diff_sha256: head:7527f4dc9b81c54309565bcf7c6ce6e400f2ff73
+          diff_sha256: head:97d35a4b230c2df7e2167d5e047a8963c32e6466
           result_sha256: e5f1387cd8b51acb45cffab067f3aa409519def55572a9fff4aae96c0158dcbf
           error_code: null
           details:
@@ -395,12 +395,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
-          executed_at: '2026-10-22T15:37:05.115060+00:00'
+          executed_at: '2026-10-23T00:52:50.389951+00:00'
           status: verified
           rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
           artifact_sha256: null
-          diff_sha256: head:7527f4dc9b81c54309565bcf7c6ce6e400f2ff73
-          result_sha256: df5ef09329392f4b96dce841678017bd07fc1bde2746f27804d6864c88a96d6b
+          diff_sha256: head:97d35a4b230c2df7e2167d5e047a8963c32e6466
+          result_sha256: 132afec667bc18340d709abfea37c08c500414d49c99ec670c85e16cadad0a7c
           error_code: null
           details:
             argv:
@@ -412,11 +412,11 @@ bindings:
             exit_code: 0
             output: '......                                                                   [100%]
 
-              6 passed in 0.52s
+              6 passed in 0.49s
 
               '
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-            stdout_sha256: 00a8614270ba8472fd66ad756931ce6c941c964e72fa1dd797d89853abcf36dd
+            stdout_sha256: af88bdd7a54cc39cfb5904eec849f46c36db3b008cd00a1693c86331142646eb
             cache_reused: true
             scope_files:
             - .code-flow/scripts/cf_acceptance_evidence.py
@@ -424,6 +424,7 @@ bindings:
             - .code-flow/scripts/cf_acceptance_runner.py
             - .code-flow/scripts/cf_acceptance_schema.py
             - .code-flow/scripts/cf_audit.py
+            - .code-flow/scripts/cf_check_inputs.py
             - .code-flow/scripts/cf_checks.py
             - .code-flow/scripts/cf_codex_hook.py
             - .code-flow/scripts/cf_core.py
@@ -547,6 +548,7 @@ bindings:
             - src/core/code-flow/scripts/cf_acceptance_runner.py
             - src/core/code-flow/scripts/cf_acceptance_schema.py
             - src/core/code-flow/scripts/cf_audit.py
+            - src/core/code-flow/scripts/cf_check_inputs.py
             - src/core/code-flow/scripts/cf_checks.py
             - src/core/code-flow/scripts/cf_codex_hook.py
             - src/core/code-flow/scripts/cf_core.py
@@ -627,12 +629,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
-          executed_at: '2026-10-22T15:37:05.139908+00:00'
+          executed_at: '2026-10-23T00:52:50.408018+00:00'
           status: verified
           rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
           artifact_sha256: null
-          diff_sha256: head:7527f4dc9b81c54309565bcf7c6ce6e400f2ff73
-          result_sha256: d44a0c062a498fffedb5c20fe418b1528c7a30bf9075bfb339bb52931bcb3c09
+          diff_sha256: head:97d35a4b230c2df7e2167d5e047a8963c32e6466
+          result_sha256: 0e809a5e4b7164f01919a956d0523359da2f6481120c58b98133d3dfc6c2313a
           error_code: null
           details:
             argv:
@@ -640,24 +642,24 @@ bindings:
             - tests/test_spec_workflow_migrate.js
             exit_code: 0
             output: '✔ B-08 dry-run is a single in-memory preview with zero writes
-              (51.816833ms)
+              (51.645375ms)
 
               ✔ prepare creates bound plan, byte backup, empty staging and journal
-              (52.250375ms)
+              (52.4245ms)
 
-              ✔ S-12 apply is idempotent and writes version last (165.706667ms)
+              ✔ S-12 apply is idempotent and writes version last (164.83825ms)
 
-              ✔ E-08 injected rename failure restores all original bytes (286.9ms)
+              ✔ E-08 injected rename failure restores all original bytes (288.63575ms)
 
               ✔ B-05 interruption before version is completed from proven target hashes
-              (165.94925ms)
+              (159.710125ms)
 
               ✔ EXDEV fails closed and rolls back without copy-delete commit fallback
-              (144.927583ms)
+              (149.962625ms)
 
-              ✔ re-apply after rollback succeeds (staging is reset) (249.655125ms)
+              ✔ re-apply after rollback succeeds (staging is reset) (256.231917ms)
 
-              ✔ apply refuses a plan whose project_root differs from cwd (55.179875ms)
+              ✔ apply refuses a plan whose project_root differs from cwd (56.528167ms)
 
               ℹ tests 8
 
@@ -673,11 +675,11 @@ bindings:
 
               ℹ todo 0
 
-              ℹ duration_ms 1175.156208
+              ℹ duration_ms 1182.651125
 
               '
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-            stdout_sha256: a1acbd8e72a1f8ef200f6d6432c394b9f6c554ef219baa91180069c0bef5fe1b
+            stdout_sha256: 250b2b1efbed540feea29d3694027908b51380f0725a5a6955720e959edf051d
             cache_reused: true
             scope_files:
             - package.json
@@ -687,6 +689,7 @@ bindings:
             - src/core/code-flow/scripts/cf_acceptance_runner.py
             - src/core/code-flow/scripts/cf_acceptance_schema.py
             - src/core/code-flow/scripts/cf_audit.py
+            - src/core/code-flow/scripts/cf_check_inputs.py
             - src/core/code-flow/scripts/cf_checks.py
             - src/core/code-flow/scripts/cf_codex_hook.py
             - src/core/code-flow/scripts/cf_core.py
@@ -770,11 +773,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
-          executed_at: '2026-10-22T15:37:05.164560+00:00'
+          executed_at: '2026-10-23T00:52:50.426349+00:00'
           status: verified
           rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
           artifact_sha256: null
-          diff_sha256: head:7527f4dc9b81c54309565bcf7c6ce6e400f2ff73
+          diff_sha256: head:97d35a4b230c2df7e2167d5e047a8963c32e6466
           result_sha256: 3cd1ee3e105ef106eaf349c7f44dbe753eef65fb606a2a7258e3beef3f4d9ba5
           error_code: null
           details:
@@ -814,6 +817,7 @@ bindings:
             - src/core/code-flow/scripts/cf_acceptance_runner.py
             - src/core/code-flow/scripts/cf_acceptance_schema.py
             - src/core/code-flow/scripts/cf_audit.py
+            - src/core/code-flow/scripts/cf_check_inputs.py
             - src/core/code-flow/scripts/cf_checks.py
             - src/core/code-flow/scripts/cf_codex_hook.py
             - src/core/code-flow/scripts/cf_core.py
@@ -1075,11 +1079,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
-          executed_at: '2026-10-22T15:36:47.518315+00:00'
+          executed_at: '2026-10-23T00:52:28.024610+00:00'
           status: verified
           rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
           artifact_sha256: null
-          diff_sha256: head:7527f4dc9b81c54309565bcf7c6ce6e400f2ff73
+          diff_sha256: head:97d35a4b230c2df7e2167d5e047a8963c32e6466
           result_sha256: 22c068054a541e609d992fd69ae16346c86ce57d362acbfdb984cefbcb19d589
           error_code: null
           details:
@@ -1122,15 +1126,15 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
-          executed_at: '2026-10-22T15:36:47.545206+00:00'
+          executed_at: '2026-10-23T00:52:28.051660+00:00'
           status: verified
           rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
           artifact_sha256: null
-          diff_sha256: head:7527f4dc9b81c54309565bcf7c6ce6e400f2ff73
-          result_sha256: 4c633b527b50710bcbb57a6bb3f7bda844a91cce97bf40d6a6813614c1adaf02
+          diff_sha256: head:97d35a4b230c2df7e2167d5e047a8963c32e6466
+          result_sha256: 5a90761d87c26d5701bf77ea7b154a581a667e526ce3c1505f89e9ea0be97a0d
           error_code: null
           details:
-            checked_files: 175
+            checked_files: 178
             violations: []
       review:
         status: pending
@@ -1169,12 +1173,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
-          executed_at: '2026-10-22T15:37:05.469824+00:00'
+          executed_at: '2026-10-23T00:52:50.659081+00:00'
           status: verified
           rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
           artifact_sha256: null
-          diff_sha256: head:7527f4dc9b81c54309565bcf7c6ce6e400f2ff73
-          result_sha256: 8e8669f67855ebf34a85855a71afb88e11780336173c22c8937369b62189f29b
+          diff_sha256: head:97d35a4b230c2df7e2167d5e047a8963c32e6466
+          result_sha256: bb08ed7a60701bdd5a30ea4f3d81c9e2b48c45a7ae4efc33a28d4bf4640c6209
           error_code: null
           details:
             argv:
@@ -1191,11 +1195,11 @@ bindings:
             exit_code: 0
             output: '.....................................................................    [100%]
 
-              69 passed in 10.52s
+              69 passed in 10.58s
 
               '
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-            stdout_sha256: 6ab057b8e745e2795ce616e8fb81001df2c58df93da3d4312bb1021c31bc6558
+            stdout_sha256: 093b210874e08c6c60526a995cb062a0a0d5bb43969862903ccbf6e2954774a6
             cache_reused: true
             scope_files:
             - .code-flow/scripts/cf_acceptance_evidence.py
@@ -1203,6 +1207,7 @@ bindings:
             - .code-flow/scripts/cf_acceptance_runner.py
             - .code-flow/scripts/cf_acceptance_schema.py
             - .code-flow/scripts/cf_audit.py
+            - .code-flow/scripts/cf_check_inputs.py
             - .code-flow/scripts/cf_checks.py
             - .code-flow/scripts/cf_codex_hook.py
             - .code-flow/scripts/cf_core.py
@@ -1326,6 +1331,7 @@ bindings:
             - src/core/code-flow/scripts/cf_acceptance_runner.py
             - src/core/code-flow/scripts/cf_acceptance_schema.py
             - src/core/code-flow/scripts/cf_audit.py
+            - src/core/code-flow/scripts/cf_check_inputs.py
             - src/core/code-flow/scripts/cf_checks.py
             - src/core/code-flow/scripts/cf_codex_hook.py
             - src/core/code-flow/scripts/cf_core.py
@@ -1411,12 +1417,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
-          executed_at: '2026-10-22T15:37:05.492857+00:00'
+          executed_at: '2026-10-23T00:52:50.678153+00:00'
           status: verified
           rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
           artifact_sha256: null
-          diff_sha256: head:7527f4dc9b81c54309565bcf7c6ce6e400f2ff73
-          result_sha256: 216744528a3ec9d061b5adc98fb9996205c97f1c2bcf45856d4a7aee150ae5ed
+          diff_sha256: head:97d35a4b230c2df7e2167d5e047a8963c32e6466
+          result_sha256: c24347c9ade9361b97cd861c49707bd5e457876f162c621d9ebbdf394e99c6c4
           error_code: null
           details:
             argv:
@@ -1428,13 +1434,13 @@ bindings:
             - tests/test_cf_spec_gate.py
             - tests/test_cf_task_runtime.py
             exit_code: 0
-            output: '..............................................................           [100%]
+            output: '...............................................................          [100%]
 
-              62 passed in 6.06s
+              63 passed in 6.56s
 
               '
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-            stdout_sha256: 66a045d9a1af2e7b3d146d2e72826c867c2fff3fe6018ca8105514ff0b2a1556
+            stdout_sha256: 41cd8fc16965aafa09d560867f8a8175361a6a433b5510c8a74e4b4ba7af2e3b
             cache_reused: true
             scope_files:
             - .code-flow/scripts/cf_acceptance_evidence.py
@@ -1442,6 +1448,7 @@ bindings:
             - .code-flow/scripts/cf_acceptance_runner.py
             - .code-flow/scripts/cf_acceptance_schema.py
             - .code-flow/scripts/cf_audit.py
+            - .code-flow/scripts/cf_check_inputs.py
             - .code-flow/scripts/cf_checks.py
             - .code-flow/scripts/cf_codex_hook.py
             - .code-flow/scripts/cf_core.py
@@ -1489,6 +1496,7 @@ bindings:
             - src/core/code-flow/scripts/cf_acceptance_runner.py
             - src/core/code-flow/scripts/cf_acceptance_schema.py
             - src/core/code-flow/scripts/cf_audit.py
+            - src/core/code-flow/scripts/cf_check_inputs.py
             - src/core/code-flow/scripts/cf_checks.py
             - src/core/code-flow/scripts/cf_codex_hook.py
             - src/core/code-flow/scripts/cf_core.py
@@ -1571,11 +1579,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
-          executed_at: '2026-10-22T15:37:05.521173+00:00'
+          executed_at: '2026-10-23T00:52:50.701646+00:00'
           status: verified
           rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
           artifact_sha256: null
-          diff_sha256: head:7527f4dc9b81c54309565bcf7c6ce6e400f2ff73
+          diff_sha256: head:97d35a4b230c2df7e2167d5e047a8963c32e6466
           result_sha256: ff95c6927a717fc02f32502a154c379dffdd465922d400d15d07802176edccaa
           error_code: null
           details:
@@ -1763,6 +1771,7 @@ bindings:
             - src/core/code-flow/scripts/cf_acceptance_runner.py
             - src/core/code-flow/scripts/cf_acceptance_schema.py
             - src/core/code-flow/scripts/cf_audit.py
+            - src/core/code-flow/scripts/cf_check_inputs.py
             - src/core/code-flow/scripts/cf_checks.py
             - src/core/code-flow/scripts/cf_codex_hook.py
             - src/core/code-flow/scripts/cf_core.py
