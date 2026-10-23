@@ -136,8 +136,9 @@ def _store_evidence_runs(path: Path, rows: Mapping[str, Mapping[str, object]],
         row = rows.get(str(result.get("id")))
         if row is None:
             continue
+        result_fingerprint = str(result.get("input_hash") or fingerprint)
         outcome = store.write_run(str(row.get("check") or row.get("id")),
-                                  _run_record(row, result, run_id, executed_at, fingerprint, commit))
+                                  _run_record(row, result, run_id, executed_at, result_fingerprint, commit))
         created += outcome["status"] == "created"
         duplicates += outcome["status"] == "duplicate"
     return {"created": created, "duplicates": duplicates}
@@ -205,7 +206,8 @@ def persist_results(path: Path, data: dict[str, object], results: Sequence[Mappi
         if state in ("not_included", "manual_pending"):
             continue
         row = rows[result["id"]]
-        applied = _record_result(row, result, run_key, executed_at, fingerprint)
+        result_fingerprint = str(result.get("input_hash") or fingerprint)
+        applied = _record_result(row, result, run_key, executed_at, result_fingerprint)
         if applied is None:
             continue
         record, status = applied

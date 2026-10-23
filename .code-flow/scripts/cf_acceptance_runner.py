@@ -11,7 +11,6 @@ new work and reports unrun checks as `incomplete`, never as failed/verified.
 from __future__ import annotations
 
 import argparse
-import fnmatch
 import hashlib
 import json
 import os
@@ -30,6 +29,7 @@ from cf_exec_base import (
     run_command,
     worktree_fingerprint,
 )
+from cf_check_inputs import check_input_hash, match_path
 from cf_acceptance_schema import load_manifest, validate_execution_baseline
 from cf_acceptance_evidence import persist_results
 from cf_evidence_store import EvidenceStore
@@ -555,9 +555,11 @@ class _Checkpoint:
     identity and worktree freshness still match and reuses them.
     """
 
-    def __init__(self, path: Path, fingerprint: str, enabled: bool, resume: bool) -> None:
+    def __init__(self, path: Path, fingerprint: str, enabled: bool, resume: bool,
+                 fingerprints: Optional[Mapping[str, str]] = None) -> None:
         self.path = path
         self.fingerprint = fingerprint
+        self.fingerprints = dict(fingerprints or {})
         self.enabled = enabled
         self.entries: dict[str, Mapping[str, object]] = {}
         if not enabled:
@@ -585,10 +587,16 @@ class _Checkpoint:
         payload = {
             "schema": 1,
             "fingerprint": self.fingerprint,
+            "fingerprints": self.fingerprints,
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "checks": self.entries,
         }
         _atomic_checkpoint(self.path, payload)
+
+    def fingerprint_for(self, unit: Mapping[str, object]) -> str:
+        if unit.get("check") is not None:
+            return self.fingerprints.get(str(unit.get("id")), self.fingerprint)
+        return self.fingerprint
 
     def reusable(self, unit: Mapping[str, object]) -> bool:
         if not self.enabled:
@@ -603,7 +611,7 @@ class _Checkpoint:
             return False
         return (
             entry.get("status") == "passed"
-            and entry.get("fingerprint") == self.fingerprint
+            and entry.get("fingerprint") == self.fingerprint_for(unit)
             and entry.get("command") == command
             and str(entry.get("cwd", ".")) == cwd
             and recorded_timeout == timeout
@@ -618,7 +626,7 @@ class _Checkpoint:
         command, cwd, timeout = _unit_command(unit)
         self.entries[str(unit["id"])] = {
             "status": "passed",
-            "fingerprint": self.fingerprint,
+            "fingerprint": self.fingerprint_for(unit),
             "command": command,
             "cwd": cwd,
             "timeout": timeout,
@@ -644,6 +652,7 @@ class _UnitEngine:
         deadline: Optional[float], namespace: Optional[Mapping[str, str]],
         rows: Mapping[str, Mapping[str, object]], fingerprint: str, use_cache: bool,
         max_failures: int, checkpoint: _Checkpoint, jobs: int,
+        fingerprints: Optional[Mapping[str, str]] = None,
     ) -> None:
         self.units = list(units)
         self.root = root
@@ -653,6 +662,7 @@ class _UnitEngine:
         self.namespace = namespace
         self.rows = rows
         self.fingerprint = fingerprint
+        self.fingerprints = dict(fingerprints or {})
         self.use_cache = use_cache
         self.max_failures = max_failures
         self.checkpoint = checkpoint
@@ -721,13 +731,14 @@ class _UnitEngine:
         self._run_unit(unit)
 
     def _run_unit(self, unit: Mapping[str, object]) -> None:
-        if _unit_reusable(unit, self.rows, self.fingerprint, self.use_cache,
+        fingerprint = self.checkpoint.fingerprint_for(unit)
+        if _unit_reusable(unit, self.rows, fingerprint, self.use_cache,
                           self.include_e2e, self.only_e2e, self.checkpoint):
             results = _reuse_results(unit, self.root, self.include_e2e, self.only_e2e,
                                      self.deadline, self.checkpoint)
             self.checkpoint.record(unit, {"status": "passed"})
             self.reused += len(_unit_active(unit, self.include_e2e, self.only_e2e))
-            self._record(unit, results)
+            self._record(unit, self._with_input_hash(unit, results))
             return
         if unit.get("deps"):
             invalidate_executions()
@@ -736,10 +747,15 @@ class _UnitEngine:
         self.executed += 1
         self._complete(unit, outcome)
 
+    def _with_input_hash(self, unit: Mapping[str, object],
+                         results: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
+        value = self.checkpoint.fingerprint_for(unit)
+        return [{**dict(result), "input_hash": value} for result in results]
+
     def _complete(self, unit: Mapping[str, object], outcome: Mapping[str, object]) -> None:
         results = _apply_outcome(unit, outcome, self.root, self.include_e2e,
                                  self.only_e2e, self.deadline)
-        self._record(unit, results)
+        self._record(unit, self._with_input_hash(unit, results))
         self.checkpoint.record(unit, outcome)
         status = str(outcome.get("status"))
         if _failure(status):
@@ -892,6 +908,20 @@ def _check_plan(data: Mapping[str, object]) -> tuple[list[Mapping[str, object]],
     return checks, mapping
 
 
+def _check_input_fingerprints(
+    root: str, check_map: Mapping[str, Mapping[str, object]], fallback: str
+) -> dict[str, dict[str, str]]:
+    """Per-check content identity; checks without inputs inherit repo scope."""
+    result: dict[str, dict[str, str]] = {}
+    for check_id, check in check_map.items():
+        outcome = check_input_hash(root, check, fallback)
+        result[check_id] = {
+            "input_hash": str(outcome.get("input_hash") or fallback),
+            "scope": str(outcome.get("scope") or ("repo" if not check.get("inputs") else "empty")),
+        }
+    return result
+
+
 def _run_namespace(
     root: str, check_map: Mapping[str, Mapping[str, object]], owner: str,
     items: Sequence[Mapping[str, object]], run_key: str,
@@ -982,11 +1012,13 @@ def _scenario_rows(scenarios: Sequence[Mapping[str, object]]) -> dict[str, Mappi
 
 
 def _make_checkpoint(
-    manifest_file: str, root: str, fingerprint: str, use_cache: bool, resume: bool
+    manifest_file: str, root: str, fingerprint: str, use_cache: bool, resume: bool,
+    fingerprints: Optional[Mapping[str, str]] = None,
 ) -> _Checkpoint:
     return _Checkpoint(
         _checkpoint_path(manifest_file, root), fingerprint,
         enabled=use_cache and bool(fingerprint), resume=resume,
+        fingerprints=fingerprints,
     )
 
 
@@ -1039,7 +1071,7 @@ def _select_profile(data: Mapping[str, object], root: str, profile: str,
         inputs = (check or {}).get("inputs")
         if (not explicit_priority or priority.upper() == "P0" or str((check or {}).get("profile", "")) == "smoke"
                 or not inputs or not changed or any(
-                    fnmatch.fnmatch(path, str(pattern)) for pattern in inputs for path in changed
+                    match_path(path, str(pattern)) for pattern in inputs for path in changed
                 )):
             selected.append(scenario)
     selected_ids = {str(item.get("id")) for item in selected}
@@ -1160,11 +1192,16 @@ def run_manifest(
     run_key = resolve_run_id(run_id)
     namespace = _run_namespace(str(root), check_map, owner, items, run_key)
     fingerprint = worktree_fingerprint(str(root), include_untracked=False) if use_cache else ""
+    check_fingerprints = _check_input_fingerprints(str(root), check_map, fingerprint) if use_cache else {}
+    fingerprints = {
+        check_id: value["input_hash"] for check_id, value in check_fingerprints.items()
+    }
     limit = 1 if fail_fast else max(0, int(max_failures))
-    checkpoint = _make_checkpoint(manifest_file, root, fingerprint, use_cache, resume)
+    checkpoint = _make_checkpoint(manifest_file, root, fingerprint, use_cache, resume, fingerprints)
     units, _ = _build_units(expanded, Path(root), check_map, include_e2e or only_e2e, only_e2e)
     engine = _UnitEngine(units, Path(root), include_e2e or only_e2e, only_e2e, deadline,
-                         namespace, rows, fingerprint, use_cache, limit, checkpoint, jobs)
+                         namespace, rows, fingerprint, use_cache, limit, checkpoint, jobs,
+                         fingerprints=fingerprints)
     results_by_id, state = engine.run()
     results = _ordered_results(expanded if aggregates else ordered, results_by_id)
     results = _aggregate_multi_results(results, aggregates)
@@ -1176,6 +1213,11 @@ def run_manifest(
     if not state.get("interrupted") and (write_evidence or resume):
         persist_results(Path(manifest_file), full_data, results, fingerprint=fingerprint, run_id=run_key)
     outcome = _payload(items, check_list, check_map, results, state)
+    for check in outcome.get("checks", []):
+        identity = check_fingerprints.get(str(check.get("id")))
+        if identity:
+            check["input_hash"] = identity["input_hash"]
+            check["input_scope"] = identity["scope"]
     if full_data.get("schema") == 2:
         outcome["schema2_compat"] = True
     if state.get("interrupted"):

@@ -585,3 +585,72 @@ def test_max_failures_stops_after_limit_and_keeps_completed_evidence(tmp_path: P
     assert saved[1]["status"] == "failed"
     assert all(item["status"] != "verified" for item in saved[2:])
     assert all("evidence" in item for item in saved[:2]), "已完成/失败的 check 必须保留证据"
+
+
+def _per_check_repo(tmp_path: Path) -> tuple[Path, Path, Path]:
+    _git_repo(tmp_path)
+    (tmp_path / "src/b.py").write_text("OTHER = 1\n", encoding="utf-8")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "checks")
+    return tmp_path, tmp_path / "a.marker", tmp_path / "b.marker"
+
+
+def _marker_command(marker: Path) -> list[str]:
+    return [sys.executable, "-c",
+            f"from pathlib import Path; p=Path({str(marker)!r}); "
+            "p.write_text((p.read_text() if p.exists() else '') + 'x')"]
+
+
+def _per_check_manifest(root: Path, check_a: dict, check_b: dict) -> Path:
+    manifest = root / ".acceptance-manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [
+            {"id": "CHK-A", "command": check_a["command"], "cwd": ".", "timeout": 30,
+             "inputs": ["src/a.py"]},
+            {"id": "CHK-B", "command": check_b["command"], "cwd": ".", "timeout": 30,
+             "inputs": ["src/b.py"]},
+        ],
+        "scenarios": [
+            {"id": "S-A", "kind": "functional", "check": "CHK-A",
+             "command": check_a["command"], "cwd": ".", "timeout": 30,
+             "depends_on": [], "status": "planned"},
+            {"id": "S-B", "kind": "functional", "check": "CHK-B",
+             "command": check_b["command"], "cwd": ".", "timeout": 30,
+             "depends_on": [], "status": "planned"},
+        ],
+    }), encoding="utf-8")
+    return manifest
+
+
+def test_changed_input_reruns_only_affected_check(tmp_path: Path) -> None:
+    root, marker_a, marker_b = _per_check_repo(tmp_path)
+    manifest = _per_check_manifest(
+        root,
+        {"command": _marker_command(marker_a)},
+        {"command": _marker_command(marker_b)},
+    )
+    assert run_manifest(str(manifest), str(root), write_evidence=True)["decision"] == "pass"
+    (root / "src/a.py").write_text("VALUE = 2\n", encoding="utf-8")
+    result = run_manifest(str(manifest), str(root), write_evidence=True)
+    assert result["decision"] == "pass"
+    assert marker_a.read_text(encoding="utf-8") == "xx"
+    assert marker_b.read_text(encoding="utf-8") == "x"
+    reused = {item["id"]: item.get("cache_reused") for item in result["results"]}
+    assert reused == {"S-A": None, "S-B": True}
+
+
+def test_unrelated_change_reuses_all_input_scoped_checks(tmp_path: Path) -> None:
+    root, marker_a, marker_b = _per_check_repo(tmp_path)
+    manifest = _per_check_manifest(
+        root,
+        {"command": _marker_command(marker_a)},
+        {"command": _marker_command(marker_b)},
+    )
+    assert run_manifest(str(manifest), str(root), write_evidence=True)["decision"] == "pass"
+    (root / "src/unrelated.py").write_text("NEW = 1\n", encoding="utf-8")
+    result = run_manifest(str(manifest), str(root), write_evidence=True)
+    assert result["decision"] == "pass"
+    assert marker_a.read_text(encoding="utf-8") == "x"
+    assert marker_b.read_text(encoding="utf-8") == "x"
+    assert all(item.get("cache_reused") is True for item in result["results"])

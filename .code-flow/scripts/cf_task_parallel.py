@@ -468,17 +468,27 @@ def _missing_evidence(
             "evidence_hash_unavailable",
             f"{task}: 无法计算 worktree input_hash，拒绝用无法校验的旧证据放行",
         )
+    from cf_check_inputs import check_input_hash
+    checks = {
+        str(item.get("id")): item for item in manifest.get("checks", [])
+        if isinstance(item, Mapping) and item.get("id")
+    }
     from cf_evidence_store import requirement_key
     store = EvidenceStore(worktree, requirement=requirement_key(Path(task_file).parent))
     missing: list[dict[str, object]] = []
     for check_id in sorted(required):
+        check = checks.get(check_id)
+        check_hash = (
+            str(check_input_hash(str(worktree), check, expected).get("input_hash") or expected)
+            if check is not None else expected
+        )
         runs = store.list_runs(check_id)
-        if not any(_run_matches(run, expected) for run in runs):
+        if not any(_run_matches(run, check_hash) for run in runs):
             missing.append({
                 "check_id": check_id,
                 "scenarios": sorted(required[check_id]),
-                "reason": _evidence_reason(runs, expected),
-                "expected_input_hash": expected,
+                "reason": _evidence_reason(runs, check_hash),
+                "expected_input_hash": check_hash,
             })
     return missing, sorted(required)
 
