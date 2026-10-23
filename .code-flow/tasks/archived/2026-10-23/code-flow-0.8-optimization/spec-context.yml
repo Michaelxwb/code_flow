@@ -1,7 +1,7 @@
 version: 1
-task: scenario-first-acceptance
+task: code-flow-0.8-optimization
 enforcement: required
-updated_at: '2026-10-22T15:01:13.325245+00:00'
+updated_at: '2026-10-22T07:20:52.380724+00:00'
 sources:
 - type: cli
   ref: bind
@@ -14,7 +14,7 @@ bindings:
     metadata_sha256: 9dcd215f1b0e9e7fb5c2c7a3da51ae3a71dd1b244e6e8bb2dc0ef94435fcc5b9
     rules_sha256: 49dddd0e5a2cb59a69d069c4cb79c63c766c115e4c3f7e30c729009f19f73bf2
   selected_by: design
-  reason: align/plan 命令模板与四平台同步
+  reason: 命令面收敛、四平台生成、迁移与 doctor
   enforcement: required
   stages:
   - design
@@ -30,35 +30,17 @@ bindings:
     verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
     verifier_stage: code
     stage_status:
-      design:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.design.md
-          section_id: Spec Compliance Matrix
-          item_id: cli-code-standards#RULE-cli-dependency-allowlist-001
-          artifact_sha256: 4100e37b40e8ccae2f0ee5ef298cd8c9fb198b4a68a39150d1f64b746661121f
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.md
-          section_id: TASK-002
-          item_id: TASK-002
-          artifact_sha256: c5d2ddd0377c37e1f752f0d18aeb3fa6d6dafed3bcef31e1b5efb24105803304
-        decision: null
-        evidence: []
       code:
         status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
-          executed_at: '2026-10-23T03:15:51.760227+00:00'
+          executed_at: '2026-10-23T03:40:49.443147+00:00'
           status: verified
           rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
           artifact_sha256: null
-          diff_sha256: head:a6ab3fab782d0a833dc9b9e44368306db14b962b
+          diff_sha256: head:3f459f8b2f03b8d9f70bc23c84c359415dee7a15
           result_sha256: 1085c4cab6098edb47d916a3f61807f8941bff345e264feb00b9abd8a1d910cf
           error_code: null
           details:
@@ -80,6 +62,28 @@ bindings:
             scope_files:
             - package.json
             - tests/test_cli_spec_workflow.py
+      design:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.design.md
+          section_id: Spec Compliance Matrix
+          item_id: cli-code-standards#RULE-cli-dependency-allowlist-001
+          artifact_sha256: b6811b8ca4944cd1573625ad19bc653e474bfa6ac843b9db7152545680d885e7
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-017
+          item_id: TASK-017
+          artifact_sha256: 021541cd3228756061835a974c163a37fefc8af33a27f8f40dba3c606a57903f
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-017
+          item_id: TASK-017
+          artifact_sha256: 4138f19e2d244aa6c2d8480e595d0e7c5b51f42fe8e84274a20fd0a531ec1f74
+        decision: null
+        evidence: []
       review:
         status: pending
         refs: []
@@ -93,35 +97,17 @@ bindings:
     verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
     verifier_stage: code
     stage_status:
-      design:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.design.md
-          section_id: Spec Compliance Matrix
-          item_id: cli-code-standards#RULE-cli-user-content-preservation-001
-          artifact_sha256: 4100e37b40e8ccae2f0ee5ef298cd8c9fb198b4a68a39150d1f64b746661121f
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.md
-          section_id: TASK-003
-          item_id: TASK-003
-          artifact_sha256: c5d2ddd0377c37e1f752f0d18aeb3fa6d6dafed3bcef31e1b5efb24105803304
-        decision: null
-        evidence: []
       code:
         status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
-          executed_at: '2026-10-23T03:15:51.781065+00:00'
+          executed_at: '2026-10-23T03:40:49.459234+00:00'
           status: verified
           rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
           artifact_sha256: null
-          diff_sha256: head:a6ab3fab782d0a833dc9b9e44368306db14b962b
+          diff_sha256: head:3f459f8b2f03b8d9f70bc23c84c359415dee7a15
           result_sha256: b993aeefb614fe0bf53e1d4c9059ce0c76d04eb18efd68f4adbdb2bb9b9737d9
           error_code: null
           details:
@@ -153,6 +139,28 @@ bindings:
             - package.json
             - src/cli.js
             - tests/test_cli_merge_helpers.js
+      design:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.design.md
+          section_id: Spec Compliance Matrix
+          item_id: cli-code-standards#RULE-cli-user-content-preservation-001
+          artifact_sha256: b6811b8ca4944cd1573625ad19bc653e474bfa6ac843b9db7152545680d885e7
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-005
+          item_id: TASK-005
+          artifact_sha256: 021541cd3228756061835a974c163a37fefc8af33a27f8f40dba3c606a57903f
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-005
+          item_id: TASK-005
+          artifact_sha256: 4138f19e2d244aa6c2d8480e595d0e7c5b51f42fe8e84274a20fd0a531ec1f74
+        decision: null
+        evidence: []
       review:
         status: pending
         refs: []
@@ -166,35 +174,17 @@ bindings:
     verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
     verifier_stage: code
     stage_status:
-      design:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.design.md
-          section_id: Spec Compliance Matrix
-          item_id: cli-code-standards#RULE-cli-platform-parity-001
-          artifact_sha256: 4100e37b40e8ccae2f0ee5ef298cd8c9fb198b4a68a39150d1f64b746661121f
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.md
-          section_id: TASK-002
-          item_id: TASK-002
-          artifact_sha256: c5d2ddd0377c37e1f752f0d18aeb3fa6d6dafed3bcef31e1b5efb24105803304
-        decision: null
-        evidence: []
       code:
         status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
-          executed_at: '2026-10-23T03:15:51.801228+00:00'
+          executed_at: '2026-10-23T03:40:49.481646+00:00'
           status: verified
           rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
           artifact_sha256: null
-          diff_sha256: head:a6ab3fab782d0a833dc9b9e44368306db14b962b
+          diff_sha256: head:3f459f8b2f03b8d9f70bc23c84c359415dee7a15
           result_sha256: e5f1387cd8b51acb45cffab067f3aa409519def55572a9fff4aae96c0158dcbf
           error_code: null
           details:
@@ -358,6 +348,28 @@ bindings:
             - src/adapters/opencode/plugins/code-flow/index.js
             - src/adapters/opencode/plugins/code-flow/package.json
             - tests/test_adapter_parity.py
+      design:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.design.md
+          section_id: Spec Compliance Matrix
+          item_id: cli-code-standards#RULE-cli-platform-parity-001
+          artifact_sha256: b6811b8ca4944cd1573625ad19bc653e474bfa6ac843b9db7152545680d885e7
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-017
+          item_id: TASK-017
+          artifact_sha256: 021541cd3228756061835a974c163a37fefc8af33a27f8f40dba3c606a57903f
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-017
+          item_id: TASK-017
+          artifact_sha256: 4138f19e2d244aa6c2d8480e595d0e7c5b51f42fe8e84274a20fd0a531ec1f74
+        decision: null
+        evidence: []
       review:
         status: pending
         refs: []
@@ -371,35 +383,17 @@ bindings:
     verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
     verifier_stage: code
     stage_status:
-      design:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.design.md
-          section_id: Spec Compliance Matrix
-          item_id: cli-code-standards#RULE-cli-hook-guard-001
-          artifact_sha256: 4100e37b40e8ccae2f0ee5ef298cd8c9fb198b4a68a39150d1f64b746661121f
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.md
-          section_id: TASK-001
-          item_id: TASK-001
-          artifact_sha256: c5d2ddd0377c37e1f752f0d18aeb3fa6d6dafed3bcef31e1b5efb24105803304
-        decision: null
-        evidence: []
       code:
         status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
-          executed_at: '2026-10-23T03:15:51.823026+00:00'
+          executed_at: '2026-10-23T03:40:49.509434+00:00'
           status: verified
           rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
           artifact_sha256: null
-          diff_sha256: head:a6ab3fab782d0a833dc9b9e44368306db14b962b
+          diff_sha256: head:3f459f8b2f03b8d9f70bc23c84c359415dee7a15
           result_sha256: df5ef09329392f4b96dce841678017bd07fc1bde2746f27804d6864c88a96d6b
           error_code: null
           details:
@@ -592,6 +586,28 @@ bindings:
             - src/core/code-flow/scripts/cf_workflow_transaction.py
             - src/core/code-flow/scripts/cf_worktree_env.py
             - tests/test_hook_command_robustness.py
+      design:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.design.md
+          section_id: Spec Compliance Matrix
+          item_id: cli-code-standards#RULE-cli-hook-guard-001
+          artifact_sha256: b6811b8ca4944cd1573625ad19bc653e474bfa6ac843b9db7152545680d885e7
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 021541cd3228756061835a974c163a37fefc8af33a27f8f40dba3c606a57903f
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 4138f19e2d244aa6c2d8480e595d0e7c5b51f42fe8e84274a20fd0a531ec1f74
+        decision: null
+        evidence: []
       review:
         status: pending
         refs: []
@@ -605,35 +621,17 @@ bindings:
     verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
     verifier_stage: code
     stage_status:
-      design:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.design.md
-          section_id: Spec Compliance Matrix
-          item_id: cli-code-standards#RULE-cli-migration-transaction-001
-          artifact_sha256: 4100e37b40e8ccae2f0ee5ef298cd8c9fb198b4a68a39150d1f64b746661121f
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.md
-          section_id: TASK-003
-          item_id: TASK-003
-          artifact_sha256: c5d2ddd0377c37e1f752f0d18aeb3fa6d6dafed3bcef31e1b5efb24105803304
-        decision: null
-        evidence: []
       code:
         status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
-          executed_at: '2026-10-23T03:15:51.844384+00:00'
+          executed_at: '2026-10-23T03:40:49.528923+00:00'
           status: verified
           rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
           artifact_sha256: null
-          diff_sha256: head:a6ab3fab782d0a833dc9b9e44368306db14b962b
+          diff_sha256: head:3f459f8b2f03b8d9f70bc23c84c359415dee7a15
           result_sha256: 4950f1e4ebda2c159d5f578dd9fdf57d79548285810ab737b426a4af7210bd27
           error_code: null
           details:
@@ -735,6 +733,28 @@ bindings:
             - src/migrate/runtime.js
             - src/migrate/spec-workflow.js
             - tests/test_spec_workflow_migrate.js
+      design:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.design.md
+          section_id: Spec Compliance Matrix
+          item_id: cli-code-standards#RULE-cli-migration-transaction-001
+          artifact_sha256: b6811b8ca4944cd1573625ad19bc653e474bfa6ac843b9db7152545680d885e7
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-017
+          item_id: TASK-017
+          artifact_sha256: 021541cd3228756061835a974c163a37fefc8af33a27f8f40dba3c606a57903f
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-017
+          item_id: TASK-017
+          artifact_sha256: 4138f19e2d244aa6c2d8480e595d0e7c5b51f42fe8e84274a20fd0a531ec1f74
+        decision: null
+        evidence: []
       review:
         status: pending
         refs: []
@@ -749,35 +769,17 @@ bindings:
     verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
     verifier_stage: code
     stage_status:
-      design:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.design.md
-          section_id: Spec Compliance Matrix
-          item_id: cli-code-standards#RULE-cli-opencode-native-001
-          artifact_sha256: 4100e37b40e8ccae2f0ee5ef298cd8c9fb198b4a68a39150d1f64b746661121f
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.md
-          section_id: TASK-002
-          item_id: TASK-002
-          artifact_sha256: c5d2ddd0377c37e1f752f0d18aeb3fa6d6dafed3bcef31e1b5efb24105803304
-        decision: null
-        evidence: []
       code:
         status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
-          executed_at: '2026-10-23T03:15:51.863885+00:00'
+          executed_at: '2026-10-23T03:40:49.548851+00:00'
           status: verified
           rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
           artifact_sha256: null
-          diff_sha256: head:a6ab3fab782d0a833dc9b9e44368306db14b962b
+          diff_sha256: head:3f459f8b2f03b8d9f70bc23c84c359415dee7a15
           result_sha256: 3cd1ee3e105ef106eaf349c7f44dbe753eef65fb606a2a7258e3beef3f4d9ba5
           error_code: null
           details:
@@ -862,6 +864,28 @@ bindings:
             - src/core/code-flow/scripts/cf_worktree_env.py
             - tests/test_opencode_native.mjs
             - tests/test_opencode_plugin.js
+      design:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.design.md
+          section_id: Spec Compliance Matrix
+          item_id: cli-code-standards#RULE-cli-opencode-native-001
+          artifact_sha256: b6811b8ca4944cd1573625ad19bc653e474bfa6ac843b9db7152545680d885e7
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-017
+          item_id: TASK-017
+          artifact_sha256: 021541cd3228756061835a974c163a37fefc8af33a27f8f40dba3c606a57903f
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-017
+          item_id: TASK-017
+          artifact_sha256: 4138f19e2d244aa6c2d8480e595d0e7c5b51f42fe8e84274a20fd0a531ec1f74
+        decision: null
+        evidence: []
       review:
         status: pending
         refs: []
@@ -874,17 +898,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -901,17 +925,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -928,17 +952,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -955,17 +979,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -983,17 +1007,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -1011,17 +1035,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -1039,7 +1063,7 @@ bindings:
     metadata_sha256: 1a080f178a6cc806a462b457d6b831b3ccb42ed14a07092b7bff380dcc674939
     rules_sha256: a78a60d13e2473c23756d62aa501f494500270cd62e66e3c72a334c4c69b634d
   selected_by: design
-  reason: 场景解析、对账、审计与 manifest 投影
+  reason: 状态机、evidence store、verify runner 与并行 worktree 改造
   enforcement: required
   stages:
   - design
@@ -1055,40 +1079,40 @@ bindings:
     verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
     verifier_stage: code
     stage_status:
-      design:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.design.md
-          section_id: Spec Compliance Matrix
-          item_id: scripts-code-standards#RULE-scripts-no-print-debug-001
-          artifact_sha256: 4100e37b40e8ccae2f0ee5ef298cd8c9fb198b4a68a39150d1f64b746661121f
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.md
-          section_id: TASK-001
-          item_id: TASK-001
-          artifact_sha256: c5d2ddd0377c37e1f752f0d18aeb3fa6d6dafed3bcef31e1b5efb24105803304
-        decision: null
-        evidence: []
       code:
         status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
-          executed_at: '2026-10-23T03:15:30.534664+00:00'
+          executed_at: '2026-10-23T03:40:49.882096+00:00'
           status: verified
           rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
           artifact_sha256: null
-          diff_sha256: head:a6ab3fab782d0a833dc9b9e44368306db14b962b
+          diff_sha256: head:3f459f8b2f03b8d9f70bc23c84c359415dee7a15
           result_sha256: 22c068054a541e609d992fd69ae16346c86ce57d362acbfdb984cefbcb19d589
           error_code: null
           details:
             checked_files: 15
             violations: []
+      design:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.design.md
+          section_id: Spec Compliance Matrix
+          item_id: scripts-code-standards#RULE-scripts-no-print-debug-001
+          artifact_sha256: b6811b8ca4944cd1573625ad19bc653e474bfa6ac843b9db7152545680d885e7
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 021541cd3228756061835a974c163a37fefc8af33a27f8f40dba3c606a57903f
+        decision: null
+        evidence: []
       review:
         status: pending
         refs: []
@@ -1102,40 +1126,40 @@ bindings:
     verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
     verifier_stage: code
     stage_status:
-      design:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.design.md
-          section_id: Spec Compliance Matrix
-          item_id: scripts-code-standards#RULE-scripts-no-bare-except-001
-          artifact_sha256: 4100e37b40e8ccae2f0ee5ef298cd8c9fb198b4a68a39150d1f64b746661121f
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.md
-          section_id: TASK-001
-          item_id: TASK-001
-          artifact_sha256: c5d2ddd0377c37e1f752f0d18aeb3fa6d6dafed3bcef31e1b5efb24105803304
-        decision: null
-        evidence: []
       code:
         status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
-          executed_at: '2026-10-23T03:15:30.558282+00:00'
+          executed_at: '2026-10-23T03:40:49.909821+00:00'
           status: verified
           rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
           artifact_sha256: null
-          diff_sha256: head:a6ab3fab782d0a833dc9b9e44368306db14b962b
+          diff_sha256: head:3f459f8b2f03b8d9f70bc23c84c359415dee7a15
           result_sha256: 5a90761d87c26d5701bf77ea7b154a581a667e526ce3c1505f89e9ea0be97a0d
           error_code: null
           details:
             checked_files: 178
             violations: []
+      design:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.design.md
+          section_id: Spec Compliance Matrix
+          item_id: scripts-code-standards#RULE-scripts-no-bare-except-001
+          artifact_sha256: b6811b8ca4944cd1573625ad19bc653e474bfa6ac843b9db7152545680d885e7
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 021541cd3228756061835a974c163a37fefc8af33a27f8f40dba3c606a57903f
+        decision: null
+        evidence: []
       review:
         status: pending
         refs: []
@@ -1149,35 +1173,17 @@ bindings:
     verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
     verifier_stage: code
     stage_status:
-      design:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.design.md
-          section_id: Spec Compliance Matrix
-          item_id: scripts-code-standards#RULE-scripts-hook-protocol-001
-          artifact_sha256: 4100e37b40e8ccae2f0ee5ef298cd8c9fb198b4a68a39150d1f64b746661121f
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.md
-          section_id: TASK-001
-          item_id: TASK-001
-          artifact_sha256: c5d2ddd0377c37e1f752f0d18aeb3fa6d6dafed3bcef31e1b5efb24105803304
-        decision: null
-        evidence: []
       code:
         status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
-          executed_at: '2026-10-23T03:15:52.116265+00:00'
+          executed_at: '2026-10-23T03:40:49.826607+00:00'
           status: verified
           rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
           artifact_sha256: null
-          diff_sha256: head:a6ab3fab782d0a833dc9b9e44368306db14b962b
+          diff_sha256: head:3f459f8b2f03b8d9f70bc23c84c359415dee7a15
           result_sha256: 8644136510fae49b6500f46843ae3017578369feb85becd3451a29bd3d3d98fd
           error_code: null
           details:
@@ -1380,6 +1386,24 @@ bindings:
             - tests/test_hook_command_robustness.py
             - tests/test_opencode_native.py
             - tests/test_runtime_contract.py
+      design:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.design.md
+          section_id: Spec Compliance Matrix
+          item_id: scripts-code-standards#RULE-scripts-hook-protocol-001
+          artifact_sha256: b6811b8ca4944cd1573625ad19bc653e474bfa6ac843b9db7152545680d885e7
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 021541cd3228756061835a974c163a37fefc8af33a27f8f40dba3c606a57903f
+        decision: null
+        evidence: []
       review:
         status: pending
         refs: []
@@ -1393,35 +1417,17 @@ bindings:
     verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
     verifier_stage: code
     stage_status:
-      design:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.design.md
-          section_id: Spec Compliance Matrix
-          item_id: scripts-code-standards#RULE-scripts-context-gate-001
-          artifact_sha256: 4100e37b40e8ccae2f0ee5ef298cd8c9fb198b4a68a39150d1f64b746661121f
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.md
-          section_id: TASK-001
-          item_id: TASK-001
-          artifact_sha256: c5d2ddd0377c37e1f752f0d18aeb3fa6d6dafed3bcef31e1b5efb24105803304
-        decision: null
-        evidence: []
       code:
         status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
-          executed_at: '2026-10-23T03:15:52.137152+00:00'
+          executed_at: '2026-10-23T03:40:49.849726+00:00'
           status: verified
           rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
           artifact_sha256: null
-          diff_sha256: head:a6ab3fab782d0a833dc9b9e44368306db14b962b
+          diff_sha256: head:3f459f8b2f03b8d9f70bc23c84c359415dee7a15
           result_sha256: 2dd88574e79aa024e44b653485d31896c772f161a806c6c525e3fb0e6ede2118
           error_code: null
           details:
@@ -1542,6 +1548,24 @@ bindings:
             - tests/test_cf_spec_context.py
             - tests/test_cf_spec_gate.py
             - tests/test_cf_task_runtime.py
+      design:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.design.md
+          section_id: Spec Compliance Matrix
+          item_id: scripts-code-standards#RULE-scripts-context-gate-001
+          artifact_sha256: b6811b8ca4944cd1573625ad19bc653e474bfa6ac843b9db7152545680d885e7
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-003
+          item_id: TASK-003
+          artifact_sha256: 021541cd3228756061835a974c163a37fefc8af33a27f8f40dba3c606a57903f
+        decision: null
+        evidence: []
       review:
         status: pending
         refs: []
@@ -1555,35 +1579,17 @@ bindings:
     verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
     verifier_stage: code
     stage_status:
-      design:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.design.md
-          section_id: Spec Compliance Matrix
-          item_id: scripts-code-standards#RULE-scripts-canonical-parity-001
-          artifact_sha256: 4100e37b40e8ccae2f0ee5ef298cd8c9fb198b4a68a39150d1f64b746661121f
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: scenario-first-acceptance.md
-          section_id: TASK-003
-          item_id: TASK-003
-          artifact_sha256: c5d2ddd0377c37e1f752f0d18aeb3fa6d6dafed3bcef31e1b5efb24105803304
-        decision: null
-        evidence: []
       code:
         status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
-          executed_at: '2026-10-23T03:15:52.162683+00:00'
+          executed_at: '2026-10-23T03:40:49.876352+00:00'
           status: verified
           rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
           artifact_sha256: null
-          diff_sha256: head:a6ab3fab782d0a833dc9b9e44368306db14b962b
+          diff_sha256: head:3f459f8b2f03b8d9f70bc23c84c359415dee7a15
           result_sha256: 2bc250eb6fd2fd16959f6fbc1a8885462a474d3a983535d68b8ecb7dd96c6d1b
           error_code: null
           details:
@@ -1839,6 +1845,24 @@ bindings:
             - tests/test_adapter_parity.py
             - tests/test_spec_workflow_residue.py
             - tests/test_spec_workflow_templates.py
+      design:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.design.md
+          section_id: Spec Compliance Matrix
+          item_id: scripts-code-standards#RULE-scripts-canonical-parity-001
+          artifact_sha256: b6811b8ca4944cd1573625ad19bc653e474bfa6ac843b9db7152545680d885e7
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: code-flow-0.8-optimization.md
+          section_id: TASK-017
+          item_id: TASK-017
+          artifact_sha256: 021541cd3228756061835a974c163a37fefc8af33a27f8f40dba3c606a57903f
+        decision: null
+        evidence: []
       review:
         status: pending
         refs: []
@@ -1852,17 +1876,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -1880,17 +1904,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -1907,17 +1931,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -1935,17 +1959,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -1962,17 +1986,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -1989,17 +2013,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -2017,17 +2041,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -2044,17 +2068,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -2072,17 +2096,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null
@@ -2099,17 +2123,17 @@ bindings:
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
       design:
         status: pending
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
         status: pending
         refs: []
         decision: null

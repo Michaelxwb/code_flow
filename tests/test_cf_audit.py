@@ -10,6 +10,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "src/core/code-flow/scripts"
+
+
+def _requirement_dir(name: str) -> Path:
+    live = ROOT / ".code-flow/tasks/2026-10-22" / name
+    if live.is_dir():
+        return live
+    archived = sorted((ROOT / ".code-flow/tasks/archived").glob(f"*/{name}"))
+    if not archived:
+        raise RuntimeError(f"requirement not found: {name}")
+    return archived[-1]
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_manifest import write_manifest  # noqa: E402
@@ -266,7 +276,7 @@ def test_invariants_audit_is_read_only_on_fixture_and_real_requirement(tmp_path:
     assert first == second
     assert first["read_only"] is True
 
-    requirement = ROOT / ".code-flow/tasks/2026-10-22/code-flow-0.8-optimization"
+    requirement = _requirement_dir("code-flow-0.8-optimization")
     real_design = requirement / "code-flow-0.8-optimization.design.md"
     real_manifest = requirement / ".acceptance-manifest.json"
     real_before = real_manifest.read_bytes()

@@ -22,9 +22,18 @@ PLAN_SOURCES = (
     ROOT / "src/adapters/opencode/commands/cf-task/plan.md",
     ROOT / "src/adapters/codex/skills/cf-task-plan/SKILL.md",
 )
+def _requirement_dir(name: str) -> Path:
+    live = ROOT / ".code-flow/tasks/2026-10-22" / name
+    if live.is_dir():
+        return live
+    archived = sorted((ROOT / ".code-flow/tasks/archived").glob(f"*/{name}"))
+    if not archived:
+        raise RuntimeError(f"requirement not found: {name}")
+    return archived[-1]
+
+
 REAL_TASK_FILE = (
-    ROOT
-    / ".code-flow/tasks/2026-10-22/code-flow-0.8-optimization"
+    _requirement_dir("code-flow-0.8-optimization")
     / "code-flow-0.8-optimization.md"
 )
 
