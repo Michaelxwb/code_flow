@@ -708,3 +708,31 @@ def test_ci_import_uses_per_check_input_hash(ci_repo, tmp_path: Path) -> None:
     assert latest is not None
     assert latest["input_hash"] == expected
     assert latest["input_hash"] != fallback
+
+
+def test_ci_import_does_not_attribute_one_check_to_multi_check_scenario(ci_repo, tmp_path: Path) -> None:
+    repo, _task, manifest, _head = ci_repo
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    row = data["scenarios"][0]
+    row["checks"] = ["CHK-A", "CHK-B"]
+    row["check"] = "CHK-C"
+    data["checks"][0]["id"] = "CHK-C"
+    for check_id in ("CHK-A", "CHK-B"):
+        data["checks"].append({
+            "id": check_id, "command": data["checks"][0]["command"],
+            "cwd": ".", "timeout": 30,
+        })
+    manifest.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "multi check plan")
+    head = _git(repo, "rev-parse", "HEAD")
+    report = tmp_path / "junit.xml"
+    report.write_text(
+        "<testsuites><testsuite name=\"pytest\">"
+        "<testcase classname=\"tests.e2e\" name=\"test_acceptance[CHK-C]\" file=\"tests/e2e.py\" line=\"1\" />"
+        "</testsuite></testsuites>",
+        encoding="utf-8",
+    )
+    completed = _run_import(repo, manifest, report, commit=head)
+    assert completed.returncode != 0
+    assert "check_without_scenarios" in completed.stdout

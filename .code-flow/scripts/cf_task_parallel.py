@@ -434,16 +434,25 @@ def _task_manifest(worktree: Path, task_file: str) -> Optional[dict[str, object]
         raise ParallelError("acceptance_manifest_invalid", f"acceptance manifest 无效: {exc}") from exc
 
 
-def _run_matches(run: Mapping[str, object], expected_hash: str) -> bool:
+def _run_matches(run: Mapping[str, object], expected_hash: str,
+                 check: Optional[Mapping[str, object]] = None) -> bool:
     """A central evidence run proves this check against this worktree content."""
     run_id = run.get("run_id")
+    status = run.get("status")
+    if status == "accepted_risk" and not _live_accepted_risk(check):
+        return False
     return (
         isinstance(run_id, str)
         and bool(run_id.strip())
         and run.get("input_hash") == expected_hash
-        and (run.get("status") == "accepted_risk" or run.get("exit_code") == 0)
-        and run.get("status") in ("passed", "verified", "accepted_risk")
+        and (status == "accepted_risk" or run.get("exit_code") == 0)
+        and status in ("passed", "verified", "accepted_risk")
     )
+
+
+def _live_accepted_risk(check: Optional[Mapping[str, object]]) -> bool:
+    from cf_acceptance_runner import _accepted_risk
+    return _accepted_risk(check) is not None
 
 
 def _evidence_reason(runs: Sequence[Mapping[str, object]], expected_hash: str) -> str:
@@ -489,7 +498,7 @@ def _missing_evidence(
             if check is not None else expected
         )
         runs = store.list_runs(check_id)
-        if not any(_run_matches(run, check_hash) for run in runs):
+        if not any(_run_matches(run, check_hash, check) for run in runs):
             missing.append({
                 "check_id": check_id,
                 "scenarios": sorted(required[check_id]),

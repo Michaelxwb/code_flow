@@ -844,9 +844,15 @@ def _stale_functional_rows(data: Mapping[str, object], root: str) -> list[str]:
             stale.append(str(row.get("id")))
             continue
         if len(check_ids) == 1:
-            expected = per_check.get(check_ids[0], {}).get("input_hash")
-            if evidence.get("fingerprint") != expected:
-                stale.append(str(row.get("id")))
+            recorded = evidence.get("check_hashes")
+            if isinstance(recorded, Mapping):
+                expected = per_check.get(check_ids[0], {}).get("input_hash")
+                if recorded.get(check_ids[0]) != expected:
+                    stale.append(str(row.get("id")))
+            else:
+                expected = per_check.get(check_ids[0], {}).get("input_hash")
+                if evidence.get("fingerprint") != expected:
+                    stale.append(str(row.get("id")))
             continue
         recorded = evidence.get("check_hashes")
         if not isinstance(recorded, Mapping) or any(

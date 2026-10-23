@@ -1197,6 +1197,18 @@ def _select_profile(data: Mapping[str, object], root: str, profile: str,
                 or any(str((check or {}).get("profile", "")) == "smoke" for check in scenario_checks)
                 or repo_scoped or not changed or matches):
             selected.append(scenario)
+    selected_ids = {str(item.get("id")) for item in selected}
+    by_scenario = {str(item.get("id")): item for item in scenarios}
+    pending = list(selected)
+    while pending:
+        current = pending.pop()
+        for dep in current.get("depends_on", []) if isinstance(current.get("depends_on"), list) else []:
+            dep_id = str(dep)
+            if dep_id in selected_ids or dep_id not in by_scenario:
+                continue
+            selected.append(by_scenario[dep_id])
+            selected_ids.add(dep_id)
+            pending.append(by_scenario[dep_id])
     selected_check_ids = {
         check_id for item in selected for check_id in _scenario_check_ids(item)
     }
@@ -1276,6 +1288,7 @@ def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
         checks: list[str] = []
         hashes: dict[str, str] = {}
         reused: dict[str, bool] = {}
+        checkpointed: dict[str, bool] = {}
         configs: dict[str, object] = {}
         for member in members:
             check_id = str(member.get("check_id") or "")
@@ -1284,6 +1297,7 @@ def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
             if check_id:
                 checks.append(check_id)
                 reused[check_id] = member.get("cache_reused") is True
+                checkpointed[check_id] = member.get("checkpoint_reused") is True
                 if isinstance(member.get("check_config"), Mapping):
                     configs[check_id] = dict(member["check_config"])
                 value = member.get("input_hash")
@@ -1292,6 +1306,7 @@ def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
         if checks:
             record["check_ids"] = checks
             record["check_reused"] = reused
+            record["checkpoint_reused_checks"] = checkpointed
         if configs:
             record["check_configs"] = configs
         if hashes:

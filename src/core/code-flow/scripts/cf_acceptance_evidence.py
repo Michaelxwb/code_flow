@@ -151,12 +151,22 @@ def _store_evidence_runs(path: Path, rows: Mapping[str, Mapping[str, object]],
         check_hashes = raw_hashes if isinstance(raw_hashes, Mapping) else {}
         raw_reused = result.get("check_reused")
         check_reused = raw_reused if isinstance(raw_reused, Mapping) else {}
+        raw_checkpoint = result.get("checkpoint_reused_checks")
+        check_checkpoint = raw_checkpoint if isinstance(raw_checkpoint, Mapping) else {}
         raw_configs = result.get("check_configs")
         configs = raw_configs if isinstance(raw_configs, Mapping) else {}
         for item_id in check_ids:
-            if check_reused.get(item_id) is True and result.get("checkpoint_reused") is not True:
-                continue
+            checkpointed = check_checkpoint.get(item_id, result.get("checkpoint_reused"))
             item_hash = str(check_hashes.get(item_id) or result_fingerprint)
+            if check_reused.get(item_id) is True:
+                if checkpointed is not True:
+                    continue
+                if any(
+                    run.get("input_hash") == item_hash
+                    and run.get("status") in ("passed", "verified")
+                    for run in store.list_runs(item_id)
+                ):
+                    continue
             config = configs.get(item_id)
             record = _run_record(
                 row, result, run_id, executed_at, item_hash, commit,
@@ -196,7 +206,7 @@ def _record_result(row: dict[str, object], result: Mapping[str, object], run_key
         }
         if fingerprint:
             record["fingerprint"] = fingerprint
-        for key in ("check_ids", "check_hashes", "input_hash", "risk"):
+        for key in ("check_ids", "check_hashes", "check_reused", "checkpoint_reused_checks", "check_configs", "input_hash", "risk"):
             if key in result:
                 record[key] = result[key]
         row["status"] = "verified"

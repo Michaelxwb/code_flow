@@ -216,11 +216,16 @@ def _load_plan(path: Path) -> tuple[dict[str, object], dict[str, object], dict[s
         for item in data.get("scenarios", [])
         if isinstance(item, Mapping) and isinstance(item.get("id"), str)
     }
-    linked = {
-        scenario_id: str(item["check"])
-        for scenario_id, item in scenarios.items()
-        if isinstance(item.get("check"), str) and item["check"] in checks
-    }
+    linked: dict[str, str] = {}
+    for scenario_id, item in scenarios.items():
+        if isinstance(item.get("check"), str) and item["check"] in checks:
+            linked[scenario_id] = str(item["check"])
+            continue
+        raw = item.get("checks")
+        if isinstance(raw, list):
+            first = next((str(value) for value in raw if str(value) in checks), "")
+            if first:
+                linked[scenario_id] = first
     if not checks or not linked:
         raise EvidenceImportError(
             "manifest_schema_unsupported", "manifest", "CI import needs manifest v3 checks linked to scenarios", str(path)
@@ -398,15 +403,26 @@ def _scenario_results(
     for row in data.get("scenarios", []):
         if not isinstance(row, Mapping) or str(row.get("kind", "functional")) == "manual":
             continue
-        check_id = row.get("check")
-        if not isinstance(check_id, str) or check_id not in outcomes:
+        raw = row.get("checks")
+        check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
+        if not check_ids and isinstance(row.get("check"), str):
+            check_ids = [str(row.get("check"))]
+        if not check_ids or any(check_id not in outcomes for check_id in check_ids):
             continue
-        status, exit_code = outcomes[check_id]
+        statuses = [outcomes[check_id][0] for check_id in check_ids]
+        if any(status == "failed" for status in statuses):
+            status = "failed"
+        elif any(status != "passed" for status in statuses):
+            status = "incomplete"
+        else:
+            status = "passed"
+        exit_code = max(outcomes[check_id][1] for check_id in check_ids)
         results.append({
             "id": str(row["id"]),
             "kind": str(row.get("kind", "functional")),
             "status": status,
             "exit_code": exit_code,
+            "check_ids": check_ids,
             "source": "ci",
             "commit": commit,
             "run_url": run_url,
@@ -472,8 +488,11 @@ def _attach_check_hashes(
         row = rows.get(str(result.get("id")))
         if not row:
             continue
-        raw = row.get("checks")
+        raw = result.get("check_ids")
         check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
+        if not check_ids:
+            raw = row.get("checks")
+            check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
         if not check_ids and isinstance(row.get("check"), str):
             check_ids = [str(row.get("check"))]
         if not check_ids:
