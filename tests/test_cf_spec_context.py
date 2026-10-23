@@ -818,3 +818,19 @@ def test_s11_spec_doctor_blocks_marker_and_runtime_drift(tmp_path: Path) -> None
     codes = {item["code"] for item in report["findings"]}
     assert {"marker_hash_drift", "marker_task_mismatch", "runtime_version_drift"} <= codes
     assert all(item["fix"] for item in report["findings"]), "诊断必须给出修复命令"
+
+
+def test_spec_doctor_warns_when_cli_package_version_differs(tmp_path: Path) -> None:
+    root, context_path = _active_repo(tmp_path)
+    (root / ".code-flow/.version").write_text("0.8.0\n", encoding="utf-8")
+    (root / ".code-flow/.runtime-install.json").write_text(
+        json.dumps({"schema_version": 1, "version": "0.8.0",
+                    "files": {"missing.py": "0" * 64}, "platforms": ["claude"]}),
+        encoding="utf-8",
+    )
+    (root / "package.json").write_text(
+        json.dumps({"name": "@michaelxwb/code-flow", "version": "0.7.0"}),
+        encoding="utf-8",
+    )
+    report = _doctor_command(argparse.Namespace(task_dir=str(context_path.parent), root=str(root)))
+    assert any(item["code"] == "runtime_cli_version_mismatch" for item in report["findings"])

@@ -919,7 +919,7 @@ def merge(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, 
         entries = [item for item in entries if item.get("task") in wanted]
     entries.sort(key=lambda item: str(item.get("task", "")))
     task_file = str(meta["task_file"])
-    before_hash = worktree_fingerprint(str(root))
+    before_hash = worktree_fingerprint(str(root), include_untracked=False)
     results: list[dict[str, object]] = []
     for entry in entries:
         try:
@@ -938,7 +938,7 @@ def merge(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, 
         "main_branch": main_branch, "results": results,
     }
     if ok:
-        after_hash = worktree_fingerprint(str(root))
+        after_hash = worktree_fingerprint(str(root), include_untracked=False)
         if before_hash and after_hash and before_hash != after_hash:
             payload["input_hash"] = after_hash
             payload["stale"] = _stale_after_merge(root, task_file, after_hash)

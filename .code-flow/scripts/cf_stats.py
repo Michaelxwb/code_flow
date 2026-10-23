@@ -3,6 +3,7 @@ import json
 import argparse
 import os
 import sys
+from pathlib import Path
 from typing import Optional
 
 import cf_log
@@ -355,6 +356,62 @@ def _catalog_usage(root: str, config: dict[str, object], budget: dict[str, objec
             "entries": text.count("\n- `")}
 
 
+def _runtime_usage(root: str) -> dict[str, object]:
+    """0.8 execution metrics: context size, evidence runs, deferred/stale/risk."""
+    from cf_evidence_store import EvidenceStore, requirement_key
+    marker = Path(root) / ".code-flow/.active-task.json"
+    task_dir = ""
+    try:
+        data = json.loads(marker.read_text(encoding="utf-8"))
+        task_dir = str(data.get("task_dir") or "") if isinstance(data, dict) else ""
+    except (OSError, ValueError, json.JSONDecodeError):
+        task_dir = ""
+    runtime: dict[str, object] = {
+        "task_dir": task_dir, "context_bytes": 0, "evidence_runs": 0,
+        "deferred_rules": 0, "stale_checks": 0, "accepted_risks": 0,
+    }
+    if not task_dir:
+        return runtime
+    directory = (Path(root) / task_dir).resolve()
+    context = directory / "spec-context.yml"
+    if context.is_file():
+        runtime["context_bytes"] = context.stat().st_size
+    try:
+        store = EvidenceStore(root, requirement=requirement_key(directory))
+        runtime["evidence_runs"] = sum(
+            1 for path in store.directory.rglob("*.json")
+            if path.name != "latest.json" and "_context" not in path.parts
+        )
+    except (OSError, ValueError):
+        pass
+    manifest = directory / ".acceptance-manifest.json"
+    try:
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        data = {}
+    scenarios = data.get("scenarios") if isinstance(data, dict) else None
+    if isinstance(scenarios, list):
+        runtime["stale_checks"] = sum(
+            1 for item in scenarios if isinstance(item, dict) and item.get("status") == "stale"
+        )
+    checks = data.get("checks") if isinstance(data, dict) else None
+    if isinstance(checks, list):
+        runtime["accepted_risks"] = sum(
+            1 for item in checks if isinstance(item, dict) and isinstance(item.get("accepted_risk"), dict)
+        )
+    try:
+        from cf_spec_context import ContextError, load_context
+        context_data = load_context(str(context))
+        runtime["deferred_rules"] = sum(
+            1 for binding in context_data.bindings for rule in binding.rules
+            for status in rule.stage_status.values()
+            if getattr(status, "status", "") == "deferred"
+        )
+    except (OSError, ValueError, ContextError):
+        pass
+    return runtime
+
+
 def _stats_report(root: str, args: argparse.Namespace) -> dict[str, object]:
     config = load_config(root)
     budget = config.get("budget") or {}
@@ -376,6 +433,7 @@ def _stats_report(root: str, args: argparse.Namespace) -> dict[str, object]:
         "quality_loop": quality_loop_summary(root, config), "spec_workflow": spec_workflow_summary(root),
         "templates": {"tokens": usage["template_tokens"], "files": usage["excluded"],
                       "note": "tags:[] 命令专用模板，永不自动注入，不计预算"},
+        "runtime": _runtime_usage(root),
     }
     if args.audit:
         from cf_scan import build_report
@@ -439,6 +497,13 @@ def _print_stats(report: dict[str, object]) -> None:
     print("COMPRESSION:", f"{compression['total_raw']} → {compression['total_compressed']} (-{compression['total_saved_pct']}%)")
     print("CATALOG:", "mode=context_first,", f"{catalog['tokens']} / {catalog['budget']} tokens,", f"{catalog['entries']} entries")
     _print_quality(report["quality_loop"])
+    runtime = report.get("runtime") or {}
+    if runtime.get("task_dir"):
+        print("RUNTIME:", f"context={runtime.get('context_bytes', 0)}B,",
+              f"evidence_runs={runtime.get('evidence_runs', 0)},",
+              f"deferred_rules={runtime.get('deferred_rules', 0)},",
+              f"stale_checks={runtime.get('stale_checks', 0)},",
+              f"accepted_risks={runtime.get('accepted_risks', 0)}")
     if report["warnings"]:
         print("WARNINGS:", "; ".join(report["warnings"]))
     _print_audit(report.get("audit"))
