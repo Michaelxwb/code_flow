@@ -62,3 +62,9 @@ def test_batch_hash_matches_union_and_isolates_checks(tmp_path: Path) -> None:
     second = check_input_hashes(str(root), checks, "repo")
     assert second["A"] == first["A"]
     assert second["B"] != first["B"]
+
+
+def test_star_without_slash_matches_nested_paths(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    assert match_path("pkg/b.py", "*.py")
+    assert expand_inputs(str(root), ("*.py",)) == ("a.py", "pkg/b.py")

@@ -678,3 +678,33 @@ def test_legacy_basename_evidence_is_migrated(tmp_path: Path) -> None:
     assert store.migrated_runs == 2
     assert [item["run_id"] for item in store.list_runs("CHK-1")] == ["run-1"]
     assert EvidenceStore(tmp_path, requirement="2026-10-20--demo").migrated_runs == 0
+
+
+def test_ci_import_uses_per_check_input_hash(ci_repo, tmp_path: Path) -> None:
+    repo, _task, manifest, head = ci_repo
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    for check in data["checks"]:
+        check["inputs"] = ["src/app.py"]
+    manifest.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "scope checks")
+    head = _git(repo, "rev-parse", "HEAD")
+    report = tmp_path / "junit.xml"
+    report.write_text(
+        "<testsuites><testsuite name=\"pytest\">"
+        "<testcase classname=\"tests.e2e\" name=\"test_acceptance[S-01]\" file=\"tests/e2e.py\" line=\"1\" />"
+        "</testsuite></testsuites>",
+        encoding="utf-8",
+    )
+    completed = _run_import(repo, manifest, report, commit=head)
+    assert completed.returncode == 0, completed.stderr
+
+    from cf_check_inputs import check_input_hash
+    from cf_exec_base import worktree_fingerprint
+    check = next(item for item in data["checks"] if item["id"] == data["scenarios"][0]["check"])
+    fallback = worktree_fingerprint(str(repo), include_untracked=False)
+    expected = check_input_hash(str(repo), check, fallback)["input_hash"]
+    latest = EvidenceStore(repo, "demo").read_latest(check["id"])
+    assert latest is not None
+    assert latest["input_hash"] == expected
+    assert latest["input_hash"] != fallback

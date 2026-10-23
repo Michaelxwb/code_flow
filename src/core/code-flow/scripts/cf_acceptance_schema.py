@@ -152,9 +152,18 @@ def load_manifest(path: Path) -> dict[str, object]:
         validate_checks(data.get("checks"))
         check_ids = {item.get("id") for item in data.get("checks", []) if isinstance(item, dict)}
         for scenario in data.get("scenarios", []):
-            check_id = scenario.get("check") if isinstance(scenario, dict) else None
-            if isinstance(check_id, str) and check_id and check_id not in check_ids:
-                raise ValueError(f"scenario {scenario.get('id')} references missing check: {check_id}")
+            if not isinstance(scenario, dict):
+                continue
+            single = scenario.get("check")
+            if isinstance(single, str) and single and single not in check_ids:
+                raise ValueError(f"scenario {scenario.get('id')} references missing check: {single}")
+            multiple = scenario.get("checks")
+            if isinstance(multiple, list):
+                unknown = [str(value) for value in multiple if str(value) not in check_ids]
+                if unknown:
+                    raise ValueError(
+                        f"scenario {scenario.get('id')} references missing checks: {', '.join(unknown)}"
+                    )
     if "task_file" in data and not isinstance(data["task_file"], str):
         raise ValueError("invalid acceptance manifest: task_file")
     return data

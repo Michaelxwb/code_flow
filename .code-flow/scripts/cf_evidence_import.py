@@ -31,6 +31,7 @@ import xml.etree.ElementTree as ET
 
 from cf_acceptance_evidence import persist_results
 from cf_acceptance_schema import load_manifest
+from cf_check_inputs import check_input_hashes
 from cf_evidence_store import EvidenceStoreError, discover_project_root
 from cf_exec_base import worktree_fingerprint
 
@@ -459,6 +460,38 @@ def _payload(
     }
 
 
+def _attach_check_hashes(
+    data: Mapping[str, object], results: Sequence[dict[str, object]],
+    per_check: Mapping[str, Mapping[str, object]], fallback: str,
+) -> None:
+    rows = {
+        str(item.get("id")): item for item in data.get("scenarios", [])
+        if isinstance(item, Mapping) and item.get("id")
+    }
+    for result in results:
+        row = rows.get(str(result.get("id")))
+        if not row:
+            continue
+        raw = row.get("checks")
+        check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
+        if not check_ids and isinstance(row.get("check"), str):
+            check_ids = [str(row.get("check"))]
+        if not check_ids:
+            result["input_hash"] = fallback
+            continue
+        hashes = {
+            check_id: str(per_check.get(check_id, {}).get("input_hash") or fallback)
+            for check_id in check_ids
+        }
+        result["check_ids"] = check_ids
+        result["check_hashes"] = hashes
+        if len(hashes) == 1:
+            result["input_hash"] = next(iter(hashes.values()))
+        else:
+            payload = "|".join(f"{key}={hashes[key]}" for key in sorted(hashes))
+            result["input_hash"] = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def import_report(
     root: object, *, report: object, fmt: str, commit: str, run_url: str,
     manifest: str = "", task_dir: str = "", check: str = "", exit_code: Optional[int] = None,
@@ -485,9 +518,10 @@ def import_report(
             "exit_code_mismatch", "exit_code", f"CI exit code {exit_code} != report exit code {derived_exit}"
         )
     _require_clean(project)
-    fingerprint = worktree_fingerprint(str(project))
+    fingerprint = worktree_fingerprint(str(project), include_untracked=False)
     if not fingerprint:
         raise EvidenceImportError("input_hash_unavailable", "input_hash", "cannot fingerprint the worktree")
+    check_hashes = check_input_hashes(str(project), checks, fingerprint)
     digest = _report_digest(report_path)
     run_id = hashlib.sha256(
         json.dumps([head, fmt, digest, url], ensure_ascii=False, sort_keys=True).encode("utf-8")
@@ -495,6 +529,7 @@ def import_report(
     results = _scenario_results(
         data, outcomes, commit=head, run_url=url, fmt=fmt, report_sha256=digest
     )
+    _attach_check_hashes(data, results, check_hashes, fingerprint)
     if not results:
         raise EvidenceImportError("check_without_scenarios", "check", "report checks have no scenario")
     decision = "pass" if derived_exit == 0 else "block"

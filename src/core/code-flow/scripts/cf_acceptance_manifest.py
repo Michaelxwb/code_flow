@@ -417,13 +417,19 @@ def record_accepted_risk(
     """Attach a user-confirmed, time-boxed risk acceptance to one check."""
     if not all(str(value).strip() for value in (check_id, owner, reason, expires_at, confirmed_by, source)):
         raise ValueError("accepted_risk requires check, owner, reason, expires_at, confirmed_by and source")
-    agent_names = {"agent", "assistant", "claude", "codex", "opencode", "ai"}
-    if confirmed_by.strip().lower() in agent_names:
+    agent_names = {
+        "agent", "assistant", "claude", "claude code", "codex", "opencode",
+        "costrict", "ai", "bot",
+    }
+    identity = confirmed_by.strip().lower().split(":", 1)[0]
+    if identity in agent_names:
         raise ValueError("accepted_risk must be confirmed by the user, not the agent")
     try:
         deadline = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
     except ValueError as exc:
         raise ValueError(f"invalid expires_at: {expires_at}") from exc
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", expires_at.strip()):
+        deadline = deadline.replace(hour=23, minute=59, second=59, microsecond=999999)
     if deadline.tzinfo is None:
         deadline = deadline.replace(tzinfo=timezone.utc)
     now = datetime.now(timezone.utc)
@@ -640,7 +646,7 @@ def _sync_task_evidence(task_file: Path, scenario_id: str, confirmed_by: str, ev
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
     parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND") or None)
-    parser.add_argument("--task-file", required=True)
+    parser.add_argument("--task-file", default="")
     parser.add_argument("--output", default="")
     parser.add_argument("--scenarios-file", default="")
     parser.add_argument("--verify-plan", action="store_true")
@@ -660,6 +666,10 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--evidence", default="")
     args = parser.parse_args(argv)
     try:
+        if args.project and not args.task_file:
+            raise ValueError("--project requires --task-file")
+        if args.verify_plan and not args.task_file:
+            raise ValueError("--verify-plan requires --task-file")
         if args.project:
             output = args.output or str(Path(args.task_file).with_name(".acceptance-manifest.json"))
             manifest = write_manifest(args.task_file, output, args.scenarios_file)
@@ -696,6 +706,8 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
                 source_path = require_source(args.task_dir)
                 source = parse_scenarios(source_path)
                 manifest_path = Path(args.task_dir) / ".acceptance-manifest.json"
+                if not manifest_path.is_file():
+                    raise ValueError("acceptance_manifest_missing")
                 if manifest_path.is_file():
                     locked = load_manifest(manifest_path)
                     rows = {str(item.get("id")): item for item in locked.get("scenarios", [])}
@@ -706,7 +718,9 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
                         unknown = [value for value in required if value not in check_ids]
                         if unknown:
                             raise ValueError(f"unknown_check:{sid}:{','.join(unknown)}")
-                        if required and not rows.get(sid, {}).get("checks"):
+                        actual = rows.get(sid, {}).get("checks")
+                        projected = {str(value) for value in actual} if isinstance(actual, list) else set()
+                        if required and projected != set(required):
                             raise ValueError(f"scenario_checks_not_projected:{sid}")
             from cf_spec_context import load_context
             from cf_spec_gate import result_to_data, validate_plan_coverage, validate_stage
@@ -723,6 +737,8 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
             return 0 if result["decision"] == "pass" else 3
         if not args.output:
             raise ValueError("--output is required unless --verify-plan is used")
+        if not args.task_file:
+            raise ValueError("--task-file is required")
         manifest = write_manifest(args.task_file, args.output, args.scenarios_file)
         stdout.write(json.dumps({"ok": True, "scenarios": len(manifest["scenarios"])}, ensure_ascii=False))
         return 0

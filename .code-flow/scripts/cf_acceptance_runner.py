@@ -14,6 +14,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
@@ -325,6 +326,12 @@ def _unit_dependencies(
     by_id: Mapping[str, dict[str, object]],
 ) -> None:
     """Serialize a check when a scenario or the check itself declares depends_on."""
+    aggregate_units: dict[str, list[str]] = {}
+    for unit in units:
+        for item in unit["scenarios"]:
+            ref = item.get("scenario_ref") if isinstance(item, Mapping) else None
+            if isinstance(ref, str) and ref:
+                aggregate_units.setdefault(ref, []).append(str(unit["id"]))
     for unit in units:
         wanted: list[str] = []
         check = unit.get("check")
@@ -338,10 +345,17 @@ def _unit_dependencies(
         resolved: list[str] = []
         for dep in wanted:
             target = by_id.get(dep)
-            if target is None:
-                target = by_id.get(scenario_unit.get(dep, ""))
-            if target is not None and target["id"] != unit["id"] and target["id"] not in resolved:
-                resolved.append(str(target["id"]))
+            if target is not None:
+                targets = [str(target["id"])]
+            elif dep in scenario_unit:
+                targets = [scenario_unit[dep]]
+            elif dep in aggregate_units:
+                targets = aggregate_units[dep]
+            else:
+                targets = []
+            for target_id in targets:
+                if target_id != unit["id"] and target_id not in resolved:
+                    resolved.append(target_id)
         unit["deps"] = resolved
 
 
@@ -463,9 +477,14 @@ def _accepted_risk(check: Optional[Mapping[str, object]]) -> Optional[dict[str, 
         deadline = datetime.fromisoformat(expires.replace("Z", "+00:00"))
     except ValueError:
         return None
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", expires):
+        deadline = deadline.replace(hour=23, minute=59, second=59, microsecond=999999)
     if deadline.tzinfo is None:
         deadline = deadline.replace(tzinfo=timezone.utc)
     if deadline <= datetime.now(timezone.utc):
+        return None
+    confirmed = str(risk.get("confirmed_by")).strip().lower().split(":", 1)[0]
+    if confirmed in {"agent", "assistant", "claude", "claude code", "codex", "opencode", "costrict", "ai", "bot"}:
         return None
     return dict(risk)
 
@@ -786,8 +805,13 @@ class _UnitEngine:
                          results: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
         value = self.checkpoint.fingerprint_for(unit)
         check_id = str(unit.get("id")) if unit.get("check") is not None else ""
+        check_config = unit.get("check") if isinstance(unit.get("check"), Mapping) else None
         return [
-            {**dict(result), "input_hash": value, **({"check_id": check_id} if check_id else {})}
+            {
+                **dict(result), "input_hash": value,
+                **({"check_id": check_id} if check_id else {}),
+                **({"check_config": dict(check_config)} if check_config else {}),
+            }
             for result in results
         ]
 
@@ -993,6 +1017,14 @@ def _scenario_fingerprints(
     return result
 
 
+def _scenario_check_ids(scenario: Mapping[str, object]) -> list[str]:
+    raw = scenario.get("checks")
+    check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
+    if not check_ids and isinstance(scenario.get("check"), str):
+        check_ids = [str(scenario.get("check"))]
+    return check_ids
+
+
 def _run_namespace(
     root: str, check_map: Mapping[str, Mapping[str, object]], owner: str,
     items: Sequence[Mapping[str, object]], run_key: str,
@@ -1131,18 +1163,20 @@ def _select_profile(data: Mapping[str, object], root: str, profile: str,
     has_smoke_profile = any(str((check or {}).get("profile", "")) == "smoke" for check in checks.values())
     has_e2e = any(str(scenario.get("kind", "")) == "e2e" for scenario in scenarios)
     for scenario in scenarios:
-        check = checks.get(str(scenario.get("check", "")))
+        check_ids = _scenario_check_ids(scenario)
+        scenario_checks = [checks.get(check_id) for check_id in check_ids]
         priority = str(scenario.get("priority", ""))
         if str(scenario.get("id")) in forced:
             selected.append(scenario)
             continue
         if profile == "smoke":
             if explicit_priority:
-                if (priority.upper() == "P0" or str((check or {}).get("profile", "")) == "smoke"
+                if (priority.upper() == "P0" or any(
+                        str((check or {}).get("profile", "")) == "smoke" for check in scenario_checks)
                         or str(scenario.get("kind", "")) == "e2e"):
                     selected.append(scenario)
             elif has_smoke_profile:
-                if str((check or {}).get("profile", "")) == "smoke":
+                if any(str((check or {}).get("profile", "")) == "smoke" for check in scenario_checks):
                     selected.append(scenario)
             elif has_e2e:
                 if str(scenario.get("kind", "")) == "e2e":
@@ -1150,18 +1184,25 @@ def _select_profile(data: Mapping[str, object], root: str, profile: str,
             else:
                 selected.append(scenario)
             continue
-        inputs = (check or {}).get("inputs")
-        if (not explicit_priority or priority.upper() == "P0" or str((check or {}).get("profile", "")) == "smoke"
-                or not inputs or not changed or any(
-                    match_path(path, str(pattern)) for pattern in inputs for path in changed
-                )):
+        inputs_by_check = [
+            (check or {}).get("inputs") for check in scenario_checks
+        ]
+        repo_scoped = not check_ids or any(not value for value in inputs_by_check)
+        matches = any(
+            match_path(path, str(pattern))
+            for value in inputs_by_check if isinstance(value, list)
+            for pattern in value for path in changed
+        )
+        if (not explicit_priority or priority.upper() == "P0"
+                or any(str((check or {}).get("profile", "")) == "smoke" for check in scenario_checks)
+                or repo_scoped or not changed or matches):
             selected.append(scenario)
-    selected_ids = {str(item.get("id")) for item in selected}
+    selected_check_ids = {
+        check_id for item in selected for check_id in _scenario_check_ids(item)
+    }
     selected_checks = [
         item for item in data.get("checks", []) or []
-        if isinstance(item, Mapping) and any(
-            str(scenario.get("check", "")) == str(item.get("id")) for scenario in selected
-        )
+        if isinstance(item, Mapping) and str(item.get("id")) in selected_check_ids
     ]
     result = dict(data)
     result["scenarios"] = selected
@@ -1177,7 +1218,7 @@ def _expand_multi_checks(items: Sequence[Mapping[str, object]]) -> tuple[list[di
     aggregates: dict[str, list[str]] = {}
     for item in items:
         checks = item.get("checks")
-        if not isinstance(checks, list) or len(checks) <= 1:
+        if not isinstance(checks, list) or not checks:
             expanded.append(dict(item))
             continue
         scenario_id = str(item.get("id"))
@@ -1198,21 +1239,15 @@ def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
                              aggregates: Mapping[str, Sequence[str]]) -> list[dict[str, object]]:
     """Collapse pseudo-scenario results back to AND semantics on the real ID."""
     if not aggregates:
-        return list(results)
+        return [dict(item) for item in results]
     by_id = {str(item.get("id")): item for item in results}
+    pseudo_to_scenario = {
+        pseudo: scenario_id for scenario_id, pseudos in aggregates.items() for pseudo in pseudos
+    }
     collapsed: list[dict[str, object]] = []
-    consumed: set[str] = set()
-    for result in results:
-        result_id = str(result.get("id"))
-        if "::" in result_id:
-            consumed.add(result_id)
-            continue
-        collapsed.append(dict(result))
-    for scenario_id, pseudo_ids in aggregates.items():
-        members = [by_id[pseudo] for pseudo in pseudo_ids if pseudo in by_id]
-        if not members:
-            collapsed.append({"id": scenario_id, "status": "failed", "error": "checks_missing"})
-            continue
+    emitted: set[str] = set()
+
+    def collapse(scenario_id: str, members: Sequence[Mapping[str, object]]) -> dict[str, object]:
         states = [str(member.get("status")) for member in members]
         if all(state in ("passed", "verified") for state in states):
             status = "passed"
@@ -1222,6 +1257,8 @@ def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
             status = "env_blocked"
         elif "incomplete" in states:
             status = "incomplete"
+        elif "accepted_risk" in states:
+            status = "accepted_risk"
         elif "e2e_deferred" in states:
             status = "e2e_deferred"
         else:
@@ -1229,9 +1266,17 @@ def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
         record = {"id": scenario_id, "status": status}
         record["cache_reused"] = all(member.get("cache_reused") is True for member in members)
         record["checkpoint_reused"] = all(member.get("checkpoint_reused") is True for member in members)
+        if status == "accepted_risk":
+            risky = next((member for member in members
+                          if isinstance(member.get("risk"), Mapping)), None)
+            if risky is not None:
+                record["risk"] = dict(risky["risk"])
+                if risky.get("check_id"):
+                    record["check_id"] = str(risky.get("check_id"))
         checks: list[str] = []
         hashes: dict[str, str] = {}
         reused: dict[str, bool] = {}
+        configs: dict[str, object] = {}
         for member in members:
             check_id = str(member.get("check_id") or "")
             if not check_id and "::" in str(member.get("id")):
@@ -1239,12 +1284,16 @@ def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
             if check_id:
                 checks.append(check_id)
                 reused[check_id] = member.get("cache_reused") is True
+                if isinstance(member.get("check_config"), Mapping):
+                    configs[check_id] = dict(member["check_config"])
                 value = member.get("input_hash")
                 if isinstance(value, str) and value:
                     hashes[check_id] = value
         if checks:
             record["check_ids"] = checks
             record["check_reused"] = reused
+        if configs:
+            record["check_configs"] = configs
         if hashes:
             record["check_hashes"] = hashes
             payload = "|".join(f"{key}={hashes[key]}" for key in sorted(hashes))
@@ -1253,8 +1302,25 @@ def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
             record["exit_code"] = 0
         else:
             record["error"] = ",".join(states)
-        collapsed.append(record)
-    del consumed
+        return record
+
+    for result in results:
+        result_id = str(result.get("id"))
+        scenario_id = pseudo_to_scenario.get(result_id)
+        if scenario_id is None:
+            collapsed.append(dict(result))
+            continue
+        if scenario_id in emitted:
+            continue
+        emitted.add(scenario_id)
+        members = [by_id[pseudo] for pseudo in aggregates[scenario_id] if pseudo in by_id]
+        if members:
+            collapsed.append(collapse(scenario_id, members))
+        else:
+            collapsed.append({"id": scenario_id, "status": "failed", "error": "checks_missing"})
+    for scenario_id in aggregates:
+        if scenario_id not in emitted:
+            collapsed.append({"id": scenario_id, "status": "failed", "error": "checks_missing"})
     return collapsed
 
 

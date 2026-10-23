@@ -877,3 +877,13 @@ def test_batch_smoke_shared_env_lock_recovers_stale_owner(tmp_path: Path) -> Non
         assert Path(info["path"]) == lock
     assert time.monotonic() - started < 1.5
     assert not lock.exists()
+
+
+def test_required_check_map_includes_all_scenario_checks() -> None:
+    from cf_task_parallel import _required_check_map
+    manifest = {"scenarios": [{
+        "id": "S-01", "kind": "functional", "owner": "TASK-001",
+        "checks": ["CHK-A", "CHK-B"],
+    }]}
+    required = _required_check_map(manifest, "TASK-001")
+    assert required == {"CHK-A": ["S-01"], "CHK-B": ["S-01"]}

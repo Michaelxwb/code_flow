@@ -395,10 +395,15 @@ def _required_check_map(manifest: Mapping[str, object], task: str) -> dict[str, 
         scenario_id = item.get("id")
         if not isinstance(scenario_id, str) or not scenario_id:
             continue
-        if not isinstance(check_id, str) or not check_id.strip():
+        raw_checks = item.get("checks")
+        check_ids = [str(value) for value in raw_checks] if isinstance(raw_checks, list) else []
+        if not check_ids and isinstance(check_id, str) and check_id.strip():
+            check_ids = [check_id]
+        if not check_ids:
             # schema2 has no check link: the scenario id is the evidence key.
-            check_id = scenario_id
-        required.setdefault(check_id, []).append(scenario_id)
+            check_ids = [scenario_id]
+        for check_id in check_ids:
+            required.setdefault(check_id, []).append(scenario_id)
     return required
 
 
@@ -436,8 +441,8 @@ def _run_matches(run: Mapping[str, object], expected_hash: str) -> bool:
         isinstance(run_id, str)
         and bool(run_id.strip())
         and run.get("input_hash") == expected_hash
-        and run.get("exit_code") == 0
-        and run.get("status") in ("passed", "verified")
+        and (run.get("status") == "accepted_risk" or run.get("exit_code") == 0)
+        and run.get("status") in ("passed", "verified", "accepted_risk")
     )
 
 

@@ -254,7 +254,8 @@ class EvidenceStore:
 
     def _legacy_directories(self) -> list[Path]:
         """Pre-date--name evidence lived under the requirement basename."""
-        name = self.requirement.rsplit("--", 1)[-1]
+        match = re.fullmatch(r"\d{4}-\d{2}-\d{2}--(.+)", self.requirement)
+        name = match.group(1) if match else self.requirement
         if name == self.requirement:
             return []
         project = self.root

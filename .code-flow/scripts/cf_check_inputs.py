@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import fnmatch
 import re
 import subprocess
 from pathlib import Path
@@ -43,7 +44,11 @@ def glob_to_regex(pattern: str) -> re.Pattern:
 
 
 def match_path(path: str, pattern: str) -> bool:
-    return bool(glob_to_regex(pattern).match(path.replace("\\", "/")))
+    normalized = path.replace("\\", "/")
+    # Git pathspec: a pattern without a slash matches at any depth.
+    if "/" not in pattern:
+        return fnmatch.fnmatchcase(normalized.rsplit("/", 1)[-1], pattern)
+    return bool(glob_to_regex(pattern).match(normalized))
 
 
 def _git(root: str, *arguments: str) -> Optional[str]:

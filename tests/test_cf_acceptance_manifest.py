@@ -246,3 +246,19 @@ def test_record_accepted_risk_requires_user_confirmation(tmp_path: Path) -> None
     stored = json.loads(manifest.read_text(encoding="utf-8"))["checks"][0]
     assert stored["accepted_risk"]["confirmed_by"] == "user"
     assert stored["accepted_risk"]["source"] == "user said ok"
+
+
+def test_accepted_risk_date_only_expires_end_of_day_and_rejects_label(tmp_path: Path) -> None:
+    manifest = tmp_path / ".acceptance-manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [{"id": "CHK-1", "command": ["true"], "cwd": ".", "timeout": 30}],
+        "scenarios": [{"id": "S-01", "kind": "functional", "check": "CHK-1",
+                       "command": ["true"], "cwd": ".", "timeout": 30, "status": "planned"}],
+    }), encoding="utf-8")
+    with pytest.raises(ValueError, match="user"):
+        record_accepted_risk(str(manifest), "CHK-1", "TASK-1", "reason",
+                             "2999-01-01", "Claude Code", "user said ok")
+    result = record_accepted_risk(str(manifest), "CHK-1", "TASK-1", "reason",
+                                  "2999-01-01", "user", "user said ok")
+    assert result["accepted_risk"]["expires_at"].endswith("23:59:59.999999+00:00")

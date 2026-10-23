@@ -774,11 +774,24 @@ def _e2e_preflight(manifest: Path, tasks: Sequence[tuple[Path, str, str]],
         return data, None
     functional_required: list[object] = []
     manual_scenarios: list[dict[str, object]] = []
+    checks = {
+        str(item.get("id")): item for item in data.get("checks", [])
+        if isinstance(item, Mapping) and item.get("id")
+    }
+    from cf_acceptance_runner import _accepted_risk
+
     for row in data["scenarios"]:
         if row.get("exec") == "aspirational":
             continue
         if verified_evidence(row):
             continue
+        if row.get("status") == "accepted_risk":
+            raw = row.get("checks")
+            check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
+            if not check_ids and isinstance(row.get("check"), str):
+                check_ids = [str(row.get("check"))]
+            if check_ids and any(_accepted_risk(checks.get(check_id)) is not None for check_id in check_ids):
+                continue
         if row.get("kind") == "manual" or row.get("exec") == "manual":
             manual_scenarios.append({
                 "id": row.get("id"),
@@ -804,24 +817,65 @@ def _e2e_preflight(manifest: Path, tasks: Sequence[tuple[Path, str, str]],
 def _stale_functional_rows(data: Mapping[str, object], root: str) -> list[str]:
     """Functional rows claiming verified but recorded against different content."""
     fingerprint = worktree_fingerprint(root, include_untracked=False)
+    checks = {
+        str(item.get("id")): item for item in data.get("checks", [])
+        if isinstance(item, Mapping) and item.get("id")
+    }
+    from cf_check_inputs import check_input_hashes
+    per_check = check_input_hashes(root, checks, fingerprint)
     stale: list[str] = []
     for row in data.get("scenarios", []) or []:
         if not isinstance(row, Mapping):
             continue
         if str(row.get("kind", "functional")) in ("manual", "e2e"):
             continue
-        if row.get("status") == "verified" and not verified_evidence(row, fingerprint):
+        if row.get("status") != "verified":
+            continue
+        raw = row.get("checks")
+        check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
+        if not check_ids and isinstance(row.get("check"), str):
+            check_ids = [str(row.get("check"))]
+        evidence = row.get("evidence")
+        if not check_ids:
+            if not verified_evidence(row, fingerprint):
+                stale.append(str(row.get("id")))
+            continue
+        if not isinstance(evidence, Mapping):
+            stale.append(str(row.get("id")))
+            continue
+        if len(check_ids) == 1:
+            expected = per_check.get(check_ids[0], {}).get("input_hash")
+            if evidence.get("fingerprint") != expected:
+                stale.append(str(row.get("id")))
+            continue
+        recorded = evidence.get("check_hashes")
+        if not isinstance(recorded, Mapping) or any(
+            recorded.get(check_id) != per_check.get(check_id, {}).get("input_hash")
+            for check_id in check_ids
+        ):
             stale.append(str(row.get("id")))
     return stale
 
 
 def _unverified_functional_rows(data: Mapping[str, object]) -> list[str]:
+    checks = {
+        str(item.get("id")): item for item in data.get("checks", [])
+        if isinstance(item, Mapping) and item.get("id")
+    }
+    from cf_acceptance_runner import _accepted_risk
     rows: list[str] = []
     for row in data.get("scenarios", []) or []:
         if not isinstance(row, Mapping):
             continue
         if str(row.get("kind", "functional")) in ("manual", "e2e") or row.get("exec") in ("manual", "aspirational"):
             continue
+        if row.get("status") == "accepted_risk":
+            raw = row.get("checks")
+            check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
+            if not check_ids and isinstance(row.get("check"), str):
+                check_ids = [str(row.get("check"))]
+            if any(_accepted_risk(checks.get(check_id)) is not None for check_id in check_ids):
+                continue
         if not verified_evidence(row):
             rows.append(str(row.get("id")))
     return rows

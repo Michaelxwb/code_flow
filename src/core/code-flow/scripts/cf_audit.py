@@ -296,13 +296,13 @@ def _scenario_source_findings(scenarios_file: str, manifest_path: Path,
                       ("extra_in_manifest", "manifest_unknown")):
         for scenario_id in report.get(key, []):
             violations.append({"code": code, "scenario": str(scenario_id), "message": f"{scenario_id}: {key}"})
-    try:
-        paths = [design_paths] if isinstance(design_paths, Path) else list(design_paths)
-        design_ids = {
-            item.id for path in paths for item in parse_design_scenarios(str(path))
-        }
-    except (OSError, ValueError):
-        design_ids = set()
+    paths = [design_paths] if isinstance(design_paths, Path) else list(design_paths)
+    design_ids: set[str] = set()
+    for path in paths:
+        try:
+            design_ids.update(item.id for item in parse_design_scenarios(str(path)))
+        except (OSError, ValueError):
+            continue
     for scenario_id in sorted(design_ids):
         violations.append({"code": "design_scenario_duplicate", "scenario": scenario_id,
                            "message": f"{scenario_id} 仍在 design 中定义；场景源已接管"})

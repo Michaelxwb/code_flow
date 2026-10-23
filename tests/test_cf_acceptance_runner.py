@@ -479,6 +479,9 @@ def test_resume_continues_after_interrupted_checkpoints(tmp_path: Path) -> None:
     assert ledger.read_text(encoding="utf-8").splitlines() == [str(index) for index in range(1, 11)]
     saved = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"]
     assert [item["status"] for item in saved] == ["verified"] * 10
+    store = EvidenceStore(str(root), manifest.parent.name)
+    for index in range(1, 6):
+        assert store.list_runs(f"CHK-{index:02d}"), f"checkpoint reuse must backfill central evidence: {index}"
 
 
 def test_deadline_incomplete_marks_unstarted_checks_without_failed_or_verified(tmp_path: Path) -> None:
@@ -758,3 +761,106 @@ def test_multi_check_reuses_each_check_and_writes_central_evidence(tmp_path: Pat
     store = EvidenceStore(str(tmp_path), requirement_key(manifest.parent))
     assert len(store.list_runs("CHK-A")) == 2
     assert len(store.list_runs("CHK-B")) == 1
+
+
+def test_changed_profile_keeps_multi_check_checks_and_blocks_failures(tmp_path: Path) -> None:
+    root = tmp_path
+    manifest = root / ".acceptance-manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [
+            {"id": "CHK-A", "command": [sys.executable, "-c", "raise SystemExit(2)"],
+             "cwd": ".", "timeout": 30},
+            {"id": "CHK-B", "command": [sys.executable, "-c", "raise SystemExit(3)"],
+             "cwd": ".", "timeout": 30},
+        ],
+        "scenarios": [{
+            "id": "S-01", "kind": "functional", "checks": ["CHK-A", "CHK-B"],
+            "command": [sys.executable, "-c", "pass"], "cwd": ".", "timeout": 30,
+            "status": "planned",
+        }],
+    }), encoding="utf-8")
+    result = run_manifest(str(manifest), str(root), profile="changed")
+    assert result["decision"] == "block", result
+    assert result["results"][0]["status"] == "failed"
+
+
+def test_unknown_check_in_checks_list_is_rejected(tmp_path: Path) -> None:
+    manifest = tmp_path / ".acceptance-manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [{"id": "CHK-A", "command": [sys.executable, "-c", "pass"],
+                    "cwd": ".", "timeout": 30}],
+        "scenarios": [{
+            "id": "S-01", "kind": "functional", "checks": ["CHK-MISSING"],
+            "command": [sys.executable, "-c", "pass"], "cwd": ".", "timeout": 30,
+            "status": "planned",
+        }],
+    }), encoding="utf-8")
+    with pytest.raises(ValueError, match="missing checks"):
+        run_manifest(str(manifest), str(tmp_path))
+
+
+def test_single_element_checks_list_expands_to_check_unit(tmp_path: Path) -> None:
+    marker = tmp_path / "check.marker"
+    manifest = tmp_path / ".acceptance-manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [{"id": "CHK-A", "command": _marker_command(marker),
+                    "cwd": ".", "timeout": 30}],
+        "scenarios": [{
+            "id": "S-01", "kind": "functional", "checks": ["CHK-A"],
+            "status": "planned",
+        }],
+    }), encoding="utf-8")
+    result = run_manifest(str(manifest), str(tmp_path))
+    assert result["decision"] == "pass", result
+    assert marker.read_text() == "x"
+
+
+def test_accepted_risk_passes_archive_preflight(tmp_path: Path) -> None:
+    from cf_acceptance_manifest import write_manifest
+    from cf_task_workflow import _e2e_preflight
+    task = tmp_path / "demo.md"
+    task.write_text(
+        "# Demo\n\n## Acceptance Coverage\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n"
+        "|---|---|---|---|---|---|---|\n"
+        '| S-01 | d#2.5 | integration | runner | TASK-001 | planned | '
+        f'{json.dumps([sys.executable, "-c", "raise SystemExit(2)"])} |\n\n'
+        "## TASK-001: A\n- **Status**: in-progress\n- **Acceptance-Refs**: S-01\n",
+        encoding="utf-8",
+    )
+    manifest = tmp_path / ".acceptance-manifest.json"
+    data = write_manifest(str(task), str(manifest))
+    data["checks"][0]["accepted_risk"] = _risk_record("2999-01-01")
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+
+    run = run_manifest(str(manifest), str(tmp_path), write_evidence=True)
+    assert run["decision"] == "pass"
+    loaded, failure = _e2e_preflight(manifest, [(task, "TASK-001", "")], True)
+    assert failure is None, failure
+    assert loaded is not None
+
+
+def test_multi_check_accepts_risk_only_for_affected_check(tmp_path: Path) -> None:
+    manifest = tmp_path / ".acceptance-manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [
+            {"id": "CHK-A", "command": [sys.executable, "-c", "raise SystemExit(2)"],
+             "cwd": ".", "timeout": 30, "accepted_risk": _risk_record("2999-01-01")},
+            {"id": "CHK-B", "command": [sys.executable, "-c", "pass"],
+             "cwd": ".", "timeout": 30},
+        ],
+        "scenarios": [{
+            "id": "S-01", "kind": "functional", "checks": ["CHK-A", "CHK-B"],
+            "status": "planned",
+        }],
+    }), encoding="utf-8")
+    result = run_manifest(str(manifest), str(tmp_path), write_evidence=True)
+    assert result["decision"] == "pass", result
+    assert result["results"][0]["status"] == "accepted_risk"
+    assert result["accepted_risk_details"][0]["check_id"] == "CHK-A"
+    saved = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"][0]
+    assert saved["status"] == "accepted_risk"

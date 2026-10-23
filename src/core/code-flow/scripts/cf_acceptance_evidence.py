@@ -97,12 +97,14 @@ def sync_task_evidence(task: Path, scenario_id: str, confirmed_by: str, evidence
 
 
 def _run_record(row: Mapping[str, object], result: Mapping[str, object], run_id: str,
-                executed_at: str, fingerprint: str, commit: str) -> dict[str, object]:
-    command = row.get("command")
+                executed_at: str, fingerprint: str, commit: str,
+                check_config: Optional[Mapping[str, object]] = None) -> dict[str, object]:
+    source = check_config if isinstance(check_config, Mapping) else row
+    command = source.get("command")
     if not isinstance(command, list):
         command = []
-    timeout = row.get("timeout", 60)
-    cwd = row.get("cwd", ".")
+    timeout = source.get("timeout", 60)
+    cwd = source.get("cwd", ".")
     state = str(result.get("status"))
     exit_code = result.get("exit_code")
     return {
@@ -132,7 +134,9 @@ def _store_evidence_runs(path: Path, rows: Mapping[str, Mapping[str, object]],
     created = duplicates = 0
     for result in results:
         state = str(result.get("status"))
-        if state not in _EVIDENCE_STATUS or result.get("cache_reused") is True:
+        if state not in _EVIDENCE_STATUS:
+            continue
+        if result.get("cache_reused") is True and result.get("checkpoint_reused") is not True:
             continue
         row = rows.get(str(result.get("id")))
         if row is None:
@@ -147,11 +151,17 @@ def _store_evidence_runs(path: Path, rows: Mapping[str, Mapping[str, object]],
         check_hashes = raw_hashes if isinstance(raw_hashes, Mapping) else {}
         raw_reused = result.get("check_reused")
         check_reused = raw_reused if isinstance(raw_reused, Mapping) else {}
+        raw_configs = result.get("check_configs")
+        configs = raw_configs if isinstance(raw_configs, Mapping) else {}
         for item_id in check_ids:
-            if check_reused.get(item_id) is True:
+            if check_reused.get(item_id) is True and result.get("checkpoint_reused") is not True:
                 continue
             item_hash = str(check_hashes.get(item_id) or result_fingerprint)
-            record = _run_record(row, result, run_id, executed_at, item_hash, commit)
+            config = configs.get(item_id)
+            record = _run_record(
+                row, result, run_id, executed_at, item_hash, commit,
+                config if isinstance(config, Mapping) else None,
+            )
             record["check_id"] = item_id
             outcome = store.write_run(item_id, record)
             created += outcome["status"] == "created"
@@ -186,6 +196,9 @@ def _record_result(row: dict[str, object], result: Mapping[str, object], run_key
         }
         if fingerprint:
             record["fingerprint"] = fingerprint
+        for key in ("check_ids", "check_hashes", "input_hash", "risk"):
+            if key in result:
+                record[key] = result[key]
         row["status"] = "verified"
         return record, "verified"
     # A deferral placeholder (e2e skipped in a non-E2E run) must never
