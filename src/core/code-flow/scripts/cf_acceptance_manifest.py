@@ -8,6 +8,7 @@ import os
 import hashlib
 import json
 import shlex
+from datetime import datetime, timezone
 from pathlib import Path
 import re
 import sys
@@ -406,7 +407,46 @@ def write_manifest(task_file: str, output: str, scenarios_file: str = "") -> dic
 
 _RUNTIME_SCENARIO_FIELDS = ("status", "revision", "evidence", "runs")
 
-_CHECK_CONFIG_FIELDS = ("env", "env_scope", "parallel_safe", "profile", "inputs", "preflight")
+_CHECK_CONFIG_FIELDS = ("env", "env_scope", "parallel_safe", "profile", "inputs", "preflight", "accepted_risk")
+
+
+def record_accepted_risk(
+    manifest_file: str, check_id: str, owner: str, reason: str, expires_at: str,
+    confirmed_by: str, source: str,
+) -> dict[str, object]:
+    """Attach a user-confirmed, time-boxed risk acceptance to one check."""
+    if not all(str(value).strip() for value in (check_id, owner, reason, expires_at, confirmed_by, source)):
+        raise ValueError("accepted_risk requires check, owner, reason, expires_at, confirmed_by and source")
+    agent_names = {"agent", "assistant", "claude", "codex", "opencode", "ai"}
+    if confirmed_by.strip().lower() in agent_names:
+        raise ValueError("accepted_risk must be confirmed by the user, not the agent")
+    try:
+        deadline = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError(f"invalid expires_at: {expires_at}") from exc
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+    if deadline <= now:
+        raise ValueError("expires_at must be in the future")
+    path = Path(manifest_file)
+    data = load_manifest(path)
+    checks = data.get("checks")
+    if not isinstance(checks, list):
+        raise ValueError("accepted_risk requires a schema3 manifest with checks")
+    for check in checks:
+        if isinstance(check, dict) and check.get("id") == check_id:
+            check["accepted_risk"] = {
+                "owner": owner.strip(),
+                "reason": reason.strip(),
+                "expires_at": deadline.isoformat(),
+                "confirmed_by": confirmed_by.strip(),
+                "confirmed_at": now.isoformat(),
+                "source": source.strip(),
+            }
+            path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            return {"ok": True, "check_id": check_id, "accepted_risk": check["accepted_risk"]}
+    raise ValueError(f"unknown check: {check_id}")
 
 
 def _preserve_check_config(target: Path, manifest: dict[str, object]) -> None:
@@ -607,11 +647,24 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--require-scenarios", action="store_true")
     parser.add_argument("--task-dir", default="")
     parser.add_argument("--record-manual", action="store_true")
+    parser.add_argument("--accept-risk", action="store_true")
+    parser.add_argument("--check-id", default="")
+    parser.add_argument("--risk-owner", default="")
+    parser.add_argument("--risk-reason", default="")
+    parser.add_argument("--expires-at", default="")
     parser.add_argument("--scenario-id", default="")
     parser.add_argument("--confirmed-by", default="")
+    parser.add_argument("--source", default="")
     parser.add_argument("--evidence", default="")
     args = parser.parse_args(argv)
     try:
+        if args.accept_risk:
+            result = record_accepted_risk(
+                args.output, args.check_id, args.risk_owner, args.risk_reason,
+                args.expires_at, args.confirmed_by, args.source,
+            )
+            stdout.write(json.dumps(result, ensure_ascii=False))
+            return 0
         if args.record_manual:
             if not args.output or not args.scenario_id or not args.evidence:
                 raise ValueError("--record-manual requires --output, --scenario-id and --evidence")

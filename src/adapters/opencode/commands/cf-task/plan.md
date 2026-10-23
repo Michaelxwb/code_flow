@@ -417,7 +417,7 @@ code-flow task index \
 ```bash
 code-flow spec gate --help
 code-flow task index --help
-code-flow acceptance manifest --help
+code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json"
 code-flow acceptance run --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --write-evidence
 code-flow scenarios parse --file "<需求>.scenarios.md" --json
 ```

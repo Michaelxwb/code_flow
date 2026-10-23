@@ -654,3 +654,65 @@ def test_unrelated_change_reuses_all_input_scoped_checks(tmp_path: Path) -> None
     assert marker_a.read_text(encoding="utf-8") == "x"
     assert marker_b.read_text(encoding="utf-8") == "x"
     assert all(item.get("cache_reused") is True for item in result["results"])
+
+
+def _risk_record(expires: str) -> dict[str, str]:
+    return {
+        "owner": "TASK-001",
+        "reason": "known external limitation",
+        "expires_at": expires,
+        "confirmed_by": "user",
+        "confirmed_at": "2026-01-01T00:00:00+00:00",
+        "source": "user approved in chat",
+    }
+
+
+def test_accepted_risk_is_distinct_from_verified(tmp_path: Path) -> None:
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [{
+            "id": "CHK-RISK",
+            "command": [sys.executable, "-c", "raise SystemExit(2)"],
+            "cwd": ".", "timeout": 30,
+            "accepted_risk": _risk_record("2999-01-01T00:00:00+00:00"),
+        }],
+        "scenarios": [{
+            "id": "S-01", "kind": "functional", "owner": "TASK-001", "check": "CHK-RISK",
+            "command": [sys.executable, "-c", "raise SystemExit(2)"],
+            "cwd": ".", "timeout": 30, "status": "planned",
+        }],
+    }), encoding="utf-8")
+
+    result = run_manifest(str(manifest), str(tmp_path), write_evidence=True)
+
+    assert result["decision"] == "pass", result
+    assert result["results"][0]["status"] == "accepted_risk"
+    assert result["accepted_risk"] == 1
+    assert result["accepted_risk_details"][0]["check_id"] == "CHK-RISK"
+    saved = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"][0]
+    assert saved["status"] == "accepted_risk"
+    assert saved["status"] != "verified"
+    assert saved["evidence"]["status"] == "accepted_risk"
+    assert "fingerprint" not in saved["evidence"]
+
+
+def test_expired_accepted_risk_blocks(tmp_path: Path) -> None:
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [{
+            "id": "CHK-RISK",
+            "command": [sys.executable, "-c", "raise SystemExit(2)"],
+            "cwd": ".", "timeout": 30,
+            "accepted_risk": _risk_record("2000-01-01T00:00:00+00:00"),
+        }],
+        "scenarios": [{
+            "id": "S-01", "kind": "functional", "owner": "TASK-001", "check": "CHK-RISK",
+            "command": [sys.executable, "-c", "raise SystemExit(2)"],
+            "cwd": ".", "timeout": 30, "status": "planned",
+        }],
+    }), encoding="utf-8")
+    result = run_manifest(str(manifest), str(tmp_path))
+    assert result["decision"] == "block"
+    assert result["results"][0]["status"] == "failed"

@@ -440,6 +440,28 @@ def _reuse_results(
     return results
 
 
+def _accepted_risk(check: Optional[Mapping[str, object]]) -> Optional[dict[str, object]]:
+    """A failed check may be archived as accepted risk only with a live, user-owned record."""
+    if not isinstance(check, Mapping):
+        return None
+    risk = check.get("accepted_risk")
+    if not isinstance(risk, Mapping):
+        return None
+    for field in ("owner", "reason", "confirmed_by", "confirmed_at", "source", "expires_at"):
+        if not isinstance(risk.get(field), str) or not str(risk.get(field)).strip():
+            return None
+    expires = str(risk.get("expires_at")).strip()
+    try:
+        deadline = datetime.fromisoformat(expires.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=timezone.utc)
+    if deadline <= datetime.now(timezone.utc):
+        return None
+    return dict(risk)
+
+
 def _apply_outcome(
     unit: Mapping[str, object], outcome: Mapping[str, object], root: Path,
     include_e2e: bool, only_e2e: bool, deadline: Optional[float],
@@ -457,6 +479,11 @@ def _apply_outcome(
             continue
         result = {"id": str(item.get("id", "unknown")), "kind": str(item.get("kind", "functional"))}
         result.update({key: value for key, value in outcome.items() if key not in ("id", "kind")})
+        if status == "failed":
+            risk = _accepted_risk(unit.get("check"))
+            if risk is not None:
+                result["status"] = "accepted_risk"
+                result["risk"] = risk
         if check_id and status in ("failed", "incomplete"):
             result["check_id"] = check_id
         results.append(result)
@@ -882,6 +909,8 @@ def _check_summary(checks: Sequence[Mapping[str, object]], scenarios: Sequence[M
             status = "incomplete"
         elif any(value == "env_blocked" for value in statuses):
             status = "env_blocked"
+        elif any(value == "accepted_risk" for value in statuses):
+            status = "accepted_risk"
         elif any(value == "e2e_deferred" for value in statuses):
             status = "deferred"
         else:
@@ -944,7 +973,7 @@ def _task_identity(owner: str, items: Sequence[Mapping[str, object]]) -> str:
 
 
 def _decision(results: Sequence[Mapping[str, object]]) -> tuple[str, str]:
-    allowed = ("passed", "manual_pending", "e2e_deferred", "not_included")
+    allowed = ("passed", "manual_pending", "e2e_deferred", "not_included", "accepted_risk")
     if all(item["status"] in allowed for item in results):
         return "pass", ""
     pending = sorted({str(item["id"]) for item in results if item["status"] == "incomplete"})
@@ -996,6 +1025,17 @@ def _payload(
         outcome["checks"] = _check_summary(check_list, items, results)
     env_blocked = sum(1 for item in results if item["status"] == "env_blocked")
     outcome["env_blocked"] = env_blocked
+    accepted = [item for item in results if item["status"] == "accepted_risk"]
+    if accepted:
+        outcome["accepted_risk"] = len(accepted)
+        outcome["accepted_risk_details"] = [
+            {
+                "scenario": item.get("id"),
+                "check_id": item.get("check_id") or item.get("id"),
+                "risk": item.get("risk"),
+            }
+            for item in accepted
+        ]
     if env_blocked:
         outcome["env_blocked_details"] = _env_blocked_details(check_map, results)
     if error:

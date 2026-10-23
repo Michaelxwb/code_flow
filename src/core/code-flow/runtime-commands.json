@@ -148,7 +148,14 @@
     "acceptance manifest": {
       "module": "cf_acceptance_manifest",
       "prefix": [],
-      "example_args": "--help"
+      "example_args": "--task-file \"<任务文件>\" --output \"<需求目录>/.acceptance-manifest.json\""
+    },
+    "acceptance risk": {
+      "module": "cf_acceptance_manifest",
+      "prefix": [
+        "--accept-risk"
+      ],
+      "example_args": "--task-file \"<任务文件>\" --output \"<需求目录>/.acceptance-manifest.json\" --check-id CHK-... --risk-owner \"<owner>\" --risk-reason \"<reason>\" --expires-at 2026-12-31 --confirmed-by \"<user>\" --source \"<user reply>\""
     },
     "acceptance run": {
       "module": "cf_acceptance_runner",

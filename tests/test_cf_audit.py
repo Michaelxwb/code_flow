@@ -322,3 +322,52 @@ def test_unknown_scenario_reported() -> None:
     )
     assert report["ok"] is False
     assert "S-99" in report["unknown"]
+
+
+def test_multiple_design_docs_merge_by_global_scenario_id(tmp_path: Path) -> None:
+    task_dir = tmp_path / "demo"
+    task_dir.mkdir()
+    frontend = task_dir / "demo.frontend.design.md"
+    backend = task_dir / "demo.backend.design.md"
+    task = task_dir / "demo.md"
+    manifest = task_dir / ".acceptance-manifest.json"
+
+    frontend.write_text(
+        "## 2.5 验收条件\n\n### 2.5.1 业务规则与约束\n"
+        "| ID | 描述 | 验证场景 |\n|---|---|---|\n| RULE-01 | fe | S-01 |\n\n"
+        "#### 2.5.2 功能验收场景\n"
+        "| 场景ID | 测试层级 | 关键真实边界 |\n|---|---|---|\n"
+        "| S-01 | integration | frontend |\n\n"
+        "## 5. 风险与依赖\n| 风险 | 等级 |\n|---|---|\n| fe risk | 中 |\n",
+        encoding="utf-8",
+    )
+    backend.write_text(
+        "## 2.5 验收条件\n\n### 2.5.1 业务规则与约束\n"
+        "| ID | 描述 | 验证场景 |\n|---|---|---|\n| RULE-02 | be | S-02 |\n\n"
+        "#### 2.5.2 功能验收场景\n"
+        "| 场景ID | 测试层级 | 关键真实边界 |\n|---|---|---|\n"
+        "| S-02 | integration | backend |\n\n"
+        "## 5. 风险与依赖\n| 风险 | 等级 |\n|---|---|\n| be risk | 高 |\n",
+        encoding="utf-8",
+    )
+    task.write_text(
+        "# Tasks\n\n## Acceptance Coverage\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n"
+        "|---|---|---|---|---|---|---|\n"
+        '| S-01 | frontend#2.5 | integration | frontend | TASK-001 | planned | ["python3", "-c", "pass"] |\n'
+        '| S-02 | backend#2.5 | integration | backend | TASK-001 | planned | ["python3", "-c", "pass"] |\n\n'
+        "## TASK-001: A\n- **Status**: in-progress\n- **Acceptance-Refs**: S-01, S-02\n",
+        encoding="utf-8",
+    )
+    write_manifest(str(task), str(manifest))
+
+    report = build_audit(
+        str(frontend), str(manifest), root=str(tmp_path),
+        design_files=[str(frontend), str(backend)],
+    )
+
+    assert report["decision"] == "pass", report
+    assert report["summary"]["design_scenarios"] == 2
+    assert {item["id"] for item in report["scenarios"]} == {"S-01", "S-02"}
+    assert report["summary"]["rules"] == 2
+    assert report["summary"]["risks"] == 2

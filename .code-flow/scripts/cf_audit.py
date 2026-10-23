@@ -26,7 +26,7 @@ from typing import IO, Mapping, Optional, Sequence
 
 from cf_acceptance_schema import load_manifest, verified_evidence
 from cf_evidence_store import EvidenceStore
-from cf_traceability import build_traceability, build_traceability_from_scenarios
+from cf_traceability import build_traceability, build_traceability_many, build_traceability_from_scenarios
 
 _SCENARIO_RE = re.compile(r"\b[SEB]-\d+\b")
 _RULE_RE = re.compile(r"^RULE-\d+$")
@@ -274,7 +274,7 @@ def _dedupe(findings: Sequence[Mapping[str, object]]) -> list[dict[str, object]]
 
 
 def _scenario_source_findings(scenarios_file: str, manifest_path: Path,
-                              design_path: Path, manifest: Mapping[str, object]) -> list[dict[str, str]]:
+                              design_paths: Sequence[Path], manifest: Mapping[str, object]) -> list[dict[str, str]]:
     from cf_scenarios import audit_scenario_source, parse_scenarios
     from cf_traceability import parse_design_scenarios
     source = parse_scenarios(scenarios_file)
@@ -297,7 +297,10 @@ def _scenario_source_findings(scenarios_file: str, manifest_path: Path,
         for scenario_id in report.get(key, []):
             violations.append({"code": code, "scenario": str(scenario_id), "message": f"{scenario_id}: {key}"})
     try:
-        design_ids = {item.id for item in parse_design_scenarios(str(design_path))}
+        paths = [design_paths] if isinstance(design_paths, Path) else list(design_paths)
+        design_ids = {
+            item.id for path in paths for item in parse_design_scenarios(str(path))
+        }
     except (OSError, ValueError):
         design_ids = set()
     for scenario_id in sorted(design_ids):
@@ -306,24 +309,54 @@ def _scenario_source_findings(scenarios_file: str, manifest_path: Path,
     return violations
 
 
+def _merge_design_rules(design_paths: Sequence[Path]) -> list[dict[str, object]]:
+    merged: dict[str, dict[str, object]] = {}
+    for path in design_paths:
+        for rule in parse_design_rules(str(path)):
+            rule_id = str(rule.get("id"))
+            if rule_id in merged and merged[rule_id] != rule:
+                raise ValueError(f"duplicate design rule id with conflicting definition: {rule_id}")
+            merged[rule_id] = rule
+    return sorted(merged.values(), key=lambda item: str(item.get("id")))
+
+
+def _merge_design_risks(design_paths: Sequence[Path]) -> list[dict[str, object]]:
+    merged: list[dict[str, object]] = []
+    seen: set[tuple[str, str]] = set()
+    for path in design_paths:
+        for risk in parse_design_risks(str(path)):
+            key = (str(risk.get("title")), str(risk.get("level")))
+            if key in seen:
+                continue
+            seen.add(key)
+            item = dict(risk)
+            item["source"] = path.name
+            merged.append(item)
+    return merged
+
+
 def build_audit(design_file: str, manifest_file: str, root: str,
-                requirement: str = "", scenarios_file: str = "") -> dict[str, object]:
-    """Build the read-only invariant report; raises ValueError on unreadable input."""
-    design_path = Path(design_file)
+                requirement: str = "", scenarios_file: str = "",
+                design_files: Sequence[str] = ()) -> dict[str, object]:
+    """Build the read-only invariant report; multiple designs merge by global ID."""
+    design_paths = [Path(item) for item in design_files] or [Path(design_file)]
     manifest_path = Path(manifest_file)
-    if not design_path.is_file():
-        raise ValueError(f"design_file_missing: {design_path}")
+    if any(not path.is_file() for path in design_paths):
+        raise ValueError(f"design_file_missing: {', '.join(str(path) for path in design_paths)}")
     if not manifest_path.is_file():
         raise ValueError(f"manifest_file_missing: {manifest_path}")
-    rules = parse_design_rules(str(design_path))
-    risks = parse_design_risks(str(design_path))
+    rules = _merge_design_rules(design_paths)
+    risks = _merge_design_risks(design_paths)
     manifest = load_manifest(manifest_path)
     if scenarios_file:
         trace = build_traceability_from_scenarios(scenarios_file, str(manifest_path))
-        extra_findings = _scenario_source_findings(scenarios_file, manifest_path, design_path, manifest)
+        extra_findings = _scenario_source_findings(scenarios_file, manifest_path, design_paths, manifest)
         trace.setdefault("violations", []).extend(extra_findings)
     else:
-        trace = build_traceability(str(design_path), str(manifest_path))
+        trace = (
+            build_traceability_many([str(path) for path in design_paths], str(manifest_path))
+            if len(design_paths) > 1 else build_traceability(str(design_paths[0]), str(manifest_path))
+        )
     scenarios = {
         str(item["id"]): item
         for item in manifest.get("scenarios") or ()
@@ -367,7 +400,8 @@ def build_audit(design_file: str, manifest_file: str, root: str,
         "decision": "block" if findings else "pass",
         "read_only": True,
         "generated": True,
-        "design_file": str(design_path),
+        "design_file": str(design_paths[0]),
+        "design_files": [str(path) for path in design_paths],
         "source": trace.get("source", ""),
         "deprecated": not bool(scenarios_file),
         "manifest_file": str(manifest_path),
@@ -431,20 +465,22 @@ def render_markdown(report: Mapping[str, object]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _resolve_paths(root: str, task_dir: str, design: str, manifest: str) -> tuple[Path, Path, Path]:
+def _resolve_paths(root: str, task_dir: str, design: str,
+                   manifest: str) -> tuple[Path, Path, Path, list[Path]]:
     root_path = Path(root).expanduser().resolve()
     directory = Path(task_dir).expanduser()
     directory = directory.resolve() if directory.is_absolute() else (root_path / directory).resolve()
-    design_path = Path(design).expanduser().resolve() if design else None
-    if design_path is None:
-        candidates = sorted(directory.glob("*.design.md"))
-        if not candidates:
-            raise ValueError(f"design_file_missing: {directory}")
-        if len(candidates) > 1:
-            raise ValueError(f"design_file_ambiguous: {', '.join(str(item) for item in candidates)}")
-        design_path = candidates[0]
+    if design:
+        design_paths = [
+            Path(item).expanduser().resolve()
+            for item in design.split(",") if item.strip()
+        ]
+    else:
+        design_paths = sorted(directory.glob("*.design.md"))
+    if not design_paths:
+        raise ValueError(f"design_file_missing: {directory}")
     manifest_path = Path(manifest).expanduser().resolve() if manifest else directory / ".acceptance-manifest.json"
-    return root_path, design_path, manifest_path
+    return root_path, design_paths[0], manifest_path, design_paths
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
@@ -456,13 +492,18 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
-        root, design, manifest = _resolve_paths(args.root, args.task_dir, args.design, args.manifest)
+        root, design, manifest, design_paths = _resolve_paths(
+            args.root, args.task_dir, args.design, args.manifest
+        )
         resolved_dir = manifest.parent
         sources = sorted(resolved_dir.glob("*.scenarios.md")) if resolved_dir.is_dir() else []
         scenarios_file = str(sources[0]) if len(sources) == 1 else ""
         if len(sources) > 1:
             raise ValueError("scenario_source_ambiguous")
-        report = build_audit(str(design), str(manifest), root=str(root), scenarios_file=scenarios_file)
+        report = build_audit(
+            str(design), str(manifest), root=str(root), scenarios_file=scenarios_file,
+            design_files=[str(path) for path in design_paths],
+        )
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
         stdout.write(json.dumps({"decision": "block", "error": str(exc)}, ensure_ascii=False))
         return 2

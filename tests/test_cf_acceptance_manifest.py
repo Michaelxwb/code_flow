@@ -11,6 +11,7 @@ from cf_acceptance_manifest import (
     _kind,
     _legacy_kind,
     extract_manifest,
+    record_accepted_risk,
     record_manual_evidence,
     validate_manifest,
     write_manifest,
@@ -221,3 +222,27 @@ def test_relock_preserves_check_environment_config(tmp_path: Path) -> None:
     assert check["env_scope"] == "isolated"
     assert check["parallel_safe"] is True
     assert check["preflight"] == [["python3", "-c", "pass"]]
+
+
+def test_record_accepted_risk_requires_user_confirmation(tmp_path: Path) -> None:
+    manifest = tmp_path / ".acceptance-manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": [{"id": "CHK-1", "command": ["true"], "cwd": ".", "timeout": 30}],
+        "scenarios": [{"id": "S-01", "kind": "functional", "check": "CHK-1",
+                       "command": ["true"], "cwd": ".", "timeout": 30, "status": "planned"}],
+    }), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="user"):
+        record_accepted_risk(str(manifest), "CHK-1", "TASK-1", "reason",
+                             "2999-01-01", "agent", "user said ok")
+    with pytest.raises(ValueError, match="future"):
+        record_accepted_risk(str(manifest), "CHK-1", "TASK-1", "reason",
+                             "2000-01-01", "user", "user said ok")
+
+    result = record_accepted_risk(str(manifest), "CHK-1", "TASK-1", "reason",
+                                  "2999-01-01", "user", "user said ok")
+    assert result["ok"] is True
+    stored = json.loads(manifest.read_text(encoding="utf-8"))["checks"][0]
+    assert stored["accepted_risk"]["confirmed_by"] == "user"
+    assert stored["accepted_risk"]["source"] == "user said ok"

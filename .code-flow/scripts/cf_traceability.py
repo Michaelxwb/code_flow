@@ -239,9 +239,9 @@ def _extra_rows(manifest_scenarios: Mapping[str, Mapping[str, object]],
     return rows
 
 
-def build_traceability(design_file: str, manifest_file: str) -> dict[str, object]:
-    """Join design §2.5 scenarios with manifest checks and report binding gaps."""
-    design = parse_design_scenarios(design_file)
+def _traceability_rows(
+    design: Sequence[DesignScenario], manifest_file: str, design_label: str
+) -> dict[str, object]:
     _, manifest_scenarios, checks = _load_manifest(manifest_file)
     design_ids = {item.id for item in design}
     violations: list[dict[str, str]] = []
@@ -292,12 +292,37 @@ def build_traceability(design_file: str, manifest_file: str) -> dict[str, object
     return {
         "decision": "block" if violations else "pass",
         "generated": True,
-        "design_file": str(design_file),
+        "design_file": design_label,
         "manifest_file": str(manifest_file),
         "summary": summary,
         "scenarios": all_rows,
         "violations": violations,
     }
+
+
+def build_traceability(design_file: str, manifest_file: str) -> dict[str, object]:
+    """Join design §2.5 scenarios with manifest checks and report binding gaps."""
+    return _traceability_rows(parse_design_scenarios(design_file), manifest_file, str(design_file))
+
+
+def merge_design_scenarios(design_files: Sequence[str]) -> tuple[DesignScenario, ...]:
+    """Merge frontend/backend design scenarios by global ID; conflicts fail closed."""
+    merged: dict[str, DesignScenario] = {}
+    for design_file in design_files:
+        for item in parse_design_scenarios(design_file):
+            previous = merged.get(item.id)
+            if previous is not None and previous != item:
+                raise ValueError(f"duplicate design scenario id with conflicting definition: {item.id}")
+            merged[item.id] = item
+    if not merged:
+        raise ValueError("design §2.5 未找到 S-/E-/B- 场景")
+    return tuple(merged.values())
+
+
+def build_traceability_many(design_files: Sequence[str], manifest_file: str) -> dict[str, object]:
+    """0.8 fallback: merge multiple design docs before joining the manifest."""
+    design = merge_design_scenarios(design_files)
+    return _traceability_rows(design, manifest_file, ", ".join(str(item) for item in design_files))
 
 
 def _md(value: object) -> str:

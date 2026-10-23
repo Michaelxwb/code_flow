@@ -175,7 +175,7 @@ code-flow task verify --task-dir "<需求目录>" --layers validators,review,e2e
 code-flow task verify-e2e --task-dir "<需求目录>" --root "$PWD" --json
 code-flow task cleanup-session --help
 code-flow spec gate --help
-code-flow acceptance manifest --help
+code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json"
 code-flow acceptance run --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --write-evidence
 code-flow validate --root "$PWD" --json
 code-flow task archive --task-dir "<需求目录>" --root "$PWD" --json

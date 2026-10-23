@@ -18,6 +18,7 @@ _EVIDENCE_STATUS = {
     "not_configured": "not_configured",
     "e2e_deferred": "deferred",
     "env_blocked": "env_blocked",
+    "accepted_risk": "accepted_risk",
 }
 
 

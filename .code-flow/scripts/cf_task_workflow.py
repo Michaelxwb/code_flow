@@ -47,6 +47,7 @@ def finish_task(root: str, directory: str, task_file: str, task_id: str) -> dict
             "reason": gate.message,
             "missing_checks": list(gate.missing_checks),
             "next": gate.next_action,
+            "env_blocked_details": list(gate.env_blocked_details),
             "deferred_review": gate.deferred_review,
             "deferred_requirement": gate.deferred_requirement,
             "deferred_budget": gate.deferred_budget,
@@ -55,7 +56,8 @@ def finish_task(root: str, directory: str, task_file: str, task_id: str) -> dict
             **transition,
         }
     if gate.decision != "pass":
-        return {"decision": "block", "reason": gate.message, "evidence": gate.evidence}
+        return {"decision": "block", "reason": gate.message, "evidence": gate.evidence,
+                "env_blocked_details": list(gate.env_blocked_details)}
     completed = complete_task(root, directory, task_file, task_id, True)
     # 完成后清理本任务的 Spec Session 投影（瞬时文件，避免往期规则被后续会话读到）
     result = {
@@ -1041,6 +1043,22 @@ def verify_e2e(root: str, directory: str, layers: Optional[str] = None,
     return result
 
 
+def _archived_risks(directory: Path) -> list[dict[str, object]]:
+    """Accepted risks are archived distinctly from verified evidence."""
+    manifest = directory / ".acceptance-manifest.json"
+    if not manifest.is_file():
+        return []
+    try:
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return []
+    risks = []
+    for check in data.get("checks", []) if isinstance(data.get("checks"), list) else []:
+        if isinstance(check, Mapping) and isinstance(check.get("accepted_risk"), Mapping):
+            risks.append({"check_id": check.get("id"), **dict(check["accepted_risk"])})
+    return risks
+
+
 def archive_requirement(root: str, directory: str) -> dict[str, object]:
     """Runtime archive gate: full verify first, then move the requirement dir."""
     from datetime import date
@@ -1050,6 +1068,7 @@ def archive_requirement(root: str, directory: str) -> dict[str, object]:
     if result.get("decision") != "pass":
         return {"decision": "block", "reason": "archive_verify_failed", "verify": result}
     source = _Path(directory)
+    accepted_risks = _archived_risks(source)
     base = _Path(root) / ".code-flow/tasks/archived" / date.today().isoformat()
     target = base / source.name
     suffix = 2
@@ -1058,7 +1077,10 @@ def archive_requirement(root: str, directory: str) -> dict[str, object]:
         suffix += 1
     base.mkdir(parents=True, exist_ok=True)
     shutil.move(str(source), str(target))
-    return {"decision": "pass", "archived_to": str(target)}
+    result = {"decision": "pass", "archived_to": str(target)}
+    if accepted_risks:
+        result["accepted_risks"] = accepted_risks
+    return result
 
 
 def confirm_manual(root: str, directory: str, refs: Sequence[str], scenarios: Sequence[str],

@@ -55,6 +55,7 @@ class DoneResult:
     deferred_heavy: int = 0
     missing_checks: tuple[Mapping[str, object], ...] = ()
     next_action: str = ""
+    env_blocked_details: tuple[Mapping[str, object], ...] = ()
 
 
 def _context_path(task_dir: str) -> str:
@@ -347,16 +348,17 @@ def _provisional_message(missing: tuple[Mapping[str, object], ...]) -> str:
 
 
 def _run_acceptance(root: str, task_dir: str, owner: str, include_e2e: bool,
-                    deadline: Optional[float], cheap: bool = False) -> tuple[str, str]:
+                    deadline: Optional[float], cheap: bool = False
+                    ) -> tuple[str, str, tuple[Mapping[str, object], ...]]:
     baseline_issue = _acceptance_baseline_issue(task_dir, owner)
     if baseline_issue:
-        return baseline_issue, "block"
+        return baseline_issue, "block", ()
     # manual 场景的人工确认统一在需求级终验（verify-e2e + confirm-manual）完成，
     # 不在每个任务的 Done Gate 中逐任务阻断。
     if cheap:
         # 轻量门禁：只做 manifest 基线检查，不执行 functional 场景；
         # 场景命令由 finish 的全量 Done Gate 执行。
-        return "", "pass"
+        return "", "pass", ()
     manifest_path = Path(task_dir) / ".acceptance-manifest.json"
     if manifest_path.is_file():
         from cf_acceptance_runner import run_manifest
@@ -370,14 +372,18 @@ def _run_acceptance(root: str, task_dir: str, owner: str, include_e2e: bool,
             failed = [value for value in statuses if value in ("failed", "not_configured")]
             if failed:
                 reason = scenario_result.get("error") or "acceptance scenario failed"
-                return f"acceptance scenario failed: {reason}", "block"
+                return f"acceptance scenario failed: {reason}", "block", ()
             if "env_blocked" in statuses:
-                return "acceptance env_blocked: " + (scenario_result.get("error") or "environment unavailable"), "env_blocked"
+                details = tuple(
+                    item for item in scenario_result.get("env_blocked_details", [])
+                    if isinstance(item, Mapping)
+                )
+                return "acceptance env_blocked: " + (scenario_result.get("error") or "environment unavailable"), "env_blocked", details
             if "incomplete" in statuses:
-                return "acceptance incomplete: " + (scenario_result.get("error") or "deadline exceeded"), "incomplete"
+                return "acceptance incomplete: " + (scenario_result.get("error") or "deadline exceeded"), "incomplete", ()
             reason = scenario_result.get("error") or "acceptance scenario failed"
-            return f"acceptance scenario failed: {reason}", "block"
-    return "", "pass"
+            return f"acceptance scenario failed: {reason}", "block", ()
+    return "", "pass", ()
 
 
 def _run_finish_validation(root: str, files: tuple[str, ...]) -> tuple[str, int]:
@@ -430,10 +436,13 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
     if scope_result.decision == "pause":
         return DoneResult("block", scope_result.files, (), scope_result.message)
     deadline = started + budget if budget is not None else None
-    issue, acceptance_kind = _run_acceptance(root, task_dir, owner, include_e2e, deadline, cheap)
+    issue, acceptance_kind, env_details = _run_acceptance(
+        root, task_dir, owner, include_e2e, deadline, cheap
+    )
     if issue:
         decision = "provisional" if acceptance_kind in ("env_blocked", "incomplete") else "block"
-        return DoneResult(decision, scope_result.files, (), issue)
+        return DoneResult(decision, scope_result.files, (), issue,
+                          env_blocked_details=env_details)
     phase_started = time.monotonic()
     context = load_context(_context_path(task_dir))
     diff_hash = _diff_hash(root, scope_result.files)
