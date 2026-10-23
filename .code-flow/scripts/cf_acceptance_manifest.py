@@ -648,6 +648,8 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--task-dir", default="")
     parser.add_argument("--record-manual", action="store_true")
     parser.add_argument("--accept-risk", action="store_true")
+    parser.add_argument("--project", action="store_true",
+                        help="write manifest and project sibling scenarios checks in one step")
     parser.add_argument("--check-id", default="")
     parser.add_argument("--risk-owner", default="")
     parser.add_argument("--risk-reason", default="")
@@ -658,6 +660,21 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--evidence", default="")
     args = parser.parse_args(argv)
     try:
+        if args.project:
+            output = args.output or str(Path(args.task_file).with_name(".acceptance-manifest.json"))
+            manifest = write_manifest(args.task_file, output, args.scenarios_file)
+            projected = sum(
+                1 for item in manifest.get("scenarios", [])
+                if isinstance(item, dict) and item.get("checks")
+            )
+            stdout.write(json.dumps({
+                "ok": True,
+                "manifest": output,
+                "scenarios": len(manifest.get("scenarios", [])),
+                "checks": len(manifest.get("checks", [])),
+                "projected_scenarios": projected,
+            }, ensure_ascii=False))
+            return 0
         if args.accept_risk:
             result = record_accepted_risk(
                 args.output, args.check_id, args.risk_owner, args.risk_reason,

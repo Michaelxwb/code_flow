@@ -393,6 +393,9 @@ def build_audit(design_file: str, manifest_file: str, root: str,
         "unique_owners": len(owners),
         "rules": len(rules),
         "risks": len(risks),
+        "accepted_risks": sum(
+            1 for item in checks.values() if isinstance(item.get("accepted_risk"), Mapping)
+        ),
         "risk_levels": risk_levels,
         "findings": len(findings),
     })
@@ -442,6 +445,7 @@ def render_markdown(report: Mapping[str, object]) -> str:
         f"| verified | {_md(summary.get('verified'))} |",
         f"| rules | {_md(summary.get('rules'))} |",
         f"| risks | {_md(summary.get('risks'))} |",
+        f"| accepted risks | {_md(summary.get('accepted_risks'))} |",
         f"| findings | {_md(summary.get('findings'))} |",
     ]
     findings = report.get("findings") or ()
