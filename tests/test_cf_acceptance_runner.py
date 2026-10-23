@@ -843,18 +843,45 @@ def test_accepted_risk_passes_archive_preflight(tmp_path: Path) -> None:
     assert loaded is not None
 
 
+def test_stale_functional_scenario_passes_preflight_for_rerun(tmp_path: Path) -> None:
+    from cf_acceptance_manifest import write_manifest
+    from cf_task_workflow import _e2e_preflight
+
+    task = tmp_path / "demo.md"
+    task.write_text(
+        "# Demo\n\n## Acceptance Coverage\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n"
+        "|---|---|---|---|---|---|---|\n"
+        '| S-01 | d#2.5 | integration | runner | TASK-001 | verified | '
+        f'{json.dumps([sys.executable, "-c", "pass"])} |\n\n'
+        "## TASK-001: A\n- **Status**: done\n- **Acceptance-Refs**: S-01\n",
+        encoding="utf-8",
+    )
+    manifest = tmp_path / ".acceptance-manifest.json"
+    data = write_manifest(str(task), str(manifest))
+    data["scenarios"][0]["status"] = "stale"
+    data["scenarios"][0]["stale_checks"] = ["CHK-OLD"]
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+
+    loaded, failure = _e2e_preflight(manifest, [(task, "TASK-001", "done")], True)
+    assert failure is None, failure
+    assert loaded is not None
+    assert loaded["scenarios"][0]["status"] == "stale"
+
+
 def test_multi_check_accepts_risk_only_for_affected_check(tmp_path: Path) -> None:
     manifest = tmp_path / ".acceptance-manifest.json"
     manifest.write_text(json.dumps({
         "schema": 3,
         "checks": [
             {"id": "CHK-A", "command": [sys.executable, "-c", "raise SystemExit(2)"],
-             "cwd": ".", "timeout": 30, "accepted_risk": _risk_record("2999-01-01")},
+             "cwd": ".", "timeout": 30,
+             "accepted_risk": {**_risk_record("2999-01-01"), "scenario_ids": ["S-01"]}},
             {"id": "CHK-B", "command": [sys.executable, "-c", "pass"],
              "cwd": ".", "timeout": 30},
         ],
         "scenarios": [{
-            "id": "S-01", "kind": "functional", "checks": ["CHK-A", "CHK-B"],
+            "id": "S-01", "kind": "functional", "owner": "TASK-001", "checks": ["CHK-A", "CHK-B"],
             "status": "planned",
         }],
     }), encoding="utf-8")
@@ -864,3 +891,30 @@ def test_multi_check_accepts_risk_only_for_affected_check(tmp_path: Path) -> Non
     assert result["accepted_risk_details"][0]["check_id"] == "CHK-A"
     saved = json.loads(manifest.read_text(encoding="utf-8"))["scenarios"][0]
     assert saved["status"] == "accepted_risk"
+
+
+def test_shared_check_risk_does_not_cover_another_task(tmp_path: Path) -> None:
+    manifest = tmp_path / "manifest.json"
+    check = {"id": "CHK-A", "command": [sys.executable, "-c", "raise SystemExit(2)"],
+             "accepted_risk": _risk_record("2999-01-01")}
+    rows = [{"id": f"S-0{index}", "owner": f"TASK-00{index}", "check": "CHK-A",
+             "kind": "functional", "status": "planned"} for index in (1, 2)]
+    manifest.write_text(json.dumps({"schema": 3, "checks": [check], "scenarios": rows}))
+    result = run_manifest(str(manifest), str(tmp_path), write_evidence=True)
+    assert result["decision"] == "block"
+    assert {row["id"]: row["status"] for row in result["results"]} == {
+        "S-01": "accepted_risk", "S-02": "failed",
+    }
+
+
+def test_risk_cannot_expand_to_new_scenario_of_same_owner(tmp_path: Path) -> None:
+    manifest = tmp_path / "manifest.json"
+    risk = {**_risk_record("2999-01-01"), "scenario_ids": ["S-01"]}
+    check = {"id": "CHK-A", "command": [sys.executable, "-c", "raise SystemExit(2)"],
+             "accepted_risk": risk}
+    rows = [{"id": name, "owner": "TASK-001", "check": "CHK-A", "status": "planned"}
+            for name in ("S-01", "S-02")]
+    manifest.write_text(json.dumps({"schema": 3, "checks": [check], "scenarios": rows}))
+    result = run_manifest(str(manifest), str(tmp_path))
+    assert result["decision"] == "block"
+    assert result["results"][1]["status"] == "failed"

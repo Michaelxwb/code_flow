@@ -93,12 +93,28 @@ def _design_exec(value: str, scenario_id: str) -> str:
     return normalized
 
 
+def _require_full_design_scenarios(text: str) -> None:
+    """Only complete legacy definitions can substitute for a missing source."""
+    references = False
+    for header, rows in _table_blocks(text):
+        column = _column(header, "场景id", "场景编号")
+        if column < 0 or not any(_SCENARIO_ID_RE.match(_cell(row, column)) for row in rows):
+            continue
+        if _column(header, "测试层级") >= 0:
+            return
+        references = True
+    if references:
+        raise ValueError("scenario_source_missing: reference-only design requires the original .scenarios.md; "
+                         "restore the scenario source before audit")
+
+
 def parse_design_scenarios(design_file: str) -> tuple[DesignScenario, ...]:
     """Parse all S-/E-/B- rows under design §2.5 tables."""
     try:
         text = Path(design_file).read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         raise ValueError(f"design_read_error: {exc}") from exc
+    _require_full_design_scenarios(text)
     section = _acceptance_section(text)
     scenarios: dict[str, DesignScenario] = {}
     for header, rows in _table_blocks(section):

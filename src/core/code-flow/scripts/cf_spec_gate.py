@@ -234,7 +234,9 @@ def _rule_plan_issues(
     if rule.ref not in checklist or "verifier" not in checklist.lower():
         issues.append(_plan_issue("plan_checklist_missing", binding, rule, f"{full_ref} 缺 verifier Checklist"))
     contract = section.partition("### Acceptance Contract")[2]
-    if not contract.strip() or not re.search(r"\b(unit|integration|E2E|manual)\b", contract):
+    if not contract.strip() or not re.search(
+        r"(?i)\b(unit|component|contract|integration|e2e|manual)\b", contract
+    ):
         issues.append(_plan_issue("plan_acceptance_missing", binding, rule, f"{full_ref} 缺测试层级/真实边界"))
     return tuple(issues)
 

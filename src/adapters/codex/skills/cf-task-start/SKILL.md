@@ -42,6 +42,7 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 - `Acceptance-Refs` 中每个 S-/E-/B- 都必须出现在全局覆盖表和当前契约中，测试层级与关键真实边界必须和 design 一致
 - 旧 task 没有覆盖表但来源 design 含结构化验收场景时，先从 design 回填覆盖表与契约；回填完成前不得修改生产代码
 - 非行为类任务可显式写 `Acceptance-Refs: N/A`；不得用 N/A 跳过已有设计场景
+- E2E 必须已通过 plan 精度门禁：P0/P1、`why_e2e`、`boundary`、非 smoke 的 `trigger_paths` 缺一不可；`start` 会在 `e2e_plan.quality.ok=false` 时阻断，不要手工改 manifest 绕过
 
 ### 2. 加载详设上下文
 
@@ -66,8 +67,8 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 2. 从命令返回值读取 refresh 后的 Context hash、active 状态和 session 输出路径；该命令只根据当前 TASK 的 `Spec-Refs`、Source 与 Acceptance Contract 覆盖写入 `.code-flow/specs/_session/task-<name>.md`，禁止重新 catalog 或猜测规则。
 3. Start 返回成功时，workflow service 已通过可恢复事务同步 Status、started log 和 active marker；不要再手动改状态。失败保留原状态，按返回原因恢复。
 4. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令（E2E 只登记，不在本阶段执行）
-5. 先编写验收测试（E2E 只编写并登记）。E2E 测试必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
-6. 新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因。纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败。E2E 场景不执行 RED，登记为 e2e_deferred 留给 verify-e2e
+5. 先编写验收测试（E2E 只编写并登记）。从 `start` 返回的 `e2e_plan` 读取范围：只编写 `owned` 中的 E2E；`smoke` 由需求级 verify 运行，不在本 TASK 重写；`deferred` 中的 E2E 不得顺手补。E2E 必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
+6. E2E 只断言用户可观察结果和真实链路；禁止断言源码字符串、CSS、组件宽度、字段顺序、文案顺序。UI 布局/交互细节应下沉到 component 测试。E2E 不执行 RED，登记为 e2e_deferred 留给 verify-e2e。新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因；纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败
 
 RED 证据写入 `Acceptance Evidence`：
 
@@ -108,6 +109,7 @@ RED 证据写入 `Acceptance Evidence`：
 - 所有 checklist 项均为 `[x]`
 - functional 在契约、证据和覆盖表中均为 `verified`；E2E 可为 `e2e_deferred`，`manual` 场景与 review 层 manual 规则延后到需求级终验由用户确认，仍不得遗留未登记的 `planned` / `pending` / `TBD`
 - 测试层级未低于 design，关键真实边界没有被 mock 绕过
+- E2E 只登记了 `e2e_plan.owned`，没有把 `deferred` 场景补成本任务测试；新增 E2E 必须回到 plan 重新过质量门禁
 - 每个预期结果都有具体断言位置，functional 验收命令和回归测试均已实际通过；E2E 留到终验执行
 - 显式 `stage: code` 的 manual 规则已有用户确认和可复核记录；默认 review 层的 manual 规则与 manual 场景在 verify-e2e 一次性确认
 
@@ -117,11 +119,11 @@ RED 证据写入 `Acceptance Evidence`：
 code-flow task finish --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json
 ```
 
-该命令先校验完整任务身份与锁定 manifest，再执行 Done Gate：本任务范围（`Spec-Refs` ∪ 改动路径命中）的 code verifier + 本任务 acceptance 场景 + 轻量 validation.yml（不含 heavy）；范围外/超预算的 verifier 标记 `deferred_to_review`、`heavy: true` validator 标记 `deferred_heavy`，都不阻塞本任务，统一在需求级 verify-e2e / 归档全量补跑；通过后以可恢复事务更新 done、Log、Updated 并清理 marker。只有 `decision=pass` 才输出完成并启动下一 TASK。禁止手动设置 done 或传入自报的 gate_passed 绕过验证。
+该命令先校验完整任务身份与锁定 manifest，再执行 Done Gate：本任务范围（`Spec-Refs` ∪ 改动路径命中）的 code verifier + 本任务 acceptance 场景 + 轻量 validation.yml（不含 heavy）；范围外且明确归属需求级 review 的 verifier 标记 `deferred_to_review`，`heavy: true` validator 标记 `deferred_heavy`，统一在需求级 verify-e2e / 归档全量补跑；本任务 required code 检查因预算、环境或其他原因未执行时进入 `provisional`，保留 active marker，补齐检查后重新执行 finish，不能标记 done；通过后以可恢复事务更新 done、Log、Updated 并清理 marker。只有 `decision=pass` 才输出完成并启动下一 TASK。禁止手动设置 done 或传入自报的 gate_passed 绕过验证。
 
 Done Gate 只执行 code 层验证；review 层 manual 规则与 manual 场景不逐任务确认，延后到需求级 verify-e2e（返回 `manual_confirmation_required` 时按该命令的「人工验收确认」流程一次性确认）。
 
-任一验收条件不满足时保持 `in-progress`，明确列出缺口，不能标记为 `done`。
+验收断言失败时保持 `in-progress`；required code 检查未执行时由运行时转为 `provisional`。明确列出缺口，不能标记为 `done`。
 
 ### 5. 文档同步检查
 

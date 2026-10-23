@@ -435,11 +435,12 @@ def _task_manifest(worktree: Path, task_file: str) -> Optional[dict[str, object]
 
 
 def _run_matches(run: Mapping[str, object], expected_hash: str,
-                 check: Optional[Mapping[str, object]] = None) -> bool:
+                 check: Optional[Mapping[str, object]] = None,
+                 scenarios: Sequence[Mapping[str, object]] = ()) -> bool:
     """A central evidence run proves this check against this worktree content."""
     run_id = run.get("run_id")
     status = run.get("status")
-    if status == "accepted_risk" and not _live_accepted_risk(check):
+    if status == "accepted_risk" and not _live_accepted_risk(check, scenarios):
         return False
     return (
         isinstance(run_id, str)
@@ -450,9 +451,10 @@ def _run_matches(run: Mapping[str, object], expected_hash: str,
     )
 
 
-def _live_accepted_risk(check: Optional[Mapping[str, object]]) -> bool:
-    from cf_acceptance_runner import _accepted_risk
-    return _accepted_risk(check) is not None
+def _live_accepted_risk(check: Optional[Mapping[str, object]],
+                        scenarios: Sequence[Mapping[str, object]]) -> bool:
+    from cf_acceptance_risk import accepted_risk
+    return bool(scenarios) and all(accepted_risk(check, row) is not None for row in scenarios)
 
 
 def _evidence_reason(runs: Sequence[Mapping[str, object]], expected_hash: str) -> str:
@@ -498,7 +500,9 @@ def _missing_evidence(
             if check is not None else expected
         )
         runs = store.list_runs(check_id)
-        if not any(_run_matches(run, check_hash, check) for run in runs):
+        rows = [row for row in manifest.get("scenarios", [])
+                if isinstance(row, Mapping) and row.get("id") in required[check_id]]
+        if not any(_run_matches(run, check_hash, check, rows) for run in runs):
             missing.append({
                 "check_id": check_id,
                 "scenarios": sorted(required[check_id]),
@@ -839,6 +843,17 @@ def _stale_after_merge(root: Path, task_file: str, input_hash: str) -> list[dict
             continue
         _write_text_atomic(path, merged)
         changed.append({"path": path.relative_to(root).as_posix(), "rules": stale})
+    manifest = root / Path(task_file).parent / ".acceptance-manifest.json"
+    if manifest.is_file():
+        from cf_acceptance_evidence import invalidate_manifest_evidence
+        try:
+            stale_rows = invalidate_manifest_evidence(root, manifest, input_hash)
+        except (OSError, ValueError) as exc:
+            raise ParallelError("stale_acceptance_failed", f"{manifest}: {exc}") from exc
+        if stale_rows:
+            changed.append({"path": manifest.relative_to(root).as_posix(),
+                            "scenarios": [row["scenario_id"] for row in stale_rows],
+                            "checks": sorted({check for row in stale_rows for check in row["checks"]})})
     return changed
 
 
@@ -917,6 +932,23 @@ def _run_batch_smoke(root: Path, run_id: str, task_file: str,
     return summary
 
 
+def _merge_entries(root: Path, main_branch: str, entries: Sequence[dict[str, object]],
+                   task_file: str) -> list[dict[str, object]]:
+    results: list[dict[str, object]] = []
+    for entry in entries:
+        try:
+            results.append(_merge_one(root, main_branch, entry, task_file))
+        except ParallelError as exc:
+            failure = {
+                "task": str(entry.get("task", "")), "ok": False,
+                "code": exc.code, "message": exc.message,
+            }
+            failure.update(exc.details)
+            results.append(failure)
+            break
+    return results
+
+
 def merge(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, object]:
     root = root.resolve()
     _assert_repo(root)
@@ -934,28 +966,17 @@ def merge(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, 
     entries.sort(key=lambda item: str(item.get("task", "")))
     task_file = str(meta["task_file"])
     before_hash = worktree_fingerprint(str(root), include_untracked=False)
-    results: list[dict[str, object]] = []
-    for entry in entries:
-        try:
-            results.append(_merge_one(root, main_branch, entry, task_file))
-        except ParallelError as exc:
-            failure = {
-                "task": str(entry.get("task", "")), "ok": False,
-                "code": exc.code, "message": exc.message,
-            }
-            failure.update(exc.details)
-            results.append(failure)
-            break
+    results = _merge_entries(root, main_branch, entries, task_file)
     ok = bool(results) and all(item.get("ok") for item in results)
     payload: dict[str, object] = {
         "ok": ok, "action": "merge", "run_id": run_id,
         "main_branch": main_branch, "results": results,
     }
+    after_hash = worktree_fingerprint(str(root), include_untracked=False)
+    if after_hash and (before_hash != after_hash or any(row.get("status") == "merged" for row in results)):
+        payload["input_hash"] = after_hash
+        payload["stale"] = _stale_after_merge(root, task_file, after_hash)
     if ok:
-        after_hash = worktree_fingerprint(str(root), include_untracked=False)
-        if before_hash and after_hash and before_hash != after_hash:
-            payload["input_hash"] = after_hash
-            payload["stale"] = _stale_after_merge(root, task_file, after_hash)
         if (root / Path(task_file).parent / "spec-context.yml").is_file():
             payload["refresh"] = _refresh_demand(root, task_file)
         previous = meta.get("batch_smoke")

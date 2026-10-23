@@ -219,7 +219,7 @@
       "prefix": [
         "parse"
       ],
-      "example_args": "--file \"<需求>.scenarios.md\" --json"
+      "example_args": "--file \"<需求>.scenarios.md\" --quality --json"
     },
     "scenarios merge": {
       "module": "cf_scenarios",

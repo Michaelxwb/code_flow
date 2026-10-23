@@ -398,10 +398,34 @@ code-flow evidence import --format playwright --file ci/playwright.json \
 - `--commit` 必须解析为当前 `HEAD`；不同 commit 的报告不能证明当前工作区。
 - 工作区必须干净（忽略 `.code-flow/`）；报告请放在仓库外，或加入 `.gitignore`。
 - `--run-url` 必须是非空 http(s) 地址；证据固定写入 `source=ci`，并绑定当前 `input_hash`。
-- 用例名包含场景 ID（如 `test_acceptance[S-01]`）或 check ID（`CHK-...`）即映射到对应 check；也可通过 manifest 的 `assertions`（`file:line`）映射；显式 `--check` 表示整个报告属于该 check。
+- 用例名中的 check ID（`CHK-...`）必须唯一；同一用例同时标记多个 check 会被拒绝。场景 ID（如 `test_acceptance[S-01]`）和 manifest 的 `assertions`（`file:line`）仅用于绑定一个 check 的场景；显式 `--check` 表示整个报告属于该 check。
+- 一个场景绑定多个 checks 时，报告必须分别覆盖全部 check，才能更新该场景。使用下面的显式格式；不得用一条仅标记场景 ID 的用例推断多个 checks 已执行，缺少部分 check 的报告也不能将整个场景标为 verified。
 - 无法映射的用例、`skipped` 用例不会被伪装成通过：映射失败拒绝导入，`skipped` 记为 `incomplete`。
 - 报告推导的 exit code 与 `--exit-code` 不一致时拒绝导入（CI job 因基础设施失败但报告全绿的情况不会被误收）。
 - 导入结果按 check 聚合：全部通过才写 `passed` / `verified`，任一失败写 `failed`；重复导入同一报告是幂等的。
+
+```xml
+<testsuite name="acceptance">
+  <testcase name="test_cache[CHK-A]" />
+  <testcase name="test_resume[CHK-B]" />
+</testsuite>
+```
+
+风险接受通过 `acceptance risk --risk-owner TASK-001` 绑定该任务在当前 check 下负责的场景。新增场景不会自动继承已有风险接受；其他任务共用同一 check 时仍需独立验收。`stats` / `audit` 的 `accepted_risks` 只计当前有效且归属匹配的 check，`recorded_risks` 计全部登记，`inactive_risks` 计过期或归属已失效的登记；`deferred_rules` 只计实际延后到 review/heavy 的规则，预算或环境未执行项不算合法延后。
+
+旧版 design 保留完整场景定义时可以继续走兼容审计。只有场景引用的 design 缺少 `.scenarios.md` 时返回 `scenario_source_missing`，需恢复场景源后重跑，不能从引用表推断测试层级和真实边界。
+
+### E2E 精度（plan / start）
+
+E2E 只用于 P0/P1 关键用户旅程，且必须证明低层测试覆盖不了：
+
+- `level` 支持 `unit` / `component` / `contract` / `integration` / `e2e` / `manual`。
+- E2E 必须有 `why_e2e`、`boundary`、`steps`、`expected`；非 `smoke` E2E 还必须有 `trigger_paths`。
+- `code-flow scenarios parse --file <需求>.scenarios.md --quality --json` 和 `code-flow acceptance manifest --verify-plan --require-scenarios ...` 会失败关闭。
+- `code-flow task start` 返回 `e2e_plan`：只把当前 TASK 的 `owned` E2E 和全局 `smoke` E2E 放进 `scheduled`，其余保持 deferred；agent 不得把 deferred 场景补成本任务测试。
+- 旧 manifest 没有 `e2e_gate` 时只返回 `legacy_e2e_plan` 警告，避免升级中断在途任务；重新执行 plan 锁定后会强制质量门禁。
+- `task verify --profile changed` 只跑 `trigger_paths` 命中当前 diff 的 E2E；没有 `trigger_paths` 的 smoke E2E 不会在 changed 中顺跑。`--profile smoke` 只跑 smoke E2E（旧计划无 smoke 标记时才回退全量）。
+- 不要把“全量 E2E 通过”作为每个小 PR 的硬门禁；全量 E2E 放 nightly / release，PR 用受影响的 component/contract/integration + 少量 smoke。
 
 ### `/cf-init` / `$cf-init`
 

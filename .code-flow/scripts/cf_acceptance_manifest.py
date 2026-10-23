@@ -14,7 +14,9 @@ import re
 import sys
 from typing import IO, Callable, Mapping, Optional, Sequence
 
-from cf_acceptance_schema import EXEC_MODES, load_manifest, validate_checks, validate_scenarios
+from cf_acceptance_schema import (
+    EXEC_MODES, load_manifest, scenario_check_ids, validate_checks, validate_scenarios,
+)
 
 
 _ROW_RE = re.compile(r"^\|\s*([SEB]-\d+)\s*\|(.+?)\|$")
@@ -72,6 +74,9 @@ _COLUMN_NAMES = {
     "exec": ("执行方式", "exec"),
     "env": ("环境", "env"),
     "inputs": ("输入", "inputs"),
+    "why_e2e": ("E2E理由", "E2E 理由", "为什么E2E", "why_e2e"),
+    "trigger_paths": ("触发路径", "影响路径", "trigger_paths"),
+    "smoke": ("冒烟", "常驻冒烟", "smoke"),
 }
 
 
@@ -113,6 +118,17 @@ def _parse_exec(cell: str) -> str:
     return normalized
 
 
+def _parse_bool(cell: str, scenario_id: str = "") -> Optional[bool]:
+    value = (cell or "").strip().strip("`").lower()
+    if not value or value in {"-", "n/a", "none"}:
+        return None
+    if value in {"true", "yes", "y", "1", "是", "冒烟", "smoke"}:
+        return True
+    if value in {"false", "no", "n", "0", "否", "不是"}:
+        return False
+    raise ValueError(f"{scenario_id} 布尔列取值非法: {cell}")
+
+
 def _parse_inputs(cell: str, scenario_id: str = "") -> list[str]:
     text = (cell or "").strip().strip("`")
     if not text or text in {"-", "none", "N/A", "TBD", "tbd"}:
@@ -143,6 +159,15 @@ def _row_metadata(fields: Sequence[str], columns: Mapping[str, int], scenario_id
     inputs = _parse_inputs(_metadata_cell(fields, columns, "inputs"), scenario_id)
     if inputs:
         metadata["inputs"] = inputs
+    why_e2e = _metadata_cell(fields, columns, "why_e2e").strip("`")
+    if why_e2e and why_e2e not in {"-", "N/A", "n/a", "TBD", "tbd"}:
+        metadata["why_e2e"] = why_e2e
+    trigger_paths = _parse_inputs(_metadata_cell(fields, columns, "trigger_paths"), scenario_id)
+    if trigger_paths:
+        metadata["trigger_paths"] = trigger_paths
+    smoke = _parse_bool(_metadata_cell(fields, columns, "smoke"), scenario_id)
+    if smoke is not None:
+        metadata["smoke"] = smoke
     return metadata
 
 
@@ -188,10 +213,18 @@ def _parse_float(cell: str, default: float) -> float:
 
 
 def _manifest_hash(rows: list[dict[str, object]]) -> str:
-    immutable = [
-        {key: item[key] for key in ("id", "source", "level", "kind", "boundary", "owner", "command", "cwd", "timeout", "depends_on")}
-        for item in rows
-    ]
+    immutable = []
+    for item in rows:
+        entry = {
+            key: item[key] for key in
+            ("id", "source", "level", "kind", "boundary", "owner", "command", "cwd", "timeout", "depends_on")
+        }
+        # Optional E2E precision fields are hashed only when present so old
+        # manifests keep their historical baseline hash.
+        for key in ("why_e2e", "trigger_paths", "smoke"):
+            if key in item:
+                entry[key] = item[key]
+        immutable.append(entry)
     payload = json.dumps(immutable, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
@@ -256,6 +289,9 @@ def _derive_checks(rows: list[dict[str, object]]) -> list[dict[str, object]]:
             continue
         cwd = str(row.get("cwd", "."))
         timeout = float(row.get("timeout", 60))
+        trigger_paths = [
+            str(item) for item in row.get("trigger_paths", []) or [] if str(item).strip()
+        ]
         config = {
             "env": row.get("env") if isinstance(row.get("env"), str) else "",
             "inputs": list(row.get("inputs") or []),
@@ -287,6 +323,7 @@ def _derive_checks(rows: list[dict[str, object]]) -> list[dict[str, object]]:
                 "profile": "changed",
                 "inputs": [],
                 "preflight": [],
+                "paths": [],
             }
             by_id[check_id] = check
         env = row.get("env")
@@ -296,10 +333,74 @@ def _derive_checks(rows: list[dict[str, object]]) -> list[dict[str, object]]:
             env if isinstance(env, str) else "",
             inputs if isinstance(inputs, list) else [],
         )
+        if trigger_paths:
+            check["paths"] = sorted(set(check.get("paths") or []) | set(trigger_paths))
+        if row.get("smoke"):
+            check["profile"] = "smoke"
     return list(by_id.values())
 
 
-def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallback: bool = True) -> dict[str, object]:
+_SCENARIO_SOURCE_FIELDS = ("why_e2e", "trigger_paths", "smoke")
+
+
+def _merge_scenario_source(rows: list[dict[str, object]], scenarios_file: str) -> None:
+    """Merge E2E precision fields from the canonical scenario source.
+
+    The Acceptance Coverage table is a projection. Quality fields live in the
+    scenario source so a plan cannot silently lose its E2E justification when
+    the table is regenerated. Only additive fields are merged; a populated
+    Coverage cell is never overwritten by a default value.
+    """
+    if not scenarios_file:
+        return
+    import yaml
+    from cf_scenarios import ScenarioError, _frontmatter, parse_scenarios
+
+    try:
+        source = parse_scenarios(scenarios_file)
+        raw_text = Path(scenarios_file).read_text(encoding="utf-8")
+        raw = yaml.safe_load(_frontmatter(raw_text)) or {}
+    except (OSError, UnicodeError, yaml.YAMLError, ScenarioError) as exc:
+        code = getattr(exc, "code", "scenario_source_unreadable")
+        message = getattr(exc, "message", str(exc))
+        raise ValueError(f"scenario_source_invalid: {code}: {message}") from exc
+    raw_scenarios = raw.get("scenarios") if isinstance(raw, Mapping) else None
+    explicit = {
+        str(item.get("id")): set(item)
+        for item in raw_scenarios or []
+        if isinstance(item, Mapping) and isinstance(item.get("id"), str)
+    }
+    by_id = {
+        str(item.get("id")): item for item in rows
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+    for scenario in source["scenarios"]:
+        scenario_id = str(scenario.get("id"))
+        row = by_id.get(scenario_id)
+        if row is None:
+            continue
+        provided = explicit.get(scenario_id, set())
+        # The scenario source is canonical for fields it actually declares.
+        # Explicit false/empty values must be able to clear a stale table cell.
+        for field in ("level", "priority", "boundary", "exec",
+                      "why_e2e", "trigger_paths", "smoke"):
+            if field in provided:
+                row[field] = scenario.get(field)
+        row["kind"] = _kind(str(row.get("level", "")))
+        for field in _SCENARIO_SOURCE_FIELDS:
+            if field in provided:
+                continue
+            value = scenario.get(field)
+            if value not in (None, "", [], False):
+                row[field] = value
+        if not row.get("priority") and scenario.get("priority"):
+            row["priority"] = scenario["priority"]
+        if not row.get("boundary") and scenario.get("boundary"):
+            row["boundary"] = scenario["boundary"]
+
+
+def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallback: bool = True,
+                  scenarios_file: str = "", merge_source: bool = True) -> dict[str, object]:
     path = Path(task_file)
     text = path.read_text(encoding="utf-8")
     contract_commands = _contract_commands(text) if contract_fallback else {}
@@ -357,6 +458,12 @@ def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallba
         rows.append(row)
     if not rows:
         raise ValueError("Acceptance Coverage 缺失或为空")
+    if merge_source and not scenarios_file:
+        candidate = Path(task_file).with_suffix(".scenarios.md")
+        if candidate.is_file():
+            scenarios_file = str(candidate)
+    if merge_source:
+        _merge_scenario_source(rows, scenarios_file)
     validate_scenarios(rows)
     checks = _derive_checks(rows)
     return {"schema": _MANIFEST_SCHEMA, "task_file": str(path), "task_sha256": _manifest_hash(rows),
@@ -364,16 +471,28 @@ def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallba
 
 
 def extract_manifest(task_file: str, kind_fn: Callable[[str], str] = _kind,
-                     contract_fallback: bool = True) -> dict[str, object]:
-    return _extract_rows(task_file, kind_fn, contract_fallback)
+                     contract_fallback: bool = True,
+                     scenarios_file: str = "", merge_source: bool = True) -> dict[str, object]:
+    return _extract_rows(task_file, kind_fn, contract_fallback, scenarios_file, merge_source)
 
 
 def write_manifest(task_file: str, output: str, scenarios_file: str = "") -> dict[str, object]:
-    manifest = extract_manifest(task_file)
+    if not scenarios_file and Path(output).is_file():
+        # A re-lock without an explicit source must reuse the path recorded by
+        # the previous lock; task stem inference is not enough when the task
+        # file and requirement source names differ.
+        try:
+            stored = json.loads(Path(output).read_text(encoding="utf-8"))
+            recorded = stored.get("scenarios_file") if isinstance(stored, Mapping) else None
+        except (OSError, ValueError, TypeError):
+            recorded = None
+        if isinstance(recorded, str) and recorded.strip():
+            scenarios_file = str((Path(output).parent / recorded).resolve())
     if not scenarios_file:
         candidate = Path(task_file).with_suffix(".scenarios.md")
         if candidate.is_file():
             scenarios_file = str(candidate)
+    manifest = extract_manifest(task_file, scenarios_file=scenarios_file)
     if scenarios_file:
         from cf_scenarios import parse_scenarios
         source = parse_scenarios(scenarios_file)
@@ -391,6 +510,16 @@ def write_manifest(task_file: str, output: str, scenarios_file: str = "") -> dic
             if checks:
                 row["checks"] = checks
     target = Path(output)
+    if scenarios_file:
+        source_path = Path(scenarios_file).resolve()
+        try:
+            manifest["scenarios_file"] = str(source_path.relative_to(target.parent.resolve()))
+        except ValueError:
+            manifest["scenarios_file"] = str(source_path)
+    # Every manifest written by this version opts into the E2E precision gate.
+    # Old manifests are only read; they keep the legacy warning path until a
+    # plan re-lock migrates them.
+    manifest["e2e_gate"] = 1
     _preserve_runtime_state(task_file, target, manifest)
     for scenario in manifest.get("scenarios", []):
         if isinstance(scenario, dict) and scenario.get("status") in ("verified", "failed") and not scenario.get("evidence"):
@@ -405,7 +534,7 @@ def write_manifest(task_file: str, output: str, scenarios_file: str = "") -> dic
     return manifest
 
 
-_RUNTIME_SCENARIO_FIELDS = ("status", "revision", "evidence", "runs")
+_RUNTIME_SCENARIO_FIELDS = ("status", "revision", "evidence", "runs", "stale_checks")
 
 _CHECK_CONFIG_FIELDS = ("env", "env_scope", "parallel_safe", "profile", "inputs", "preflight", "accepted_risk")
 
@@ -442,8 +571,13 @@ def record_accepted_risk(
         raise ValueError("accepted_risk requires a schema3 manifest with checks")
     for check in checks:
         if isinstance(check, dict) and check.get("id") == check_id:
+            from cf_acceptance_risk import risk_scenario_ids
+            scenario_ids = risk_scenario_ids(data, check_id, owner.strip())
+            if not scenario_ids:
+                raise ValueError(f"accepted_risk owner {owner!r} owns no scenario for {check_id}")
             check["accepted_risk"] = {
                 "owner": owner.strip(),
+                "scenario_ids": scenario_ids,
                 "reason": reason.strip(),
                 "expires_at": deadline.isoformat(),
                 "confirmed_by": confirmed_by.strip(),
@@ -474,13 +608,22 @@ def _preserve_check_config(target: Path, manifest: dict[str, object]) -> None:
     checks = manifest.get("checks")
     if not isinstance(checks, list):
         return
+    scenarios = manifest.get("scenarios")
     for item in checks:
         if not isinstance(item, dict):
             continue
         old = stored.get(item.get("id"))
         if not isinstance(old, dict):
             continue
+        derived_profile = any(
+            isinstance(row, dict)
+            and "smoke" in row
+            and item.get("id") in scenario_check_ids(row)
+            for row in (scenarios if isinstance(scenarios, list) else [])
+        )
         for key in _CHECK_CONFIG_FIELDS:
+            if key == "profile" and derived_profile:
+                continue
             if key in old:
                 item[key] = old[key]
         if item.get("env_scope", "shared") != "isolated":
@@ -498,7 +641,9 @@ def _preserve_runtime_state(task_file: str, target: Path, manifest: dict[str, ob
     if not target.is_file():
         return
     try:
-        valid, _ = validate_manifest(task_file, str(target))
+        valid, _ = validate_manifest(
+            task_file, str(target), allow_missing_e2e_gate=True
+        )
     except (OSError, ValueError, json.JSONDecodeError):
         return
     if not valid:
@@ -521,10 +666,10 @@ def _preserve_runtime_state(task_file: str, target: Path, manifest: dict[str, ob
 
 _IMMUTABLE_SCENARIO_FIELDS = (
     "id", "source", "level", "kind", "boundary", "owner", "command", "cwd", "timeout", "depends_on", "check",
-    "priority", "exec", "env", "inputs",
+    "priority", "exec", "env", "inputs", "why_e2e", "trigger_paths", "smoke",
 )
 
-_OPTIONAL_SCENARIO_FIELDS = ("priority", "exec", "env", "inputs")
+_OPTIONAL_SCENARIO_FIELDS = ("priority", "exec", "env", "inputs", "why_e2e", "trigger_paths", "smoke")
 
 
 def _heal_legacy_manifest(manifest_file: Path, manifest: dict[str, object], expected: dict[str, object]) -> None:
@@ -554,10 +699,18 @@ def _heal_legacy_manifest(manifest_file: Path, manifest: dict[str, object], expe
     manifest_file.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def validate_manifest(task_file: str, manifest_file: str) -> tuple[bool, str]:
+def validate_manifest(task_file: str, manifest_file: str,
+                      allow_missing_e2e_gate: bool = False) -> tuple[bool, str]:
     try:
         manifest = load_manifest(Path(manifest_file))
-        expected = extract_manifest(task_file)
+        stored_source = manifest.get("scenarios_file")
+        source_path = ""
+        if isinstance(stored_source, str) and stored_source.strip():
+            candidate = Path(manifest_file).parent / stored_source
+            if not candidate.is_file():
+                return False, "acceptance_manifest_scenarios_missing"
+            source_path = str(candidate)
+        expected = extract_manifest(task_file, scenarios_file=source_path)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         return False, f"acceptance_manifest_invalid: {exc}"
     schema = manifest.get("schema")
@@ -565,13 +718,19 @@ def validate_manifest(task_file: str, manifest_file: str) -> tuple[bool, str]:
         return False, "acceptance_manifest_drift"
     if manifest.get("task_sha256") != expected["task_sha256"]:
         # 旧版规则（无 Contract 回退 + _kind 精确匹配）锁定的 manifest：兼容升级。
-        legacy = extract_manifest(task_file, _legacy_kind, contract_fallback=False)
+        legacy = extract_manifest(task_file, _legacy_kind, contract_fallback=False, merge_source=False)
         if manifest.get("task_sha256") != legacy["task_sha256"]:
             return False, "acceptance_manifest_drift"
         _heal_legacy_manifest(Path(manifest_file), manifest, expected)
     stored_task = manifest.get("task_file", "")
     if not stored_task or (Path(manifest_file).parent / stored_task).resolve() != Path(task_file).resolve():
         return False, "acceptance_manifest_task_mismatch"
+    expected_quality = any(
+        any(field in scenario for field in ("why_e2e", "trigger_paths", "smoke"))
+        for scenario in expected.get("scenarios", []) if isinstance(scenario, Mapping)
+    )
+    if expected_quality and manifest.get("e2e_gate") != 1 and not allow_missing_e2e_gate:
+        return False, "acceptance_manifest_e2e_gate_missing"
     if not isinstance(manifest.get("scenarios"), list):
         return False, "acceptance_manifest_scenarios_changed"
     if schema == _MANIFEST_SCHEMA:
@@ -583,6 +742,14 @@ def validate_manifest(task_file: str, manifest_file: str) -> tuple[bool, str]:
         expected_checks = {item["id"]: item for item in expected.get("checks", [])}
         if {item.get("id") for item in checks if isinstance(item, Mapping)} != set(expected_checks):
             return False, "acceptance_manifest_checks_changed"
+        stored_checks = {
+            item.get("id"): item for item in checks
+            if isinstance(item, Mapping) and isinstance(item.get("id"), str)
+        }
+        for check_id, expected_check in expected_checks.items():
+            expected_paths = expected_check.get("paths")
+            if expected_paths and stored_checks.get(check_id, {}).get("paths") != expected_paths:
+                return False, "acceptance_manifest_check_scope_changed"
     stored = {
         item.get("id"): item
         for item in manifest["scenarios"]
@@ -701,10 +868,20 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
         if args.verify_plan:
             if not args.task_dir:
                 raise ValueError("--verify-plan requires --task-dir")
+            quality: Optional[dict[str, object]] = None
             if args.require_scenarios:
-                from cf_scenarios import parse_scenarios, require_source
+                from cf_scenarios import parse_scenarios, require_source, validate_e2e_quality
                 source_path = require_source(args.task_dir)
                 source = parse_scenarios(source_path)
+                quality = validate_e2e_quality(source["scenarios"])
+                if not quality["ok"]:
+                    result = {
+                        "decision": "block",
+                        "reason": "e2e_quality_invalid",
+                        "e2e_quality": quality,
+                    }
+                    stdout.write(json.dumps(result, ensure_ascii=False))
+                    return 3
                 manifest_path = Path(args.task_dir) / ".acceptance-manifest.json"
                 if not manifest_path.is_file():
                     raise ValueError("acceptance_manifest_missing")
@@ -732,6 +909,7 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
                 "decision": "block" if gate.decision == "block" or coverage.decision == "block" else "pass",
                 "gate": result_to_data(gate),
                 "coverage": result_to_data(coverage),
+                "e2e_quality": quality,
             }
             stdout.write(json.dumps(result, ensure_ascii=False))
             return 0 if result["decision"] == "pass" else 3

@@ -25,6 +25,7 @@ import sys
 from typing import IO, Mapping, Optional, Sequence
 
 from cf_acceptance_schema import load_manifest, verified_evidence
+from cf_acceptance_risk import risk_counts
 from cf_evidence_store import EvidenceStore
 from cf_traceability import build_traceability, build_traceability_many, build_traceability_from_scenarios
 
@@ -135,6 +136,7 @@ def parse_design_risks(design_file: str) -> list[dict[str, object]]:
             "id": f"RISK-{index + 1:02d}",
             "title": title,
             "level": _cell(row, level_index) if level_index >= 0 else _cell(row, 1),
+            "details": {name: _cell(row, column) for column, name in enumerate(header)},
         })
     return risks
 
@@ -325,14 +327,54 @@ def _merge_design_risks(design_paths: Sequence[Path]) -> list[dict[str, object]]
     seen: set[tuple[str, str]] = set()
     for path in design_paths:
         for risk in parse_design_risks(str(path)):
-            key = (str(risk.get("title")), str(risk.get("level")))
+            key = (str(path.resolve()), str(risk["id"]))
             if key in seen:
                 continue
             seen.add(key)
             item = dict(risk)
             item["source"] = path.name
+            item["source_ref"] = f"{path.resolve().as_posix()}#{risk['id']}"
             merged.append(item)
     return merged
+
+
+def _audit_summary(trace: Mapping[str, object], manifest: Mapping[str, object],
+                   rows: Sequence[Mapping[str, object]], rules: Sequence[Mapping[str, object]],
+                   risks: Sequence[Mapping[str, object]], findings: Sequence[Mapping[str, object]]) -> dict[str, object]:
+    owners: dict[str, int] = {}
+    for row in rows:
+        owner = str(row.get("owner") or "")
+        if owner:
+            owners[owner] = owners.get(owner, 0) + 1
+    risk_levels: dict[str, int] = {}
+    for risk in risks:
+        level = str(risk.get("level") or "unknown")
+        risk_levels[level] = risk_levels.get(level, 0) + 1
+    summary = dict(trace.get("summary") or {})
+    summary.update({
+        "checks": len(manifest.get("checks", [])),
+        "verified": sum(1 for item in manifest.get("scenarios", []) if item.get("status") == "verified"),
+        "owners": owners,
+        "unique_owners": len(owners),
+        "rules": len(rules),
+        "risks": len(risks),
+        **risk_counts(manifest),
+        "risk_levels": risk_levels,
+        "findings": len(findings),
+    })
+    return summary
+
+
+def _audit_trace(design_paths: Sequence[Path], manifest_path: Path,
+                 manifest: Mapping[str, object], scenarios_file: str) -> dict[str, object]:
+    if scenarios_file:
+        trace = build_traceability_from_scenarios(scenarios_file, str(manifest_path))
+        extra_findings = _scenario_source_findings(scenarios_file, manifest_path, design_paths, manifest)
+        trace.setdefault("violations", []).extend(extra_findings)
+        return trace
+    if len(design_paths) > 1:
+        return build_traceability_many([str(path) for path in design_paths], str(manifest_path))
+    return build_traceability(str(design_paths[0]), str(manifest_path))
 
 
 def build_audit(design_file: str, manifest_file: str, root: str,
@@ -348,23 +390,10 @@ def build_audit(design_file: str, manifest_file: str, root: str,
     rules = _merge_design_rules(design_paths)
     risks = _merge_design_risks(design_paths)
     manifest = load_manifest(manifest_path)
-    if scenarios_file:
-        trace = build_traceability_from_scenarios(scenarios_file, str(manifest_path))
-        extra_findings = _scenario_source_findings(scenarios_file, manifest_path, design_paths, manifest)
-        trace.setdefault("violations", []).extend(extra_findings)
-    else:
-        trace = (
-            build_traceability_many([str(path) for path in design_paths], str(manifest_path))
-            if len(design_paths) > 1 else build_traceability(str(design_paths[0]), str(manifest_path))
-        )
+    trace = _audit_trace(design_paths, manifest_path, manifest, scenarios_file)
     scenarios = {
         str(item["id"]): item
         for item in manifest.get("scenarios") or ()
-        if isinstance(item, Mapping) and isinstance(item.get("id"), str)
-    }
-    checks = {
-        str(item["id"]): item
-        for item in manifest.get("checks") or ()
         if isinstance(item, Mapping) and isinstance(item.get("id"), str)
     }
     from cf_evidence_store import requirement_key
@@ -376,29 +405,7 @@ def build_audit(design_file: str, manifest_file: str, root: str,
     ]
     findings = _dedupe(findings)
     rows = _scenario_rows(trace, scenarios)
-    owners: dict[str, int] = {}
-    for row in rows:
-        owner = str(row.get("owner") or "")
-        if owner:
-            owners[owner] = owners.get(owner, 0) + 1
-    risk_levels: dict[str, int] = {}
-    for risk in risks:
-        level = str(risk.get("level") or "unknown")
-        risk_levels[level] = risk_levels.get(level, 0) + 1
-    summary = dict(trace.get("summary") or {})
-    summary.update({
-        "checks": len(checks),
-        "verified": sum(1 for item in scenarios.values() if item.get("status") == "verified"),
-        "owners": owners,
-        "unique_owners": len(owners),
-        "rules": len(rules),
-        "risks": len(risks),
-        "accepted_risks": sum(
-            1 for item in checks.values() if isinstance(item.get("accepted_risk"), Mapping)
-        ),
-        "risk_levels": risk_levels,
-        "findings": len(findings),
-    })
+    summary = _audit_summary(trace, manifest, rows, rules, risks, findings)
     return {
         "decision": "block" if findings else "pass",
         "read_only": True,

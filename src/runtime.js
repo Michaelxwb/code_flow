@@ -130,7 +130,7 @@ function verify(root, duringMigration = false) {
   verifyHooks(root, manifest.hook_contracts);
 }
 
-function execute(root, contract, values) {
+function execute(root, contract, values, scripts = path.join(root, '.code-flow/scripts')) {
   try {
     if (values.length === 1 || (values.length === 2 && ['--help', '-h'].includes(values[1]))) {
       const family = Object.keys(contract).filter(command => command.startsWith(values[0] + ' '));
@@ -144,12 +144,13 @@ function execute(root, contract, values) {
     if (!key) throw new Error(`Unknown runtime command. Available: ${Object.keys(contract).join(', ')}`);
     const entry = contract[key];
     if (!/^cf_[a-z_]+$/.test(entry.module)) throw new Error('Invalid runtime module in command contract.');
-    const script = path.join(root, '.code-flow/scripts', `${entry.module}.py`);
+    const script = path.join(scripts, `${entry.module}.py`);
     const args = [...entry.prefix, ...values.slice(key.split(' ').length)];
     const publicName = entry.prefix.length ? key.split(' ').slice(0, -entry.prefix.length).join(' ') : key;
     const result = spawnSync('python3', [script, ...args], {
       cwd: root, stdio: 'inherit', env: { ...process.env,
-        CF_RUNTIME_COMMAND: `code-flow ${publicName}`, CF_RUNTIME_ACTION: entry.prefix.join(' ') },
+        CF_RUNTIME_COMMAND: `code-flow ${publicName}`, CF_RUNTIME_ACTION: entry.prefix.join(' '),
+        CF_CLI_VERSION: pkg.version },
     });
     if (result.error) throw result.error;
     return result.status === null ? 2 : result.status;
@@ -168,6 +169,11 @@ function run(values) {
     return 3;
   }
   try {
+    if (values[0] === 'spec' && values[1] === 'doctor') {
+      const base = path.join(__dirname, 'core/code-flow');
+      const contract = JSON.parse(fs.readFileSync(path.join(base, 'runtime-commands.json'), 'utf8')).commands;
+      return execute(root, { 'spec doctor': contract['spec doctor'] }, values, path.join(base, 'scripts'));
+    }
     verify(root);
     return execute(root, commands(root), values);
   } catch (error) {

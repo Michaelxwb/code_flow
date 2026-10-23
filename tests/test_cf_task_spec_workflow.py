@@ -329,6 +329,27 @@ def test_s_03_plan_assigns_each_required_rule_to_one_verifiable_task(tmp_path: P
     assert {issue.code for issue in blocked.errors} == {"plan_owner_duplicate"}
 
 
+def test_plan_gate_accepts_component_and_contract_layers(tmp_path: Path) -> None:
+    root, task_dir = _project(tmp_path)
+    _bind_prd_context(root, task_dir)
+    context = load_context(str(task_dir / "spec-context.yml"))
+    for level in ("component", "contract"):
+        task_file = task_dir / f"{level}.md"
+        task_file.write_text(
+            "# Tasks: Demo\n\n"
+            "## TASK-001: Layer\n\n"
+            "- **Spec-Refs**: product-compat#RULE-product-001\n"
+            "- **Acceptance-Refs**: S-03\n\n"
+            "### Checklist\n"
+            "- [ ] [RULE-product-001] run product-compat#RULE-product-001 document verifier\n"
+            f"- [ ] [S-03][{level}] real Design/Context boundary\n\n"
+            "### Acceptance Contract\n"
+            f"| S-03 | {level} | real boundary | verifier passes |\n",
+            encoding="utf-8",
+        )
+        assert validate_plan_coverage(context, str(task_file)).decision == "pass", level
+
+
 def test_plan_workflow_requires_spec_refs_verifier_and_unique_owner() -> None:
     command = (ROOT / "src/adapters/claude/commands/cf-task/plan.md").read_text(encoding="utf-8")
     skill = (ROOT / "src/adapters/codex/skills/cf-task-plan/SKILL.md").read_text(encoding="utf-8")

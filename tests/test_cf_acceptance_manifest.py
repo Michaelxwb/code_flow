@@ -229,7 +229,7 @@ def test_record_accepted_risk_requires_user_confirmation(tmp_path: Path) -> None
     manifest.write_text(json.dumps({
         "schema": 3,
         "checks": [{"id": "CHK-1", "command": ["true"], "cwd": ".", "timeout": 30}],
-        "scenarios": [{"id": "S-01", "kind": "functional", "check": "CHK-1",
+        "scenarios": [{"id": "S-01", "kind": "functional", "owner": "TASK-1", "check": "CHK-1",
                        "command": ["true"], "cwd": ".", "timeout": 30, "status": "planned"}],
     }), encoding="utf-8")
 
@@ -246,6 +246,12 @@ def test_record_accepted_risk_requires_user_confirmation(tmp_path: Path) -> None
     stored = json.loads(manifest.read_text(encoding="utf-8"))["checks"][0]
     assert stored["accepted_risk"]["confirmed_by"] == "user"
     assert stored["accepted_risk"]["source"] == "user said ok"
+    assert stored["accepted_risk"]["scenario_ids"] == ["S-01"]
+    before = manifest.read_bytes()
+    with pytest.raises(ValueError, match="owner"):
+        record_accepted_risk(str(manifest), "CHK-1", "TASK-999", "reason",
+                             "2999-01-01", "user", "user said ok")
+    assert manifest.read_bytes() == before
 
 
 def test_accepted_risk_date_only_expires_end_of_day_and_rejects_label(tmp_path: Path) -> None:
@@ -253,7 +259,7 @@ def test_accepted_risk_date_only_expires_end_of_day_and_rejects_label(tmp_path: 
     manifest.write_text(json.dumps({
         "schema": 3,
         "checks": [{"id": "CHK-1", "command": ["true"], "cwd": ".", "timeout": 30}],
-        "scenarios": [{"id": "S-01", "kind": "functional", "check": "CHK-1",
+        "scenarios": [{"id": "S-01", "kind": "functional", "owner": "TASK-1", "check": "CHK-1",
                        "command": ["true"], "cwd": ".", "timeout": 30, "status": "planned"}],
     }), encoding="utf-8")
     with pytest.raises(ValueError, match="user"):

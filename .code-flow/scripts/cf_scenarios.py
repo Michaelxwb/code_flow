@@ -22,8 +22,11 @@ import yaml
 SCHEMA_VERSION = 1
 SCENARIO_ID = re.compile(r"^[SEB]-\d+$")
 PRIORITIES = ("P0", "P1", "P2")
-LEVELS = ("unit", "integration", "e2e", "manual")
+LEVELS = ("unit", "component", "contract", "integration", "e2e", "manual")
 EXEC_MODES = ("auto", "deferred", "manual", "aspirational")
+E2E_CRITICAL_PRIORITIES = ("P0", "P1")
+E2E_RATIO_WARNING = 0.3
+_PLACEHOLDERS = frozenset(("", "-", "n/a", "na", "none", "无", "todo", "tbd", "待定"))
 
 
 class ScenarioError(ValueError):
@@ -59,6 +62,18 @@ def _string_list(value: object, field: str) -> tuple[str, ...]:
     return tuple(item.strip() for item in value if item.strip())
 
 
+def _boolean(value: object, field: str, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if not isinstance(value, bool):
+        raise ScenarioError("invalid_scenario_source", f"{field} 必须是布尔值")
+    return value
+
+
+def _meaningful(value: object) -> bool:
+    return str(value or "").strip().lower() not in _PLACEHOLDERS
+
+
 def _validate_one(item: Mapping[str, object]) -> dict[str, object]:
     scenario_id = item.get("id")
     if not isinstance(scenario_id, str) or not SCENARIO_ID.fullmatch(scenario_id):
@@ -88,6 +103,9 @@ def _validate_one(item: Mapping[str, object]) -> dict[str, object]:
         "rules": list(_string_list(item.get("rules"), f"{scenario_id}.rules")),
         "checks": list(_string_list(item.get("checks"), f"{scenario_id}.checks")),
         "sources": list(_string_list(item.get("sources"), f"{scenario_id}.sources")),
+        "why_e2e": str(item.get("why_e2e", "")).strip(),
+        "trigger_paths": list(_string_list(item.get("trigger_paths"), f"{scenario_id}.trigger_paths")),
+        "smoke": _boolean(item.get("smoke"), f"{scenario_id}.smoke"),
     }
 
 
@@ -127,7 +145,7 @@ def parse_scenarios(path: object) -> dict[str, object]:
 
 def _definition(scenario: Mapping[str, object]) -> dict[str, object]:
     fields = ("title", "priority", "level", "exec", "env", "components", "boundary",
-              "preconditions", "steps", "expected", "rules")
+              "preconditions", "steps", "expected", "rules", "why_e2e", "trigger_paths", "smoke")
     return {field: scenario.get(field) for field in fields}
 
 
@@ -154,6 +172,112 @@ def merge_scenarios(sets: Sequence[Mapping[str, object]]) -> list[dict[str, obje
     return [merged[key] for key in sorted(merged)]
 
 
+def _quality_issue(code: str, scenario: str, field: str, message: str) -> dict[str, object]:
+    return {"code": code, "scenario": scenario, "field": field, "message": message}
+
+
+def validate_e2e_quality(scenarios: Sequence[Mapping[str, object]]) -> dict[str, object]:
+    """Plan-stage E2E precision gate.
+
+    E2E is the most expensive and least stable layer. It is reserved for
+    critical journeys whose risk cannot be covered by unit/component/contract/
+    integration tests. Every E2E must explain why lower layers are insufficient
+    and declare trigger paths so a small change does not run the whole suite.
+    """
+    errors: list[dict[str, object]] = []
+    warnings: list[dict[str, object]] = []
+    e2e: list[Mapping[str, object]] = []
+    signatures: dict[tuple[object, ...], str] = {}
+    for scenario in scenarios:
+        scenario_id = str(scenario.get("id", ""))
+        level = str(scenario.get("level", "")).lower()
+        why_e2e = str(scenario.get("why_e2e", "")).strip()
+        if level != "e2e":
+            if _meaningful(why_e2e):
+                errors.append(_quality_issue(
+                    "why_e2e_on_non_e2e", scenario_id, "why_e2e",
+                    "why_e2e 只属于 E2E；其他层级请用 component/contract/integration 表达。",
+                ))
+            continue
+        e2e.append(scenario)
+        priority = str(scenario.get("priority", "")).upper()
+        if priority not in E2E_CRITICAL_PRIORITIES:
+            errors.append(_quality_issue(
+                "e2e_priority_not_critical", scenario_id, "priority",
+                "E2E 只允许 P0/P1 关键旅程；P2 请下沉到 component/contract/integration。",
+            ))
+        if not _meaningful(why_e2e):
+            errors.append(_quality_issue(
+                "e2e_justification_missing", scenario_id, "why_e2e",
+                "必须说明为什么 unit/component/contract/integration 无法覆盖，E2E 才成立。",
+            ))
+        if not _meaningful(scenario.get("boundary")):
+            errors.append(_quality_issue(
+                "e2e_boundary_missing", scenario_id, "boundary",
+                "E2E 必须声明真实边界（浏览器/API/DB/鉴权等）。",
+            ))
+        if not any(_meaningful(item) for item in scenario.get("steps", []) or []):
+            errors.append(_quality_issue(
+                "e2e_steps_missing", scenario_id, "steps",
+                "E2E 必须声明可复现的用户步骤，不能只写一个断言口号。",
+            ))
+        if not any(_meaningful(item) for item in scenario.get("expected", []) or []):
+            errors.append(_quality_issue(
+                "e2e_expected_missing", scenario_id, "expected",
+                "E2E 必须声明用户可观察的预期结果。",
+            ))
+        if str(scenario.get("exec", "")).lower() == "aspirational":
+            errors.append(_quality_issue(
+                "e2e_aspirational", scenario_id, "exec",
+                "aspirational 不能作为 E2E 验收；请登记可执行命令或降级到其他层级。",
+            ))
+        trigger_paths = [str(item) for item in scenario.get("trigger_paths", []) or []]
+        if not scenario.get("smoke") and not trigger_paths:
+            errors.append(_quality_issue(
+                "e2e_trigger_paths_missing", scenario_id, "trigger_paths",
+                "非 smoke E2E 必须声明触发路径，否则任何小改动都会跑全量 E2E。",
+            ))
+        if any(not _meaningful(item) for item in trigger_paths):
+            errors.append(_quality_issue(
+                "e2e_trigger_path_placeholder", scenario_id, "trigger_paths",
+                "触发路径不能使用占位值。",
+            ))
+        signature = (
+            tuple(str(item) for item in scenario.get("steps", []) or []),
+            tuple(str(item) for item in scenario.get("expected", []) or []),
+            str(scenario.get("boundary", "")).strip(),
+        )
+        if signature in signatures:
+            warnings.append(_quality_issue(
+                "duplicate_e2e_journey", scenario_id, "steps",
+                f"与 {signatures[signature]} 的 E2E 旅程重复；请合并或说明差异。",
+            ))
+        else:
+            signatures[signature] = scenario_id
+    total = len(scenarios)
+    ratio = (len(e2e) / total) if total else 0.0
+    if e2e and ratio > E2E_RATIO_WARNING:
+        warnings.append(_quality_issue(
+            "e2e_ratio_high", "", "level",
+            f"E2E 占比 {ratio:.0%}；优先把 UI/字段/契约下沉到 component/contract/integration。",
+        ))
+    smoke_count = sum(1 for item in e2e if item.get("smoke"))
+    if e2e and not smoke_count:
+        warnings.append(_quality_issue(
+            "e2e_smoke_missing", "", "smoke",
+            "没有标记 smoke 的 E2E；发布冒烟会退化为全量 E2E。",
+        ))
+    return {
+        "ok": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "total": total,
+        "e2e_count": len(e2e),
+        "smoke_count": smoke_count,
+        "e2e_ratio": round(ratio, 4),
+    }
+
+
 def scenario_status(scenario: Mapping[str, object], checks: Mapping[str, str]) -> str:
     """Derive scenario state from all required checks (AND semantics)."""
     required = [str(item) for item in scenario.get("checks", [])]
@@ -174,6 +298,8 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     for name in ("parse", "merge"):
         command = sub.add_parser(name)
         command.add_argument("--file", action="append", required=True)
+        command.add_argument("--quality", action="store_true",
+                             help="run the E2E precision gate against the scenario source")
         command.add_argument("--json", action="store_true")
     migrate = sub.add_parser("migrate")
     migrate.add_argument("--task-file", required=True)
@@ -194,8 +320,11 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
         if args.action == "parse" and len(sets) > 1:
             raise ScenarioError("invalid_action", "parse 只接受一个文件；多文件用 merge")
         result = sets[0] if args.action == "parse" else {"schema": SCHEMA_VERSION, "scenarios": merge_scenarios(sets)}
+        if args.quality:
+            quality = validate_e2e_quality(result["scenarios"])
+            result = {**result, "ok": quality["ok"], "quality": quality}
         stdout.write(json.dumps(result, ensure_ascii=False))
-        return 0
+        return 0 if not args.quality or bool(result.get("ok")) else 3
     except ScenarioError as exc:
         stdout.write(json.dumps({"ok": False, "code": exc.code, "message": exc.message, "details": exc.details}, ensure_ascii=False))
         return 3

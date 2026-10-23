@@ -55,7 +55,18 @@
 - [ ] 建立 bug pattern 库：部分覆盖、证据伪造、缓存掩盖未执行、filter 丢依赖、resume 缺口。
 - [ ] `cf-stats` 增加 escaped defect rate / review finding recurrence。
 
-### 7. 剩余代码项
+### 7. E2E 精度（plan / start，已落地一部分）
+
+- [x] 测试层级增加 `component` / `contract`，明确 E2E 只用于关键旅程。
+- [x] E2E 必须有 P0/P1、`why_e2e`、`boundary`、`steps`、`expected`；非 smoke 必须有 `trigger_paths`。
+- [x] `scenarios parse --quality` / `acceptance manifest --verify-plan` 失败关闭。
+- [x] `task start` 返回 `e2e_plan`，只写 owned E2E，smoke 由需求级 verify 运行，deferred 不补。
+- [x] `changed` profile 按 `trigger_paths` 过滤 E2E；`smoke` profile 只跑 smoke E2E。
+- [ ] 根据真实大项目反馈校准 `trigger_paths` 粒度，避免过宽导致全量、过窄导致漏跑。
+- [ ] 给 E2E 增加运行时长预算与 flaky 统计，接入 `cf-stats`。
+- [ ] 用 2～3 个真实需求对比“改前 E2E 数量 / 运行时长 / escaped defect”，验证门禁有效。
+
+### 8. 剩余代码项
 
 - [ ] merge/rebase 后 acceptance evidence 按 per-check 重新校验并标 stale。
 - [ ] `accepted_risk` owner 绑定到具体 task/scenario。

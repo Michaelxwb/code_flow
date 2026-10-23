@@ -30,7 +30,7 @@ from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 
 from cf_acceptance_evidence import persist_results
-from cf_acceptance_schema import load_manifest
+from cf_acceptance_schema import load_manifest, scenario_check_ids
 from cf_check_inputs import check_input_hashes
 from cf_evidence_store import EvidenceStoreError, discover_project_root
 from cf_exec_base import worktree_fingerprint
@@ -218,15 +218,10 @@ def _load_plan(path: Path) -> tuple[dict[str, object], dict[str, object], dict[s
     }
     linked: dict[str, str] = {}
     for scenario_id, item in scenarios.items():
-        if isinstance(item.get("check"), str) and item["check"] in checks:
-            linked[scenario_id] = str(item["check"])
-            continue
-        raw = item.get("checks")
-        if isinstance(raw, list):
-            first = next((str(value) for value in raw if str(value) in checks), "")
-            if first:
-                linked[scenario_id] = first
-    if not checks or not linked:
+        ids = scenario_check_ids(item)
+        if len(ids) == 1 and ids[0] in checks:
+            linked[scenario_id] = ids[0]
+    if not checks or not any(scenario_check_ids(row) for row in scenarios.values()):
         raise EvidenceImportError(
             "manifest_schema_unsupported", "manifest", "CI import needs manifest v3 checks linked to scenarios", str(path)
         )
@@ -274,9 +269,12 @@ def _match_case(
     if override:
         return override
     text = " ".join(part for part in (case.classname, case.name, case.file) if part)
-    check_id = next((candidate for candidate in checks if _has_token(text, candidate)), "")
-    if check_id:
-        return check_id
+    candidates = [candidate for candidate in checks if _has_token(text, candidate)]
+    if len(candidates) > 1:
+        raise EvidenceImportError("ambiguous_test_case", "file",
+                                  f"test case must identify one check: {_case_label(case)}")
+    if candidates:
+        return candidates[0]
     scenario_id = next((candidate for candidate in linked if _has_token(text, candidate)), "")
     if scenario_id:
         return linked[scenario_id]
@@ -525,7 +523,7 @@ def import_report(
     url = _require_run_url(run_url)
     if check and check not in checks:
         raise EvidenceImportError("unknown_check", "check", f"check not in manifest: {check}")
-    if check and check not in set(linked.values()):
+    if check and not any(check in scenario_check_ids(row) for row in data["scenarios"]):
         raise EvidenceImportError("check_without_scenarios", "check", f"check has no scenario: {check}")
     cases = load_report(report_path, fmt)
     mapped = _map_cases(cases, check, checks, linked, assertions)

@@ -820,7 +820,8 @@ def test_s11_spec_doctor_blocks_marker_and_runtime_drift(tmp_path: Path) -> None
     assert all(item["fix"] for item in report["findings"]), "诊断必须给出修复命令"
 
 
-def test_spec_doctor_warns_when_cli_package_version_differs(tmp_path: Path) -> None:
+def test_spec_doctor_warns_when_cli_package_version_differs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CF_CLI_VERSION", raising=False)
     root, context_path = _active_repo(tmp_path)
     (root / ".code-flow/.version").write_text("0.8.0\n", encoding="utf-8")
     (root / ".code-flow/.runtime-install.json").write_text(
@@ -833,4 +834,26 @@ def test_spec_doctor_warns_when_cli_package_version_differs(tmp_path: Path) -> N
         encoding="utf-8",
     )
     report = _doctor_command(argparse.Namespace(task_dir=str(context_path.parent), root=str(root)))
+    assert any(item["code"] == "runtime_cli_version_mismatch" for item in report["findings"])
+
+
+def test_cli_doctor_diagnoses_installed_version_in_ordinary_project(tmp_path: Path) -> None:
+    root, context_path = _active_repo(tmp_path)
+    (root / "package.json").write_text('{"name": "ordinary-app", "version": "5.0.0"}')
+    (root / ".code-flow/.version").write_text("0.1.0\n")
+    (root / ".code-flow/.runtime-install.json").write_text(json.dumps({
+        "schema_version": 1, "version": "0.1.0", "files": {"missing.py": "0" * 64},
+        "platforms": ["claude"],
+    }))
+    scripts = root / ".code-flow/scripts"
+    scripts.mkdir(exist_ok=True)
+    (scripts / "cf_spec_context.py").write_text("raise RuntimeError('drifted runtime executed')")
+    repo = SCRIPTS.parents[3]
+    completed = subprocess.run(["node", str(repo / "src/cli.js"), "spec", "doctor", "--root", str(root),
+                                "--task-dir", str(context_path.parent), "--json"],
+                               cwd=root, text=True, capture_output=True, timeout=30)
+    assert "drifted runtime executed" not in completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["runtime"]["cli_version"] == json.loads((repo / "package.json").read_text())["version"]
+    assert report["runtime"]["version"] == "0.1.0"
     assert any(item["code"] == "runtime_cli_version_mismatch" for item in report["findings"])

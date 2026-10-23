@@ -356,19 +356,58 @@ def _catalog_usage(root: str, config: dict[str, object], budget: dict[str, objec
             "entries": text.count("\n- `")}
 
 
+def _runtime_manifest_counts(manifest: Path) -> dict[str, int]:
+    from cf_acceptance_risk import risk_counts
+    from cf_acceptance_schema import scenario_check_ids
+    if not manifest.is_file():
+        return {}
+    try:
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("manifest must be an object")
+    except (OSError, ValueError) as exc:
+        sys.stderr.write(f"cf_stats: cannot read {manifest}: {exc}\n")
+        return {}
+    stale: set[str] = set()
+    for row in data.get("scenarios", []):
+        if isinstance(row, dict) and row.get("status") == "stale":
+            ids = row.get("stale_checks") or scenario_check_ids(row) or [str(row.get("id"))]
+            stale.update(str(value) for value in ids)
+    return {"stale_checks": len(stale), **risk_counts(data)}
+
+
+def _deferred_rule_count(context: Path) -> int:
+    from cf_spec_context import ContextError, load_context
+    from cf_spec_gate import evidence_deferral_kind
+    if not context.is_file():
+        return 0
+    try:
+        data = load_context(str(context))
+    except (OSError, ValueError, ContextError) as exc:
+        sys.stderr.write(f"cf_stats: cannot read {context}: {exc}\n")
+        return 0
+    return sum(any(
+        status.status == "unverified" and bool(status.evidence)
+        and evidence_deferral_kind(status.evidence[-1]) in ("review_stage", "heavy")
+        for status in rule.stage_status.values()
+    ) for binding in data.bindings for rule in binding.rules)
+
+
 def _runtime_usage(root: str) -> dict[str, object]:
-    """0.8 execution metrics: context size, evidence runs, deferred/stale/risk."""
+    """Counts describe unique checks, live risk acceptances and deferred rules."""
     from cf_evidence_store import EvidenceStore, requirement_key
     marker = Path(root) / ".code-flow/.active-task.json"
     task_dir = ""
-    try:
-        data = json.loads(marker.read_text(encoding="utf-8"))
-        task_dir = str(data.get("task_dir") or "") if isinstance(data, dict) else ""
-    except (OSError, ValueError, json.JSONDecodeError):
-        task_dir = ""
+    if marker.is_file():
+        try:
+            data = json.loads(marker.read_text(encoding="utf-8"))
+            task_dir = str(data.get("task_dir") or "") if isinstance(data, dict) else ""
+        except (OSError, ValueError) as exc:
+            sys.stderr.write(f"cf_stats: cannot read {marker}: {exc}\n")
     runtime: dict[str, object] = {
         "task_dir": task_dir, "context_bytes": 0, "evidence_runs": 0,
         "deferred_rules": 0, "stale_checks": 0, "accepted_risks": 0,
+        "recorded_risks": 0, "inactive_risks": 0,
     }
     if not task_dir:
         return runtime
@@ -382,33 +421,10 @@ def _runtime_usage(root: str) -> dict[str, object]:
             1 for path in store.directory.rglob("*.json")
             if path.name != "latest.json" and "_context" not in path.parts
         )
-    except (OSError, ValueError):
-        pass
-    manifest = directory / ".acceptance-manifest.json"
-    try:
-        data = json.loads(manifest.read_text(encoding="utf-8"))
-    except (OSError, ValueError, json.JSONDecodeError):
-        data = {}
-    scenarios = data.get("scenarios") if isinstance(data, dict) else None
-    if isinstance(scenarios, list):
-        runtime["stale_checks"] = sum(
-            1 for item in scenarios if isinstance(item, dict) and item.get("status") == "stale"
-        )
-    checks = data.get("checks") if isinstance(data, dict) else None
-    if isinstance(checks, list):
-        runtime["accepted_risks"] = sum(
-            1 for item in checks if isinstance(item, dict) and isinstance(item.get("accepted_risk"), dict)
-        )
-    try:
-        from cf_spec_context import ContextError, load_context
-        context_data = load_context(str(context))
-        runtime["deferred_rules"] = sum(
-            1 for binding in context_data.bindings for rule in binding.rules
-            for status in rule.stage_status.values()
-            if getattr(status, "status", "") == "deferred"
-        )
-    except (OSError, ValueError, ContextError):
-        pass
+    except (OSError, ValueError) as exc:
+        sys.stderr.write(f"cf_stats: cannot count evidence: {exc}\n")
+    runtime.update(_runtime_manifest_counts(directory / ".acceptance-manifest.json"))
+    runtime["deferred_rules"] = _deferred_rule_count(context)
     return runtime
 
 

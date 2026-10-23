@@ -24,6 +24,8 @@ globs: []
 失败不写 verified、不反转已 done 的任务状态；归档前必须 `decision=pass`。未声明 review verifier 且无 E2E 场景时为空操作（`reason=nothing_to_verify`）。
 
 > 0.8 分层入口：`code-flow task verify --layers validators,review,e2e --profile smoke|changed|full`。每层独立返回 `decision/executed/reused/failed/env_blocked/incomplete`，`profile` 默认 `changed`，`full` 必须显式；`task verify-e2e` 保留为兼容别名（全层 + full）。
+>
+> E2E 也按范围执行：`profile=changed` 只跑 `trigger_paths` 命中当前 diff 的 E2E，没有 `trigger_paths` 的 smoke E2E 不会在 changed 中顺跑；`profile=smoke` 只跑标记 `smoke` / `profile=smoke` 的 E2E（旧计划没有 smoke 标记时才回退全量 E2E）。不要把全量 E2E 当成每个小改动的默认门禁。
 
 ## 调用方式
 

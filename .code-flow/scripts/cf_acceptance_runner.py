@@ -31,6 +31,7 @@ from cf_exec_base import (
     worktree_fingerprint,
 )
 from cf_check_inputs import check_input_hashes, match_path
+from cf_acceptance_risk import accepted_risk as _accepted_risk
 from cf_acceptance_schema import load_manifest, validate_execution_baseline
 from cf_acceptance_evidence import persist_results
 from cf_evidence_store import EvidenceStore
@@ -462,33 +463,6 @@ def _reuse_results(
     return results
 
 
-def _accepted_risk(check: Optional[Mapping[str, object]]) -> Optional[dict[str, object]]:
-    """A failed check may be archived as accepted risk only with a live, user-owned record."""
-    if not isinstance(check, Mapping):
-        return None
-    risk = check.get("accepted_risk")
-    if not isinstance(risk, Mapping):
-        return None
-    for field in ("owner", "reason", "confirmed_by", "confirmed_at", "source", "expires_at"):
-        if not isinstance(risk.get(field), str) or not str(risk.get(field)).strip():
-            return None
-    expires = str(risk.get("expires_at")).strip()
-    try:
-        deadline = datetime.fromisoformat(expires.replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", expires):
-        deadline = deadline.replace(hour=23, minute=59, second=59, microsecond=999999)
-    if deadline.tzinfo is None:
-        deadline = deadline.replace(tzinfo=timezone.utc)
-    if deadline <= datetime.now(timezone.utc):
-        return None
-    confirmed = str(risk.get("confirmed_by")).strip().lower().split(":", 1)[0]
-    if confirmed in {"agent", "assistant", "claude", "claude code", "codex", "opencode", "costrict", "ai", "bot"}:
-        return None
-    return dict(risk)
-
-
 def _apply_outcome(
     unit: Mapping[str, object], outcome: Mapping[str, object], root: Path,
     include_e2e: bool, only_e2e: bool, deadline: Optional[float],
@@ -507,7 +481,7 @@ def _apply_outcome(
         result = {"id": str(item.get("id", "unknown")), "kind": str(item.get("kind", "functional"))}
         result.update({key: value for key, value in outcome.items() if key not in ("id", "kind")})
         if status == "failed":
-            risk = _accepted_risk(unit.get("check"))
+            risk = _accepted_risk(unit.get("check"), item)
             if risk is not None:
                 result["status"] = "accepted_risk"
                 result["risk"] = risk
@@ -1162,27 +1136,73 @@ def _select_profile(data: Mapping[str, object], root: str, profile: str,
     selected: list[Mapping[str, object]] = []
     has_smoke_profile = any(str((check or {}).get("profile", "")) == "smoke" for check in checks.values())
     has_e2e = any(str(scenario.get("kind", "")) == "e2e" for scenario in scenarios)
+
+    def _is_smoke(scenario: Mapping[str, object], scenario_checks: Sequence[Optional[Mapping[str, object]]]) -> bool:
+        return bool(scenario.get("smoke")) or any(
+            str((check or {}).get("profile", "")) == "smoke" for check in scenario_checks
+        )
+
+    e2e_smoke_exists = any(
+        str(scenario.get("kind", "")) == "e2e"
+        and _is_smoke(
+            scenario,
+            [checks.get(check_id) for check_id in _scenario_check_ids(scenario)],
+        )
+        for scenario in scenarios
+    )
     for scenario in scenarios:
         check_ids = _scenario_check_ids(scenario)
         scenario_checks = [checks.get(check_id) for check_id in check_ids]
         priority = str(scenario.get("priority", ""))
+        is_e2e = str(scenario.get("kind", "")) == "e2e"
+        smoke = _is_smoke(scenario, scenario_checks)
         if str(scenario.get("id")) in forced:
             selected.append(scenario)
             continue
         if profile == "smoke":
+            if is_e2e:
+                # Once a plan marks its smoke journeys, smoke must not silently
+                # expand to every E2E scenario. Legacy plans without smoke
+                # markers keep the old all-E2E fallback.
+                if smoke or not e2e_smoke_exists:
+                    selected.append(scenario)
+                continue
             if explicit_priority:
-                if (priority.upper() == "P0" or any(
-                        str((check or {}).get("profile", "")) == "smoke" for check in scenario_checks)
-                        or str(scenario.get("kind", "")) == "e2e"):
+                if priority.upper() == "P0" or smoke:
                     selected.append(scenario)
             elif has_smoke_profile:
-                if any(str((check or {}).get("profile", "")) == "smoke" for check in scenario_checks):
+                if smoke:
                     selected.append(scenario)
             elif has_e2e:
-                if str(scenario.get("kind", "")) == "e2e":
-                    selected.append(scenario)
+                continue
             else:
                 selected.append(scenario)
+            continue
+        path_patterns = [
+            str(pattern)
+            for pattern in (scenario.get("trigger_paths") or [])
+            if str(pattern).strip()
+        ]
+        path_patterns.extend(
+            str(pattern)
+            for check in scenario_checks if isinstance(check, Mapping)
+            for pattern in (check.get("paths") or [])
+            if str(pattern).strip()
+        )
+        path_patterns = list(dict.fromkeys(path_patterns))
+        path_matches = any(
+            match_path(path, pattern) for pattern in path_patterns for path in changed
+        )
+        if is_e2e and path_patterns:
+            # A small change only runs the E2E journeys whose trigger paths
+            # match. Empty changed set means the diff is unavailable; fail
+            # closed and keep the journey.
+            if not changed or path_matches:
+                selected.append(scenario)
+            continue
+        if is_e2e and smoke:
+            # Smoke E2E without trigger paths belongs to the explicit smoke
+            # profile; changed runs only path-scoped journeys.
             continue
         inputs_by_check = [
             (check or {}).get("inputs") for check in scenario_checks
@@ -1194,8 +1214,7 @@ def _select_profile(data: Mapping[str, object], root: str, profile: str,
             for pattern in value for path in changed
         )
         if (not explicit_priority or priority.upper() == "P0"
-                or any(str((check or {}).get("profile", "")) == "smoke" for check in scenario_checks)
-                or repo_scoped or not changed or matches):
+                or smoke or repo_scoped or not changed or matches):
             selected.append(scenario)
     selected_ids = {str(item.get("id")) for item in selected}
     by_scenario = {str(item.get("id")): item for item in scenarios}
@@ -1364,10 +1383,16 @@ def run_manifest(
     scenarios = data["scenarios"]
     _ordered(scenarios)  # Validate the complete DAG before owner filtering.
     items = _owned(scenarios, owner)
-    if owner and not items:
-        # TASK 无自有场景（Acceptance-Refs: N/A / 场景全归他人）：本任务执行验收
-        # 视为空集通过；"零可执行场景"阻断只针对整体无场景的 manifest。
-        return {"decision": "pass", "results": [], "reason": "no_owned_scenarios"}
+    if not items:
+        if owner:
+            # TASK 无自有场景（Acceptance-Refs: N/A / 场景全归他人）：本任务执行验收
+            # 视为空集通过；"零可执行场景"阻断只针对整体无场景的 manifest。
+            return {"decision": "pass", "results": [], "reason": "no_owned_scenarios"}
+        if profile != "full" and full_data.get("scenarios"):
+            # The plan has executable scenarios, but this diff matches none of
+            # them. That is a clean no-op, not a malformed plan.
+            return {"decision": "pass", "results": [], "reason": "no_affected_scenarios",
+                    "profile": profile}
     ordered = _ordered(items)
     expanded, aggregates = _expand_multi_checks(ordered)
     rows = _scenario_rows(scenarios)

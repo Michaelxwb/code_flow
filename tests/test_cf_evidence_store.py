@@ -736,3 +736,26 @@ def test_ci_import_does_not_attribute_one_check_to_multi_check_scenario(ci_repo,
     completed = _run_import(repo, manifest, report, commit=head)
     assert completed.returncode != 0
     assert "check_without_scenarios" in completed.stdout
+
+
+def test_ci_multi_check_rejects_ambiguous_case_and_accepts_explicit_ids(ci_repo, tmp_path: Path) -> None:
+    repo, _task, manifest, _head = ci_repo
+    data = json.loads(manifest.read_text())
+    a_id, b_id = [data["scenarios"][index]["check"] for index in (0, 1)]
+    data["scenarios"][0]["checks"] = [a_id, b_id]
+    manifest.write_text(json.dumps(data))
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "multi check coverage")
+    head = _git(repo, "rev-parse", "HEAD")
+    report = tmp_path / "report.xml"
+    before = manifest.read_bytes()
+    report.write_text(f'<testsuite><testcase name="{a_id} {b_id}"/></testsuite>')
+    rejected = _run_import(repo, manifest, report, commit=head)
+    assert rejected.returncode != 0
+    assert "ambiguous_test_case" in rejected.stdout
+    assert manifest.read_bytes() == before
+    report.write_text(f'<testsuite><testcase name="{a_id}"/><testcase name="{b_id}"/></testsuite>')
+    accepted = _run_import(repo, manifest, report, commit=head)
+    assert accepted.returncode == 0, accepted.stdout
+    assert _rows(manifest)["S-01"]["status"] == "verified"
+    assert set(_rows(manifest)["S-01"]["evidence"]["check_hashes"]) == {a_id, b_id}

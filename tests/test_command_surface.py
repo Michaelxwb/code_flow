@@ -133,6 +133,19 @@ def test_user_command_docs_describe_subactions_and_internal_scope() -> None:
     assert "internal" in sync.lower(), "cf-sync 必须标注 internal/dev-only"
 
 
+def test_finish_contract_does_not_defer_unexecuted_required_checks() -> None:
+    entries = [item for item in _catalog()["commands"] if item["id"] in
+               ("cf-task-start", "cf-task-plan", "cf-validate")]
+    for platform in ("claude", "codex", "costrict", "opencode"):
+        for item in entries:
+            text = (ROOT / _entry_file(platform, item)).read_text(encoding="utf-8")
+            assert "超预算的 verifier 会被 Done Gate 自动延后" not in text
+            assert "范围外/超预算的 verifier" not in text
+            assert "任务 finish 自动执行一次" not in text
+            if item["id"] != "cf-validate":
+                assert "provisional" in text
+
+
 def test_usage_and_migration_docs_cover_0_8_surface() -> None:
     usage = (ROOT / "docs/USAGE.md").read_text(encoding="utf-8")
     for command in sorted(USER_COMMANDS | set(ALIASES)):

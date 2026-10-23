@@ -424,6 +424,30 @@ def test_truthful_gate_declared_timeout_over_budget_is_not_a_deferral(tmp_path: 
     assert result["deferred_budget"] == 0
 
 
+def test_runtime_metrics_count_live_risks_and_actual_deferred_evidence(tmp_path: Path) -> None:
+    from cf_stats import _runtime_usage
+    directory = tmp_path / ".code-flow/tasks/demo"
+    directory.mkdir(parents=True)
+    (tmp_path / ".code-flow/.active-task.json").write_text(json.dumps({"task_dir": str(directory)}))
+    save_context(str(directory / "spec-context.yml"), _gate_context({
+        "status": "unverified", "error_code": "deferred_to_review",
+        "details": {"deferral_kind": "review_stage"},
+    }))
+    risk = {"owner": "TASK-001", "reason": "limitation", "confirmed_by": "user",
+            "confirmed_at": "2026-01-01", "source": "user reply", "expires_at": "2999-01-01"}
+    checks = [{"id": "A", "accepted_risk": risk},
+              {"id": "B", "accepted_risk": {**risk, "expires_at": "2000-01-01"}}]
+    rows = [{"id": "S-01", "owner": "TASK-001", "checks": ["A", "B"],
+             "status": "stale", "stale_checks": ["A", "B"]}]
+    (directory / ".acceptance-manifest.json").write_text(json.dumps({"checks": checks, "scenarios": rows}))
+    metrics = _runtime_usage(str(tmp_path))
+    assert metrics["deferred_rules"] == 1
+    assert metrics["stale_checks"] == 2
+    assert metrics["accepted_risks"] == 1
+    assert metrics["recorded_risks"] == 2
+    assert metrics["inactive_risks"] == 1
+
+
 def _gate_context(evidence: dict[str, object]) -> SpecContext:
     code = RuleStageStatus("unverified", (), None, (evidence,))
     review = RuleStageStatus("pending", (), None, ())

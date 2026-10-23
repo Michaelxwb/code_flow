@@ -542,3 +542,60 @@ def test_stale_after_merge_downgrades_verified_and_changed_reruns(tmp_path: Path
     assert rerun["decision"] == "pass", rerun
     assert rerun["results"][0].get("cache_reused") is not True
     assert rerun["results"][0]["exit_code"] == 0
+
+
+def test_merge_invalidates_only_changed_check_and_preserves_history(tmp_path: Path) -> None:
+    from cf_task_parallel import _stale_after_merge
+    from cf_exec_base import worktree_fingerprint
+    root = _merge_repo(tmp_path)
+    for name in ("a.py", "b.py"):
+        (root / name).write_text("value = 1\n", encoding="utf-8")
+    path = _manifest_path(root)
+    task = root / _REPO_TASK_FILE
+    task.write_text(task.read_text().replace("print('ok')", "pass", 1))
+    data = write_manifest(str(task), str(path))
+    a_id, b_id = [row["check"] for row in data["scenarios"]]
+    for check in data["checks"]:
+        check["inputs"] = ["a.py" if check["id"] == a_id else "b.py"]
+    data["scenarios"][0]["checks"] = [a_id, b_id]
+    data["scenarios"][1]["checks"] = [b_id]
+    path.write_text(json.dumps(data))
+    _commit(root, "check inputs")
+    assert run_manifest(str(path), str(root), write_evidence=True)["decision"] == "pass"
+    before = json.loads(path.read_text())
+    (root / "a.py").write_text("value = 2\n", encoding="utf-8")
+    report = _stale_after_merge(root, _REPO_TASK_FILE, worktree_fingerprint(str(root)))
+    after = json.loads(path.read_text())
+    rows = {row["id"]: row for row in after["scenarios"]}
+    assert rows["S-01"]["status"] == "stale"
+    assert rows["S-01"]["stale_checks"] == [a_id]
+    assert rows["S-02"]["status"] == "verified"
+    assert rows["S-01"]["runs"] == before["scenarios"][0]["runs"]
+    assert rows["S-01"]["evidence"] == before["scenarios"][0]["evidence"]
+    assert any(item.get("checks") == [a_id] for item in report)
+    assert "| TASK-001 | stale |" in (root / _REPO_TASK_FILE).read_text()
+    assert run_manifest(str(path), str(root), write_evidence=True)["decision"] == "pass"
+    recovered = json.loads(path.read_text())["scenarios"][0]
+    assert recovered["status"] == "verified" and not recovered.get("stale_checks")
+
+
+def test_partial_merge_failure_still_invalidates_merged_content(tmp_path: Path) -> None:
+    root = _merge_repo(tmp_path)
+    manifest = _manifest_path(root)
+    assert run_manifest(str(manifest), str(root), write_evidence=True)["decision"] == "pass"
+    _commit(root, "baseline evidence")
+    prepared = prepare(root, _REPO_TASK_FILE, ["TASK-001", "TASK-002"], "partial")
+    first = next(row for row in prepared["worktrees"] if row["task"] == "TASK-001")
+    worktree = Path(first["path"])
+    (worktree / "feature.py").write_text("value = 2\n", encoding="utf-8")
+    _commit(worktree, "implementation")
+    assert run_manifest(str(_manifest_path(worktree)), str(worktree), owner="TASK-001",
+                        write_evidence=True)["decision"] == "pass"
+    _set_status(worktree, "TASK-001", "done")
+    _commit(worktree, "finish first task")
+    result = merge(root, "partial", None)
+    assert result["ok"] is False
+    assert result["results"][0]["status"] == "merged"
+    rows = {row["id"]: row for row in json.loads(manifest.read_text())["scenarios"]}
+    assert rows["S-02"]["status"] == "stale"
+    assert result["stale"]

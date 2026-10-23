@@ -9,8 +9,9 @@ from typing import Mapping, Optional, Sequence
 from uuid import uuid4
 
 from cf_evidence_store import EvidenceStore, discover_project_root, git_commit
+from cf_acceptance_schema import load_manifest, scenario_check_ids
 
-STATES = frozenset(("planned", "pending", "tbd", "verified", "unverified", "failed", "incomplete", "not_configured", "e2e_deferred", "env_blocked", "manual_pending", "accepted_risk"))
+STATES = frozenset(("planned", "pending", "tbd", "verified", "unverified", "stale", "failed", "incomplete", "not_configured", "e2e_deferred", "env_blocked", "manual_pending", "accepted_risk"))
 _EVIDENCE_STATUS = {
     "passed": "passed",
     "failed": "failed",
@@ -179,38 +180,41 @@ def _store_evidence_runs(path: Path, rows: Mapping[str, Mapping[str, object]],
     return {"created": created, "duplicates": duplicates}
 
 
+def _restore_checkpoint(row: dict[str, object], result: Mapping[str, object], run_key: str,
+                        executed_at: str, fingerprint: str) -> Optional[tuple[dict[str, object], str]]:
+    if result["status"] != "passed" or row.get("status") == "verified":
+        return None
+    row["revision"] = int(row.get("revision", 0)) + 1
+    record: dict[str, object] = {
+        "id": result["id"],
+        "kind": str(result.get("kind", "functional")),
+        "status": "passed",
+        "exit_code": 0,
+        "cache_reused": True,
+        "checkpoint_reused": True,
+        "revision": row["revision"],
+        "run_id": run_key,
+        "executed_at": executed_at,
+        "command": row.get("command"),
+        "cwd": row.get("cwd", "."),
+        "timeout": row.get("timeout", 60),
+    }
+    if fingerprint:
+        record["fingerprint"] = fingerprint
+    for key in ("check_ids", "check_hashes", "check_reused", "checkpoint_reused_checks", "check_configs", "input_hash", "risk"):
+        if key in result:
+            record[key] = result[key]
+    row["status"] = "verified"
+    row.pop("stale_checks", None)
+    return record, "verified"
+
+
 def _record_result(row: dict[str, object], result: Mapping[str, object], run_key: str,
                    executed_at: str, fingerprint: str) -> Optional[tuple[dict[str, object], str]]:
     """Apply one result to a manifest row; None means keep the row unchanged."""
     state = str(result["status"])
     if result.get("cache_reused") is True:
-        # Checkpoint resume: an interrupted run never rewrote the manifest, so a
-        # reused check restores its prior verified conclusion without inventing
-        # a new execution record. Manifest-based reuse is already verified.
-        if state != "passed" or row.get("status") == "verified":
-            return None
-        row["revision"] = int(row.get("revision", 0)) + 1
-        record: dict[str, object] = {
-            "id": result["id"],
-            "kind": str(result.get("kind", "functional")),
-            "status": "passed",
-            "exit_code": 0,
-            "cache_reused": True,
-            "checkpoint_reused": True,
-            "revision": row["revision"],
-            "run_id": run_key,
-            "executed_at": executed_at,
-            "command": row.get("command"),
-            "cwd": row.get("cwd", "."),
-            "timeout": row.get("timeout", 60),
-        }
-        if fingerprint:
-            record["fingerprint"] = fingerprint
-        for key in ("check_ids", "check_hashes", "check_reused", "checkpoint_reused_checks", "check_configs", "input_hash", "risk"):
-            if key in result:
-                record[key] = result[key]
-        row["status"] = "verified"
-        return record, "verified"
+        return _restore_checkpoint(row, result, run_key, executed_at, fingerprint)
     # A deferral placeholder (e2e skipped in a non-E2E run) must never
     # downgrade a verified terminal scenario: verify-e2e runs first, then
     # later Done/finish passes would otherwise silently un-verify it.
@@ -223,6 +227,7 @@ def _record_result(row: dict[str, object], result: Mapping[str, object], run_key
     row["revision"] = int(row.get("revision", 0)) + 1
     status = "verified" if state == "passed" else state
     row["status"] = status
+    row.pop("stale_checks", None)
     record = {**result, "revision": row["revision"], "run_id": run_key, "executed_at": executed_at}
     # Identity for cross-run reuse checks: command/cwd/timeout + content
     # fingerprint of the worktree the command actually ran against.
@@ -232,6 +237,61 @@ def _record_result(row: dict[str, object], result: Mapping[str, object], run_key
     if fingerprint and status == "verified":
         record["fingerprint"] = fingerprint
     return record, status
+
+
+def stale_scenario_checks(row: Mapping[str, object], hashes: Mapping[str, Mapping[str, object]],
+                          fingerprint: str) -> list[str]:
+    """Compare every declared check; a missing or unavailable hash is stale."""
+    if row.get("status") not in ("verified", "accepted_risk"):
+        return []
+    if row.get("kind") == "manual" or row.get("exec") in ("manual", "aspirational"):
+        return []
+    check_ids = scenario_check_ids(row)
+    evidence = row.get("evidence")
+    evidence = evidence if isinstance(evidence, Mapping) else {}
+    recorded = evidence.get("check_hashes")
+    recorded = recorded if isinstance(recorded, Mapping) else {}
+    if not check_ids:
+        return [] if fingerprint and evidence.get("fingerprint") == fingerprint else [str(row["id"])]
+    stale = []
+    for check_id in check_ids:
+        expected = hashes.get(check_id, {}).get("input_hash")
+        actual = recorded.get(check_id)
+        if not recorded and len(check_ids) == 1:
+            actual = evidence.get("input_hash") or evidence.get("fingerprint")
+        if not expected or expected != actual:
+            stale.append(check_id)
+    return stale
+
+
+def invalidate_manifest_evidence(root: Path, manifest: Path,
+                                 fingerprint: str) -> list[dict[str, object]]:
+    """Mark outdated conclusions without changing historical execution evidence."""
+    from cf_check_inputs import check_input_hashes
+    from cf_spec_context import _atomic_text
+    data = load_manifest(manifest)
+    checks = {str(check["id"]): check for check in data.get("checks", [])}
+    hashes = check_input_hashes(str(root), checks, fingerprint)
+    changed: list[dict[str, object]] = []
+    for row in data["scenarios"]:
+        stale = stale_scenario_checks(row, hashes, fingerprint)
+        if not stale:
+            continue
+        row.update(status="stale", stale_checks=stale)
+        changed.append({"scenario_id": row["id"], "checks": stale})
+    if not changed:
+        return []
+    _atomic_text(manifest, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+    task_name = data.get("task_file")
+    if isinstance(task_name, str) and task_name:
+        task = (manifest.parent / task_name).resolve()
+        rows = {row["id"]: row for row in data["scenarios"]}
+        for item in changed:
+            row = rows[item["scenario_id"]]
+            sync_task_evidence(task, str(row["id"]), "runtime",
+                               "input changed: " + ", ".join(item["checks"]),
+                               str(row.get("owner", "")), "stale")
+    return changed
 
 
 def persist_results(path: Path, data: dict[str, object], results: Sequence[Mapping[str, object]],

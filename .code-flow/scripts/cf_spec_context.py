@@ -1720,6 +1720,9 @@ def _doctor_runtime(root: Path) -> tuple[dict[str, object], list[dict[str, str]]
 
 
 def _package_version(root: Path) -> str:
+    cli_version = os.environ.get("CF_CLI_VERSION", "")
+    if _valid_version(cli_version):
+        return cli_version
     path = root / "package.json"
     if not path.is_file():
         return ""

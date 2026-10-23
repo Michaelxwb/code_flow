@@ -381,3 +381,26 @@ def test_multiple_design_docs_merge_by_global_scenario_id(tmp_path: Path) -> Non
     assert {item["id"] for item in report["scenarios"]} == {"S-01", "S-02"}
     assert report["summary"]["rules"] == 2
     assert report["summary"]["risks"] == 2
+
+
+def test_same_named_risks_keep_each_design_source(tmp_path: Path) -> None:
+    design, _, manifest = _fixture(tmp_path)
+    backend = design.with_name("backend.design.md")
+    backend.write_text(DESIGN.replace("keep it visible", "different backend mitigation"), encoding="utf-8")
+    report = build_audit(str(design), str(manifest), str(tmp_path),
+                         design_files=[str(design), str(backend), str(design)])
+    assert report["summary"]["risks"] == 2
+    assert {item["source"] for item in report["risks"]} == {design.name, backend.name}
+    assert len({item["source_ref"] for item in report["risks"]}) == 2
+    assert {item["details"]["应对"] for item in report["risks"]} == {
+        "keep it visible", "different backend mitigation",
+    }
+
+
+def test_reference_only_design_requires_scenario_source(tmp_path: Path) -> None:
+    import pytest
+    design, _, manifest = _fixture(tmp_path)
+    design.write_text("## 2.4 验收条件\n\n| 场景ID | 设计影响 / 备注 |\n"
+                      "|---|---|\n| S-01 | renderer |\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="scenario_source_missing.*scenarios.md"):
+        _audit(tmp_path, design, manifest)

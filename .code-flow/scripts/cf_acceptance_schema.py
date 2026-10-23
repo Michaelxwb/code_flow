@@ -10,6 +10,15 @@ from typing import Mapping
 EXEC_MODES = ("auto", "manual", "deferred", "aspirational")
 
 
+def scenario_check_ids(row: Mapping[str, object]) -> list[str]:
+    """The plural mapping is authoritative when present and non-empty."""
+    checks = row.get("checks")
+    if isinstance(checks, list) and checks:
+        return list(dict.fromkeys(str(value) for value in checks))
+    check = row.get("check")
+    return [check] if isinstance(check, str) and check else []
+
+
 def verified_evidence(row: Mapping[str, object], fingerprint: str = "") -> bool:
     evidence = row.get("evidence")
     if row.get("status") != "verified" or not isinstance(evidence, dict):
@@ -85,6 +94,18 @@ def _validate_scenario_metadata(scenario_id: str, item: Mapping[str, object]) ->
         not isinstance(inputs, list) or not all(isinstance(value, str) and value for value in inputs)
     ):
         raise ValueError(f"invalid scenario {scenario_id}:inputs")
+    why_e2e = item.get("why_e2e")
+    if why_e2e is not None and not isinstance(why_e2e, str):
+        raise ValueError(f"invalid scenario {scenario_id}:why_e2e")
+    trigger_paths = item.get("trigger_paths")
+    if trigger_paths is not None and (
+        not isinstance(trigger_paths, list)
+        or not all(isinstance(value, str) and value for value in trigger_paths)
+    ):
+        raise ValueError(f"invalid scenario {scenario_id}:trigger_paths")
+    smoke = item.get("smoke")
+    if smoke is not None and not isinstance(smoke, bool):
+        raise ValueError(f"invalid scenario {scenario_id}:smoke")
 
 
 def validate_checks(value: object) -> list[dict[str, object]]:
@@ -141,6 +162,12 @@ def _validate_check_environment(check_id: str, item: Mapping[str, object]) -> No
                 raise ValueError(f"invalid check {check_id}:preflight")
         else:
             raise ValueError(f"invalid check {check_id}:preflight")
+    paths = item.get("paths")
+    if paths is not None and (
+        not isinstance(paths, list)
+        or not all(isinstance(path, str) and path.strip() for path in paths)
+    ):
+        raise ValueError(f"invalid check {check_id}:paths")
 
 
 def load_manifest(path: Path) -> dict[str, object]:

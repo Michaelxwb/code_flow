@@ -15,7 +15,7 @@ import time
 
 from cf_acceptance_manifest import record_manual_evidence
 from cf_acceptance_runner import run_manifest
-from cf_acceptance_schema import load_manifest, validate_execution_baseline, verified_evidence
+from cf_acceptance_schema import load_manifest, scenario_check_ids, validate_execution_baseline, verified_evidence
 from cf_exec_base import execution_session
 from cf_spec_context import (ContextError, DEFAULT_ACTIVE_EXCLUDES, Decision, SpecContext,
                              _git_changes, _run_git, apply_decision, load_active_task,
@@ -759,7 +759,8 @@ def _acceptance_counts(acceptance: Mapping[str, object]) -> dict[str, object]:
 
 
 def _e2e_preflight(manifest: Path, tasks: Sequence[tuple[Path, str, str]],
-                   requirement_gate: bool, profile: str = "changed") -> tuple[Optional[dict[str, object]], Optional[dict[str, object]]]:
+                   requirement_gate: bool, profile: str = "changed",
+                   root: str = "") -> tuple[Optional[dict[str, object]], Optional[dict[str, object]]]:
     try:
         data = load_manifest(manifest)
         validate_execution_baseline(manifest, data)
@@ -772,25 +773,34 @@ def _e2e_preflight(manifest: Path, tasks: Sequence[tuple[Path, str, str]],
         if not any(row.get("kind") == "e2e" for row in data["scenarios"]):
             return None, _nothing_to_verify()
         return data, None
+    selected_ids: Optional[set[str]] = None
+    if root and profile != "full":
+        from cf_acceptance_runner import _select_profile
+        selected_ids = {
+            str(item.get("id")) for item in _select_profile(data, root, profile)["scenarios"]
+            if isinstance(item, Mapping)
+        }
     functional_required: list[object] = []
     manual_scenarios: list[dict[str, object]] = []
     checks = {
         str(item.get("id")): item for item in data.get("checks", [])
         if isinstance(item, Mapping) and item.get("id")
     }
-    from cf_acceptance_runner import _accepted_risk
-
+    from cf_acceptance_risk import accepted_risk as _accepted_risk
     for row in data["scenarios"]:
         if row.get("exec") == "aspirational":
+            continue
+        if selected_ids is not None and str(row.get("id")) not in selected_ids:
+            continue
+        if row.get("status") == "stale":
+            # Stale evidence is known-outdated, not missing. The E2E layer
+            # re-runs it; preflight must not turn it into a hard archive block.
             continue
         if verified_evidence(row):
             continue
         if row.get("status") == "accepted_risk":
-            raw = row.get("checks")
-            check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
-            if not check_ids and isinstance(row.get("check"), str):
-                check_ids = [str(row.get("check"))]
-            if check_ids and any(_accepted_risk(checks.get(check_id)) is not None for check_id in check_ids):
+            check_ids = scenario_check_ids(row)
+            if check_ids and any(_accepted_risk(checks.get(check_id), row) is not None for check_id in check_ids):
                 continue
         if row.get("kind") == "manual" or row.get("exec") == "manual":
             manual_scenarios.append({
@@ -829,7 +839,7 @@ def _stale_functional_rows(data: Mapping[str, object], root: str) -> list[str]:
             continue
         if str(row.get("kind", "functional")) in ("manual", "e2e"):
             continue
-        if row.get("status") != "verified":
+        if row.get("status") not in ("verified", "stale"):
             continue
         raw = row.get("checks")
         check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
@@ -876,11 +886,8 @@ def _unverified_functional_rows(data: Mapping[str, object]) -> list[str]:
         if str(row.get("kind", "functional")) in ("manual", "e2e") or row.get("exec") in ("manual", "aspirational"):
             continue
         if row.get("status") == "accepted_risk":
-            raw = row.get("checks")
-            check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
-            if not check_ids and isinstance(row.get("check"), str):
-                check_ids = [str(row.get("check"))]
-            if any(_accepted_risk(checks.get(check_id)) is not None for check_id in check_ids):
+            check_ids = scenario_check_ids(row)
+            if any(_accepted_risk(checks.get(check_id), row) is not None for check_id in check_ids):
                 continue
         if not verified_evidence(row):
             rows.append(str(row.get("id")))
@@ -912,7 +919,7 @@ def _e2e_layer(root: str, directory: str, tasks: Sequence[tuple[Path, str, str]]
         if _acceptance_required(tasks):
             return _layer_result("block", reason="acceptance_manifest_missing")
         return _nothing_to_verify()
-    data, failure = _e2e_preflight(manifest, tasks, requirement_gate, profile)
+    data, failure = _e2e_preflight(manifest, tasks, requirement_gate, profile, root)
     if failure is not None:
         return failure
     stale = _stale_functional_rows(data, root) if requirement_gate else []

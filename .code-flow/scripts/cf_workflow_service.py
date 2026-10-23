@@ -350,12 +350,29 @@ def start_task(
             ("run cf-task:plan (bind --stage plan) or cf-spec refresh to create spec-context.yml before start",),
         )
     refreshed = refresh_context(load_context(str(context_path)), root, artifact_root=str(directory))
-    save_context(str(context_path), refreshed.context)
     # No marker exists at this point (active_exists raised above), so no
     # re-sync is needed before activation below.
     current_hash = context_sha256(refreshed.context)
     owned = tuple(item for item in owned_paths if isinstance(item, str))
     _validate_start_manifest(directory, candidate)
+    from cf_acceptance_plan import build_e2e_plan
+    try:
+        e2e_plan = build_e2e_plan(
+            str(directory / ".acceptance-manifest.json"), str(candidate), task_id
+        )
+    except (OSError, ValueError) as exc:
+        raise WorkflowError("acceptance_manifest_invalid", task_id, (str(exc),)) from exc
+    quality = e2e_plan.get("quality")
+    if isinstance(quality, Mapping) and quality.get("ok") is not True:
+        errors = quality.get("errors") if isinstance(quality.get("errors"), list) else []
+        details = tuple(
+            f"{item.get('scenario', '')}:{item.get('message', '')}".strip(":")
+            for item in errors[:5] if isinstance(item, Mapping)
+        )
+        raise WorkflowError("e2e_plan_invalid", task_id, details or ("E2E plan quality gate failed",))
+    # Persist the refreshed Context only after every start gate passed. A
+    # manifest/E2E failure must not leave a half-updated Context behind.
+    save_context(str(context_path), refreshed.context)
     output = _write_projection(root, candidate, refreshed.context, task_id, session_output)
     try:
         active = replace(_new_active(root, str(directory), task_id, current_hash, owned), status="active")
@@ -372,6 +389,7 @@ def start_task(
         "active": _active_data(active),
         "session_output": str(output),
         "acceptance_manifest": str(directory / ".acceptance-manifest.json") if (directory / ".acceptance-manifest.json").is_file() else None,
+        "e2e_plan": e2e_plan,
         "markdown": markdown,
     }
 
