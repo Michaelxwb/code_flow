@@ -127,6 +127,11 @@
 - S-04: verified — automated command passed; run_id=ebd22d482a45444d872a1df63a6fa470 (confirmed_by: runner)
 - E-03: verified — automated command passed; run_id=ebd22d482a45444d872a1df63a6fa470 (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=ebd22d482a45444d872a1df63a6fa470 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=d80803b51f3a469aaa7e41f0f749624d (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=d80803b51f3a469aaa7e41f0f749624d (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=d80803b51f3a469aaa7e41f0f749624d (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=d80803b51f3a469aaa7e41f0f749624d (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=d80803b51f3a469aaa7e41f0f749624d (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -196,6 +201,8 @@ align 产出 scenarios.md；plan 只从 scenarios.md 取场景并分配唯一 ow
 - E-01: verified — automated command passed; run_id=4a06827e4e6d4bc397cffc695f4b2e93 (confirmed_by: runner)
 - S-03: verified — automated command passed; run_id=ebd22d482a45444d872a1df63a6fa470 (confirmed_by: runner)
 - E-01: verified — automated command passed; run_id=ebd22d482a45444d872a1df63a6fa470 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=d80803b51f3a469aaa7e41f0f749624d (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=d80803b51f3a469aaa7e41f0f749624d (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
@@ -278,6 +285,10 @@ audit 只对账 scenarios/Coverage/manifest；无 scenarios.md 的 0.8 需求回
 - S-06: verified — automated command passed; run_id=ebd22d482a45444d872a1df63a6fa470 (confirmed_by: runner)
 - E-02: verified — automated command passed; run_id=ebd22d482a45444d872a1df63a6fa470 (confirmed_by: runner)
 - B-01: verified — automated command passed; run_id=ebd22d482a45444d872a1df63a6fa470 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=d80803b51f3a469aaa7e41f0f749624d (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=d80803b51f3a469aaa7e41f0f749624d (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=d80803b51f3a469aaa7e41f0f749624d (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=d80803b51f3a469aaa7e41f0f749624d (confirmed_by: runner)
 
 ### Log
 - [2026-10-22] created (draft)
