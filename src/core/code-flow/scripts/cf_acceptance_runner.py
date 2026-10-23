@@ -29,7 +29,7 @@ from cf_exec_base import (
     run_command,
     worktree_fingerprint,
 )
-from cf_check_inputs import check_input_hash, match_path
+from cf_check_inputs import check_input_hashes, match_path
 from cf_acceptance_schema import load_manifest, validate_execution_baseline
 from cf_acceptance_evidence import persist_results
 from cf_evidence_store import EvidenceStore
@@ -941,9 +941,10 @@ def _check_input_fingerprints(
     root: str, check_map: Mapping[str, Mapping[str, object]], fallback: str
 ) -> dict[str, dict[str, str]]:
     """Per-check content identity; checks without inputs inherit repo scope."""
+    outcomes = check_input_hashes(root, check_map, fallback)
     result: dict[str, dict[str, str]] = {}
     for check_id, check in check_map.items():
-        outcome = check_input_hash(root, check, fallback)
+        outcome = outcomes.get(check_id, {})
         result[check_id] = {
             "input_hash": str(outcome.get("input_hash") or fallback),
             "scope": str(outcome.get("scope") or ("repo" if not check.get("inputs") else "empty")),

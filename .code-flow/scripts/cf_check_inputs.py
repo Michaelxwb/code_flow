@@ -88,16 +88,55 @@ def hash_files(root: str, paths: Sequence[str]) -> Optional[dict[str, str]]:
 def check_input_hash(root: str, check: Mapping[str, object],
                      fallback: str = "") -> dict[str, object]:
     """Return {"input_hash", "scope"} for one check."""
-    identity = {
-        key: check.get(key) for key in
-        ("command", "cwd", "timeout", "env", "env_scope", "preflight", "parallel_safe", "profile")
-    }
-    patterns = [str(item) for item in check.get("inputs", [])] if isinstance(check.get("inputs"), list) else []
-    files = expand_inputs(root, patterns)
-    if not patterns or not files:
-        return {"input_hash": fallback, "scope": "repo" if not patterns else "empty"}
-    hashed = hash_files(root, files)
-    if hashed is None:
-        return {"input_hash": "", "scope": "unavailable"}
-    payload = json.dumps([identity, sorted(hashed.items())], ensure_ascii=False, sort_keys=True)
-    return {"input_hash": hashlib.sha256(payload.encode("utf-8")).hexdigest(), "scope": "inputs"}
+    return check_input_hashes(root, {"": check}, fallback)[""]
+
+
+def check_input_hashes(root: str, checks: Mapping[str, Mapping[str, object]],
+                       fallback: str = "") -> dict[str, dict[str, object]]:
+    """Hash the union of all declared inputs once, then derive per-check identities."""
+    patterns_by_check: dict[str, list[str]] = {}
+    for check_id, check in checks.items():
+        value = check.get("inputs")
+        patterns_by_check[check_id] = [str(item) for item in value] if isinstance(value, list) else []
+    all_patterns = sorted({pattern for values in patterns_by_check.values() for pattern in values})
+    repo_files = _repo_files(root) if all_patterns else ()
+    matched: dict[str, list[str]] = {}
+    union: set[str] = set()
+    for check_id, patterns in patterns_by_check.items():
+        files = [path for path in repo_files if any(match_path(path, pattern) for pattern in patterns)]
+        matched[check_id] = files
+        union.update(files)
+    hashed = hash_files(root, sorted(union))
+    result: dict[str, dict[str, object]] = {}
+    for check_id, patterns in patterns_by_check.items():
+        if not patterns:
+            result[check_id] = {"input_hash": fallback, "scope": "repo"}
+            continue
+        if not matched[check_id]:
+            result[check_id] = {"input_hash": fallback, "scope": "empty"}
+            continue
+        if hashed is None:
+            result[check_id] = {"input_hash": "", "scope": "unavailable"}
+            continue
+        check = checks[check_id]
+        identity = {
+            key: check.get(key) for key in
+            ("command", "cwd", "timeout", "env", "env_scope", "preflight", "parallel_safe", "profile")
+        }
+        payload = json.dumps(
+            [identity, sorted((path, hashed[path]) for path in matched[check_id])],
+            ensure_ascii=False, sort_keys=True,
+        )
+        result[check_id] = {
+            "input_hash": hashlib.sha256(payload.encode("utf-8")).hexdigest(),
+            "scope": "inputs",
+        }
+    return result
+
+
+def _repo_files(root: str) -> tuple[str, ...]:
+    tracked = _git(root, "ls-files")
+    untracked = _git(root, "ls-files", "--others", "--exclude-standard")
+    if tracked is None or untracked is None:
+        return ()
+    return tuple(sorted({line.strip() for line in (tracked + untracked).splitlines() if line.strip()}))

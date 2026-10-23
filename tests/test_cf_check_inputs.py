@@ -44,3 +44,21 @@ def test_check_hash_changes_only_when_declared_input_changes(tmp_path: Path) -> 
     assert check_input_hash(str(root), check, "repo")["input_hash"] == first
     (root / "pkg/b.py").write_text("B = 2\n", encoding="utf-8")
     assert check_input_hash(str(root), check, "repo")["input_hash"] != first
+
+
+def test_batch_hash_matches_union_and_isolates_checks(tmp_path: Path) -> None:
+    from cf_check_inputs import check_input_hashes
+    root = _repo(tmp_path)
+    checks = {
+        "A": {"command": ["true"], "inputs": ["a.py"]},
+        "B": {"command": ["true"], "inputs": ["pkg/*.py"]},
+        "R": {"command": ["true"]},
+    }
+    first = check_input_hashes(str(root), checks, "repo")
+    assert first["A"]["scope"] == "inputs"
+    assert first["B"]["scope"] == "inputs"
+    assert first["R"] == {"input_hash": "repo", "scope": "repo"}
+    (root / "pkg/b.py").write_text("B = 2\n", encoding="utf-8")
+    second = check_input_hashes(str(root), checks, "repo")
+    assert second["A"] == first["A"]
+    assert second["B"] != first["B"]
