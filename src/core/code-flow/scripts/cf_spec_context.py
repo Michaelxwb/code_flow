@@ -1708,7 +1708,29 @@ def _doctor_runtime(root: Path) -> tuple[dict[str, object], list[dict[str, str]]
             "code-flow migrate --runtime --apply")]
     findings = _doctor_manifest(root, manifest_path, version, runtime)
     findings.extend(_doctor_contract(root, runtime))
+    package_version = _package_version(root)
+    if package_version:
+        runtime["cli_version"] = package_version
+        if package_version != version:
+            findings.append(_doctor_finding(
+                "runtime_cli_version_mismatch", "warn",
+                f"CLI 包版本 {package_version} 与运行时版本 {version} 不一致",
+                str(root / "package.json"), "code-flow migrate --runtime --apply"))
     return runtime, findings
+
+
+def _package_version(root: Path) -> str:
+    path = root / "package.json"
+    if not path.is_file():
+        return ""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return ""
+    if not isinstance(data, Mapping) or data.get("name") != "@michaelxwb/code-flow":
+        return ""
+    version = data.get("version")
+    return version if isinstance(version, str) else ""
 
 
 def _valid_version(value: str) -> bool:

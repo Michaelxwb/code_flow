@@ -656,3 +656,25 @@ def test_ci_import_runtime_command_registry_entry() -> None:
     )
     assert help_result.returncode == 0, help_result.stderr
     assert "--format" in help_result.stdout
+
+
+def test_legacy_basename_evidence_is_migrated(tmp_path: Path) -> None:
+    import subprocess
+    subprocess.run(("git", "init", "-q"), cwd=tmp_path, check=True)
+    common = Path(subprocess.run(
+        ("git", "rev-parse", "--git-common-dir"), cwd=tmp_path, check=True,
+        capture_output=True, text=True,
+    ).stdout.strip())
+    if not common.is_absolute():
+        common = tmp_path / common
+    legacy = common / "code-flow/evidence/demo/CHK-1"
+    legacy.mkdir(parents=True)
+    run = {"run_id": "run-1", "check_id": "CHK-1", "status": "passed", "input_hash": "h"}
+    (legacy / "run-1.json").write_text(json.dumps(run), encoding="utf-8")
+    (legacy / "latest.json").write_text(json.dumps(run), encoding="utf-8")
+
+    store = EvidenceStore(tmp_path, requirement="2026-10-20--demo")
+
+    assert store.migrated_runs == 2
+    assert [item["run_id"] for item in store.list_runs("CHK-1")] == ["run-1"]
+    assert EvidenceStore(tmp_path, requirement="2026-10-20--demo").migrated_runs == 0
