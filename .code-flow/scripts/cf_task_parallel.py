@@ -470,7 +470,8 @@ def _missing_evidence(
         )
     from cf_check_inputs import check_input_hash
     checks = {
-        str(item.get("id")): item for item in manifest.get("checks", [])
+        str(item.get("id")): item
+        for item in (manifest.get("checks") if isinstance(manifest.get("checks"), list) else [])
         if isinstance(item, Mapping) and item.get("id")
     }
     from cf_evidence_store import requirement_key

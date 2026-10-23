@@ -300,3 +300,27 @@ scenarios:
 """)
     projected = write_manifest(str(task), str(manifest), str(source))
     assert projected["scenarios"][0]["checks"] == [check_id]
+
+
+def test_write_manifest_auto_detects_sibling_scenarios_file(tmp_path: Path) -> None:
+    from cf_acceptance_manifest import write_manifest
+    task = tmp_path / "demo.md"
+    task.write_text(
+        "# Demo\n\n## Acceptance Coverage\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任任务 | 状态 | 执行命令 |\n"
+        "|---|---|---|---|---|---|---|\n"
+        '| S-01 | d#2.5 | integration | runner | TASK-001 | planned | ["python3", "-c", "pass"] |\n\n'
+        "## TASK-001: A\n- **Status**: draft\n- **Acceptance-Refs**: S-01\n",
+        encoding="utf-8",
+    )
+    manifest = tmp_path / ".acceptance-manifest.json"
+    check_id = write_manifest(str(task), str(manifest))["checks"][0]["id"]
+    _source(tmp_path, f"""
+schema: 1
+scenarios:
+  - id: S-01
+    title: journey
+    checks: ["{check_id}"]
+""")
+    projected = write_manifest(str(task), str(manifest))
+    assert projected["scenarios"][0]["checks"] == [check_id]

@@ -369,6 +369,10 @@ def extract_manifest(task_file: str, kind_fn: Callable[[str], str] = _kind,
 
 def write_manifest(task_file: str, output: str, scenarios_file: str = "") -> dict[str, object]:
     manifest = extract_manifest(task_file)
+    if not scenarios_file:
+        candidate = Path(task_file).with_suffix(".scenarios.md")
+        if candidate.is_file():
+            scenarios_file = str(candidate)
     if scenarios_file:
         from cf_scenarios import parse_scenarios
         source = parse_scenarios(scenarios_file)
