@@ -10,7 +10,7 @@ from uuid import uuid4
 
 from cf_evidence_store import EvidenceStore, discover_project_root, git_commit
 
-STATES = frozenset(("planned", "pending", "tbd", "verified", "unverified", "failed", "incomplete", "not_configured", "e2e_deferred", "env_blocked", "manual_pending"))
+STATES = frozenset(("planned", "pending", "tbd", "verified", "unverified", "failed", "incomplete", "not_configured", "e2e_deferred", "env_blocked", "manual_pending", "accepted_risk"))
 _EVIDENCE_STATUS = {
     "passed": "passed",
     "failed": "failed",
