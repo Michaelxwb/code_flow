@@ -94,16 +94,21 @@ def _reusable(row: Optional[Mapping[str, object]], item: Mapping[str, object], f
         return False
     if row.get("status") != "verified":
         return False
-    if row.get("check") != item.get("check"):
-        return False
-    if row.get("check_config") and item.get("check_config") and row.get("check_config") != item.get("check_config"):
-        return False
+    if not item.get("scenario_ref"):
+        if row.get("check") != item.get("check"):
+            return False
+        if row.get("check_config") and item.get("check_config") and row.get("check_config") != item.get("check_config"):
+            return False
     evidence = row.get("evidence")
     if not isinstance(evidence, Mapping):
         return False
     if evidence.get("status") != "passed" or evidence.get("exit_code") != 0:
         return False
-    if evidence.get("fingerprint") != fingerprint:
+    recorded = evidence.get("fingerprint")
+    if item.get("scenario_ref"):
+        hashes = evidence.get("check_hashes")
+        recorded = hashes.get(str(item.get("check"))) if isinstance(hashes, Mapping) else None
+    if recorded != fingerprint:
         return False
     if evidence.get("command") != item.get("command"):
         return False
@@ -416,7 +421,10 @@ def _unit_reusable(
         return False
     if checkpoint.reusable(unit):
         return True
-    return all(_reusable(rows.get(str(item.get("id"))), item, fingerprint) for item in active)
+    return all(
+        _reusable(rows.get(str(item.get("scenario_ref") or item.get("id"))), item, fingerprint)
+        for item in active
+    )
 
 
 def _reuse_results(
@@ -484,7 +492,7 @@ def _apply_outcome(
             if risk is not None:
                 result["status"] = "accepted_risk"
                 result["risk"] = risk
-        if check_id and status in ("failed", "incomplete"):
+        if check_id:
             result["check_id"] = check_id
         results.append(result)
     return results
@@ -777,7 +785,11 @@ class _UnitEngine:
     def _with_input_hash(self, unit: Mapping[str, object],
                          results: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
         value = self.checkpoint.fingerprint_for(unit)
-        return [{**dict(result), "input_hash": value} for result in results]
+        check_id = str(unit.get("id")) if unit.get("check") is not None else ""
+        return [
+            {**dict(result), "input_hash": value, **({"check_id": check_id} if check_id else {})}
+            for result in results
+        ]
 
     def _complete(self, unit: Mapping[str, object], outcome: Mapping[str, object]) -> None:
         results = _apply_outcome(unit, outcome, self.root, self.include_e2e,
@@ -891,9 +903,13 @@ def _check_summary(checks: Sequence[Mapping[str, object]], scenarios: Sequence[M
     by_id = {str(item.get("id")): item for item in results}
     grouped: dict[str, list[str]] = {}
     for scenario in scenarios:
-        check_id = scenario.get("check")
-        if isinstance(check_id, str):
-            grouped.setdefault(check_id, []).append(str(scenario.get("id")))
+        scenario_id = str(scenario.get("id"))
+        raw = scenario.get("checks")
+        check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
+        if not check_ids and isinstance(scenario.get("check"), str):
+            check_ids = [str(scenario.get("check"))]
+        for check_id in check_ids:
+            grouped.setdefault(check_id, []).append(scenario_id)
     summary: list[dict[str, object]] = []
     for check in checks:
         check_id = str(check.get("id", ""))
@@ -949,6 +965,31 @@ def _check_input_fingerprints(
             "input_hash": str(outcome.get("input_hash") or fallback),
             "scope": str(outcome.get("scope") or ("repo" if not check.get("inputs") else "empty")),
         }
+    return result
+
+
+def _scenario_fingerprints(
+    data: Mapping[str, object], fingerprints: Mapping[str, str], fallback: str
+) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for scenario in data.get("scenarios", []) if isinstance(data.get("scenarios"), list) else []:
+        if not isinstance(scenario, Mapping):
+            continue
+        scenario_id = scenario.get("id")
+        if not isinstance(scenario_id, str):
+            continue
+        raw = scenario.get("checks")
+        check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
+        if not check_ids and isinstance(scenario.get("check"), str):
+            check_ids = [str(scenario.get("check"))]
+        values = [(check_id, fingerprints.get(check_id, fallback)) for check_id in check_ids]
+        if not values:
+            result[scenario_id] = fallback
+        elif len(values) == 1:
+            result[scenario_id] = values[0][1] or fallback
+        else:
+            payload = "|".join(f"{key}={value}" for key, value in sorted(values))
+            result[scenario_id] = hashlib.sha256(payload.encode("utf-8")).hexdigest()
     return result
 
 
@@ -1144,6 +1185,7 @@ def _expand_multi_checks(items: Sequence[Mapping[str, object]]) -> tuple[list[di
         for check_id in checks:
             pseudo = dict(item)
             pseudo["id"] = f"{scenario_id}::{check_id}"
+            pseudo["scenario_ref"] = scenario_id
             pseudo["check"] = str(check_id)
             pseudo.pop("checks", None)
             expanded.append(pseudo)
@@ -1185,6 +1227,28 @@ def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
         else:
             status = "not_included"
         record = {"id": scenario_id, "status": status}
+        record["cache_reused"] = all(member.get("cache_reused") is True for member in members)
+        record["checkpoint_reused"] = all(member.get("checkpoint_reused") is True for member in members)
+        checks: list[str] = []
+        hashes: dict[str, str] = {}
+        reused: dict[str, bool] = {}
+        for member in members:
+            check_id = str(member.get("check_id") or "")
+            if not check_id and "::" in str(member.get("id")):
+                check_id = str(member.get("id")).split("::", 1)[1]
+            if check_id:
+                checks.append(check_id)
+                reused[check_id] = member.get("cache_reused") is True
+                value = member.get("input_hash")
+                if isinstance(value, str) and value:
+                    hashes[check_id] = value
+        if checks:
+            record["check_ids"] = checks
+            record["check_reused"] = reused
+        if hashes:
+            record["check_hashes"] = hashes
+            payload = "|".join(f"{key}={hashes[key]}" for key in sorted(hashes))
+            record["input_hash"] = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         if status == "passed":
             record["exit_code"] = 0
         else:
@@ -1237,12 +1301,14 @@ def run_manifest(
     fingerprints = {
         check_id: value["input_hash"] for check_id, value in check_fingerprints.items()
     }
+    scenario_fingerprints = _scenario_fingerprints(data, fingerprints, fingerprint)
+    engine_fingerprints = {**fingerprints, **scenario_fingerprints}
     limit = 1 if fail_fast else max(0, int(max_failures))
     checkpoint = _make_checkpoint(manifest_file, root, fingerprint, use_cache, resume, fingerprints)
     units, _ = _build_units(expanded, Path(root), check_map, include_e2e or only_e2e, only_e2e)
     engine = _UnitEngine(units, Path(root), include_e2e or only_e2e, only_e2e, deadline,
                          namespace, rows, fingerprint, use_cache, limit, checkpoint, jobs,
-                         fingerprints=fingerprints)
+                         fingerprints=engine_fingerprints)
     results_by_id, state = engine.run()
     results = _ordered_results(expanded if aggregates else ordered, results_by_id)
     results = _aggregate_multi_results(results, aggregates)

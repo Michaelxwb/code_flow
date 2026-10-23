@@ -138,10 +138,24 @@ def _store_evidence_runs(path: Path, rows: Mapping[str, Mapping[str, object]],
         if row is None:
             continue
         result_fingerprint = str(result.get("input_hash") or fingerprint)
-        outcome = store.write_run(str(row.get("check") or row.get("id")),
-                                  _run_record(row, result, run_id, executed_at, result_fingerprint, commit))
-        created += outcome["status"] == "created"
-        duplicates += outcome["status"] == "duplicate"
+        raw_ids = result.get("check_ids")
+        check_ids = [str(value) for value in raw_ids] if isinstance(raw_ids, list) else []
+        check_id = str(row.get("check") or row.get("id"))
+        if not check_ids:
+            check_ids = [check_id]
+        raw_hashes = result.get("check_hashes")
+        check_hashes = raw_hashes if isinstance(raw_hashes, Mapping) else {}
+        raw_reused = result.get("check_reused")
+        check_reused = raw_reused if isinstance(raw_reused, Mapping) else {}
+        for item_id in check_ids:
+            if check_reused.get(item_id) is True:
+                continue
+            item_hash = str(check_hashes.get(item_id) or result_fingerprint)
+            record = _run_record(row, result, run_id, executed_at, item_hash, commit)
+            record["check_id"] = item_id
+            outcome = store.write_run(item_id, record)
+            created += outcome["status"] == "created"
+            duplicates += outcome["status"] == "duplicate"
     return {"created": created, "duplicates": duplicates}
 
 

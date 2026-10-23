@@ -716,3 +716,45 @@ def test_expired_accepted_risk_blocks(tmp_path: Path) -> None:
     result = run_manifest(str(manifest), str(tmp_path))
     assert result["decision"] == "block"
     assert result["results"][0]["status"] == "failed"
+
+
+def test_multi_check_reuses_each_check_and_writes_central_evidence(tmp_path: Path) -> None:
+    _git_repo(tmp_path)
+    (tmp_path / "src/b.py").write_text("B = 1\n", encoding="utf-8")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "b")
+    marker_a = tmp_path / "a.marker"
+    marker_b = tmp_path / "b.marker"
+    checks = [
+        {"id": "CHK-A", "command": _marker_command(marker_a), "cwd": ".", "timeout": 30,
+         "inputs": ["src/a.py"]},
+        {"id": "CHK-B", "command": _marker_command(marker_b), "cwd": ".", "timeout": 30,
+         "inputs": ["src/b.py"]},
+    ]
+    manifest = tmp_path / ".acceptance-manifest.json"
+    manifest.write_text(json.dumps({
+        "schema": 3,
+        "checks": checks,
+        "scenarios": [{
+            "id": "S-01", "kind": "functional", "owner": "TASK-001",
+            "checks": ["CHK-A", "CHK-B"], "status": "planned",
+        }],
+    }), encoding="utf-8")
+
+    first = run_manifest(str(manifest), str(tmp_path), write_evidence=True)
+    assert first["decision"] == "pass"
+    assert marker_a.read_text() == "x" and marker_b.read_text() == "x"
+    second = run_manifest(str(manifest), str(tmp_path), write_evidence=True)
+    assert second["results"][0]["cache_reused"] is True
+    assert marker_a.read_text() == "x" and marker_b.read_text() == "x"
+
+    (tmp_path / "src/a.py").write_text("A = 2\n", encoding="utf-8")
+    third = run_manifest(str(manifest), str(tmp_path), write_evidence=True)
+    assert third["results"][0]["cache_reused"] is False
+    assert marker_a.read_text() == "xx"
+    assert marker_b.read_text() == "x"
+
+    from cf_evidence_store import EvidenceStore, requirement_key
+    store = EvidenceStore(str(tmp_path), requirement_key(manifest.parent))
+    assert len(store.list_runs("CHK-A")) == 2
+    assert len(store.list_runs("CHK-B")) == 1
