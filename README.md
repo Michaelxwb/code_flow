@@ -1,6 +1,8 @@
 # code-flow
 
-一个用于快速初始化与管理项目规范的命令行工具。通过全局安装后执行 `code-flow init`，自动生成项目约定文件与目录结构，帮助团队统一流程并提升协作效率。
+用于管理项目规范、任务和可执行验收的命令行工具。通过 `code-flow init` 安装四平台入口，再由持久化 Spec Context、场景源、阶段门禁和逐 check 执行证据约束开发流程。
+
+本仓库当前版本为 **0.8.0**；npm 的 `latest` 标签以注册表查询为准。使用说明见[使用手册](docs/USAGE.md)，场景与测试登记格式见[可执行验收契约](docs/acceptance-contract.md)。
 
 ## 安装
 
@@ -18,7 +20,14 @@ pnpm add -g @michaelxwb/code-flow
 
 ## 升级
 
-npm：
+先核对已安装版本与注册表版本：
+
+```bash
+code-flow --version
+npm view @michaelxwb/code-flow dist-tags --json
+```
+
+从 npm 升级到已发布的最新版本：
 
 ```bash
 npm i -g @michaelxwb/code-flow@latest
@@ -29,6 +38,23 @@ pnpm：
 ```bash
 pnpm add -g @michaelxwb/code-flow@latest
 ```
+
+需要使用本仓库尚未发布的修复时，在仓库根目录构建并安装本地包：
+
+```bash
+npm pack --ignore-scripts
+npm install --global ./michaelxwb-code-flow-0.8.0.tgz --ignore-scripts
+code-flow --version
+```
+
+CLI 更新后，在目标项目执行运行时迁移，将脚本、已安装平台和 Hook 一起更新：
+
+```bash
+code-flow migrate --runtime --dry-run
+code-flow migrate --runtime --apply
+```
+
+CLI 与项目 runtime 必须匹配；版本不一致时按诊断升级 CLI 或迁移 runtime。备份与回滚步骤见 [0.8 迁移说明](docs/migrations/runtime-0.8.0.md)。
 
 ## 卸载
 
@@ -61,6 +87,21 @@ code-flow init --force                # 覆盖所有文件，包括用户已编�
 ```bash
 code-flow --help
 ```
+
+## 开发与验收
+
+需求文件集中在 `.code-flow/tasks/<日期>/<需求>/`。通常依次使用 `cf-task:prd` → `cf-task:align` → `cf-task:plan` → `cf-task:start` → `cf-task:verify-e2e` → `cf-task:archive`；Codex 使用对应的 `cf-task-*` skills。
+
+| 阶段 | 正式运行时入口 | 检查内容 |
+|------|----------------|----------|
+| 场景 | `code-flow scenarios parse --file "<需求>.scenarios.md" --quality --json` | 浏览器边界、具体预期与步骤/断言引用、延期责任 |
+| 设计 | `code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json` | ID 闭环、功能场景覆盖与已声明模板章节 |
+| 计划 | `code-flow acceptance manifest --task-dir "<需求目录>" --task-file "<任务文件>" --verify-plan --json` | manifest、场景、设计、测试登记/收集与 Spec Gate |
+| 开发中 | `code-flow task verify --task-dir "<需求目录>" --checks --profile full --root "$PWD" --json` | 只运行 validators，不推进任务状态 |
+| 需求终验 | `code-flow task verify --task-dir "<需求目录>" --layers validators,review,e2e --profile full --root "$PWD" --json` | 全层执行与当前输入证据 |
+| 诊断 | `code-flow spec doctor --task-dir "<需求目录>" --root "$PWD" --json` | 安装/Context 健康、未解决 Rule 引用与阶段 readiness |
+
+浏览器关键旅程用 `e2e`，API/CLI/后台全链路用 `system`，容量用 `capacity`。计划通过与测试收集通过不能代替真实执行；格式、错误修复和各项数量口径见[验收契约](docs/acceptance-contract.md)。
 
 ## 质量闭环（v0.5）
 
@@ -103,7 +144,9 @@ checks:
 
 ```
 .code-flow/                       # 规范核心（共用）
-  scripts/                        # Python Hook 脚本（三端共用）
+  scripts/                        # Python 运行时与 Hook（四平台共用）
+  runtime-commands.json            # 正式运行时命令契约
+  tasks/<日期>/<需求>/             # PRD、design、scenarios、任务与验收 manifest
   specs/<domain>/                 # 领域 spec（_map.md + 约束规则）
 
 # Claude Code (--platform=claude)
@@ -131,6 +174,7 @@ AGENTS.md                         # 全局指令
 
 ## 依赖说明
 
+- 需要 Node.js 18 及以上
 - 需要 `python3` 版本 3.9 及以上
 - 需要安装 `pyyaml`（`cf_init` 会尝试自动安装，失败会提示手动处理）
 - 运行测试需要 `pytest`

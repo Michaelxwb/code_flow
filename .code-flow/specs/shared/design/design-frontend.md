@@ -1,5 +1,7 @@
 # {模块名称} 前端模块需求与设计简报
 
+> **生成约定**：产出文档的 frontmatter 声明 `design_template: frontend`。浏览器 E2E 必须有匹配的 env/components/boundary，expected 逐条用 expected_refs 关联步骤或断言；deferred 补原因、owner 与 target_phase。API/CLI/后台全链路用 system，容量用 capacity；非 E2E 不写 why_e2e。完成后运行 scenarios parse --quality 与 design lint；计划再校验真实测试登记/收集。完整示例见工具文档 `docs/acceptance-contract.md`。
+
 > **文档编号**: FE-{模块代号}-{版本号}
 > **文档版本**: v1.0
 > **创建日期**: YYYY-MM-DD
@@ -91,9 +93,9 @@
 
 ### 2.4 验收条件 [必填]
 
-> **0.9 场景源**：验收场景定义在 `<需求>.scenarios.md`。本节只保留场景引用和前端设计影响，不复制完整场景表；优先级、执行方式、环境、输入等执行元数据以 scenarios 源为准；没有可执行命令的场景必须显式标为 aspirational；plan 阶段投影到 manifest check；测试层级（unit / component / contract / integration / E2E / manual）与关键真实边界定义在 scenarios 源中。
+> **场景唯一源**：验收场景定义在 `<需求>.scenarios.md`。本节只保留场景引用和前端设计影响，不复制完整场景表；优先级、执行方式、环境、输入等执行元数据以 scenarios 源为准；没有可执行命令的场景必须显式标为 aspirational；plan 阶段投影到 manifest check；测试层级（unit / component / contract / integration / system / capacity / E2E / manual）与关键真实边界定义在 scenarios 源中。
 >
-> **前端 E2E 精度**：表单交互、布局、文案、字段顺序、空态和错误提示用 component + mock API；E2E 只保留真实浏览器 + 真实后端 + 鉴权/DB 的关键用户旅程。E2E 必须有 `why_e2e`、`trigger_paths` 和可观察结果，禁止源码字符串/CSS/宽度断言。
+> **前端 E2E 精度**：表单交互、布局、文案、字段顺序、空态和错误提示用 component + mock API；E2E 只保留真实浏览器 + 真实后端 + 鉴权/DB 的关键用户旅程。E2E 必须有 `why_e2e`、非 smoke 的 `trigger_paths` 和可观察结果，禁止源码字符串/CSS/宽度断言。
 
 | 场景ID | 前端设计影响 / 备注 |
 |--------|--------------------|

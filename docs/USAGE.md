@@ -6,12 +6,16 @@
 - [核心概念](#核心概念)
 - [质量闭环](#质量闭环)
 - [CLI 命令](#cli-命令)
+- [可执行场景、设计和计划门禁](#可执行场景设计和计划门禁)
 - [规范管理命令](#规范管理命令)
 - [任务管理命令](#任务管理命令)
 - [配置参考](#配置参考)
 - [工作流示例](#工作流示例)
 - [Hook 机制](#hook-机制)
 - [故障排查](#故障排查)
+- [0.8.0 运行时命令契约](#080-运行时命令契约)
+
+场景格式、测试登记、报告口径与常见错误统一见[可执行验收契约](acceptance-contract.md)；升级见 [0.8 迁移指南](migrations/runtime-0.8.0.md)。
 
 ---
 
@@ -32,7 +36,7 @@ code-flow 同时支持 Claude Code、Codex CLI、Costrict 和 OpenCode，四者�
 
 ### 前置条件
 
-- Node.js (用于 CLI)
+- Node.js 18+（用于 CLI）
 - Python 3.9+
 - pyyaml (`pip install pyyaml`)
 - Codex CLI（如使用 Codex）：`npm i -g @openai/codex`，并在 `.codex/config.toml` 中启用 `features.hooks = true`（v0.4.7 起由 codex_hooks 更名；`code-flow init` 自动生成）
@@ -47,6 +51,8 @@ npm i -g @michaelxwb/code-flow
 # pnpm
 pnpm add -g @michaelxwb/code-flow
 ```
+
+仓库版本与 npm 的 `latest` 标签独立。安装后核对 `code-flow --version`；需要尚未发布的本地修复时，按 [README 的本地包安装步骤](../README.md#升级)操作。已有项目升级 CLI 后，还要执行 `code-flow migrate --runtime --dry-run` → `--apply`，更新项目 runtime 与已安装平台。
 
 ### 初始化项目
 
@@ -415,17 +421,37 @@ code-flow evidence import --format playwright --file ci/playwright.json \
 
 旧版 design 保留完整场景定义时可以继续走兼容审计。只有场景引用的 design 缺少 `.scenarios.md` 时返回 `scenario_source_missing`，需恢复场景源后重跑，不能从引用表推断测试层级和真实边界。
 
+## 可执行场景、设计和计划门禁
+
+`<需求>.scenarios.md` 是验收唯一源，design 引用场景 ID；任务登记责任与命令，manifest 保存投影和执行配置。先验证场景与设计，再锁定和验证计划：
+
+```bash
+code-flow scenarios parse --file "<需求>.scenarios.md" --quality --json
+code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json
+code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json" --scenarios-file "<需求>.scenarios.md"
+# 在对应 check 上补齐真实测试登记后运行完整门禁
+code-flow acceptance manifest --verify-plan --require-scenarios --task-dir "<需求目录>" --task-file "<任务文件>"
+```
+
+多份设计用重复 `--file` 合并检查。design frontmatter 声明 `design_template: lite|full|frontend` 中的实际值；lint 校验 FEAT/API/NFR 定义与引用、功能场景覆盖、场景功能错配和该模板必填章节。未声明模板的旧设计仍进行 ID 校验，不强加不相关章节。
+
+verify-plan 始终聚合 manifest 基线、场景质量、设计闭环、测试登记/真实收集和 plan Spec Gate。`--require-scenarios` 不是启用质量检查的开关。浏览器 E2E 的 check 必须属于 browser 套件；smoke/capacity 的 check 和收集用例必须有对应 marker，实际 command 必须选择登记的测试。
+
 ### E2E 精度（plan / start）
 
 E2E 只用于 P0/P1 关键用户旅程，且必须证明低层测试覆盖不了：
 
-- `level` 支持 `unit` / `component` / `contract` / `integration` / `e2e` / `manual`。
-- E2E 必须有 `why_e2e`、`boundary`、`steps`、`expected`；非 `smoke` E2E 还必须有 `trigger_paths`。
+- `level` 支持 `unit` / `component` / `contract` / `integration` / `system` / `capacity` / `e2e` / `manual`。API/CLI/后台全链路使用 system。
+- E2E 必须有浏览器 env/组件声明、匹配的 `boundary`、`why_e2e`、`steps`、具体 `expected`；非 `smoke` E2E 还必须有 `trigger_paths`。
+- 每个 expected 通过 `expected_refs` 引用存在的步骤（从 1 开始）或已声明断言 ID；deferred 必须声明 defer_reason、owner、target_phase。
+- env 使用 none/local/local-api/browser/external/staging/capacity/ci/production；components 使用稳定标识符。数据库属于组件，不使用 env=db。
 - `code-flow scenarios parse --file <需求>.scenarios.md --quality --json` 和 `code-flow acceptance manifest --verify-plan --require-scenarios ...` 会失败关闭。
 - `code-flow task start` 返回 `e2e_plan`：只把当前 TASK 的 `owned` E2E 和全局 `smoke` E2E 放进 `scheduled`，其余保持 deferred；agent 不得把 deferred 场景补成本任务测试。
 - 旧 manifest 没有 `e2e_gate` 时只返回 `legacy_e2e_plan` 警告，避免升级中断在途任务；重新执行 plan 锁定后会强制质量门禁。
 - `task verify --profile changed` 只跑 `trigger_paths` 命中当前 diff 的 E2E；没有 `trigger_paths` 的 smoke E2E 不会在 changed 中顺跑。`--profile smoke` 只跑 smoke E2E（旧计划无 smoke 标记时才回退全量）。
 - 不要把“全量 E2E 通过”作为每个小 PR 的硬门禁；全量 E2E 放 nightly / release，PR 用受影响的 component/contract/integration + 少量 smoke。
+
+数量报告区分声明的 e2e_browser_count/system_count/capacity_count 与通过真实收集的 runnable 数量；未检查的 runnable 为 null。收集通过不等于已运行真实浏览器或已通过业务断言。完整字段与可复制示例见[验收契约](acceptance-contract.md)。
 
 ### `/cf-init` / `$cf-init`
 
@@ -550,22 +576,24 @@ JSON 输出（默认模式）会包含 `missing_specs` 字段，可用于自动�
 | `context [需求目录]` | 展示 `spec-context.yml` 的 bindings、Rule 状态、Evidence 与 drift |
 | `refresh [需求目录]` | 刷新 Context：changed Rule 标 stale，missing/conflict 不自动降级 |
 | `status [需求目录]` | 人话版 Context 状态：任务、marker 一致性、code Gate、Rule 状态与下一步 |
-| `doctor [需求目录]` | 全量诊断：config schema、active marker、lock、hash、journal、legacy residue |
+| `doctor [需求目录]` | 健康诊断、未解决应用引用、Conventions 提示与 plan/code/review readiness |
 | `migrate --plan <plan>` | 确认 prepared migration plan 中的 unresolved 项（需用户逐项选择） |
 
 ```
 /cf-spec context                      # 从 active-task 定位，展示当前 Context
 /cf-spec refresh .code-flow/tasks/2026-04-21/specs-proactive  # 刷新指定需求 Context
-/cf-spec doctor                       # 全量诊断当前 Spec Workflow 状态（hash 漂移可用 resync 自愈）
+/cf-spec doctor                       # 诊断当前 Spec Workflow；漂移按 next 指引 refresh
 /cf-spec status                       # 人话版 Context 状态与下一步
 /cf-spec migrate --plan .code-flow/migrations/v0.6.0/plan.yml # 确认迁移计划
 ```
 
-`doctor` 的机器入口是 `code-flow spec doctor --task-dir <需求目录> --root "$PWD" --json`（0.8 新增）。它只读检查 config schema、active marker、Context hash、迁移 journal/lock、运行时 manifest 与 legacy residue；发现阻断项返回 `decision=block`（退出码 3），`next` 给出修复命令。它不是删除 marker 或绕过 Gate 的捷径。
+`doctor` 的机器入口是 `code-flow spec doctor --task-dir "<需求目录>" --root "$PWD" --json`。它只读检查 config schema、active marker、Context hash、迁移 journal/lock、运行时 manifest 与 legacy residue；还检查 applied artifact 的条目是否已解决，并提示 `convention_review_required`。顶层 decision 表示健康诊断，`readiness.plan/code/review` 分别给出阶段准备情况；健康通过不代表各阶段均可通过。发现阻断项时按 `next` 修复。
+
+applied 引用必须指向正确章节与条目，不能含待同步/待确认/TBD；code/review 需要执行证据。已有代码无需变更时可通过自动 verifier 证明符合，`decision=null` 本身不阻断；不适用规则仍需 not_applicable 与用户 decision。关键 Conventions 应提升为稳定 Rule 与 verifier。
 
 > **硬门禁**：`spec_workflow.schema_version` 非 `1` 时只有 `migrate --plan` 可用；Context 缺失/损坏时 fail-closed，不回退 Catalog。
 >
-> **轻量模式**：`spec_workflow.enforcement` 支持 `required`（全门禁，默认）/ `warn`（门禁仅记录不阻断）/ `inject`（只注入不门禁），solo 项目可渐进采纳。
+> schema 1 的 Spec Workflow 使用 required 门禁，不提供 warn/inject/off 项目开关。`quality_loop` 的开关仅控制反馈能力，不关闭 Spec Gate。
 
 ### `/cf-sync` — 双副本同步（internal）
 
@@ -587,8 +615,9 @@ code-flow sync apply    # canonical → 部署副本
 根据变更文件自动匹配并执行验证规则（测试、类型检查、lint）。
 
 ```
-code-flow task verify --checks          # 0.8 推荐：等价 cf-validate
-code-flow task verify --layers e2e      # 只跑 E2E 层
+code-flow task verify --task-dir "<需求目录>" --checks --profile full --root "$PWD" --json
+code-flow task verify --task-dir "<需求目录>" --layers e2e --profile changed --root "$PWD" --json
+code-flow validate --root "$PWD" --json  # 无 active TASK 或显式变更范围
 /cf-validate src/Foo.tsx                # 兼容别名：验证指定文件
 /cf-validate --files=src/a.ts,src/b.ts  # 兼容别名：验证多个文件
 ```
@@ -617,6 +646,8 @@ validators:
 ```
 
 `{files}` 占位符会替换为匹配到的变更文件路径。验证失败时自动尝试修复。
+
+`--checks` 等价 `--layers validators`，允许任务进行中执行，不额外运行 review/e2e、不推进 done/verified；`--profile full` 包含 heavy validators。任务范围包含冻结基线以来已提交与未提交的变更。无 active TASK 时使用 `code-flow validate`，指定文件时追加 `--files "src/a.py" "src/b.py"`；损坏的 marker 或 Context 仍须修复。
 
 ### `/cf-learn` — 规范学习与沉淀
 
@@ -744,6 +775,8 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 
 输出摘要含**追溯自检**与**性能自检**：FEAT 无来源/无验收、或标记性能敏感却无对应设计时，显式提示补全。
 
+产出 design 时同时维护 canonical 场景源与模板声明，并执行 `scenarios parse --quality`、`design lint`；只引用已定义 ID。规则应用引用应指向已完成条目，不能把“待同步 spec”作为 applied 证明。
+
 支持中断恢复——对话进行中即写入草稿，下次通过文件路径继续。
 
 ### `/cf-task:plan` — 从设计文档拆解任务
@@ -761,6 +794,8 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 3. 设计简报模式：直接从 Goal/DB/API/Acceptance Criteria 拆解；多 design 合并为一份任务，各 TASK 的 Source 指向其来源 design
 4. 展示拆解结果供用户确认/调整
 5. 写入任务文件到需求目录：`.code-flow/tasks/<YYYY-MM-DD>/<需求>/<需求>.md`
+
+计划产出还包括场景到全部 checks 的绑定与锁定 manifest；补齐真实测试登记，执行 `acceptance manifest --verify-plan` 后才进入 start。重新锁定保留 check 的登记配置，更改配置会使旧输入证明失效。
 
 **缺口分析**（设计文档模式，`--quick` 跳过）：AI 从文档中识别目标/非目标、范围边界、未确认的技术决策、风险点和验收标准，输出结构化分析并与用户交互讨论。对齐结论写入 Proposal 的 `### Alignment` 子节。
 
@@ -808,11 +843,11 @@ code-flow 提供从需求对齐到编码实现的完整任务管理流程。
 ```
 
 **单任务模式流程**：
-1. **前置检查**：状态必须为 draft、无未解决的 `#NOTES`、所有依赖已 done
-2. **加载详设**：按 `Source` 字段中的行号范围读取设计文档对应章节
-3. **编码**：Status 更新为 in-progress，逐项完成 Checklist
-4. **自动完成**：所有 Checklist 勾选后 Status 自动更新为 done
-5. **Spec 同步检查**：检查本次编码是否引入了新的模式需要同步到规范
+1. **前置检查**：由 `code-flow task start` 检查状态、依赖、Context/marker、范围及 canonical E2E 质量与登记，不能靠手改状态绕过
+2. **加载详设**：使用已持久化 Context 中的 Spec-Refs、Design refs 与 Acceptance Contract 读取对应内容
+3. **编码**：进入 in-progress，逐项完成 Checklist；开发中可用 `task verify --checks` 运行 validators
+4. **完成门禁**：调用 `code-flow task finish`，依据 required code checks 的有效执行证据推导 done/provisional；勾选 Checklist 不自动证明验收通过
+5. **Spec 同步检查**：检查新增模式是否需要更新规范；需求终验仍需完整 verify
 
 **整文件模式（并行批次）**：按依赖拓扑排序输出执行计划，批次内独立 TASK 默认并行执行：
 
@@ -908,15 +943,22 @@ Status 更新为 blocked，阻塞原因记录在 Log 中。
 /cf-task:archive auth-module
 ```
 
-**归档前执行三维校验**：
+**归档前执行校验**：
 
 | 维度 | 检查内容 |
 |------|---------|
 | 完整性 | 所有 Checklist 已勾选，无残留 `#NOTES` |
 | 正确性 | validation.yml 中匹配的验证规则通过 |
 | 一致性 | Proposal 中的意图与实际代码变更一致 |
+| 可追溯性 | 场景、全部 checks、Spec Gate 与当前输入执行证据一致 |
 
-校验通过后，**整个需求目录**移动到 `.code-flow/tasks/archived/<日期>/<需求>/`（prd / design / tasks 一并归档）；旧扁平布局回退为逐文件归档（同名 `.design.md` / `.prd.md` 一并移动）。归档后提示是否有新规范需同步到 specs。
+通过完整需求验收与 Spec Gate 后，由正式运行时归档并移动目录：
+
+```bash
+code-flow task archive --task-dir "<需求目录>" --root "$PWD" --json
+```
+
+实际归档位置以返回的 `archived_to` 为准，PRD/design/scenarios/tasks 随整个需求目录归档。旧扁平布局缺少独立需求边界时会要求迁移，不提供逐文件移动回退。不要手工 mv 或只移动任务文件；归档后再审查是否需要同步规范。
 
 ---
 
@@ -935,8 +977,9 @@ budget:
   map_max: 400      # 单个 _map.md 最大 token
   catalog_max: 200  # Spec Catalog 目录上限（v0.5+）
 
-# 门禁强度（required=全门禁 | warn=门禁仅记录不阻断 | inject=只注入不门禁）
+# schema 1 必须使用 required；不提供 warn/inject/off 门禁开关
 spec_workflow:
+  schema_version: 1
   enforcement: required
 
 # 质量闭环：enabled 仅 literal true 启用（存量升级默认关闭，行为不变）；
@@ -948,7 +991,7 @@ quality_loop:
   stop_check: true            # Stop 收尾按 validation.yml 校验（heavy 项跳过）
   finish_check: true          # 任务 finish 时执行 validation.yml（不含 heavy）
   heavy_at_finish: false      # 显式 true 时 finish 也跑 heavy 项（默认归档/verify-e2e 跑）
-  finish_verifier_budget: 300 # finish 的 command/test verifier 预算（秒，超预算延后到终验）
+  finish_verifier_budget: 300 # finish 的 command/test verifier 预算（秒）；未完成不算 verified
   correction_capture: true    # 纠正句式采集（喂 cf-learn 候选）
   compress: true              # 注入时对 spec 做保守无损压缩；缺省/非布尔按 true 处理
   compress_reminder: true     # 会话过长每 N 轮提醒压缩上下文
@@ -1196,7 +1239,7 @@ spec 文件（含 frontmatter 的 description/checks）和 `CLAUDE.md` 提交到
 
 - `npm i -g @michaelxwb/code-flow@latest && code-flow init`：工具文件覆盖、合并文件智能合并、specs 不动
 - 新能力灰度：`quality_loop` 子开关支持单项关闭（如只开 post_check、关 correction_capture）
-- 出问题一键回退：`quality_loop.enabled: false` 关闭质量闭环；`spec_workflow.enforcement: warn|inject` 降低门禁强度，均无需回滚版本
+- `quality_loop.enabled: false` 可关闭质量反馈；Spec Workflow 的 required Gate 仍生效，不能用 warn/inject 降低门禁强度。运行时升级回滚按迁移 journal 操作。
 
 **管理员的关键转变**（v0.5）：过去判断"规范好不好"靠体感，现在有三组数据闭环——违规率说明规则是否被理解、修正率说明反馈是否有效、误报率说明机检是否过严。规范库的增删都有数据背书，做减法（退役僵尸规范）第一次变得有依据。
 
@@ -1454,14 +1497,17 @@ python3 -m pip install pyyaml pytest
 
 ## 0.8.0 运行时命令契约
 
-Agent 使用 `code-flow spec/task/acceptance/evidence/audit/validate/stats` 正式入口；Python 文件是内部实现。参数帮助来自实际运行时解析器，例如 `code-flow spec doctor --help`。0.8 新增：
+Agent 使用 `code-flow spec/task/scenarios/design/acceptance/evidence/audit/validate/stats` 正式入口；Python 文件是内部实现。参数帮助来自实际运行时解析器，例如 `code-flow spec doctor --help`。当前命令包括：
 
 | 命令 | 用途 |
 |------|------|
+| `code-flow scenarios parse --file "<需求>.scenarios.md" --quality --json` | 场景语义与浏览器边界质量门禁 |
+| `code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json` | ID 闭环、功能覆盖与声明模板章节 |
+| `code-flow acceptance manifest --verify-plan --task-dir "<需求目录>" --task-file "<任务文件>"` | 完整计划门禁与真实收集校验 |
 | `code-flow task verify --layers validators,review,e2e --profile smoke\|changed\|full --resume --deadline <秒>` | 分层/分级/续跑；`--checks` 等价 `--layers validators` |
 | `code-flow task finish --batch TASK-001,TASK-002` / `--capability <名称>` | 批量 Done Gate，共享 check 只执行一次 |
 | `code-flow evidence import --format junit\|playwright --file <报告> --commit <sha> --run-url <url>` | CI 证据导入 |
 | `code-flow audit --task-dir <需求目录> --json` | 只读不变量审计 |
-| `code-flow spec doctor --task-dir <需求目录> --root "$PWD" --json` | Context/marker/运行时/manifest 漂移诊断 |
+| `code-flow spec doctor --task-dir "<需求目录>" --root "$PWD" --json` | Context/安装健康、应用引用与阶段 readiness |
 
-运行时状态：`done` 仅在 required code check 全部 verified 后成立；`provisional` 表示仍有 deferred/env_blocked/failed；`env_blocked` 不写 verified、不计产品失败。0.7 安装需执行显式事务迁移，见 [0.8.0 迁移说明](migrations/runtime-0.8.0.md)（含 rollback、manifest v3 与 evidence sidecar）。旧的 0.7 命令别名保留一个 minor。
+运行时状态：`done` 仅在 required code check 全部 verified 后成立；`provisional` 表示仍有合法延后、env_blocked 或 incomplete；真实 failed 会阻断，不会转成成功。`env_blocked` 不写 verified、不计产品失败。0.7 安装需执行显式事务迁移，见 [0.8.0 迁移说明](migrations/runtime-0.8.0.md)（含 rollback、manifest v3 与 evidence sidecar）。旧的 0.7 命令别名保留一个 minor。

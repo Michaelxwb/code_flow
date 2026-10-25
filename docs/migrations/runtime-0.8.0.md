@@ -2,6 +2,8 @@
 
 0.8.0 把用户命令面从 16 条收敛到 11 条，并把执行、证据与状态机升级为 manifest v3 + evidence sidecar。旧命令文件不删除，保留一个 minor 的兼容别名（0.9.0 移除）。
 
+本文包括仓库 0.8.0 的验收契约硬化；npm 发布状态独立，先核对实际安装版本。完整字段、可复制示例与错误处理见[可执行验收契约](../acceptance-contract.md)。
+
 ## 1. 升级前置
 
 - CLI 与项目内运行时版本必须可比较：安装版本高于 CLI 时迁移会拒绝降级，先更新全局包。
@@ -9,7 +11,13 @@
 - 需要 Python 3.9+ 与 pyyaml；0.8 没有新增 npm 运行时依赖，`package.json` 仍只有 `@ccusage/codex`。
 
 ```bash
-npm i -g @michaelxwb/code-flow@latest
+code-flow --version
+npm view @michaelxwb/code-flow dist-tags --json
+```
+
+确认注册表已有所需版本后再安装。需要尚未发布的仓库修复时，按 [README](../../README.md#升级)构建并安装本地 tarball；不要用较旧的 latest 覆盖本地版本。CLI 更新后进入目标项目：
+
+```bash
 cd your-project
 code-flow migrate --runtime --dry-run
 ```
@@ -69,12 +77,12 @@ apply 使用同一事务：备份 → staging → 校验 → journal → 写目�
 
 `.acceptance-manifest.json` 从 schema 2 迁移到 schema 3：
 
-- `checks[]`：可执行命令、cwd、timeout、env/env_scope/preflight/parallel_safe、inputs，按 `CHK-*` 去重。
-- `scenarios[]`：保留 ID / owner / assertions，通过 `check` 引用 `checks[]`；同一 check 可被多个 scenario 引用。
+- `checks[]`：可执行命令、cwd、timeout、env/env_scope/preflight/parallel_safe、inputs，以及 suite/test_ids/markers/collect 登记；按 `CHK-*` 去重。
+- `scenarios[]`：保留 ID / owner / assertions 和场景语义，通过 `checks` 绑定全部成员；兼容旧 `check`，同一 check 可被多个 scenario 引用。
 - schema 2 输入按 `command + cwd + timeout` 自动归并为 checks，读取时返回 `schema2_compat`；旧证据仍可读。
 - check 或 scenario 映射冲突 fail closed，列出冲突字段，不静默覆盖。
 
-迁移后建议重新生成一次 manifest 并跑 `python3 src/core/code-flow/scripts/cf_traceability.py`，确认 scenario 100% 绑定 check。
+运行时迁移更新受管理脚本和平台入口，不代写需求场景与测试登记。已有需求按下方步骤检查并重新锁定 manifest；一个场景的全部 checks 都必须绑定并各自保留证据。
 
 ## 5. Evidence sidecar
 
@@ -90,10 +98,32 @@ apply 使用同一事务：备份 → staging → 校验 → journal → 写目�
 ```bash
 code-flow spec doctor --task-dir ".code-flow/tasks/<日期>/<需求>" --root "$PWD" --json
 code-flow audit --task-dir ".code-flow/tasks/<日期>/<需求>" --json
-code-flow task verify --layers validators,review,e2e --profile changed --json
+code-flow task verify --task-dir ".code-flow/tasks/<日期>/<需求>" --checks --profile full --root "$PWD" --json
+code-flow task verify --task-dir ".code-flow/tasks/<日期>/<需求>" --layers validators,review,e2e --profile full --root "$PWD" --json
 ```
 
-`spec doctor` 只读诊断 config schema、active marker、Context hash、迁移 journal/lock、运行时 manifest 与 legacy residue；发现阻断项返回 `decision=block`（退出码 3），并按 `next` 输出修复命令。`audit` 只断言不变量，owner/计数全部来自 design + manifest + evidence。
+`spec doctor` 只读诊断 config schema、active marker、Context hash、迁移 journal/lock、运行时 manifest 与 legacy residue，并检查未解决的 applied 引用、提示 Conventions 审查。顶层 decision 表示诊断健康，`readiness.plan/code/review` 分别表示阶段准备情况；应同时查看。阻断项按 `next` 修复，不能把健康通过当作阶段通过。
+
+code/review 的 applied 引用不能替代执行证据。自动 verifier 能证明符合时无需另造用户 decision；规则确实不适用才用 not_applicable 与用户确认。`audit` 按每个 check 对账，A 的成功不能覆盖 B 的失败；缺部分 central evidence 时不借用场景汇总 pass。
+
+### 重新锁定现有需求
+
+1. 找到 canonical 场景源；没有时按 [Scenario-First 迁移说明](runtime-0.9.0.md)从完整旧定义生成草稿。只有引用的旧 design 不能回退为完整场景。
+2. API/CLI/后台全链路改为 system/integration，同时移除 why_e2e；保留为 e2e 的场景必须有浏览器 env/组件和匹配 boundary。
+3. 补齐具体 expected 与逐条 expected_refs；有条件预期声明前置条件。deferred 补 defer_reason、owner、target_phase。
+4. 使用合法 env；数据库放在 components。设计声明实际 design_template，统一 FEAT/API/NFR 定义及功能到场景关系。
+5. 生成 manifest，在对应 check 上登记 browser 套件、具体 test_ids、smoke/capacity markers 与 collect；执行 command 必须选中这些用例。延期执行不免除计划登记。
+6. 执行以下门禁。更改登记配置或命令会使旧输入证明失效，按实际需要重跑受影响检查。
+
+```bash
+code-flow scenarios parse --file "<需求>.scenarios.md" --quality --json
+code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json
+code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json" --scenarios-file "<需求>.scenarios.md"
+# 补齐对应 check 登记后再运行
+code-flow acceptance manifest --verify-plan --require-scenarios --task-dir "<需求目录>" --task-file "<任务文件>"
+```
+
+`--verify-plan` 始终执行完整检查，不能通过不传 `--require-scenarios` 绕过。旧文档可读与旧 evidence 可追溯不代表新计划自动通过。`--checks` 只跑开发期 validators、不推进终态；需求级 full 终验才证明完整范围。浏览器可运行数量来自实际收集，已执行结果仍来自有效运行证据。
 
 ## 7. 回滚
 

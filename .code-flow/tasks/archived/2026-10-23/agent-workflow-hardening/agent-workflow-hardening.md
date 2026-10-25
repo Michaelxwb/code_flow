@@ -64,6 +64,17 @@
 
 本轮新增 40 个回归用例。`node src/cli.js validate --root "$PWD" --json` 全量校验通过（decision=pass，failures=[]，incomplete=false，未复用检查结果）；全局 `code-flow sync check` 确认源码与五组部署副本一致，`git diff --check` 通过。
 
+## 文档对齐（2026-10-25）
+
+- README 补齐当前工作流、命令入口和版本核对；区分 npm latest 与尚未发布的本地包，并说明更新 CLI 后仍需迁移项目 runtime。
+- 使用手册与迁移指南统一场景/设计/计划/终验流程、Rule readiness、数量口径和错误修复；修正 Checklist 自动 done、旧扁平逐文件归档及 warn/inject 门禁开关的过时说明。
+- `docs/acceptance-contract.md` 提供通过真实 CLI 校验的配对设计/场景示例、check 登记配置和常见错误处理；CI 指南说明逐 check 映射及直接执行与外部报告导入的区别。
+- 场景模板补齐具体步骤、expected_refs 与延期责任，三个设计模板补齐模板声明与新契约说明；canonical 与本项目模板同时更新。
+- 发布包补齐 USAGE、CI 与 Scenario-First 迁移指南，避免已打包文档引用未随包交付的文件。
+- 回归入口：`tests/test_documented_acceptance_examples.py`，5 个用例直接提取文档示例经公开 scenarios/design 命令校验，并检查真实 npm pack 文件清单中的文档链接，避免说明和模板随实现漂移。
+
+验证结果：文档与模板定向测试 15 项通过；27 条新增命令示例参数及 24 个本地文档链接检查通过；全量 `node src/cli.js validate --root "$PWD" --json` 返回 pass，五组运行时部署同步及四组共享模板内容一致，`git diff --check` 通过。
+
 ## 待优化项
 
 ### 1. 命令契约化
@@ -129,7 +140,7 @@
 - [x] stats 区分 deferred rule、有效 accepted risk 与失效风险记录。
 - [x] doctor 在普通用户项目比较 CLI 包版本。
 - [x] scenarios 文件缺失时，reference-only design 明确阻断；仅完整旧设计可 fallback。
-- [ ] CI import 多 check 的显式覆盖格式与文档。
+- [x] CI import 多 check 的显式覆盖格式与文档，见 `docs/ci/acceptance-evidence.md` 与 `docs/USAGE.md`。
 
 ## 验收
 

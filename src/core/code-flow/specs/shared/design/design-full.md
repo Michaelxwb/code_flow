@@ -1,5 +1,7 @@
 # {模块名称} 模块需求与设计一体化文档
 
+> **生成约定**：产出文档的 frontmatter 声明 `design_template: full`。浏览器 E2E 必须有匹配的 env/components/boundary，expected 逐条用 expected_refs 关联步骤或断言；deferred 补原因、owner 与 target_phase。API/CLI/后台全链路用 system，容量用 capacity；非 E2E 不写 why_e2e。完成后运行 scenarios parse --quality 与 design lint；计划再校验真实测试登记/收集。完整示例见工具文档 `docs/acceptance-contract.md`。
+
 > **文档编号**: MOD-{模块代号}-{版本号}
 > **文档版本**: v1.0
 > **创建日期**: YYYY-MM-DD
@@ -132,7 +134,7 @@
 
 ### 2.5 验收条件 [必填]
 
-> **0.9 场景源**：验收场景定义在 `<需求>.scenarios.md`。本节只保留业务规则、设计影响和场景引用；不要在此复制完整全局场景表。
+> **场景唯一源**：验收场景定义在 `<需求>.scenarios.md`。本节只保留业务规则、设计影响和场景引用；不要在此复制完整全局场景表。
 
 #### 2.5.1 业务规则与约束
 
@@ -143,9 +145,9 @@
 
 #### 2.5.2 功能验收场景
 
-> **0.9 场景源**：验收场景定义在 `<需求>.scenarios.md`。设计文档只引用全局场景 ID，并说明设计影响，不复制完整场景字段；优先级、执行方式、环境、输入等执行元数据以 scenarios 源为准；没有可执行命令的场景必须显式标为 aspirational；plan 阶段投影到 manifest check；测试层级（unit / component / contract / integration / E2E / manual）与关键真实边界定义在 scenarios 源中。
+> **场景唯一源**：验收场景定义在 `<需求>.scenarios.md`。设计文档只引用全局场景 ID，并说明设计影响，不复制完整场景字段；优先级、执行方式、环境、输入等执行元数据以 scenarios 源为准；没有可执行命令的场景必须显式标为 aspirational；plan 阶段投影到 manifest check；测试层级（unit / component / contract / integration / system / capacity / E2E / manual）与关键真实边界定义在 scenarios 源中。
 >
-> **E2E 精度**：E2E 只用于 P0/P1 关键用户旅程，且必须有 `why_e2e`（低层测试为什么不够）、`trigger_paths`（哪些源码变化才触发）和可观察结果。UI 布局/文案/字段顺序用 component，DTO/错误码用 contract，鉴权/事务/模块边界用 integration；不要用 E2E 覆盖所有用户可见结果。
+> **E2E 精度**：E2E 只用于 P0/P1 关键用户旅程，且必须有 `why_e2e`（低层测试为什么不够）、非 smoke 的 `trigger_paths`（哪些源码变化才触发）和可观察结果。UI 布局/文案/字段顺序用 component，DTO/错误码用 contract，鉴权/事务/模块边界用 integration；不要用 E2E 覆盖所有用户可见结果。
 
 | 场景ID | 设计影响 / 备注 |
 |--------|----------------|
