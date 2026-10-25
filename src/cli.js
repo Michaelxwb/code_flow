@@ -1114,7 +1114,7 @@ function runInit(force, platform, opts) {
 
 const args = process.argv.slice(2);
 
-if (runtimeFamilies.includes(args[0])) {
+if (runtimeFamilies.includes(args[0]) || runtime.projectCommandFamily(args[0])) {
   process.exit(runtime.run(args));
 }
 

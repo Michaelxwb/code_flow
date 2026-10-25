@@ -17,7 +17,7 @@ import re
 import sys
 from typing import IO, Mapping, Optional, Sequence
 
-from cf_acceptance_schema import EXEC_MODES, load_manifest
+from cf_acceptance_schema import EXEC_MODES, load_manifest, scenario_check_ids
 
 
 _SCENARIO_ID_RE = re.compile(r"^[SEB]-\d+$")
@@ -177,7 +177,7 @@ def _design_inputs(value: str) -> list[str]:
 
 def _binding(scenario: Mapping[str, object], check: Optional[Mapping[str, object]],
              design: DesignScenario) -> tuple[str, str, str]:
-    check_id = scenario.get("check")
+    check_id = next(iter(scenario_check_ids(scenario)), "")
     exec_mode = str(scenario.get("exec") or design.exec or "")
     if isinstance(check_id, str) and check_id and check is not None:
         return "check", check_id, exec_mode or "auto"
@@ -218,6 +218,7 @@ def _row(design: DesignScenario, scenario: Optional[Mapping[str, object]],
         "env": str(check.get("env", "none")) if check else str(scenario.get("env") or design.env or "none"),
         "inputs": list(inputs) if isinstance(inputs, list) else _design_inputs(str(inputs or "")),
         "check": check_id,
+        "checks": scenario_check_ids(scenario),
         "command": list(command) if isinstance(command, list) else [],
         "owner": str(scenario.get("owner") or ""),
         "status": str(scenario.get("status") or ("aspirational" if binding == "aspirational" else "")),
@@ -231,7 +232,7 @@ def _extra_rows(manifest_scenarios: Mapping[str, Mapping[str, object]],
     rows: list[dict[str, object]] = []
     for scenario_id in sorted(set(manifest_scenarios) - design_ids):
         scenario = manifest_scenarios[scenario_id]
-        check_id = scenario.get("check")
+        check_id = next(iter(scenario_check_ids(scenario)), "")
         check = checks.get(check_id) if isinstance(check_id, str) else None
         exec_mode = str(scenario.get("exec") or "")
         binding = "check" if check is not None else ("aspirational" if exec_mode == "aspirational" else "unbound")
@@ -246,6 +247,7 @@ def _extra_rows(manifest_scenarios: Mapping[str, Mapping[str, object]],
             "env": str(check.get("env", "none")) if check else str(scenario.get("env") or "none"),
             "inputs": list(check.get("inputs") or []) if check else list(scenario.get("inputs") or []),
             "check": check_id if isinstance(check_id, str) and check is not None else "-",
+            "checks": scenario_check_ids(scenario),
             "command": list(command) if isinstance(command, list) else [],
             "owner": str(scenario.get("owner") or ""),
             "status": str(scenario.get("status") or ""),
@@ -253,6 +255,23 @@ def _extra_rows(manifest_scenarios: Mapping[str, Mapping[str, object]],
             "in_design": False,
         })
     return rows
+
+
+def _extra_violations(rows: Sequence[Mapping[str, object]]) -> list[dict[str, str]]:
+    violations: list[dict[str, str]] = []
+    for row in rows:
+        violations.append({
+            "code": "extra_in_manifest",
+            "scenario": str(row["id"]),
+            "message": f"{row['id']} 存在于 manifest，但 design §2.5 未声明；请回填设计或移除场景。",
+        })
+        if row["binding"] == "unbound":
+            violations.append({
+                "code": "unbound_scenario",
+                "scenario": str(row["id"]),
+                "message": f"{row['id']} 没有可执行 check，且未显式标为 aspirational。",
+            })
+    return violations
 
 
 def _traceability_rows(
@@ -264,7 +283,7 @@ def _traceability_rows(
     rows: list[dict[str, object]] = []
     for item in design:
         scenario = manifest_scenarios.get(item.id)
-        check_id = scenario.get("check") if scenario is not None else None
+        check_id = next(iter(scenario_check_ids(scenario)), "") if scenario is not None else None
         check = checks.get(check_id) if isinstance(check_id, str) else None
         row = _row(item, scenario, check)
         rows.append(row)
@@ -284,18 +303,7 @@ def _traceability_rows(
                 ),
             })
     extras = _extra_rows(manifest_scenarios, checks, design_ids)
-    for row in extras:
-        violations.append({
-            "code": "extra_in_manifest",
-            "scenario": str(row["id"]),
-            "message": f"{row['id']} 存在于 manifest，但 design §2.5 未声明；请回填设计或移除场景。",
-        })
-        if row["binding"] == "unbound":
-            violations.append({
-                "code": "unbound_scenario",
-                "scenario": str(row["id"]),
-                "message": f"{row['id']} 没有可执行 check，且未显式标为 aspirational。",
-            })
+    violations.extend(_extra_violations(extras))
     all_rows = rows + extras
     summary = {
         "design_scenarios": len(design),

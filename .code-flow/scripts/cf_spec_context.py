@@ -1712,10 +1712,13 @@ def _doctor_runtime(root: Path) -> tuple[dict[str, object], list[dict[str, str]]
     if package_version:
         runtime["cli_version"] = package_version
         if package_version != version:
+            upgrade = tuple(map(int, package_version.split("."))) < tuple(map(int, version.split(".")))
+            repair = (f"npm install --global @michaelxwb/code-flow@{version}" if upgrade
+                      else "code-flow migrate --runtime --dry-run")
             findings.append(_doctor_finding(
                 "runtime_cli_version_mismatch", "warn",
                 f"CLI 包版本 {package_version} 与运行时版本 {version} 不一致",
-                str(root / "package.json"), "code-flow migrate --runtime --apply"))
+                str(root / "package.json"), repair))
     return runtime, findings
 
 
@@ -1932,7 +1935,14 @@ def _doctor_command(args: argparse.Namespace) -> dict[str, object]:
     findings.extend(_doctor_config(root))
     findings.extend(_doctor_migrations(root))
     findings.extend(_doctor_legacy(root))
-    return _doctor_report(context.task, sha, marker, runtime, findings)
+    from cf_rule_readiness import applied_findings, convention_findings
+    from cf_spec_gate import result_to_data, validate_stage
+    findings.extend(applied_findings(context, str(root)))
+    findings.extend(convention_findings(str(root), [binding.path for binding in context.bindings]))
+    report = _doctor_report(context.task, sha, marker, runtime, findings)
+    report["readiness"] = {stage: result_to_data(validate_stage(context, stage))
+                           for stage in ("plan", "code", "review")}
+    return report
 
 
 def _doctor_report(task: str, sha: str, marker: Mapping[str, object],

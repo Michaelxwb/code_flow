@@ -38,6 +38,9 @@ def _task_scenario_ids(task_file: str, task_id: str) -> set[str]:
 
 def _item(row: Mapping[str, object]) -> dict[str, object]:
     return {
+        **{field: row[field] for field in ("level", "env", "components", "steps", "expected", "expected_refs", "assertions",
+                                          "preconditions", "defer_reason", "defer_owner", "target_phase", "features", "tags")
+           if field in row},
         "id": str(row.get("id", "")),
         "title": str(row.get("title", "")),
         "owner": row.get("owner") if isinstance(row.get("owner"), str) else "",
@@ -94,6 +97,54 @@ def _quality_errors(items: list[dict[str, object]]) -> list[dict[str, object]]:
     return errors
 
 
+def _group_scenarios(data: Mapping[str, object], owned_ids: set[str], task_id: str
+                     ) -> tuple[list[dict[str, object]], list[dict[str, object]], list[dict[str, object]]]:
+    owned: list[dict[str, object]] = []
+    smoke: list[dict[str, object]] = []
+    deferred: list[dict[str, object]] = []
+    for row in data.get("scenarios", []) or []:
+        if not isinstance(row, Mapping):
+            continue
+        kind = str(row.get("kind") or row.get("level") or "").lower()
+        if kind != "e2e":
+            continue
+        item = _item(row)
+        scenario_id = str(item["id"])
+        scenario_owner = str(item.get("owner") or "")
+        if scenario_id in owned_ids and (not scenario_owner or scenario_owner == task_id):
+            owned.append(item)
+        elif item["smoke"]:
+            smoke.append(item)
+        else:
+            deferred.append(item)
+    return owned, smoke, deferred
+
+
+def _scoped_quality(data: Mapping[str, object], scheduled: list[dict[str, object]], root: Path
+                    ) -> tuple[list[dict[str, object]], list[dict[str, object]], bool]:
+    errors = _quality_errors(scheduled)
+    if data.get("scenarios_file"):
+        from cf_scenario_quality import quality_report
+        strict = [{**item, "level": "e2e", "owner": item.get("defer_owner") or item.get("owner", "")}
+                  for item in scheduled]
+        errors = quality_report(strict)["errors"]
+        from cf_check_registration import validate_registration
+        errors.extend(validate_registration(str(root), scheduled, data.get("checks", []))["errors"])
+    warnings: list[dict[str, object]] = []
+    gate_required = data.get("e2e_gate") in (1, True, "required")
+    if errors and not gate_required:
+        # Existing projects upgraded mid-flight remain startable, but every
+        # legacy E2E is surfaced for re-planning instead of being silently
+        # treated as a scoped critical journey.
+        warnings.extend({**item, "code": f"legacy_{item['code']}"} for item in errors)
+        warnings.append({
+            "code": "legacy_e2e_plan",
+            "message": "旧 manifest 未声明 why_e2e/trigger_paths；先用 plan --verify-plan 重新锁定。",
+        })
+        errors = []
+    return errors, warnings, gate_required
+
+
 def build_e2e_plan(
     manifest_file: str,
     task_file: str,
@@ -116,38 +167,10 @@ def build_e2e_plan(
     data = load_manifest(path)
     if validate_baseline:
         validate_execution_baseline(path, data)
-    owned: list[dict[str, object]] = []
-    smoke: list[dict[str, object]] = []
-    deferred: list[dict[str, object]] = []
-    for row in data.get("scenarios", []) or []:
-        if not isinstance(row, Mapping):
-            continue
-        kind = str(row.get("kind") or row.get("level") or "").lower()
-        if kind != "e2e":
-            continue
-        item = _item(row)
-        scenario_id = str(item["id"])
-        scenario_owner = str(item.get("owner") or "")
-        if scenario_id in owned_ids and (not scenario_owner or scenario_owner == task_id):
-            owned.append(item)
-        elif item["smoke"]:
-            smoke.append(item)
-        else:
-            deferred.append(item)
+    owned, smoke, deferred = _group_scenarios(data, owned_ids, task_id)
     scheduled = [*owned, *[item for item in smoke if item["id"] not in owned_ids]]
-    errors = _quality_errors(scheduled)
-    warnings: list[dict[str, object]] = []
-    gate_required = data.get("e2e_gate") in (1, True, "required")
-    if errors and not gate_required:
-        # Existing projects upgraded mid-flight remain startable, but every
-        # legacy E2E is surfaced for re-planning instead of being silently
-        # treated as a scoped critical journey.
-        warnings.extend({**item, "code": f"legacy_{item['code']}"} for item in errors)
-        warnings.append({
-            "code": "legacy_e2e_plan",
-            "message": "旧 manifest 未声明 why_e2e/trigger_paths；先用 plan --verify-plan 重新锁定。",
-        })
-        errors = []
+    root = next((parent.parent for parent in path.parents if parent.name == ".code-flow"), path.parent)
+    errors, warnings, gate_required = _scoped_quality(data, scheduled, root)
     if not owned and not smoke:
         warnings.append({
             "code": "no_scheduled_e2e",

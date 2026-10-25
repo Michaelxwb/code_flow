@@ -6,6 +6,10 @@
 
 全栈用户场景统一写入 `<需求>.scenarios.md`，作为验收场景唯一源；design 文档只写实现逻辑并引用场景 ID。场景文件不存在时，新需求不得进入 plan。
 
+设计简报 frontmatter 写明实际选择的 `design_template: lite`、`full` 或 `frontend`。FEAT/API/NFR 定义与场景引用必须闭合；每个范围内功能关联验收场景。生成后执行 `code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json`，多份设计重复传 `--file`。按模板保留必填章节，不适用的可选章节按模板删除。
+
+场景区分浏览器 E2E 与 API/CLI 的 system/integration；capacity 可使用独立层级或 tags。expected 必须具体，并通过 expected_refs 关联步骤或已声明断言；延后场景保留原因、责任人及目标阶段。详细可执行格式见 `docs/acceptance-contract.md`。
+
 ## 输入
 
 - `/cf-task:align "需求描述"` — 从需求描述新建设计简报
@@ -320,6 +324,7 @@ code-flow spec gate --task-dir <需求目录> --stage design --json
 ```bash
 code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
 code-flow spec gate --help
+code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json
 ```
 
 <!-- code-flow:runtime-commands end -->

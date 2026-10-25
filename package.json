@@ -17,7 +17,8 @@
     "src/adapters/**",
     "docs/migrations/spec-workflow-0.6.0.md",
     "docs/migrations/runtime-0.7.0.md",
-    "docs/migrations/runtime-0.8.0.md"
+    "docs/migrations/runtime-0.8.0.md",
+    "docs/acceptance-contract.md"
   ],
   "dependencies": {
     "@ccusage/codex": "^18.0.10"

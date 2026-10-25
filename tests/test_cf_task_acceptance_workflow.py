@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Regression guards for design-to-test traceability in cf-task skills."""
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -70,14 +71,18 @@ def test_archive_blocks_traceability_gaps_and_cleans_empty_date_dir() -> None:
         for phrase in (
             "执行四维校验",
             "**验收追溯**",
-            "code-flow acceptance run",
-            "--include-e2e --write-evidence",
+            "layers.validators",
+            "layers.e2e",
+            "check_results",
+            "archived_to",
+            "code-flow task archive",
             "--verify-plan",
             "归档后统一收尾（布局 A/B 都必须执行）",
             'rmdir "$source_date_dir"',
             "如果源日期目录仍存在但为空，视为归档未完成",
         ):
             assert phrase in text, f"{path}: missing {phrase}"
+        assert not re.search(r"(?m)^\s*mv\s", text), f"{path}: 手工移动会绕过归档门禁"
 
 
 def test_design_templates_declare_test_level_boundary_and_risk_mapping() -> None:

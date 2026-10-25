@@ -172,6 +172,8 @@ def _binding_issues(
         code = "missing_spec" if binding.status == "missing" else _status_issue(
             rule, status, now, diff_sha256, allow_cheap_skips, allow_deferred_skips
         )
+        if stage in ("code", "review") and status.status == "applied":
+            code = "rule_execution_evidence_missing"
         if code is None:
             continue
         issue = GateIssue(code, binding.spec_id, rule.ref, stage, f"{binding.spec_id}#{rule.ref}: {code}")
@@ -189,6 +191,7 @@ def validate_stage(
     diff_sha256: Optional[str] = None,
     allow_cheap_skips: bool = False,
     allow_deferred_skips: bool = False,
+    root: str = "",
 ) -> GateResult:
     del artifact, task_id
     current = now or datetime.now(timezone.utc)
@@ -200,6 +203,10 @@ def validate_stage(
         )
         errors.extend(binding_errors)
         warnings.extend(binding_warnings)
+    if root:
+        from cf_rule_readiness import applied_findings
+        errors.extend(GateIssue(str(item["code"]), "", "", stage, str(item["message"]))
+                      for item in applied_findings(context, root, stage))
     refs = tuple(sorted({f"{item.spec_id}#{item.rule_ref}" for item in (*errors, *warnings)}))
     return GateResult("block" if errors else "pass", tuple(errors), tuple(warnings), refs)
 
@@ -235,7 +242,7 @@ def _rule_plan_issues(
         issues.append(_plan_issue("plan_checklist_missing", binding, rule, f"{full_ref} 缺 verifier Checklist"))
     contract = section.partition("### Acceptance Contract")[2]
     if not contract.strip() or not re.search(
-        r"(?i)\b(unit|component|contract|integration|e2e|manual)\b", contract
+        r"(?i)\b(unit|component|contract|integration|system|capacity|e2e|manual)\b", contract
     ):
         issues.append(_plan_issue("plan_acceptance_missing", binding, rule, f"{full_ref} 缺测试层级/真实边界"))
     return tuple(issues)
@@ -301,7 +308,10 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
         context = load_context(str(Path(args.task_dir) / "spec-context.yml"))
         phase_timing("gate.load_context", phase_started)
         phase_started = time.monotonic()
-        result = validate_stage(context, args.stage, task_id=args.task)
+        directory = Path(args.task_dir).resolve()
+        root = next((parent.parent for parent in (directory, *directory.parents)
+                     if parent.name == ".code-flow"), directory)
+        result = validate_stage(context, args.stage, task_id=args.task, root=str(root))
         phase_timing("gate.validate_stage", phase_started)
         if args.stage == "plan" and args.artifact:
             phase_started = time.monotonic()

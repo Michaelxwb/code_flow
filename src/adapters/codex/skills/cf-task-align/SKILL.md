@@ -7,6 +7,10 @@ description: Generate a design brief (.design.md) from a requirement through str
 
 全栈用户场景统一写入 `<需求>.scenarios.md`，作为验收场景唯一源；design 文档只写实现逻辑并引用场景 ID。场景文件不存在时，新需求不得进入 plan。
 
+设计简报 frontmatter 写明实际选择的 `design_template: lite`、`full` 或 `frontend`。FEAT/API/NFR 定义与场景引用必须闭合；每个范围内功能关联验收场景。生成后执行 `code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json`，多份设计重复传 `--file`。按模板保留必填章节，不适用的可选章节按模板删除。
+
+场景区分浏览器 E2E 与 API/CLI 的 system/integration；capacity 可使用独立层级或 tags。expected 必须具体，并通过 expected_refs 关联步骤或已声明断言；延后场景保留原因、责任人及目标阶段。详细可执行格式见 `docs/acceptance-contract.md`。
+
 ## 输入
 
 - `cf-task-align "需求描述"` — 从需求描述新建设计简报
@@ -24,7 +28,7 @@ description: Generate a design brief (.design.md) from a requirement through str
 |---------|------|------|
 | 已存在的 `.design.md` 文件 | **恢复模式** | 读取，展示当前内容，询问调整点，进入 Step 3 |
 | 已存在的 `.prd.md` 文件 | **PRD 派生模式** | 读取 PRD，执行 Step 2.6 预填充维度，Step 3 只补技术维度 |
-| 已存在的其他 `.md` 文件 | **新建模式（带上下文）** | 读取作为参考材料，进入 Step 2 |
+| 已存在的其他 `.md` 文件 | **新建模式（带上下文）** | 读取 作为参考材料，进入 Step 2 |
 | 纯文本字符串 | **新建模式** | 以文本作为初始需求，进入 Step 2 |
 | 无参数 | **交互模式** | 询问"要实现什么功能？"，进入 Step 2 |
 
@@ -32,9 +36,9 @@ description: Generate a design brief (.design.md) from a requirement through str
 
 快速了解项目现状，为后续建议提供依据：
 
-1. 用 `rg --files` 或 `find` 检查 `.code-flow/specs/*/_map.md` 是否存在，若有则读取（了解项目结构）
+1. 用 `rg --files` 检查 `.code-flow/specs/*/_map.md` 是否存在，若有则 读取（了解项目结构）
 2. 检测技术栈：读取 `package.json` / `requirements.txt` / `go.mod` / `pyproject.toml` 等（取存在的）
-3. 用 `rg --files` 或 `find` 扫描与需求相关的现有代码目录，了解已有模式
+3. 用 `rg --files` 扫描与需求相关的现有代码目录，了解已有模式
 
 目的：**让后续建议基于实际代码库**，而非泛泛的通用建议。
 
@@ -277,14 +281,14 @@ CLI 场景：
    - **恢复模式**：保持原需求名
    - **新建/交互模式**：从目标推导 kebab-case，如 `user-auth`
 2. **确定需求目录**：
-   - **PRD 派生模式**：使用 PRD 所在的需求目录 `.code-flow/tasks/<日期>/<需求>/`（PRD 与 design 同目录，便于 `cf-task-archive` 整目录归档）
+   - **PRD 派生模式**：使用 PRD 所在的需求目录 `.code-flow/tasks/<日期>/<需求>/`（PRD 与 design 同目录，便于 `cf-task:archive` 整目录归档）
    - **恢复模式**：保持原目录
    - **新建/交互模式**：按当前日期创建需求目录 `.code-flow/tasks/<YYYY-MM-DD>/<需求>/`；目录已存在且非本次草稿时目录名追加序号 `<需求>-2`…
 3. **按域后缀命名**（同一需求目录内）：
    - 前端设计（design-frontend）→ `<需求>.frontend.design.md`
    - 后端/通用设计（design-lite/full）→ 全栈时 `<需求>.backend.design.md`；纯后端/通用单域时 `<需求>.design.md`
    - **全栈需求**：前后端各写一份到同一需求目录
-4. 用 apply_patch 写入最终路径
+4. 写入最终路径
 
 写入后，对 Matrix 每一行调用 `bind --stage design` 的 `applications` 回填 design artifact、`section_id`、稳定 `item_id` 和脚本计算的 hash；随后执行：
 
@@ -321,6 +325,7 @@ code-flow spec gate --task-dir <需求目录> --stage design --json
 ```bash
 code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
 code-flow spec gate --help
+code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json
 ```
 
 <!-- code-flow:runtime-commands end -->

@@ -9,12 +9,14 @@ description: Break down a design document or design brief into structured task f
 
 ## E2E 精度（plan 硬门禁）
 
-E2E 不是“用户可见结果”的默认测试层。plan 阶段按风险选择最低成本层级：
+E2E 不是“用户可见结果”的默认测试层。plan 阶段必须按风险选择最低成本层级：
 
 - `unit`：纯函数、状态机、解析器、构造器。
 - `component`：表单/交互/布局/文案/空态/错误提示，使用 mock API。
 - `contract`：DTO、OpenAPI、错误码、前后端字段一致性。
 - `integration`：鉴权、事务、模块边界、真实 DB、进程内 ASGI。
+- `system`：完整 API/CLI/后台服务链路的系统验证；不要求浏览器。
+- `capacity`：容量与负载验证；check 与实际收集用例必须具有 capacity 标记。
 - `e2e`：只有真实浏览器 + 真实后端 + 鉴权/DB 才能暴露的 P0/P1 关键旅程。
 - `manual`：无法自动化的外部条件，必须用户确认。
 
@@ -22,13 +24,23 @@ E2E 不是“用户可见结果”的默认测试层。plan 阶段按风险选�
 
 1. `priority` 为 P0/P1；P2 不得用 E2E。
 2. `why_e2e` 说明为什么 unit/component/contract/integration 都覆盖不了。
-3. `boundary` 写出真实边界（浏览器/API/DB/鉴权/SSE 等）。
+3. `boundary` 写出浏览器开始的真实边界（浏览器/API/DB/鉴权/SSE 等），并声明 `env: browser` 或 `components` 中的 `frontend/browser`。只有 API/CLI 的链路使用 system/integration。
 4. `steps` 和 `expected` 是可复现的用户步骤与可观察结果，不是实现细节。
 5. 非 `smoke` E2E 必须有 `trigger_paths`（源码 glob）；没有触发路径的 E2E 会让小改动跑全量，直接拒绝。
 6. 不得断言源码字符串、CSS、组件宽度、字段顺序、文案顺序；这些属于 component/visual。
 7. 同一旅程只保留一条 E2E；重复旅程合并。
 
-执行 `code-flow scenarios parse --file <需求目录>/<需求>.scenarios.md --quality --json`；`quality.ok=false` 时不得继续拆解或进入 start。plan 摘要必须输出 E2E 数量、占比、smoke 数量和每条 E2E 的理由；数量不是目标，删除一条无法证明独特价值的 E2E 是正确结果。
+`scenarios parse --quality` 和 `acceptance manifest --verify-plan` 会失败关闭。plan 摘要必须输出 E2E 数量、占比、smoke 数量和每条 E2E 的理由；数量不是目标，删除一条无法证明独特价值的 E2E 是正确结果。
+
+### 可执行计划质量
+
+- 每个 expected 使用 `expected_refs` 引用现有步骤（从 1 开始）或 `assertions` 中已声明的断言 ID。例如 `expected_refs: [{expected: 1, steps: [1]}]`。拒绝“可观、不回归”等无法检验的表述；合法条件分支应给出可构造的 preconditions 和具体结果。
+- `exec: deferred` 必须带 `defer_reason`、`owner`、`target_phase`。环境允许 none/local/local-api/browser/external/staging/capacity/ci/production；components 使用稳定标识符。
+- 新场景先准备可收集的测试骨架与具体测试 ID，再登记 check 的 `suite`、`test_ids`、`markers`、`collect`。本阶段只执行有超时和总预算的测试收集，不实现生产代码，也不执行 E2E；新模块尚不存在时将其导入放到测试体内，避免收集依赖实现。
+- 浏览器 check 使用 `suite: browser`，实际收集的用例须具备 browser 能力；smoke/capacity 标记必须同时出现在 check 与收集结果中。收集支持原生 pytest、Playwright JSON 或项目适配器 JSON，配置示例见 `docs/acceptance-contract.md`。
+- `code-flow acceptance manifest --verify-plan --task-dir "<需求目录>" --task-file "<任务文件>"` 始终校验 manifest 基线、场景质量、check 投影、测试登记、设计 ID 闭环和 Spec Gate；不得通过省略 `--require-scenarios` 跳过已有场景源的质量检查。
+- 设计通过 `code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json` 校验。多 design 重复传 `--file`，FEAT/API/NFR 与场景引用必须闭合；设计的 `design_template` 决定必填章节。
+- 报告区分 `e2e_browser_count`、`system_count`、`capacity_count` 与 `runnable_smoke_count`。未执行登记检查时 runnable 为 null；收集可用不等于真实边界执行已通过，后者必须读取执行证据。
 
 ## 输入
 
@@ -36,7 +48,9 @@ E2E 不是“用户可见结果”的默认测试层。plan 阶段按风险选�
 - `cf-task-plan` — 交互式选择（从 `docs/` 目录列出候选）
 - `cf-task-plan <设计文档路径> --explore` — 仅输出分析报告，不生成文件
 - `cf-task-plan <设计文档路径> --quick` — 跳过缺口分析，直接拆解（保持原有行为）
-- `cf-task-plan <.design.md 路径>` — 从 cf-task-align 产出的设计简报拆解（自动跳过缺口分析）
+- `cf-task-plan <设计文档路径> --draft` — 仅生成任务草案，必须经过 `--verify-plan` 后才能启动
+- `cf-task-plan <任务文件> --verify-plan` — 执行完整 Acceptance Coverage 与 Spec Rule 门禁
+- `cf-task-plan <.design.md 路径>` — 从 cf-task:align 产出的设计简报拆解（自动跳过缺口分析）
 - `cf-task-plan <设计文档路径> --task-size capability|file` — 拆解粒度；默认 `--task-size capability`（1-2 天可演示能力），`file` 仅作旧行为兼容
 - `cf-task-plan <设计文档路径> --max-tasks 25 --min-average-hours 2` — 覆盖预算阈值（一般不需要）
 
@@ -70,7 +84,7 @@ E2E 不是“用户可见结果”的默认测试层。plan 阶段按风险选�
 
 ### 2.1. 建立章节索引
 
-读取设计文档后，**先扫描文档结构**，建立章节索引表：
+读取 设计文档后，**先扫描文档结构**，建立章节索引表：
 
 ```
 章节索引:
@@ -87,9 +101,11 @@ E2E 不是“用户可见结果”的默认测试层。plan 阶段按风险选�
 
 此索引用于后续步骤中精确记录每个子任务的来源章节。
 
-### 2.4. Plan Gate 与 manifest 锁定
+### 2.4.1. Draft / Verify Plan 模式
 
-拆解完成后必须执行，缺一步都不得进入 start：
+`--draft` 只生成任务结构、依赖、Source 和初步验收映射，产物状态必须保持 `draft`，不得直接进入 `start`。用户确认拆分后执行 `--verify-plan`，完成全部场景覆盖、唯一 Rule owner、verifier、测试层级和真实边界校验；默认模式仍执行完整校验。
+
+`--verify-plan` 的执行命令为：
 
 ```bash
 code-flow scenarios parse --file <需求目录>/<需求>.scenarios.md --quality --json
@@ -101,7 +117,7 @@ code-flow acceptance manifest \
   --verify-plan --require-scenarios --task-dir <需求目录> --task-file <任务文件>
 ```
 
-`quality.ok=false` 或 `acceptance manifest --verify-plan` 返回 block 时，按错误码把场景下沉到 component/contract/integration，或补齐 E2E 理由/触发路径后重跑。不得只跑 `spec gate` 就进入 start。
+`scenarios parse --quality` 的 `quality.ok=false` 或 `acceptance manifest --verify-plan` 返回 block 时，不得进入 start；按错误码把场景下沉到 component/contract/integration，或补齐 E2E 理由/触发路径后重跑。
 
 ### 2.5. Explore 模式（--explore）
 
@@ -198,7 +214,7 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 
 设计文档模式：记录**具体章节和行号范围**。
 引用格式：`文件路径#章节标题(L起始-L结束)`，多个章节用逗号分隔。
-验证方法：记录引用后，按行号范围回读验证，确保引用内容与子任务描述一致。如不一致，修正行号。
+验证方法：记录引用后，按按行号范围回读验证，确保引用内容与子任务描述一致。如不一致，修正行号。
 
 设计简报模式：记录**章节名**，无需行号。
 引用格式：`<name>.design.md#3.3 数据设计`, `<name>.design.md#3.4 接口设计` 等（章节名须与模板真实标题一致）。
@@ -361,13 +377,40 @@ TASK-002: <标题> [P1]
 1. 文件名取需求名（kebab-case），如 `auth-module`；多份 design 合并产出**一份** `<需求>.md`
 2. 如果输入为需求目录或其中的 .design.md → 写入**该需求目录** `.code-flow/tasks/<日期>/<需求>/<需求>.md`
 3. 如果输入为 docs/ 设计文档（无需求目录）→ 按当前日期创建需求目录 `.code-flow/tasks/<YYYY-MM-DD>/<需求>/` 并写入其中
-4. 用 apply_patch 写入
+4. 写入
 
 写入后用 `bind --stage plan` 的 `applications` 将每条 required Rule 指向任务文件内唯一 TASK item，并执行：
 
 ```bash
 code-flow spec gate --task-dir <需求目录> --stage plan --artifact <任务文件> --json
 ```
+
+通过 Plan Gate 后，锁定验收基线：
+
+```bash
+code-flow acceptance manifest \
+  --task-file <任务文件> \
+  --output <需求目录>/.acceptance-manifest.json
+```
+
+Manifest 锁定场景 ID、来源、测试层级、真实边界和责任 TASK。编码阶段不得静默修改这些字段；如发生范围变化，必须重新执行 plan 验证。
+
+验收类型按测试层级归类：
+- `unit/component/contract/integration` → `functional`（Done Gate 自动执行）
+- `E2E` → `e2e`（延迟至所有任务完成后，需 `--include-e2e` 显式执行）
+- `manual` → `manual`（用户手动验证，永不自动执行）
+
+浏览器 E2E 依赖浏览器及其声明的真实服务，在编码阶段默认跳过（状态 `e2e_deferred`），不阻断 Done Gate。API/CLI 系统测试使用 system。所有子任务完成后，执行：
+
+```bash
+code-flow acceptance run \
+  --manifest <需求目录>/.acceptance-manifest.json \
+  --root . \
+  --include-e2e \
+  --write-evidence
+```
+
+不得为了提速降低 design 指定的 E2E 层级。
 
 ### 5.1. 计划预算门禁（capability 默认）
 
@@ -424,7 +467,9 @@ code-flow spec gate --help
 code-flow task index --help
 code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json"
 code-flow acceptance project --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json"
+code-flow acceptance run --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --write-evidence
 code-flow scenarios parse --file "<需求>.scenarios.md" --quality --json
+code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json
 ```
 
 <!-- code-flow:runtime-commands end -->

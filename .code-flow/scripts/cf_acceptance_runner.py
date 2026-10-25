@@ -32,7 +32,8 @@ from cf_exec_base import (
 )
 from cf_check_inputs import check_input_hashes, match_path
 from cf_acceptance_risk import accepted_risk as _accepted_risk
-from cf_acceptance_schema import load_manifest, validate_execution_baseline
+from cf_acceptance_schema import (check_outcome, load_manifest, recorded_check_hash,
+                                  scenario_check_ids, validate_execution_baseline)
 from cf_acceptance_evidence import persist_results
 from cf_evidence_store import EvidenceStore
 from cf_worktree_env import (
@@ -83,7 +84,7 @@ def _included(item: Mapping[str, object], include_e2e: bool, only_e2e: bool) -> 
 
 
 def _reusable(row: Optional[Mapping[str, object]], item: Mapping[str, object], fingerprint: str) -> bool:
-    """A verified scenario whose stored evidence matches current identity+content.
+    """Reuse a passed check whose evidence matches current identity and content.
 
     Reuse is content-addressed (like the validation cache): same command/cwd/
     timeout AND unchanged non-ignored worktree. Scenarios with `depends_on`
@@ -94,7 +95,7 @@ def _reusable(row: Optional[Mapping[str, object]], item: Mapping[str, object], f
         return False
     if item.get("depends_on"):
         return False
-    if row.get("status") != "verified":
+    if not item.get("scenario_ref") and row.get("status") != "verified":
         return False
     if not item.get("scenario_ref"):
         if row.get("check") != item.get("check"):
@@ -104,12 +105,16 @@ def _reusable(row: Optional[Mapping[str, object]], item: Mapping[str, object], f
     evidence = row.get("evidence")
     if not isinstance(evidence, Mapping):
         return False
+    if item.get("scenario_ref"):
+        outcome = check_outcome(evidence, str(item.get("check")))
+        if row.get("status") != "verified" and outcome is evidence:
+            return False  # Legacy aggregate failures cannot prove a passing member.
+        evidence = outcome
     if evidence.get("status") != "passed" or evidence.get("exit_code") != 0:
         return False
     recorded = evidence.get("fingerprint")
     if item.get("scenario_ref"):
-        hashes = evidence.get("check_hashes")
-        recorded = hashes.get(str(item.get("check"))) if isinstance(hashes, Mapping) else None
+        recorded = recorded_check_hash(row, str(item.get("check")))
     if recorded != fingerprint:
         return False
     if evidence.get("command") != item.get("command"):
@@ -216,12 +221,25 @@ def _env_blocked_result(
     }
 
 
+def _individual_results(results: Sequence[Mapping[str, object]]) -> list[Mapping[str, object]]:
+    """Expose each member's diagnostics without attributing them to the scenario."""
+    individual: list[Mapping[str, object]] = []
+    for result in results:
+        outcomes = result.get("check_results")
+        if not isinstance(outcomes, Mapping):
+            individual.append(result)
+            continue
+        for check_id in outcomes:
+            individual.append({**check_outcome(result, str(check_id)), "check_id": str(check_id)})
+    return individual
+
+
 def _env_blocked_details(
     checks: Mapping[str, Mapping[str, object]], results: Sequence[Mapping[str, object]]
 ) -> list[dict[str, object]]:
     details: list[dict[str, object]] = []
     seen: set[str] = set()
-    for item in results:
+    for item in _individual_results(results):
         if item.get("status") != "env_blocked":
             continue
         check_id = str(item.get("check_id") or item.get("id"))
@@ -902,17 +920,14 @@ def _check_summary(checks: Sequence[Mapping[str, object]], scenarios: Sequence[M
     grouped: dict[str, list[str]] = {}
     for scenario in scenarios:
         scenario_id = str(scenario.get("id"))
-        raw = scenario.get("checks")
-        check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
-        if not check_ids and isinstance(scenario.get("check"), str):
-            check_ids = [str(scenario.get("check"))]
-        for check_id in check_ids:
+        for check_id in scenario_check_ids(scenario):
             grouped.setdefault(check_id, []).append(scenario_id)
     summary: list[dict[str, object]] = []
     for check in checks:
         check_id = str(check.get("id", ""))
         scenario_ids = grouped.get(check_id, [])
-        statuses = [str(by_id.get(scenario_id, {}).get("status", "not_included")) for scenario_id in scenario_ids]
+        statuses = [str(check_outcome(by_id.get(scenario_id, {}), check_id).get("status", "not_included"))
+                    for scenario_id in scenario_ids]
         if not statuses:
             status = "not_included"
         elif all(value == "passed" for value in statuses):
@@ -992,11 +1007,7 @@ def _scenario_fingerprints(
 
 
 def _scenario_check_ids(scenario: Mapping[str, object]) -> list[str]:
-    raw = scenario.get("checks")
-    check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
-    if not check_ids and isinstance(scenario.get("check"), str):
-        check_ids = [str(scenario.get("check"))]
-    return check_ids
+    return scenario_check_ids(scenario)
 
 
 def _run_namespace(
@@ -1266,9 +1277,75 @@ def _expand_multi_checks(items: Sequence[Mapping[str, object]]) -> tuple[list[di
     return expanded, aggregates
 
 
+def _multi_status(states: Sequence[str]) -> str:
+    if states and all(state in ("passed", "verified") for state in states):
+        return "passed"
+    if any(state in ("failed", "not_configured") for state in states):
+        return "failed"
+    return next((state for state in ("env_blocked", "incomplete", "accepted_risk", "e2e_deferred")
+                 if state in states), "not_included")
+
+
+def _multi_check_metadata(members: Sequence[Mapping[str, object]]) -> dict[str, object]:
+    checks: list[str] = []
+    hashes: dict[str, str] = {}
+    reused: dict[str, bool] = {}
+    checkpointed: dict[str, bool] = {}
+    configs: dict[str, object] = {}
+    outcomes: dict[str, object] = {}
+    for member in members:
+        check_id = str(member.get("check_id") or "")
+        if not check_id and "::" in str(member.get("id")):
+            check_id = str(member.get("id")).split("::", 1)[1]
+        if not check_id:
+            continue
+        checks.append(check_id)
+        reused[check_id] = member.get("cache_reused") is True
+        checkpointed[check_id] = member.get("checkpoint_reused") is True
+        outcomes[check_id] = {key: member[key] for key in (
+            "status", "exit_code", "risk", "error", "output", "missing", "owner", "detail",
+        ) if key in member}
+        if isinstance(member.get("check_config"), Mapping):
+            configs[check_id] = dict(member["check_config"])
+        value = member.get("input_hash")
+        if isinstance(value, str) and value:
+            hashes[check_id] = value
+    record: dict[str, object] = {}
+    if checks:
+        record.update(check_ids=checks, check_reused=reused, check_results=outcomes,
+                      checkpoint_reused_checks=checkpointed)
+    if configs:
+        record["check_configs"] = configs
+    if hashes:
+        record["check_hashes"] = hashes
+        payload = "|".join(f"{key}={hashes[key]}" for key in sorted(hashes))
+        record["input_hash"] = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return record
+
+
+def _collapse_multi_result(scenario_id: str, members: Sequence[Mapping[str, object]],
+                           expected: int) -> dict[str, object]:
+    states = [str(member.get("status")) for member in members]
+    status = _multi_status(states) if len(members) == expected else "failed"
+    record = {"id": scenario_id, "status": status, **_multi_check_metadata(members)}
+    record["cache_reused"] = all(member.get("cache_reused") is True for member in members)
+    record["checkpoint_reused"] = all(member.get("checkpoint_reused") is True for member in members)
+    if status == "accepted_risk":
+        risky = next((member for member in members if isinstance(member.get("risk"), Mapping)), None)
+        if risky is not None:
+            record["risk"] = dict(risky["risk"])
+            if risky.get("check_id"):
+                record["check_id"] = str(risky["check_id"])
+    if status == "passed":
+        record["exit_code"] = 0
+    else:
+        record["error"] = "checks_missing" if len(members) != expected else ",".join(states)
+    return record
+
+
 def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
                              aggregates: Mapping[str, Sequence[str]]) -> list[dict[str, object]]:
-    """Collapse pseudo-scenario results back to AND semantics on the real ID."""
+    """Keep individual outcomes while deriving the scenario's AND verdict."""
     if not aggregates:
         return [dict(item) for item in results]
     by_id = {str(item.get("id")): item for item in results}
@@ -1277,67 +1354,6 @@ def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
     }
     collapsed: list[dict[str, object]] = []
     emitted: set[str] = set()
-
-    def collapse(scenario_id: str, members: Sequence[Mapping[str, object]]) -> dict[str, object]:
-        states = [str(member.get("status")) for member in members]
-        if all(state in ("passed", "verified") for state in states):
-            status = "passed"
-        elif any(state in ("failed", "not_configured") for state in states):
-            status = "failed"
-        elif "env_blocked" in states:
-            status = "env_blocked"
-        elif "incomplete" in states:
-            status = "incomplete"
-        elif "accepted_risk" in states:
-            status = "accepted_risk"
-        elif "e2e_deferred" in states:
-            status = "e2e_deferred"
-        else:
-            status = "not_included"
-        record = {"id": scenario_id, "status": status}
-        record["cache_reused"] = all(member.get("cache_reused") is True for member in members)
-        record["checkpoint_reused"] = all(member.get("checkpoint_reused") is True for member in members)
-        if status == "accepted_risk":
-            risky = next((member for member in members
-                          if isinstance(member.get("risk"), Mapping)), None)
-            if risky is not None:
-                record["risk"] = dict(risky["risk"])
-                if risky.get("check_id"):
-                    record["check_id"] = str(risky.get("check_id"))
-        checks: list[str] = []
-        hashes: dict[str, str] = {}
-        reused: dict[str, bool] = {}
-        checkpointed: dict[str, bool] = {}
-        configs: dict[str, object] = {}
-        for member in members:
-            check_id = str(member.get("check_id") or "")
-            if not check_id and "::" in str(member.get("id")):
-                check_id = str(member.get("id")).split("::", 1)[1]
-            if check_id:
-                checks.append(check_id)
-                reused[check_id] = member.get("cache_reused") is True
-                checkpointed[check_id] = member.get("checkpoint_reused") is True
-                if isinstance(member.get("check_config"), Mapping):
-                    configs[check_id] = dict(member["check_config"])
-                value = member.get("input_hash")
-                if isinstance(value, str) and value:
-                    hashes[check_id] = value
-        if checks:
-            record["check_ids"] = checks
-            record["check_reused"] = reused
-            record["checkpoint_reused_checks"] = checkpointed
-        if configs:
-            record["check_configs"] = configs
-        if hashes:
-            record["check_hashes"] = hashes
-            payload = "|".join(f"{key}={hashes[key]}" for key in sorted(hashes))
-            record["input_hash"] = hashlib.sha256(payload.encode("utf-8")).hexdigest()
-        if status == "passed":
-            record["exit_code"] = 0
-        else:
-            record["error"] = ",".join(states)
-        return record
-
     for result in results:
         result_id = str(result.get("id"))
         scenario_id = pseudo_to_scenario.get(result_id)
@@ -1349,7 +1365,7 @@ def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
         emitted.add(scenario_id)
         members = [by_id[pseudo] for pseudo in aggregates[scenario_id] if pseudo in by_id]
         if members:
-            collapsed.append(collapse(scenario_id, members))
+            collapsed.append(_collapse_multi_result(scenario_id, members, len(aggregates[scenario_id])))
         else:
             collapsed.append({"id": scenario_id, "status": "failed", "error": "checks_missing"})
     for scenario_id in aggregates:

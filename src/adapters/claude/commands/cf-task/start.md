@@ -42,6 +42,7 @@
 - 旧 task 没有覆盖表但来源 design 含结构化验收场景时，先从 design 回填覆盖表与契约；回填完成前不得修改生产代码
 - 非行为类任务可显式写 `Acceptance-Refs: N/A`；不得用 N/A 跳过已有设计场景
 - E2E 必须已通过 plan 精度门禁：P0/P1、`why_e2e`、`boundary`、非 smoke 的 `trigger_paths` 缺一不可；`start` 会在 `e2e_plan.quality.ok=false` 时阻断，不要手工改 manifest 绕过
+- 有 canonical 场景源时，start 同时复核浏览器边界、expected_refs 和延后责任信息。沿用 plan 已登记的可收集测试骨架；按当前 TASK 补齐断言并执行 functional RED/GREEN，浏览器 E2E 留到需求终验运行。
 
 ### 2. 加载详设上下文
 

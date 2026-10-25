@@ -29,7 +29,7 @@
 
 **#NOTES 检查**：扫描该子任务段落全文（Description、Checklist 等）
 - 如果存在 `#NOTES` 标记，说明用户 review 时留下了未讨论的问题，拒绝启动
-- 输出：`前置检查失败：以下 #NOTES 未解决\n- 密码加密存储  #NOTES 用 bcrypt 还是 argon2？\n- ...\n请先运行 /project:cf-task:note <file> TASK-xxx 讨论并解决`
+- 输出：`前置检查失败：以下 #NOTES 未解决\n- 密码加密存储  #NOTES 用 bcrypt 还是 argon2？\n- ...\n请先运行 /cf-task:note <file> TASK-xxx 讨论并解决`
 
 **依赖检查**：读取 `Depends` 字段
 - 对每个依赖的 TASK-ID，在同文件中查找其 Status
@@ -42,6 +42,7 @@
 - 旧 task 没有覆盖表但来源 design 含结构化验收场景时，先从 design 回填覆盖表与契约；回填完成前不得修改生产代码
 - 非行为类任务可显式写 `Acceptance-Refs: N/A`；不得用 N/A 跳过已有设计场景
 - E2E 必须已通过 plan 精度门禁：P0/P1、`why_e2e`、`boundary`、非 smoke 的 `trigger_paths` 缺一不可；`start` 会在 `e2e_plan.quality.ok=false` 时阻断，不要手工改 manifest 绕过
+- 有 canonical 场景源时，start 同时复核浏览器边界、expected_refs 和延后责任信息。沿用 plan 已登记的可收集测试骨架；按当前 TASK 补齐断言并执行 functional RED/GREEN，浏览器 E2E 留到需求终验运行。
 
 ### 2. 加载详设上下文
 

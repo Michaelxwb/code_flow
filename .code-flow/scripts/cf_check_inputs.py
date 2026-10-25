@@ -96,6 +96,14 @@ def check_input_hash(root: str, check: Mapping[str, object],
     return check_input_hashes(root, {"": check}, fallback)[""]
 
 
+def _registered_fallback(check: Mapping[str, object], fallback: str) -> str:
+    registration = {key: check[key] for key in ("suite", "test_ids", "markers", "collect") if key in check}
+    if not fallback or not registration:
+        return fallback
+    payload = json.dumps([fallback, registration], sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
 def check_input_hashes(root: str, checks: Mapping[str, Mapping[str, object]],
                        fallback: str = "") -> dict[str, dict[str, object]]:
     """Hash the union of all declared inputs once, then derive per-check identities."""
@@ -114,11 +122,12 @@ def check_input_hashes(root: str, checks: Mapping[str, Mapping[str, object]],
     hashed = hash_files(root, sorted(union))
     result: dict[str, dict[str, object]] = {}
     for check_id, patterns in patterns_by_check.items():
+        bound_fallback = _registered_fallback(checks[check_id], fallback)
         if not patterns:
-            result[check_id] = {"input_hash": fallback, "scope": "repo"}
+            result[check_id] = {"input_hash": bound_fallback, "scope": "repo"}
             continue
         if not matched[check_id]:
-            result[check_id] = {"input_hash": fallback, "scope": "empty"}
+            result[check_id] = {"input_hash": bound_fallback, "scope": "empty"}
             continue
         if hashed is None:
             result[check_id] = {"input_hash": "", "scope": "unavailable"}
@@ -128,6 +137,7 @@ def check_input_hashes(root: str, checks: Mapping[str, Mapping[str, object]],
             key: check.get(key) for key in
             ("command", "cwd", "timeout", "env", "env_scope", "preflight", "parallel_safe", "profile")
         }
+        identity.update({key: check[key] for key in ("suite", "test_ids", "markers", "collect") if key in check})
         payload = json.dumps(
             [identity, sorted((path, hashed[path]) for path in matched[check_id])],
             ensure_ascii=False, sort_keys=True,

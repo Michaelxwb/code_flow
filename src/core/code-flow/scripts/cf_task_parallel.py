@@ -40,7 +40,7 @@ from cf_task_merge import merge_manifest_text
 from cf_task_merge import merge_task_markdown
 from cf_task_merge import stale_context_text
 from cf_task_state import FINISHED_STATUSES
-from cf_acceptance_schema import load_manifest
+from cf_acceptance_schema import load_manifest, scenario_check_ids
 from cf_evidence_store import EvidenceStore
 from cf_exec_base import worktree_fingerprint
 from cf_runtime_install import verify_install
@@ -391,14 +391,10 @@ def _required_check_map(manifest: Mapping[str, object], task: str) -> dict[str, 
         owner = item.get("owner")
         if isinstance(owner, str) and owner and owner != task:
             continue
-        check_id = item.get("check")
         scenario_id = item.get("id")
         if not isinstance(scenario_id, str) or not scenario_id:
             continue
-        raw_checks = item.get("checks")
-        check_ids = [str(value) for value in raw_checks] if isinstance(raw_checks, list) else []
-        if not check_ids and isinstance(check_id, str) and check_id.strip():
-            check_ids = [check_id]
+        check_ids = scenario_check_ids(item)
         if not check_ids:
             # schema2 has no check link: the scenario id is the evidence key.
             check_ids = [scenario_id]

@@ -22,7 +22,7 @@ import yaml
 SCHEMA_VERSION = 1
 SCENARIO_ID = re.compile(r"^[SEB]-\d+$")
 PRIORITIES = ("P0", "P1", "P2")
-LEVELS = ("unit", "component", "contract", "integration", "e2e", "manual")
+LEVELS = ("unit", "component", "contract", "integration", "system", "capacity", "e2e", "manual")
 EXEC_MODES = ("auto", "deferred", "manual", "aspirational")
 E2E_CRITICAL_PRIORITIES = ("P0", "P1")
 E2E_RATIO_WARNING = 0.3
@@ -87,13 +87,19 @@ def _validate_one(item: Mapping[str, object]) -> dict[str, object]:
     exec_mode = str(item.get("exec", "auto")).lower()
     if exec_mode not in EXEC_MODES:
         raise ScenarioError("invalid_exec", f"{scenario_id}: exec 非法: {exec_mode!r}")
+    try:
+        from cf_scenario_quality import validate_extensions
+        extra = validate_extensions(item)
+    except ValueError as exc:
+        raise ScenarioError("invalid_scenario_contract", f"{scenario_id}: {exc}") from exc
     return {
+        **extra,
         "id": scenario_id,
         "title": str(item.get("title", "")).strip(),
         "priority": priority,
         "level": level,
         "exec": exec_mode,
-        "env": str(item.get("env", "none")),
+        "env": extra["env"],
         "components": list(_string_list(item.get("components"), f"{scenario_id}.components")),
         "boundary": str(item.get("boundary", "")).strip(),
         "preconditions": list(_string_list(item.get("preconditions"), f"{scenario_id}.preconditions")),
@@ -146,7 +152,8 @@ def parse_scenarios(path: object) -> dict[str, object]:
 def _definition(scenario: Mapping[str, object]) -> dict[str, object]:
     fields = ("title", "priority", "level", "exec", "env", "components", "boundary",
               "preconditions", "steps", "expected", "rules", "why_e2e", "trigger_paths", "smoke")
-    return {field: scenario.get(field) for field in fields}
+    from cf_scenario_quality import EXTRA_FIELDS
+    return {field: scenario.get(field) for field in (*fields, *EXTRA_FIELDS)}
 
 
 def merge_scenarios(sets: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
@@ -177,105 +184,9 @@ def _quality_issue(code: str, scenario: str, field: str, message: str) -> dict[s
 
 
 def validate_e2e_quality(scenarios: Sequence[Mapping[str, object]]) -> dict[str, object]:
-    """Plan-stage E2E precision gate.
-
-    E2E is the most expensive and least stable layer. It is reserved for
-    critical journeys whose risk cannot be covered by unit/component/contract/
-    integration tests. Every E2E must explain why lower layers are insufficient
-    and declare trigger paths so a small change does not run the whole suite.
-    """
-    errors: list[dict[str, object]] = []
-    warnings: list[dict[str, object]] = []
-    e2e: list[Mapping[str, object]] = []
-    signatures: dict[tuple[object, ...], str] = {}
-    for scenario in scenarios:
-        scenario_id = str(scenario.get("id", ""))
-        level = str(scenario.get("level", "")).lower()
-        why_e2e = str(scenario.get("why_e2e", "")).strip()
-        if level != "e2e":
-            if _meaningful(why_e2e):
-                errors.append(_quality_issue(
-                    "why_e2e_on_non_e2e", scenario_id, "why_e2e",
-                    "why_e2e 只属于 E2E；其他层级请用 component/contract/integration 表达。",
-                ))
-            continue
-        e2e.append(scenario)
-        priority = str(scenario.get("priority", "")).upper()
-        if priority not in E2E_CRITICAL_PRIORITIES:
-            errors.append(_quality_issue(
-                "e2e_priority_not_critical", scenario_id, "priority",
-                "E2E 只允许 P0/P1 关键旅程；P2 请下沉到 component/contract/integration。",
-            ))
-        if not _meaningful(why_e2e):
-            errors.append(_quality_issue(
-                "e2e_justification_missing", scenario_id, "why_e2e",
-                "必须说明为什么 unit/component/contract/integration 无法覆盖，E2E 才成立。",
-            ))
-        if not _meaningful(scenario.get("boundary")):
-            errors.append(_quality_issue(
-                "e2e_boundary_missing", scenario_id, "boundary",
-                "E2E 必须声明真实边界（浏览器/API/DB/鉴权等）。",
-            ))
-        if not any(_meaningful(item) for item in scenario.get("steps", []) or []):
-            errors.append(_quality_issue(
-                "e2e_steps_missing", scenario_id, "steps",
-                "E2E 必须声明可复现的用户步骤，不能只写一个断言口号。",
-            ))
-        if not any(_meaningful(item) for item in scenario.get("expected", []) or []):
-            errors.append(_quality_issue(
-                "e2e_expected_missing", scenario_id, "expected",
-                "E2E 必须声明用户可观察的预期结果。",
-            ))
-        if str(scenario.get("exec", "")).lower() == "aspirational":
-            errors.append(_quality_issue(
-                "e2e_aspirational", scenario_id, "exec",
-                "aspirational 不能作为 E2E 验收；请登记可执行命令或降级到其他层级。",
-            ))
-        trigger_paths = [str(item) for item in scenario.get("trigger_paths", []) or []]
-        if not scenario.get("smoke") and not trigger_paths:
-            errors.append(_quality_issue(
-                "e2e_trigger_paths_missing", scenario_id, "trigger_paths",
-                "非 smoke E2E 必须声明触发路径，否则任何小改动都会跑全量 E2E。",
-            ))
-        if any(not _meaningful(item) for item in trigger_paths):
-            errors.append(_quality_issue(
-                "e2e_trigger_path_placeholder", scenario_id, "trigger_paths",
-                "触发路径不能使用占位值。",
-            ))
-        signature = (
-            tuple(str(item) for item in scenario.get("steps", []) or []),
-            tuple(str(item) for item in scenario.get("expected", []) or []),
-            str(scenario.get("boundary", "")).strip(),
-        )
-        if signature in signatures:
-            warnings.append(_quality_issue(
-                "duplicate_e2e_journey", scenario_id, "steps",
-                f"与 {signatures[signature]} 的 E2E 旅程重复；请合并或说明差异。",
-            ))
-        else:
-            signatures[signature] = scenario_id
-    total = len(scenarios)
-    ratio = (len(e2e) / total) if total else 0.0
-    if e2e and ratio > E2E_RATIO_WARNING:
-        warnings.append(_quality_issue(
-            "e2e_ratio_high", "", "level",
-            f"E2E 占比 {ratio:.0%}；优先把 UI/字段/契约下沉到 component/contract/integration。",
-        ))
-    smoke_count = sum(1 for item in e2e if item.get("smoke"))
-    if e2e and not smoke_count:
-        warnings.append(_quality_issue(
-            "e2e_smoke_missing", "", "smoke",
-            "没有标记 smoke 的 E2E；发布冒烟会退化为全量 E2E。",
-        ))
-    return {
-        "ok": not errors,
-        "errors": errors,
-        "warnings": warnings,
-        "total": total,
-        "e2e_count": len(e2e),
-        "smoke_count": smoke_count,
-        "e2e_ratio": round(ratio, 4),
-    }
+    """Validate semantic acceptance contracts through one shared quality gate."""
+    from cf_scenario_quality import quality_report
+    return quality_report(scenarios)
 
 
 def scenario_status(scenario: Mapping[str, object], checks: Mapping[str, str]) -> str:

@@ -43,6 +43,7 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 - 旧 task 没有覆盖表但来源 design 含结构化验收场景时，先从 design 回填覆盖表与契约；回填完成前不得修改生产代码
 - 非行为类任务可显式写 `Acceptance-Refs: N/A`；不得用 N/A 跳过已有设计场景
 - E2E 必须已通过 plan 精度门禁：P0/P1、`why_e2e`、`boundary`、非 smoke 的 `trigger_paths` 缺一不可；`start` 会在 `e2e_plan.quality.ok=false` 时阻断，不要手工改 manifest 绕过
+- 有 canonical 场景源时，start 同时复核浏览器边界、expected_refs 和延后责任信息。沿用 plan 已登记的可收集测试骨架；按当前 TASK 补齐断言并执行 functional RED/GREEN，浏览器 E2E 留到需求终验运行。
 
 ### 2. 加载详设上下文
 
@@ -209,7 +210,7 @@ code-flow task parallel prepare --root "$PWD" \
 若当前平台提供子 agent/Task 派发能力，为本批次每个 TASK 各派发一个子 agent（同一批并发不超过 3，超出时按 TASK 顺序拆成多轮）。子 agent prompt 必须包含 worktree 绝对路径、TASK-ID、任务文件相对路径，并声明以下硬性要求：
 
 1. 进入 worktree：所有命令 `cd <worktree>` 执行，文件读写使用该 worktree 内路径。
-2. 按上文"单任务模式"步骤 1-4 完成该 TASK：`code-flow task start` → functional RED → 实现 → functional GREEN（E2E 只登记）→ `code-flow task finish --root "<worktree>"`。
+2. 按本命令"单任务模式"步骤 1-4 完成该 TASK：`code-flow task start` → functional RED → 实现 → functional GREEN（E2E 只登记）→ `code-flow task finish --root "<worktree>"`。
 3. 平台 hook 注入绑定主工作区；子 agent 必须显式读取 Spec Session（路径取 start 返回的 `session_output`，默认 `.code-flow/specs/_session/task-<任务文件stem>.md`）与详设章节，不得依赖自动注入。
 4. 完成时在 worktree 内提交全部改动（含任务文件 Checklist/Evidence/Status 更新），提交信息 `cf-task(<TASK-ID>): <标题>`。
 5. `finish` 返回 `decision: block` 时不得提交：保留现场，原样回报阻断原因（如 scope expansion 新增 required Spec、验收失败）与 `code-flow spec status --json` 输出，由主 agent 决定局部 Plan/Align、修复后重派或接管；不得自行 resume 绕过门禁。

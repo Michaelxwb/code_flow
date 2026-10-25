@@ -44,10 +44,12 @@ validators:
 
 执行统一验证入口：
 
+文末是通用入口示例；本技能的实际调用使用以下 validators 范围，不额外执行 review/e2e。
+
 - 有 active TASK 时走任务验证入口（`--checks` 等价于 `--layers validators`）：
 
 ```bash
-code-flow task verify --checks --task-dir "<需求目录>" --root "$PWD" --json
+code-flow task verify --checks --profile full --task-dir "<需求目录>" --root "$PWD" --json
 ```
 
 - 无 active TASK 或用户显式指定文件时走变更验证入口：
@@ -56,7 +58,9 @@ code-flow task verify --checks --task-dir "<需求目录>" --root "$PWD" --json
 code-flow validate --root "$PWD" --json
 ```
 
-显式范围追加 `--files "src/a.py" "src/b.py"`。程序匹配 trigger、解析 argv 并展开 `{files}`，不拼接 shell 命令；通过结果按工作树内容指纹跨运行复用（失败永不缓存，`--no-cache` 强制重跑），同一运行内相同 argv/cwd/timeout 去重。删除文件仍触发全局测试，但不传给文件级编译器。每条 timeout 仍按配置的毫秒值生效，总预算耗尽返回 incomplete/block。
+仅 validators 支持任务进行中运行，不要求所有 TASK 完成，也不推进任务状态；active Context 损坏或身份不匹配仍阻断。`--profile full` 包含 heavy validator；只做轻量检查时明确使用 `--profile changed`。
+
+显式范围在 `code-flow validate` 后追加 `--files "src/a.py" "src/b.py"`。程序匹配 trigger、解析 argv 并展开 `{files}`，不拼接 shell 命令；通过结果按工作树内容指纹跨运行复用（失败永不缓存，需要强制重跑时使用 `code-flow validate --no-cache`），同一运行内相同 argv/cwd/timeout 去重。删除文件仍触发全局测试，但不传给文件级编译器。每条 timeout 仍按配置的毫秒值生效，总预算耗尽返回 incomplete/block。
 
 ### 4. 汇总结果
 

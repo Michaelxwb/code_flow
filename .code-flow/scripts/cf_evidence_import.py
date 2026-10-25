@@ -401,10 +401,7 @@ def _scenario_results(
     for row in data.get("scenarios", []):
         if not isinstance(row, Mapping) or str(row.get("kind", "functional")) == "manual":
             continue
-        raw = row.get("checks")
-        check_ids = [str(value) for value in raw] if isinstance(raw, list) else []
-        if not check_ids and isinstance(row.get("check"), str):
-            check_ids = [str(row.get("check"))]
+        check_ids = scenario_check_ids(row)
         if not check_ids or any(check_id not in outcomes for check_id in check_ids):
             continue
         statuses = [outcomes[check_id][0] for check_id in check_ids]
@@ -421,6 +418,9 @@ def _scenario_results(
             "status": status,
             "exit_code": exit_code,
             "check_ids": check_ids,
+            "check_results": {check_id: {"status": outcomes[check_id][0],
+                                         "exit_code": outcomes[check_id][1]}
+                              for check_id in check_ids},
             "source": "ci",
             "commit": commit,
             "run_url": run_url,

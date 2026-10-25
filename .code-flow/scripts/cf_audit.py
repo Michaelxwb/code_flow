@@ -24,7 +24,8 @@ import re
 import sys
 from typing import IO, Mapping, Optional, Sequence
 
-from cf_acceptance_schema import load_manifest, verified_evidence
+from cf_acceptance_schema import (check_outcome, load_manifest, recorded_check_hash,
+                                  scenario_check_ids, verified_evidence)
 from cf_acceptance_risk import risk_counts
 from cf_evidence_store import EvidenceStore
 from cf_traceability import build_traceability, build_traceability_many, build_traceability_from_scenarios
@@ -196,17 +197,39 @@ def _owner_findings(scenarios: Mapping[str, Mapping[str, object]]) -> list[dict[
     return findings
 
 
-def _scenario_evidence(scenario: Mapping[str, object],
-                       store: EvidenceStore) -> tuple[Mapping[str, object], str]:
-    check_id = scenario.get("check")
-    if isinstance(check_id, str) and check_id.strip():
-        sidecar = store.read_latest(check_id)
-        if sidecar is not None:
-            return sidecar, "sidecar"
+def _scenario_evidence(scenario: Mapping[str, object], store: EvidenceStore
+                       ) -> list[tuple[str, Mapping[str, object], str]]:
+    """Resolve every required check; partial sidecars cannot borrow a pass."""
+    ids = scenario_check_ids(scenario)
+    sidecars = {check_id: store.read_latest(check_id) for check_id in ids}
+    if any(item is not None for item in sidecars.values()):
+        return [(check_id, item or {}, "sidecar" if item is not None else "missing")
+                for check_id, item in sidecars.items()]
     value = scenario.get("evidence")
-    if isinstance(value, Mapping):
-        return value, "manifest"
-    return {}, "missing"
+    evidence = value if isinstance(value, Mapping) else {}
+    if not ids:
+        return [("", evidence, "manifest" if evidence else "missing")]
+    return [(check_id, {**check_outcome(evidence, check_id),
+                        "input_hash": recorded_check_hash(scenario, check_id)},
+             "manifest" if evidence else "missing") for check_id in ids]
+
+
+def _evidence_fields(evidence: Mapping[str, object], expected_hash: str) -> list[str]:
+    """Check the recorded proof, not the current workspace of a historical audit."""
+    missing: list[str] = []
+    if not isinstance(evidence.get("run_id"), str) or not str(evidence["run_id"]).strip():
+        missing.append("run_id")
+    if type(evidence.get("exit_code")) is not int or evidence["exit_code"] != 0:
+        missing.append("exit_code")
+    # An explicit empty per-check hash must not fall back to the scenario hash.
+    input_hash = evidence.get("input_hash", evidence.get("fingerprint"))
+    if not isinstance(input_hash, str) or not input_hash.strip():
+        missing.append("input_hash")
+    elif expected_hash and input_hash != expected_hash:
+        missing.append("input_hash_mismatch")
+    if evidence.get("status") not in ("passed", "verified"):
+        missing.append("status")
+    return missing
 
 
 def _verified_findings(scenarios: Mapping[str, Mapping[str, object]],
@@ -216,7 +239,7 @@ def _verified_findings(scenarios: Mapping[str, Mapping[str, object]],
         scenario = scenarios[scenario_id]
         if scenario.get("status") != "verified":
             continue
-        if scenario.get("kind") == "manual":
+        if scenario.get("kind") == "manual" or scenario.get("exec") == "manual":
             if not verified_evidence(scenario):
                 findings.append(_finding(
                     "manual_verified_evidence_missing", scenario_id, "RULE-01",
@@ -224,22 +247,15 @@ def _verified_findings(scenarios: Mapping[str, Mapping[str, object]],
                     fields=["confirmed_by", "evidence"],
                 ))
             continue
-        evidence, source = _scenario_evidence(scenario, store)
-        input_hash = evidence.get("input_hash") or evidence.get("fingerprint")
-        missing: list[str] = []
-        if not isinstance(evidence.get("run_id"), str) or not str(evidence.get("run_id")).strip():
-            missing.append("run_id")
-        if evidence.get("exit_code") != 0:
-            missing.append("exit_code")
-        if not isinstance(input_hash, str) or not input_hash.strip():
-            missing.append("input_hash")
-        if missing:
-            check_id = scenario.get("check")
+        for check_id, evidence, source in _scenario_evidence(scenario, store):
+            missing = _evidence_fields(evidence, recorded_check_hash(scenario, check_id))
+            if not missing:
+                continue
             findings.append(_finding(
                 "verified_evidence_incomplete", scenario_id, "RULE-01",
                 "verified_evidence",
-                f"{scenario_id} 已 verified，但证据缺少 {', '.join(missing)}。",
-                check_id=check_id if isinstance(check_id, str) else "",
+                f"{scenario_id}/{check_id or 'scenario'} 已 verified，但证据无效: {', '.join(missing)}。",
+                check_id=check_id,
                 source=source,
                 fields=missing,
             ))
@@ -259,7 +275,8 @@ def _scenario_rows(trace: Mapping[str, object],
             "id": scenario_id,
             "owner": owner,
             "status": str(scenario.get("status") or item.get("status") or "") if scenario is not None else "",
-            "check": str(scenario.get("check") or "-") if scenario is not None else "-",
+            "check": next(iter(scenario_check_ids(scenario)), "-") if scenario is not None else "-",
+            "checks": scenario_check_ids(scenario) if scenario is not None else [],
             "binding": str(item.get("binding") or ""),
         })
     return rows

@@ -3,10 +3,6 @@ name: cf-spec
 description: Manage schema-v1 Spec Context, drift recovery, and prepared one-shot migration plans.
 ---
 
-# cf-spec
-
-管理 schema v1 Spec Context 与一次性迁移。用法：
-
 - `cf-spec migrate --plan <migration-plan.yml>`
 - `cf-spec context [需求目录]`
 - `cf-spec refresh [需求目录]`
@@ -39,6 +35,18 @@ description: Manage schema-v1 Spec Context, drift recovery, and prepared one-sho
    `code-flow spec validate --task-dir <目录> --json`
 3. Context 缺失、schema/hash 无效时 fail-closed，不回退 Catalog。
 
+
+## status
+
+展示人话版 Context 状态：任务、marker hash 是否一致、code Gate 结果、各绑定 Rule 状态。
+
+执行：
+
+`code-flow spec status --task-dir <目录> --root "$PWD"`
+
+- marker 漂移时输出下一步：先 refresh 自动重同步；仍不一致时用 `active doctor --resync`（hash 取 status --json 的 context_sha256）。
+- 需要机器可读输出时加 `--json`。
+
 ## refresh
 
 执行：
@@ -58,6 +66,9 @@ description: Manage schema-v1 Spec Context, drift recovery, and prepared one-sho
    - **marker 损坏或归属无法证明**：向用户说明影响，仅在用户明确确认放弃该 TASK 后执行 `active doctor --abandon`，随后重新规划该任务。
 3. `active doctor` 返回 `recovery_required`（退出码 3）是诊断结果而非崩溃：按第 2 步选择 refresh / `--resync` / `--abandon`，不要用 `--help` 探测或反复重试。
 4. 输出明确修复命令。不得删除损坏 marker、越过 required Gate 或静默切换到无任务模式。
+5. doctor 的安装/Context 健康结果与 `readiness.plan/code/review` 分开阅读。`applied` 只表示存在引用，不能替代 code/review 的 verified 执行证据；引用条目仍有“待同步/待确认/TBD”时返回 `rule_applied_unresolved`。
+6. `decision=null` 是自动验证的正常情况；无需改代码但已符合规则时提交对应证据，不强制用户 N/A。只有确实不适用/豁免时要求用户 decision。
+7. `convention_review_required` 表示绑定 Spec 的 Conventions 尚未成为可执行约束；审查与当前设计的冲突，关键条目提升为稳定 Rule 并配置 verifier。CLI 低于 runtime 时先按提示升级 CLI；不要尝试把项目 runtime 降级。
 
 <!-- code-flow:runtime-commands start -->
 
@@ -65,6 +76,7 @@ description: Manage schema-v1 Spec Context, drift recovery, and prepared one-sho
 
 ```bash
 code-flow spec validate --task-dir "<需求目录>" --json
+code-flow spec status --task-dir "<需求目录>" --root "$PWD" --json
 code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
 ```
 

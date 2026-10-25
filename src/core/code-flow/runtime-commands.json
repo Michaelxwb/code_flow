@@ -234,6 +234,11 @@
         "migrate"
       ],
       "example_args": "--task-file \"<任务文件>\" --output \"<需求>.scenarios.md\" --json"
+    },
+    "design lint": {
+      "module": "cf_design_lint",
+      "prefix": [],
+      "example_args": "--file \"<需求>.design.md\" --scenarios-file \"<需求>.scenarios.md\" --json"
     }
   }
 }

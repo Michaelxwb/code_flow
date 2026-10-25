@@ -221,7 +221,8 @@ def _manifest_hash(rows: list[dict[str, object]]) -> str:
         }
         # Optional E2E precision fields are hashed only when present so old
         # manifests keep their historical baseline hash.
-        for key in ("why_e2e", "trigger_paths", "smoke"):
+        for key in ("why_e2e", "trigger_paths", "smoke", "components", "steps", "expected",
+                    "expected_refs", "assertions", "preconditions", "defer_reason", "defer_owner", "target_phase", "features", "tags"):
             if key in item:
                 entry[key] = item[key]
         immutable.append(entry)
@@ -340,19 +341,11 @@ def _derive_checks(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     return list(by_id.values())
 
 
-_SCENARIO_SOURCE_FIELDS = ("why_e2e", "trigger_paths", "smoke")
+_SCENARIO_SOURCE_FIELDS = ("why_e2e", "trigger_paths", "smoke", "components", "steps", "expected", "assertions",
+                           "expected_refs", "preconditions", "defer_reason", "target_phase", "features", "tags")
 
 
-def _merge_scenario_source(rows: list[dict[str, object]], scenarios_file: str) -> None:
-    """Merge E2E precision fields from the canonical scenario source.
-
-    The Acceptance Coverage table is a projection. Quality fields live in the
-    scenario source so a plan cannot silently lose its E2E justification when
-    the table is regenerated. Only additive fields are merged; a populated
-    Coverage cell is never overwritten by a default value.
-    """
-    if not scenarios_file:
-        return
+def _source_contract(scenarios_file: str) -> tuple[dict[str, object], dict[str, set[str]]]:
     import yaml
     from cf_scenarios import ScenarioError, _frontmatter, parse_scenarios
 
@@ -370,6 +363,20 @@ def _merge_scenario_source(rows: list[dict[str, object]], scenarios_file: str) -
         for item in raw_scenarios or []
         if isinstance(item, Mapping) and isinstance(item.get("id"), str)
     }
+    return source, explicit
+
+
+def _merge_scenario_source(rows: list[dict[str, object]], scenarios_file: str) -> None:
+    """Merge E2E precision fields from the canonical scenario source.
+
+    The Acceptance Coverage table is a projection. Quality fields live in the
+    scenario source so a plan cannot silently lose its E2E justification when
+    the table is regenerated. Only additive fields are merged; a populated
+    Coverage cell is never overwritten by a default value.
+    """
+    if not scenarios_file:
+        return
+    source, explicit = _source_contract(scenarios_file)
     by_id = {
         str(item.get("id")): item for item in rows
         if isinstance(item, dict) and isinstance(item.get("id"), str)
@@ -383,9 +390,12 @@ def _merge_scenario_source(rows: list[dict[str, object]], scenarios_file: str) -
         # The scenario source is canonical for fields it actually declares.
         # Explicit false/empty values must be able to clear a stale table cell.
         for field in ("level", "priority", "boundary", "exec",
-                      "why_e2e", "trigger_paths", "smoke"):
+                      "why_e2e", "trigger_paths", "smoke", "env", "components", "steps", "expected",
+                      "expected_refs", "assertions", "preconditions", "defer_reason", "target_phase", "features", "tags"):
             if field in provided:
                 row[field] = scenario.get(field)
+        if "owner" in provided:
+            row["defer_owner"] = scenario.get("owner", "")
         row["kind"] = _kind(str(row.get("level", "")))
         for field in _SCENARIO_SOURCE_FIELDS:
             if field in provided:
@@ -536,7 +546,8 @@ def write_manifest(task_file: str, output: str, scenarios_file: str = "") -> dic
 
 _RUNTIME_SCENARIO_FIELDS = ("status", "revision", "evidence", "runs", "stale_checks")
 
-_CHECK_CONFIG_FIELDS = ("env", "env_scope", "parallel_safe", "profile", "inputs", "preflight", "accepted_risk")
+_CHECK_CONFIG_FIELDS = ("env", "env_scope", "parallel_safe", "profile", "inputs", "preflight", "accepted_risk",
+                        "suite", "test_ids", "markers", "collect")
 
 
 def record_accepted_risk(
@@ -667,6 +678,8 @@ def _preserve_runtime_state(task_file: str, target: Path, manifest: dict[str, ob
 _IMMUTABLE_SCENARIO_FIELDS = (
     "id", "source", "level", "kind", "boundary", "owner", "command", "cwd", "timeout", "depends_on", "check",
     "priority", "exec", "env", "inputs", "why_e2e", "trigger_paths", "smoke",
+    "components", "steps", "expected", "expected_refs", "assertions", "preconditions", "defer_reason", "defer_owner",
+    "target_phase", "features", "tags",
 )
 
 _OPTIONAL_SCENARIO_FIELDS = ("priority", "exec", "env", "inputs", "why_e2e", "trigger_paths", "smoke")
@@ -811,7 +824,7 @@ def _sync_task_evidence(task_file: Path, scenario_id: str, confirmed_by: str, ev
     sync_task_evidence(task_file, scenario_id, confirmed_by, evidence, owner)
 
 
-def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
+def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND") or None)
     parser.add_argument("--task-file", default="")
     parser.add_argument("--output", default="")
@@ -831,12 +844,14 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     parser.add_argument("--confirmed-by", default="")
     parser.add_argument("--source", default="")
     parser.add_argument("--evidence", default="")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
+    args = _parser().parse_args(argv)
     try:
-        if args.project and not args.task_file:
-            raise ValueError("--project requires --task-file")
-        if args.verify_plan and not args.task_file:
-            raise ValueError("--verify-plan requires --task-file")
+        if (args.project or args.verify_plan) and not args.task_file:
+            raise ValueError(f"{'--project' if args.project else '--verify-plan'} requires --task-file")
         if args.project:
             output = args.output or str(Path(args.task_file).with_name(".acceptance-manifest.json"))
             manifest = write_manifest(args.task_file, output, args.scenarios_file)
@@ -868,49 +883,8 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
         if args.verify_plan:
             if not args.task_dir:
                 raise ValueError("--verify-plan requires --task-dir")
-            quality: Optional[dict[str, object]] = None
-            if args.require_scenarios:
-                from cf_scenarios import parse_scenarios, require_source, validate_e2e_quality
-                source_path = require_source(args.task_dir)
-                source = parse_scenarios(source_path)
-                quality = validate_e2e_quality(source["scenarios"])
-                if not quality["ok"]:
-                    result = {
-                        "decision": "block",
-                        "reason": "e2e_quality_invalid",
-                        "e2e_quality": quality,
-                    }
-                    stdout.write(json.dumps(result, ensure_ascii=False))
-                    return 3
-                manifest_path = Path(args.task_dir) / ".acceptance-manifest.json"
-                if not manifest_path.is_file():
-                    raise ValueError("acceptance_manifest_missing")
-                if manifest_path.is_file():
-                    locked = load_manifest(manifest_path)
-                    rows = {str(item.get("id")): item for item in locked.get("scenarios", [])}
-                    check_ids = {str(item.get("id")) for item in locked.get("checks", [])}
-                    for scenario in source.get("scenarios", []):
-                        sid = str(scenario.get("id"))
-                        required = [str(value) for value in scenario.get("checks", [])]
-                        unknown = [value for value in required if value not in check_ids]
-                        if unknown:
-                            raise ValueError(f"unknown_check:{sid}:{','.join(unknown)}")
-                        actual = rows.get(sid, {}).get("checks")
-                        projected = {str(value) for value in actual} if isinstance(actual, list) else set()
-                        if required and projected != set(required):
-                            raise ValueError(f"scenario_checks_not_projected:{sid}")
-            from cf_spec_context import load_context
-            from cf_spec_gate import result_to_data, validate_plan_coverage, validate_stage
-
-            context = load_context(str(Path(args.task_dir) / "spec-context.yml"))
-            gate = validate_stage(context, "plan")
-            coverage = validate_plan_coverage(context, args.task_file)
-            result = {
-                "decision": "block" if gate.decision == "block" or coverage.decision == "block" else "pass",
-                "gate": result_to_data(gate),
-                "coverage": result_to_data(coverage),
-                "e2e_quality": quality,
-            }
+            from cf_plan_quality import verify_plan
+            result = verify_plan(args.task_dir, args.task_file, args.require_scenarios)
             stdout.write(json.dumps(result, ensure_ascii=False))
             return 0 if result["decision"] == "pass" else 3
         if not args.output:

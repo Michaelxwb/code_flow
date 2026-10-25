@@ -57,6 +57,17 @@ def test_verify_e2e_present_on_all_platforms() -> None:
             assert _path(platform, base, "verify-e2e").is_file()
 
 
+def test_verification_uses_declared_preflight_and_preserves_manual_confirmation() -> None:
+    for platform in PLATFORMS:
+        for base in (SRC[platform], DEPLOY[platform]):
+            text = _path(platform, base, "verify-e2e").read_text(encoding="utf-8")
+            assert "preflight" in text and "env_blocked_details" in text
+            assert "环境已就绪？(y/N)" not in text
+            assert "manual_confirmation_required" in text
+            assert "Agent 不得代确认" in text
+            assert "单层、changed、smoke 通过均不推进状态" in text
+
+
 def test_parallel_batch_protocol_present_on_all_platforms() -> None:
     """start 的并行批次协议（worktree 编排 + 自动回并 + 串行回退）必须四平台源/部署一致存在。"""
     phrases = (

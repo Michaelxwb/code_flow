@@ -9,7 +9,7 @@ from typing import Mapping, Optional, Sequence
 from uuid import uuid4
 
 from cf_evidence_store import EvidenceStore, discover_project_root, git_commit
-from cf_acceptance_schema import load_manifest, scenario_check_ids
+from cf_acceptance_schema import check_outcome, load_manifest, recorded_check_hash, scenario_check_ids
 
 STATES = frozenset(("planned", "pending", "tbd", "verified", "unverified", "stale", "failed", "incomplete", "not_configured", "e2e_deferred", "env_blocked", "manual_pending", "accepted_risk"))
 _EVIDENCE_STATUS = {
@@ -125,6 +125,11 @@ def _run_record(row: Mapping[str, object], result: Mapping[str, object], run_id:
     }
 
 
+def _outcome_mapping(result: Mapping[str, object], field: str) -> Mapping[str, object]:
+    value = result.get(field)
+    return value if isinstance(value, Mapping) else {}
+
+
 def _store_evidence_runs(path: Path, rows: Mapping[str, Mapping[str, object]],
                          results: Sequence[Mapping[str, object]], run_id: str,
                          executed_at: str, fingerprint: str) -> dict[str, int]:
@@ -148,14 +153,10 @@ def _store_evidence_runs(path: Path, rows: Mapping[str, Mapping[str, object]],
         check_id = str(row.get("check") or row.get("id"))
         if not check_ids:
             check_ids = [check_id]
-        raw_hashes = result.get("check_hashes")
-        check_hashes = raw_hashes if isinstance(raw_hashes, Mapping) else {}
-        raw_reused = result.get("check_reused")
-        check_reused = raw_reused if isinstance(raw_reused, Mapping) else {}
-        raw_checkpoint = result.get("checkpoint_reused_checks")
-        check_checkpoint = raw_checkpoint if isinstance(raw_checkpoint, Mapping) else {}
-        raw_configs = result.get("check_configs")
-        configs = raw_configs if isinstance(raw_configs, Mapping) else {}
+        check_hashes = _outcome_mapping(result, "check_hashes")
+        check_reused = _outcome_mapping(result, "check_reused")
+        check_checkpoint = _outcome_mapping(result, "checkpoint_reused_checks")
+        configs = _outcome_mapping(result, "check_configs")
         for item_id in check_ids:
             checkpointed = check_checkpoint.get(item_id, result.get("checkpoint_reused"))
             item_hash = str(check_hashes.get(item_id) or result_fingerprint)
@@ -170,7 +171,7 @@ def _store_evidence_runs(path: Path, rows: Mapping[str, Mapping[str, object]],
                     continue
             config = configs.get(item_id)
             record = _run_record(
-                row, result, run_id, executed_at, item_hash, commit,
+                row, check_outcome(result, item_id), run_id, executed_at, item_hash, commit,
                 config if isinstance(config, Mapping) else None,
             )
             record["check_id"] = item_id
@@ -201,7 +202,7 @@ def _restore_checkpoint(row: dict[str, object], result: Mapping[str, object], ru
     }
     if fingerprint:
         record["fingerprint"] = fingerprint
-    for key in ("check_ids", "check_hashes", "check_reused", "checkpoint_reused_checks", "check_configs", "input_hash", "risk"):
+    for key in ("check_ids", "check_hashes", "check_results", "check_reused", "checkpoint_reused_checks", "check_configs", "input_hash", "risk"):
         if key in result:
             record[key] = result[key]
     row["status"] = "verified"
@@ -242,23 +243,19 @@ def _record_result(row: dict[str, object], result: Mapping[str, object], run_key
 def stale_scenario_checks(row: Mapping[str, object], hashes: Mapping[str, Mapping[str, object]],
                           fingerprint: str) -> list[str]:
     """Compare every declared check; a missing or unavailable hash is stale."""
-    if row.get("status") not in ("verified", "accepted_risk"):
+    if row.get("status") not in ("verified", "accepted_risk", "stale"):
         return []
     if row.get("kind") == "manual" or row.get("exec") in ("manual", "aspirational"):
         return []
     check_ids = scenario_check_ids(row)
     evidence = row.get("evidence")
     evidence = evidence if isinstance(evidence, Mapping) else {}
-    recorded = evidence.get("check_hashes")
-    recorded = recorded if isinstance(recorded, Mapping) else {}
     if not check_ids:
         return [] if fingerprint and evidence.get("fingerprint") == fingerprint else [str(row["id"])]
     stale = []
     for check_id in check_ids:
         expected = hashes.get(check_id, {}).get("input_hash")
-        actual = recorded.get(check_id)
-        if not recorded and len(check_ids) == 1:
-            actual = evidence.get("input_hash") or evidence.get("fingerprint")
+        actual = recorded_check_hash(row, check_id)
         if not expected or expected != actual:
             stale.append(check_id)
     return stale

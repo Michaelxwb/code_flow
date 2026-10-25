@@ -22,6 +22,40 @@ function commands(root) {
   return registry.commands;
 }
 
+function projectCommandFamily(name) {
+  if (!name || name.startsWith('-')) return false;
+  let current = path.resolve(process.cwd());
+  while (true) {
+    if (fs.existsSync(path.join(current, '.code-flow/runtime-commands.json'))) {
+      try {
+        return Object.keys(commands(current)).some(command => command.split(' ')[0] === name);
+      } catch (error) {
+        process.stderr.write(`code-flow contract: ${error.message}\n`);
+        return false;
+      }
+    }
+    const parent = path.dirname(current);
+    if (parent === current) return false;
+    current = parent;
+  }
+}
+
+function versionRepair(root) {
+  const file = path.join(root, '.code-flow/.version');
+  if (fs.existsSync(file)) {
+    const version = fs.readFileSync(file, 'utf8').trim();
+    if (/^\d+\.\d+\.\d+$/.test(version)) {
+      const installed = version.split('.').map(Number);
+      const current = pkg.version.split('.').map(Number);
+      const index = installed.findIndex((value, position) => value !== current[position]);
+      if (index >= 0 && installed[index] > current[index]) {
+        return `CLI ${pkg.version} is older than project runtime ${version}. Upgrade the CLI: npm install --global ${pkg.name}@${version}`;
+      }
+    }
+  }
+  return 'code-flow migrate --runtime --dry-run';
+}
+
 function digest(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 }
@@ -107,7 +141,7 @@ function verify(root, duringMigration = false) {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, '.code-flow/.runtime-install.json'), 'utf8'));
   const version = fs.readFileSync(path.join(root, '.code-flow/.version'), 'utf8').trim();
   if (manifest.schema_version !== 1 || manifest.version !== version || version !== pkg.version) {
-    throw new Error('Runtime and CLI versions differ.');
+    throw new Error(`Runtime ${version} and CLI ${pkg.version} versions differ.`);
   }
   if (!manifest.files || Object.keys(manifest.files).length === 0 || !manifest.hook_contracts) {
     throw new Error('Runtime installation manifest is incomplete.');
@@ -177,9 +211,9 @@ function run(values) {
     verify(root);
     return execute(root, commands(root), values);
   } catch (error) {
-    process.stderr.write(`code-flow installation: ${error.message}\nRepair: code-flow migrate --runtime --dry-run\n`);
+    process.stderr.write(`code-flow installation: ${error.message}\nRepair: ${versionRepair(root)}\n`);
     return 3;
   }
 }
 
-module.exports = { artifactSources, commands, digest, hookContracts, projectRoot, run, verify, writeInstall };
+module.exports = { artifactSources, commands, digest, hookContracts, projectCommandFamily, projectRoot, run, verify, writeInstall };

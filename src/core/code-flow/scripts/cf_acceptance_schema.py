@@ -19,6 +19,33 @@ def scenario_check_ids(row: Mapping[str, object]) -> list[str]:
     return [check] if isinstance(check, str) and check else []
 
 
+def recorded_check_hash(row: Mapping[str, object], check_id: str) -> str:
+    """Read one check's proof; never reuse an aggregate hash for many checks."""
+    evidence = row.get("evidence")
+    if not isinstance(evidence, Mapping):
+        return ""
+    hashes = evidence.get("check_hashes")
+    if isinstance(hashes, Mapping):
+        value = hashes.get(check_id)
+    elif scenario_check_ids(row) == [check_id]:
+        value = evidence.get("input_hash") or evidence.get("fingerprint")
+    else:
+        return ""
+    return value if isinstance(value, str) else ""
+
+
+def check_outcome(result: Mapping[str, object], check_id: str) -> Mapping[str, object]:
+    """Prefer the executed check's outcome over the enclosing scenario verdict."""
+    if "check_results" not in result:
+        return result  # Compatibility with evidence written before per-check outcomes.
+    outcomes = result.get("check_results")
+    outcome = outcomes.get(check_id) if isinstance(outcomes, Mapping) else None
+    shared = {key: value for key, value in result.items()
+              if key not in ("status", "exit_code", "risk", "error")}
+    return {**shared, "status": "incomplete", "exit_code": 1,
+            **(outcome if isinstance(outcome, Mapping) else {})}
+
+
 def verified_evidence(row: Mapping[str, object], fingerprint: str = "") -> bool:
     evidence = row.get("evidence")
     if row.get("status") != "verified" or not isinstance(evidence, dict):
@@ -106,6 +133,19 @@ def _validate_scenario_metadata(scenario_id: str, item: Mapping[str, object]) ->
     smoke = item.get("smoke")
     if smoke is not None and not isinstance(smoke, bool):
         raise ValueError(f"invalid scenario {scenario_id}:smoke")
+    _validate_contract_metadata(scenario_id, item)
+
+
+def _validate_contract_metadata(scenario_id: str, item: Mapping[str, object]) -> None:
+    for field in ("components", "steps", "expected", "assertions", "preconditions", "features", "tags"):
+        if field in item and (not isinstance(item[field], list) or not all(isinstance(value, str) for value in item[field])):
+            raise ValueError(f"invalid scenario {scenario_id}:{field}")
+    for field in ("defer_reason", "defer_owner", "target_phase"):
+        if field in item and not isinstance(item[field], str):
+            raise ValueError(f"invalid scenario {scenario_id}:{field}")
+    refs = item.get("expected_refs", [])
+    if not isinstance(refs, list) or not all(isinstance(value, Mapping) for value in refs):
+        raise ValueError(f"invalid scenario {scenario_id}:expected_refs")
 
 
 def validate_checks(value: object) -> list[dict[str, object]]:
@@ -134,7 +174,23 @@ def validate_checks(value: object) -> list[dict[str, object]]:
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
             raise ValueError(f"invalid check {check_id}:timeout")
         _validate_check_environment(check_id, item)
+        _validate_check_registration(check_id, item)
     return value
+
+
+def _validate_check_registration(check_id: str, item: Mapping[str, object]) -> None:
+    if "suite" in item and item["suite"] not in ("unit", "component", "contract", "integration", "system", "browser", "capacity"):
+        raise ValueError(f"invalid check {check_id}:suite")
+    for field in ("test_ids", "markers"):
+        if field not in item:
+            continue
+        values = item[field]
+        if not isinstance(values, list) or not all(isinstance(value, str) and value.strip() for value in values):
+            raise ValueError(f"invalid check {check_id}:{field}")
+        if len(values) != len(set(values)):
+            raise ValueError(f"duplicate check {check_id}:{field}")
+    if "collect" in item and not isinstance(item["collect"], Mapping):
+        raise ValueError(f"invalid check {check_id}:collect")
 
 
 _ENV_SCOPES = ("shared", "isolated")

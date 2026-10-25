@@ -34,9 +34,11 @@ def test_s_03_plan_merges_all_designs_into_one_task_file() -> None:
     assert ".code-flow/tasks/<日期>/<需求>/<需求>.md" in text
 
 
-def test_s_04_e_03_archive_supports_directory_and_flat_layouts() -> None:
+def test_s_04_e_03_archive_keeps_legacy_files_inside_the_runtime_boundary() -> None:
     text = _command("archive")
     assert "**A. 需求目录布局**" in text
     assert "整个需求目录一并归档" in text
     assert "**B. 旧扁平布局**" in text
-    assert "向后兼容" in text and "逐文件归档" in text
+    assert "向后兼容" in text and "先完成需求目录迁移" in text
+    assert "不得把包含其他需求的日期目录作为 `--task-dir`" in text
+    assert "archived_to" in text

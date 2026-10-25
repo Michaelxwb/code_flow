@@ -1,12 +1,15 @@
 ---
 name: cf-task-verify-e2e
-description: Execute deferred E2E scenarios after all functional tests pass
+description: Run layered verification or full requirement verification, including deferred E2E
 ---
 
 ## 验证子动作（0.8）
 
 - `code-flow task verify --checks` — 等价于 `--layers validators`，是 `cf-validate` 的 0.8 入口。
+- `code-flow task verify-e2e --checks` 同样只跑 validators；需要包含 heavy validator 时显式指定 `--profile full`。仅 validators 可在任务进行中运行，使用 active TASK 基线以来的变更，不推进任务状态。
 - `cf-validate` 保留为兼容别名，0.9.0 移除。
+
+执行需求目录下被延迟的 E2E 验收场景。
 
 ## 使用场景
 
@@ -38,37 +41,27 @@ cf-task-verify-e2e <需求目录>
 rg "^- \*\*Status\*\*:" <需求目录>/*.md
 ```
 
-如有 `in-progress` 或 `blocked` 任务，提示用户先完成。
+本步骤只适用于包含 review/e2e 的需求验证。如有 `in-progress` 或 `blocked` 任务，先完成任务；仅 `--checks` / `--layers validators` 不要求任务 done，但仍校验 active Context 与需求身份。
 
 ### 2. 检查环境依赖
 
-读取 `.acceptance-manifest.json` 中的 E2E 场景，提取所需的外部依赖（从 `boundary` 字段推断）：
+读取所选 checks 的 `env`、`env_scope`、`preflight` 声明。运行时在实际执行 check 前自动运行 preflight；已有有效证据时允许复用。不要从 `boundary` 猜测端口、数据库或驱动，也不要固定询问环境是否就绪。
 
-- `HTTP API` → 提示确认 API 服务运行中
-- `Browser` → 提示确认浏览器驱动已安装
-- `Database` → 提示确认测试数据库可访问
-
-显示清单并询问：
-
-```
-E2E 场景需要以下环境：
-  - 本地 API 服务 (http://localhost:3000)
-  - PostgreSQL 测试数据库
-  - Chrome WebDriver
-
-环境已就绪？(y/N)
-```
+收到 `env_blocked` 时，展示 `env_blocked_details` 中的 check ID、owner、失败的 preflight 命令、退出码和输出。根据真实失败修复可处理的本地问题；只有缺少外部配置、需要用户启动外部环境或涉及权限时请求用户输入。未声明 preflight 的检查仍按真实执行结果判断，不能自报环境已通过。
 
 ### 3. 执行 E2E 场景
 
-用户确认后，执行：
+用户请求需求级终验时，执行：
 
 ```bash
-code-flow task verify-e2e \
-  --task-dir "<需求目录>" --root "$PWD" --json
+code-flow task verify \
+  --task-dir "<需求目录>" --root "$PWD" \
+  --layers validators,review,e2e --profile full --json
 ```
 
-该入口是需求级全量终验：重新检查所有 TASK，锁定 manifest 与 functional/manual 最新证据，执行全量 validation（含 heavy），全量补跑 code+review 两层 verifier（含任务层 deferred 项），并以 `--only-e2e` 调用 runner 跑 E2E；只有全通过才把任务提升为 verified。不得手动改状态。
+日常增量验证使用 `--profile changed`，明确只跑 smoke 时使用 `--profile smoke`；不要把增量请求升级成全量。`code-flow task verify-e2e` 保留为默认全层 full 的兼容入口。仅检查代码时使用 `code-flow task verify --checks --task-dir "<需求目录>" --root "$PWD" --json`。
+
+全量终验重新检查所有 TASK、锁定 manifest 与 functional/manual 最新证据，执行全量 validation（含 heavy）和 code+review verifier（含 deferred 项）。runner 按范围执行 acceptance：仅 E2E 的路径使用 `--only-e2e`，full 或 functional 证据过期时同时复验所需 functional。只有全层 full 通过才将任务提升为 verified；单层、changed、smoke 通过均不推进状态。不得手动改状态。
 
 ### 4. 人工验收确认（manual_confirmation_required）
 
@@ -95,20 +88,22 @@ code-flow task confirm-manual \
 ```json
 {
   "decision": "block",
-  "results": [
-    {"id": "E-01", "kind": "e2e", "status": "passed"},
-    {"id": "E-02", "kind": "e2e", "status": "failed", "exit_code": 1}
-  ]
+  "layers": {
+    "e2e": {
+      "decision": "block",
+      "checks": [{"id": "CHK-B", "status": "failed", "scenarios": ["E-02"]}]
+    }
+  }
 }
 ```
 
-- `decision=pass`：所有 E2E 场景通过，提示"E2E 验收完成"
-- `decision=block`：有失败场景，列出失败的场景 ID 和错误信息
+- `decision=pass`：报告实际 `selected_layers`、`profile`、执行与复用计数，不将部分范围通过报告为全量终验完成
+- `decision=block`：列出失败层、场景 ID 与 check ID，从 `check_results` 或 `env_blocked_details` 展示对应命令、退出码和错误输出
 - `reason=manual_confirmation_required`：先按「人工验收确认」章节取得用户确认并执行 `confirm-manual`，再重跑本命令
 
 ### 6. 更新任务状态
 
-确认命令已将需求目录下所有任务 Status 更新为 `verified`，并保留原契约与运行历史。无需再次编辑状态。
+全层 full 通过后确认运行时已将任务 Status 更新为 `verified`，并保留原契约与运行历史。其他验证范围保留原状态。无需再次编辑状态。
 
 ## 失败处理
 
@@ -116,7 +111,7 @@ E2E 失败时：
 
 1. 显示失败场景的完整命令和退出码
 2. 提示查看 `.acceptance-manifest.json` 中的 `evidence` 字段
-3. 不自动修改任务状态，等待用户修复后重新执行
+3. 修复可处理的问题后重跑所选范围；缺少用户输入时报告具体阻塞，不自动修改任务状态
 
 ## 示例
 
@@ -125,11 +120,7 @@ cf-task-verify-e2e .code-flow/tasks/2026-03-15/auth-module
 
 > 检查子任务状态... 所有任务已完成
 > 
-> E2E 场景需要以下环境：
->   - 本地 API 服务 (http://localhost:3000)
->   - PostgreSQL 测试数据库 (postgresql://localhost:5432/test)
-> 
-> 环境已就绪？(y/N) y
+> 按 checks 声明执行 preflight... 通过
 > 
 > 执行 E2E 场景...
 >   ✓ E-01: 用户登录流程 (1.2s)

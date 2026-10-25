@@ -298,10 +298,16 @@ def _document(config: Mapping[str, object], scope: VerificationScope) -> _Outcom
     except (OSError, UnicodeError) as exc:
         return _Outcome(False, "artifact_read_error", None, {"artifact": relative, "error": str(exc)})
     expected = _config_string(config, "artifact_sha256")
-    present = section in content and item in content
+    from cf_rule_readiness import referenced_item, unresolved_text
+    selected = referenced_item(content, section, item)
+    present = bool(selected)
     hash_matches = expected is None or expected == artifact_hash
-    details = {"artifact": relative, "section_present": section in content, "item_present": item in content, "hash_matches": hash_matches}
-    return _Outcome(present and hash_matches, None if present and hash_matches else "document_mismatch", artifact_hash, details)
+    unresolved = unresolved_text(selected)
+    details = {"artifact": relative, "section_present": section in content, "item_present": bool(selected),
+               "hash_matches": hash_matches, "unresolved": unresolved}
+    error = "rule_applied_unresolved" if unresolved else "document_mismatch"
+    passed = present and hash_matches and not unresolved
+    return _Outcome(passed, None if passed else error, artifact_hash, details)
 
 
 def _regex(config: Mapping[str, object], metadata: SpecMetadata, scope: VerificationScope) -> _Outcome:

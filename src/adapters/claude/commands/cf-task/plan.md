@@ -14,6 +14,8 @@ E2E 不是“用户可见结果”的默认测试层。plan 阶段必须按风�
 - `component`：表单/交互/布局/文案/空态/错误提示，使用 mock API。
 - `contract`：DTO、OpenAPI、错误码、前后端字段一致性。
 - `integration`：鉴权、事务、模块边界、真实 DB、进程内 ASGI。
+- `system`：完整 API/CLI/后台服务链路的系统验证；不要求浏览器。
+- `capacity`：容量与负载验证；check 与实际收集用例必须具有 capacity 标记。
 - `e2e`：只有真实浏览器 + 真实后端 + 鉴权/DB 才能暴露的 P0/P1 关键旅程。
 - `manual`：无法自动化的外部条件，必须用户确认。
 
@@ -21,13 +23,23 @@ E2E 不是“用户可见结果”的默认测试层。plan 阶段必须按风�
 
 1. `priority` 为 P0/P1；P2 不得用 E2E。
 2. `why_e2e` 说明为什么 unit/component/contract/integration 都覆盖不了。
-3. `boundary` 写出真实边界（浏览器/API/DB/鉴权/SSE 等）。
+3. `boundary` 写出浏览器开始的真实边界（浏览器/API/DB/鉴权/SSE 等），并声明 `env: browser` 或 `components` 中的 `frontend/browser`。只有 API/CLI 的链路使用 system/integration。
 4. `steps` 和 `expected` 是可复现的用户步骤与可观察结果，不是实现细节。
 5. 非 `smoke` E2E 必须有 `trigger_paths`（源码 glob）；没有触发路径的 E2E 会让小改动跑全量，直接拒绝。
 6. 不得断言源码字符串、CSS、组件宽度、字段顺序、文案顺序；这些属于 component/visual。
 7. 同一旅程只保留一条 E2E；重复旅程合并。
 
 `scenarios parse --quality` 和 `acceptance manifest --verify-plan` 会失败关闭。plan 摘要必须输出 E2E 数量、占比、smoke 数量和每条 E2E 的理由；数量不是目标，删除一条无法证明独特价值的 E2E 是正确结果。
+
+### 可执行计划质量
+
+- 每个 expected 使用 `expected_refs` 引用现有步骤（从 1 开始）或 `assertions` 中已声明的断言 ID。例如 `expected_refs: [{expected: 1, steps: [1]}]`。拒绝“可观、不回归”等无法检验的表述；合法条件分支应给出可构造的 preconditions 和具体结果。
+- `exec: deferred` 必须带 `defer_reason`、`owner`、`target_phase`。环境允许 none/local/local-api/browser/external/staging/capacity/ci/production；components 使用稳定标识符。
+- 新场景先准备可收集的测试骨架与具体测试 ID，再登记 check 的 `suite`、`test_ids`、`markers`、`collect`。本阶段只执行有超时和总预算的测试收集，不实现生产代码，也不执行 E2E；新模块尚不存在时将其导入放到测试体内，避免收集依赖实现。
+- 浏览器 check 使用 `suite: browser`，实际收集的用例须具备 browser 能力；smoke/capacity 标记必须同时出现在 check 与收集结果中。收集支持原生 pytest、Playwright JSON 或项目适配器 JSON，配置示例见 `docs/acceptance-contract.md`。
+- `code-flow acceptance manifest --verify-plan --task-dir "<需求目录>" --task-file "<任务文件>"` 始终校验 manifest 基线、场景质量、check 投影、测试登记、设计 ID 闭环和 Spec Gate；不得通过省略 `--require-scenarios` 跳过已有场景源的质量检查。
+- 设计通过 `code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json` 校验。多 design 重复传 `--file`，FEAT/API/NFR 与场景引用必须闭合；设计的 `design_template` 决定必填章节。
+- 报告区分 `e2e_browser_count`、`system_count`、`capacity_count` 与 `runnable_smoke_count`。未执行登记检查时 runnable 为 null；收集可用不等于真实边界执行已通过，后者必须读取执行证据。
 
 ## 输入
 
@@ -387,7 +399,7 @@ Manifest 锁定场景 ID、来源、测试层级、真实边界和责任 TASK。
 - `E2E` → `e2e`（延迟至所有任务完成后，需 `--include-e2e` 显式执行）
 - `manual` → `manual`（用户手动验证，永不自动执行）
 
-E2E 场景依赖外部环境（数据库、API、浏览器），在编码阶段默认跳过（状态 `e2e_deferred`），不阻断 Done Gate。所有子任务完成后，执行：
+浏览器 E2E 依赖浏览器及其声明的真实服务，在编码阶段默认跳过（状态 `e2e_deferred`），不阻断 Done Gate。API/CLI 系统测试使用 system。所有子任务完成后，执行：
 
 ```bash
 code-flow acceptance run \
@@ -456,6 +468,7 @@ code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目�
 code-flow acceptance project --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json"
 code-flow acceptance run --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --write-evidence
 code-flow scenarios parse --file "<需求>.scenarios.md" --quality --json
+code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json
 ```
 
 <!-- code-flow:runtime-commands end -->
