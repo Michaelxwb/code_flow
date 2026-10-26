@@ -1,3 +1,4 @@
+import ast
 from pathlib import Path
 import json
 import os
@@ -9,7 +10,7 @@ import time
 SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from cf_acceptance_runner import run_manifest
+from cf_acceptance_runner import _select_profile, _select_scenarios, run_manifest
 from codeflow.evidence.cf_evidence_store import EvidenceStore
 import pytest
 
@@ -920,3 +921,213 @@ def test_risk_cannot_expand_to_new_scenario_of_same_owner(tmp_path: Path) -> Non
     result = run_manifest(str(manifest), str(tmp_path))
     assert result["decision"] == "block"
     assert result["results"][1]["status"] == "failed"
+
+
+# --- S-10: profile rule table parity with the legacy branch implementation ---
+
+from collections.abc import Mapping  # noqa: E402
+
+from codeflow.acceptance.cf_acceptance_schema import scenario_check_ids  # noqa: E402
+from codeflow.acceptance.cf_check_inputs import match_path  # noqa: E402
+
+
+def _legacy_selected_ids(scenarios, checks, profile, changed, force_ids=()):
+    """The pre-refactor branch logic, kept verbatim as the parity oracle."""
+    explicit_priority = any(isinstance(item.get("priority"), str) for item in scenarios)
+    forced = {str(item) for item in force_ids}
+    selected = []
+    has_smoke_profile = any(str((check or {}).get("profile", "")) == "smoke"
+                            for check in checks.values())
+    has_e2e = any(str(scenario.get("kind", "")) == "e2e" for scenario in scenarios)
+
+    def _is_smoke(scenario, scenario_checks):
+        return bool(scenario.get("smoke")) or any(
+            str((check or {}).get("profile", "")) == "smoke" for check in scenario_checks)
+
+    e2e_smoke_exists = any(
+        str(scenario.get("kind", "")) == "e2e"
+        and _is_smoke(scenario, [checks.get(cid) for cid in scenario_check_ids(scenario)])
+        for scenario in scenarios)
+
+    for scenario in scenarios:
+        check_ids = scenario_check_ids(scenario)
+        scenario_checks = [checks.get(cid) for cid in check_ids]
+        priority = str(scenario.get("priority", ""))
+        is_e2e = str(scenario.get("kind", "")) == "e2e"
+        smoke = _is_smoke(scenario, scenario_checks)
+        if str(scenario.get("id")) in forced:
+            selected.append(scenario)
+            continue
+        if profile == "smoke":
+            if is_e2e:
+                if smoke or not e2e_smoke_exists:
+                    selected.append(scenario)
+                continue
+            if explicit_priority:
+                if priority.upper() == "P0" or smoke:
+                    selected.append(scenario)
+            elif has_smoke_profile:
+                if smoke:
+                    selected.append(scenario)
+            elif has_e2e:
+                continue
+            else:
+                selected.append(scenario)
+            continue
+        path_patterns = [str(pattern) for pattern in (scenario.get("trigger_paths") or [])
+                         if str(pattern).strip()]
+        path_patterns.extend(
+            str(pattern)
+            for check in scenario_checks if isinstance(check, Mapping)
+            for pattern in (check.get("paths") or []) if str(pattern).strip())
+        path_patterns = list(dict.fromkeys(path_patterns))
+        path_matches = any(match_path(path, pattern) for pattern in path_patterns for path in changed)
+        if is_e2e and path_patterns:
+            if not changed or path_matches:
+                selected.append(scenario)
+            continue
+        if is_e2e and smoke:
+            continue
+        inputs_by_check = [(check or {}).get("inputs") for check in scenario_checks]
+        repo_scoped = not check_ids or any(not value for value in inputs_by_check)
+        matches = any(
+            match_path(path, str(pattern))
+            for value in inputs_by_check if isinstance(value, list)
+            for pattern in value for path in changed)
+        if (not explicit_priority or priority.upper() == "P0"
+                or smoke or repo_scoped or not changed or matches):
+            selected.append(scenario)
+    selected_ids = {str(item.get("id")) for item in selected}
+    by_scenario = {str(item.get("id")): item for item in scenarios}
+    pending = list(selected)
+    while pending:
+        current = pending.pop()
+        for dep in current.get("depends_on", []) if isinstance(current.get("depends_on"), list) else []:
+            dep_id = str(dep)
+            if dep_id in selected_ids or dep_id not in by_scenario:
+                continue
+            selected.append(by_scenario[dep_id])
+            selected_ids.add(dep_id)
+            pending.append(by_scenario[dep_id])
+    return [str(item.get("id")) for item in selected]
+
+
+_PROFILE_CHECKS = {
+    "CHK-P0": {"id": "CHK-P0", "profile": "smoke", "inputs": []},
+    "CHK-P0-IN": {"id": "CHK-P0-IN", "profile": "changed", "inputs": ["src/a.py"]},
+    "CHK-P1-IN": {"id": "CHK-P1-IN", "profile": "changed", "inputs": ["src/b.py"]},
+    "CHK-PATH-A": {"id": "CHK-PATH-A", "paths": ["src/frontend/a/**"]},
+    "CHK-E2E-SMOKE": {"id": "CHK-E2E-SMOKE", "profile": "smoke"},
+    "CHK-PLAIN": {"id": "CHK-PLAIN"},
+}
+
+_PROFILE_MATRIX = [
+    (
+        "smoke-explicit-priority",
+        [{"id": "S-01", "kind": "functional", "check": "CHK-P0", "priority": "P0"},
+         {"id": "S-02", "kind": "functional", "check": "CHK-P1-IN", "priority": "P1"}],
+        set(), "smoke", (),
+    ),
+    (
+        "smoke-legacy-e2e-fallback",
+        [{"id": "E-01", "kind": "e2e", "check": "CHK-PLAIN"},
+         {"id": "S-01", "kind": "functional", "check": "CHK-P0"}],
+        set(), "smoke", (),
+    ),
+    (
+        "smoke-e2e-marked-does-not-expand",
+        [{"id": "E-01", "kind": "e2e", "check": "CHK-E2E-SMOKE", "smoke": True},
+         {"id": "E-02", "kind": "e2e", "check": "CHK-PLAIN"}],
+        set(), "smoke", (),
+    ),
+    (
+        "smoke-no-priority-uses-smoke-profile",
+        [{"id": "S-01", "kind": "functional", "check": "CHK-P0"},
+         {"id": "S-02", "kind": "functional", "check": "CHK-P1-IN"}],
+        set(), "smoke", (),
+    ),
+    (
+        "changed-inputs-scope",
+        [{"id": "S-01", "kind": "functional", "check": "CHK-P0-IN", "priority": "P1"},
+         {"id": "S-02", "kind": "functional", "check": "CHK-P1-IN", "priority": "P1"}],
+        {"src/a.py"}, "changed", (),
+    ),
+    (
+        "changed-trigger-paths",
+        [{"id": "E-01", "kind": "e2e", "check": "CHK-PATH-A", "priority": "P0"},
+         {"id": "E-02", "kind": "e2e", "check": "CHK-PLAIN", "trigger_paths": ["src/frontend/b/**"]}],
+        {"src/frontend/a/View.tsx"}, "changed", (),
+    ),
+    (
+        "changed-empty-diff-fails-closed",
+        [{"id": "E-01", "kind": "e2e", "check": "CHK-PATH-A", "priority": "P0"}],
+        set(), "changed", (),
+    ),
+    (
+        "changed-unscoped-smoke-e2e-skipped",
+        [{"id": "E-01", "kind": "e2e", "check": "CHK-E2E-SMOKE", "smoke": True, "priority": "P0"}],
+        {"src/b.py"}, "changed", (),
+    ),
+    (
+        "changed-repo-scoped-and-p0",
+        [{"id": "S-01", "kind": "functional", "check": "CHK-PLAIN", "priority": "P0"},
+         {"id": "S-02", "kind": "functional", "check": "CHK-PLAIN", "priority": "P0"}],
+        {"src/b.py"}, "changed", (),
+    ),
+    (
+        "changed-no-explicit-priority",
+        [{"id": "S-01", "kind": "functional", "check": "CHK-P1-IN"},
+         {"id": "S-02", "kind": "functional", "check": "CHK-PLAIN", "inputs": ["src/a.py"]}],
+        {"src/b.py"}, "changed", (),
+    ),
+    (
+        "forced-bypasses-profile",
+        [{"id": "S-01", "kind": "functional", "check": "CHK-P1-IN", "priority": "P1"},
+         {"id": "E-01", "kind": "e2e", "check": "CHK-PLAIN"}],
+        {"src/b.py"}, "changed", ("E-01",),
+    ),
+    (
+        "dependency-closure",
+        [{"id": "S-01", "kind": "functional", "check": "CHK-P1-IN", "priority": "P1",
+          "depends_on": ["S-02"]},
+         {"id": "S-02", "kind": "functional", "check": "CHK-P1-IN", "priority": "P1"},
+         {"id": "S-03", "kind": "functional", "check": "CHK-P1-IN", "priority": "P1"}],
+        {"src/a.py"}, "changed", (),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "scenarios, changed, profile, forced",
+    [case[1:] for case in _PROFILE_MATRIX],
+    ids=[case[0] for case in _PROFILE_MATRIX],
+)
+def test_profile_rule_matrix_matches_legacy_branch_implementation(
+    scenarios, changed, profile, forced,
+) -> None:
+    checks = dict(_PROFILE_CHECKS)
+    expected = _legacy_selected_ids(scenarios, checks, profile, changed, forced)
+    actual = [item["id"] for item in _select_scenarios(
+        scenarios, checks, profile, changed, forced)]
+    assert actual == expected
+
+
+def test_select_profile_full_returns_manifest_unchanged() -> None:
+    data = {"schema": 3, "checks": [], "scenarios": [{"id": "S-01"}]}
+    assert _select_profile(data, "/tmp", "full") == data
+
+
+def test_profile_selection_helpers_stay_under_fifty_lines() -> None:
+    source = (SCRIPTS / "codeflow/cli/cf_acceptance_runner.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    spans = {
+        node.name: node.end_lineno - node.lineno + 1
+        for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+    }
+    required = {
+        "_select_profile", "_select_scenarios", "_scenario_selected",
+        "_scenario_facts", "_apply_rule_table",
+    }
+    assert required <= set(spans), f"missing helpers: {sorted(required - set(spans))}"
+    oversized = {name: spans[name] for name in required if spans[name] > 50}
+    assert not oversized, f"helpers over 50 lines: {oversized}"

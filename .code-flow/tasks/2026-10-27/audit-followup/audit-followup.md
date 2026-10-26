@@ -36,11 +36,15 @@
 | S-07 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + SCC 计算 | TASK-004 | planned | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-08 | docs/codebase-consolidation-audit.md#A3 | system | 真实 npm pack + node CLI/init/migrate | TASK-005 | verified | ["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"] | P2 | auto | none | tests/** | - | - | no |
 | S-09 | docs/codebase-consolidation-audit.md#A7 | integration | 真实 adapters 文件 + 归一化 parity | TASK-006 | verified | ["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-10 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 CLI 安装 + runner fixture 矩阵 | TASK-007 | planned | ["python3","-m","pytest","-q","tests/test_cli_spec_workflow.py","tests/test_cf_acceptance_runner.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-10 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 CLI 安装 + runner fixture 矩阵 | TASK-007 | verified | ["python3","-m","pytest","-q","tests/test_cli_spec_workflow.py","tests/test_cf_acceptance_runner.py"] | P2 | auto | none | tests/** | - | - | no |
 
 > 全部场景为工具链内部契约验证，不涉及浏览器，不声明 E2E。A4 的收益指标是 batch-4 边清零后 16 模块 SCC 缩到不超过 7 模块；不承诺一次消除剩余编排环。
 
 ---
+
+
+
+
 
 
 
@@ -340,7 +344,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 
 ## TASK-007: 编排入口职责收口
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P2
 - **Depends**: TASK-005
 - **Source**: docs/codebase-consolidation-audit.md#A8
@@ -355,29 +359,32 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 
 ### Checklist
 
-- [ ] 平台安装差异声明化（平台、文件、分类、合并器），`runInit` 委托安装清单
-- [ ] `runInit` 降到 200 行以下，四平台分支不再各自内联长逻辑
-- [ ] `_select_profile` 改成规则表 + 纯选择函数，单函数 ≤ 50 行，分支行为矩阵有测试
-- [ ] [S-10][integration] 四平台 fresh/upgrade、merge 分类、摘要分组、迁移事务行为不变
-- [ ] [S-10][integration] profile 优先级/排除规则 fixture 矩阵与旧实现一致
-- [ ] RULE-cli-hook-guard-001 verifier: python3 -m pytest -q tests/test_hook_command_robustness.py
-- [ ] RULE-cli-opencode-native-001 verifier: node tests/test_opencode_plugin.js
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 平台安装差异声明化（平台、文件、分类、合并器），`runInit` 委托安装清单
+- [x] `runInit` 降到 200 行以下，四平台分支不再各自内联长逻辑
+- [x] `_select_profile` 改成规则表 + 纯选择函数，单函数 ≤ 50 行，分支行为矩阵有测试
+- [x] [S-10][integration] 四平台 fresh/upgrade、merge 分类、摘要分组、迁移事务行为不变
+- [x] [S-10][integration] profile 优先级/排除规则 fixture 矩阵与旧实现一致
+- [x] RULE-cli-hook-guard-001 verifier: python3 -m pytest -q tests/test_hook_command_robustness.py
+- [x] RULE-cli-opencode-native-001 verifier: node tests/test_opencode_plugin.js
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-10 | integration | 真实 `node src/cli.js init`、临时项目、runner fixture | 安装结果与摘要不变；profile 选择矩阵一致 | `tests/test_cli_spec_workflow.py`、`tests/test_cf_acceptance_runner.py` | `["python3","-m","pytest","-q","tests/test_cli_spec_workflow.py","tests/test_cf_acceptance_runner.py"]` | planned |
+| S-10 | integration | 真实 `node src/cli.js init`、临时项目、runner fixture | 安装结果与摘要不变；profile 选择矩阵一致 | `tests/test_cli_spec_workflow.py`、`tests/test_cf_acceptance_runner.py` | `["python3","-m","pytest","-q","tests/test_cli_spec_workflow.py","tests/test_cf_acceptance_runner.py"]` | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-10 | planned | planned | planned | planned | planned |
+| S-10 | RED: `runInit` 340 行、缺少 `src/adapters/install-plan.json`、`_select_scenarios` ImportError | GREEN: 54 passed（四平台 fresh/upgrade 与 rule-table parity 矩阵） | tests/test_cli_spec_workflow.py::test_install_plan_declaration_covers_platforms_and_is_packaged; ::test_run_init_is_orchestration_only_and_under_two_hundred_lines; tests/test_cf_acceptance_runner.py::test_profile_rule_matrix_matches_legacy_branch_implementation | 真实 `node src/cli.js init --platform=<4>` 临时项目 + 真实 runner fixture | verified |
+- S-10: verified — automated command passed; run_id=4a4f58ea280b49c5a6d8fb52967dcf6f (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-27] started
+- [2026-10-27] completed (done)
 
 ---
 

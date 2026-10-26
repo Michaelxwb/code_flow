@@ -84,3 +84,126 @@ def test_package_manifest_includes_migrator_without_new_dependency() -> None:
     assert "src/migrate/**" in package["files"]
     assert "docs/migrations/spec-workflow-0.6.0.md" in package["files"]
     assert set(package["dependencies"]) == {"@ccusage/codex"}
+
+
+# --- S-10: declarative platform install plan and runInit orchestration ---
+
+import os  # noqa: E402
+import shutil  # noqa: E402
+
+import pytest  # noqa: E402
+
+INSTALL_PLAN = ROOT / "src/adapters/install-plan.json"
+
+PLATFORM_ARTIFACTS = {
+    "claude": [
+        "CLAUDE.md",
+        ".claude/commands/cf-init.md",
+        ".claude/settings.local.json",
+        ".code-flow/scripts/cf_acceptance_runner.py",
+    ],
+    "codex": [
+        "AGENTS.md",
+        ".agents/skills/cf-init/SKILL.md",
+        ".codex/hooks.json",
+        ".codex/config.toml",
+    ],
+    "costrict": [
+        "CLAUDE.md",
+        ".costrict/commands/cf-init.md",
+        ".costrict/settings.local.json",
+    ],
+    "opencode": [
+        "AGENTS.md",
+        ".opencode/plugins/code-flow/package.json",
+        ".opencode/commands/cf-init.md",
+        "opencode.json",
+    ],
+}
+
+
+def _run_init(root: Path, platform: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
+    return subprocess.run(
+        ["node", str(CLI), "init", f"--platform={platform}"],
+        cwd=root, env=env, text=True, capture_output=True, check=False,
+    )
+
+
+def _function_line_span(source: str, name: str) -> int:
+    start = source.index(f"function {name}(")
+    opening = source.index("{", start)
+    depth = 0
+    for index in range(opening, len(source)):
+        char = source[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return source.count("\n", start, index) + 1
+    raise AssertionError(f"unterminated function {name}")
+
+
+def test_install_plan_declaration_covers_platforms_and_is_packaged() -> None:
+    plan = json.loads(INSTALL_PLAN.read_text(encoding="utf-8"))
+    assert set(plan["platforms"]) == {"claude", "codex", "costrict", "opencode"}
+    for platform, spec in plan["platforms"].items():
+        assert spec["markers"], f"{platform} needs platform markers"
+        assert spec["entries"], f"{platform} needs install entries"
+        assert spec["next_steps"]["fresh"] and spec["next_steps"]["upgrade"]
+        for entry in spec["entries"]:
+            assert entry["kind"] in {"file", "dir", "stamp"}, entry
+            if entry["kind"] == "file":
+                assert entry["category"] in {"tool", "merge", "user"}, entry
+                assert entry["merger"], entry
+            else:
+                assert entry["category"] in {"tool", "merge", "user"}, entry
+    assert [group["key"] for group in plan["summary"]] == [
+        "updated", "merged", "created", "skipped", "removed"]
+    package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+    assert any(item.startswith("src/adapters") for item in package["files"])
+
+
+def test_run_init_is_orchestration_only_and_under_two_hundred_lines() -> None:
+    source = (ROOT / "src/cli.js").read_text(encoding="utf-8")
+    assert _function_line_span(source, "runInit") < 200
+    assert "installPlatform(" in source
+    assert "PLATFORM_INSTALL_PLAN" in source or "installPlan" in source
+
+
+def test_four_platform_fresh_and_upgrade_keep_install_and_summary(tmp_path: Path) -> None:
+    if not shutil.which("node"):
+        pytest.skip("node is required for CLI tests")
+    for platform, artifacts in PLATFORM_ARTIFACTS.items():
+        root = tmp_path / platform
+        root.mkdir()
+        fresh = _run_init(root, platform)
+        assert fresh.returncode == 0, fresh.stderr
+        assert "Created:" in fresh.stdout
+        assert "Next steps:" in fresh.stdout
+        for relative in artifacts:
+            assert (root / relative).is_file(), f"{platform} fresh missing {relative}"
+
+        version = root / ".code-flow/.version"
+        version.write_text("0.0.1\n", encoding="utf-8")
+        upgrade = _run_init(root, platform)
+        assert upgrade.returncode == 0, upgrade.stderr
+        assert "Updated (tool-managed):" in upgrade.stdout, upgrade.stdout
+        assert "Removed (deprecated):" not in upgrade.stdout
+        for relative in artifacts:
+            assert (root / relative).is_file(), f"{platform} upgrade missing {relative}"
+
+
+def test_upgrade_summary_groups_merge_and_skip_separately(tmp_path: Path) -> None:
+    root = tmp_path
+    fresh = _run_init(root, "claude")
+    assert fresh.returncode == 0, fresh.stderr
+    (root / ".code-flow/.version").write_text("0.0.1\n", encoding="utf-8")
+    upgrade = _run_init(root, "claude")
+    assert upgrade.returncode == 0, upgrade.stderr
+    assert "Updated (tool-managed):" in upgrade.stdout
+    assert "Skipped (user-customized):" in upgrade.stdout
+    assert upgrade.stdout.index("Updated (tool-managed):") < upgrade.stdout.index(
+        "Skipped (user-customized):")
