@@ -13,7 +13,11 @@
 - **Scope**: 审计 A1/A2/A3/A4/A5/A6；分层守卫；公共原语；条件触发的包化与入口 shim。
 - **Decisions**: 契约先于目录；validator 引擎放入 L1 `cf_validators.py`；TASK 解析放入纯模块 `cf_task_doc.py`；新模块需 ≥3 个真实消费者；22 个外部入口路径冻结。
 - **Non-goals**: A7 平台正文生成；A8 大模块拆分；模块数量目标；入口 dispatcher；新依赖或持久缓存。
-- **Acceptance**: `runtime-consolidation.scenarios.md` 的 27 个场景全部有唯一 owner；三处分歧消除；依赖环与私有跨模块导入归零。
+- **Acceptance**: `runtime-consolidation.scenarios.md` 的 27 个场景全部有唯一 owner；三处分歧消除；依赖方向与私有跨模块导入由 allowlist 棘轮跟踪（本轮残余 8 条反向边 / 21 个私有符号，清零另立收尾任务）。
+
+### Accepted Residuals
+
+- 依赖方向 allowlist 保留 8 条反向边；私有符号 allowlist 保留 21 条。`CURRENT_BATCH` 仍为 1，到期棘轮尚未推进；清零作为归档后的独立收尾任务。
 
 ---
 
@@ -33,21 +37,21 @@
 | S-07 | runtime-consolidation.design.md#2.5 验收条件 | integration | 五个 TASK 消费者 | TASK-004 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_duplicate_task_id"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-08 | runtime-consolidation.design.md#2.5 验收条件 | unit | status 投影 | TASK-004 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_missing_status_draft"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | B-02 | runtime-consolidation.design.md#2.5 验收条件 | unit | CRLF/空文档 | TASK-004 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_doc_boundaries"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-09 | runtime-consolidation.design.md#2.5 验收条件 | system | start → finish → spec gate | TASK-005 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_flow_consistency"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
-| E-03 | runtime-consolidation.design.md#2.5 验收条件 | integration | 任务文件 → plan gate | TASK-005 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_plan_gate_duplicate"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
-| S-10 | runtime-consolidation.design.md#2.5 验收条件 | integration | 真实 git 仓库 → cf_git | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_git_primitive_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
-| S-11 | runtime-consolidation.design.md#2.5 验收条件 | integration | 文件系统 → atomic_write_text | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_atomic_write"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
-| S-12 | runtime-consolidation.design.md#2.5 验收条件 | unit | parse_frontmatter / table_columns | TASK-007 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_markdown_primitives"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
-| S-13 | runtime-consolidation.design.md#2.5 验收条件 | system | 公开 CLI/Hook 输出 | TASK-008 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_legacy_removal"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
-| S-14 | runtime-consolidation.design.md#2.5 验收条件 | integration | verify_plan → 读取计数 | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_verify_plan_reads"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
-| E-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 快照 → 文件变更 → drift | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_snapshot_drift"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
+| S-09 | runtime-consolidation.design.md#2.5 验收条件 | system | start → finish → spec gate | TASK-005 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_flow_consistency"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| E-03 | runtime-consolidation.design.md#2.5 验收条件 | integration | 任务文件 → plan gate | TASK-005 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_plan_gate_duplicate"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-10 | runtime-consolidation.design.md#2.5 验收条件 | integration | 真实 git 仓库 → cf_git | TASK-006 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_git_primitive_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-11 | runtime-consolidation.design.md#2.5 验收条件 | integration | 文件系统 → atomic_write_text | TASK-006 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_atomic_write"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-12 | runtime-consolidation.design.md#2.5 验收条件 | unit | parse_frontmatter / table_columns | TASK-007 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_markdown_primitives"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-13 | runtime-consolidation.design.md#2.5 验收条件 | system | 公开 CLI/Hook 输出 | TASK-008 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_legacy_removal"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-14 | runtime-consolidation.design.md#2.5 验收条件 | integration | verify_plan → 读取计数 | TASK-009 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_verify_plan_reads"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| E-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 快照 → 文件变更 → drift | TASK-009 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_snapshot_drift"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-15 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 层映射 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-16 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 私有 allowlist | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_private_symbol_guard"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | B-03 | runtime-consolidation.design.md#2.5 验收条件 | contract | allowlist 到期批次 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-17 | runtime-consolidation.design.md#2.5 验收条件 | system | 四平台安装 → hook 调用 | TASK-011 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_four_platform_install"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
-| S-18 | runtime-consolidation.design.md#2.5 验收条件 | integration | 旧平铺 → migrate → 包布局 | TASK-011 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_package_upgrade_cleanup"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
-| S-19 | runtime-consolidation.design.md#2.5 验收条件 | system | src/core → .code-flow → npm tarball | TASK-010 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_canonical_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
-| E-05 | runtime-consolidation.design.md#2.5 验收条件 | integration | 迁移 staging → 失败 → rollback | TASK-011 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_migration_rollback"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
+| S-17 | runtime-consolidation.design.md#2.5 验收条件 | system | 四平台安装 → hook 调用 | TASK-011 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_four_platform_install"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-18 | runtime-consolidation.design.md#2.5 验收条件 | integration | 旧平铺 → migrate → 包布局 | TASK-011 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_package_upgrade_cleanup"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-19 | runtime-consolidation.design.md#2.5 验收条件 | system | src/core → .code-flow → npm tarball | TASK-010 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_canonical_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| E-05 | runtime-consolidation.design.md#2.5 验收条件 | integration | 迁移 staging → 失败 → rollback | TASK-011 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_migration_rollback"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 
 > 27 个场景全部有唯一 owner；无 E2E（CLI/运行时工具，跨入口用 integration/system/contract）。
 
