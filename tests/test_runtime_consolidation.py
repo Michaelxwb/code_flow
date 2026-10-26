@@ -46,6 +46,7 @@ LAYERS: dict[str, int] = {
     "cf_acceptance_risk": 1,
     "cf_acceptance_runner": 2,
     "cf_acceptance_schema": 1,
+    "cf_active_task": 1,
     "cf_audit": 3,
     "cf_check_inputs": 1,
     "cf_check_registration": 1,
@@ -77,6 +78,7 @@ LAYERS: dict[str, int] = {
     "cf_scenarios": 1,
     "cf_session_state": 0,
     "cf_spec_context": 2,
+    "cf_spec_context_model": 1,
     "cf_spec_gate": 2,
     "cf_spec_metadata": 1,
     "cf_spec_migrate": 3,
@@ -107,9 +109,6 @@ LAYERS: dict[str, int] = {
 
 # (importer, imported module, batch after which the edge must be gone)
 DEPENDENCY_EDGE_ALLOWLIST = frozenset({
-    ("cf_context_cache", "cf_spec_context", 4),
-    ("cf_evidence_store", "cf_spec_context", 4),
-    ("cf_plan_quality", "cf_spec_context", 4),
     ("cf_plan_quality", "cf_spec_gate", 6),
     ("cf_task_parallel", "cf_task_workflow", 6),
 })
@@ -131,10 +130,6 @@ PRIVATE_SYMBOL_ALLOWLIST = frozenset({
     ("cf_task_workflow", "cf_task_runtime", "_evidence_data", 6),
     ("cf_task_workflow", "cf_workflow_service", "_require_marker_task", 7),
     ("cf_task_workflow", "cf_workflow_service", "_sync_markdown", 7),
-    ("cf_workflow_service", "cf_spec_context", "_active_data", 7),
-    ("cf_workflow_service", "cf_spec_context", "_new_active", 7),
-    ("cf_workflow_transaction", "cf_spec_context", "_acquire_active_lock", 7),
-    ("cf_workflow_transaction", "cf_spec_context", "_release_active_lock", 7),
 })
 
 

@@ -148,7 +148,7 @@ def verify_plan(directory: str, task_file: str, require_scenarios: bool = False,
     from codeflow.acceptance.cf_check_registration import validate_registration
     from codeflow.cli.cf_design_lint import lint_requirement
     from codeflow.cli.cf_scenarios import parse_scenarios, validate_e2e_quality
-    from codeflow.cli.cf_spec_context import load_context
+    from codeflow.spec.cf_spec_context_model import load_context
     from codeflow.cli.cf_spec_gate import result_to_data, validate_plan_coverage, validate_stage
     base = Path(directory)
     path = base / ".acceptance-manifest.json"

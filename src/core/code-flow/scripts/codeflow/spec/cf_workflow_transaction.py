@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from codeflow.core import cf_fs
-from codeflow.cli.cf_spec_context import _acquire_active_lock, _release_active_lock
+from codeflow.spec.cf_active_task import acquire_active_lock, release_active_lock
 
 
 def _read(path: Path) -> Optional[str]:
@@ -54,7 +54,7 @@ def recover_transition(root: str) -> bool:
     journal = _journal_path(root)
     if not journal.exists():
         return False
-    lock = _acquire_active_lock(root)
+    lock = acquire_active_lock(root)
     try:
         if not journal.exists():
             return False
@@ -64,7 +64,7 @@ def recover_transition(root: str) -> bool:
         journal.unlink()
         return True
     finally:
-        _release_active_lock(lock)
+        release_active_lock(lock)
 
 
 def commit_transition(root: str, task: Path, before: str, after: str,
@@ -73,7 +73,7 @@ def commit_transition(root: str, task: Path, before: str, after: str,
     rows = [{"path": str(task.resolve()), "before": before, "after": after},
             {"path": str(marker), "before": marker_before, "after": marker_after}]
     journal = _journal_path(root)
-    lock = _acquire_active_lock(root)
+    lock = acquire_active_lock(root)
     try:
         if journal.exists():
             raise ValueError("workflow recovery required before transition")
@@ -91,4 +91,4 @@ def commit_transition(root: str, task: Path, before: str, after: str,
             raise
         journal.unlink()
     finally:
-        _release_active_lock(lock)
+        release_active_lock(lock)

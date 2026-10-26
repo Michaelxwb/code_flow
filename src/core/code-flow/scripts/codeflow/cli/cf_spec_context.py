@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Persisted Spec Context schema, binding and confirmation commands."""
+"""Persisted Spec Context CLI: binding, decisions, refresh and doctor.
+
+The pure model, serialization and identity hash live in
+`codeflow.spec.cf_spec_context_model`; the active marker, lock and Git
+ownership scope live in `codeflow.spec.cf_active_task`. This module keeps the
+CLI entry, doctor and decision orchestration.
+"""
 
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass, replace
-from datetime import datetime, timezone
-from fnmatch import fnmatchcase
+from dataclasses import replace
 import hashlib
 import json
 import os
@@ -15,317 +19,61 @@ import sys
 import time
 from typing import IO, Mapping, Optional, Sequence
 
-from codeflow.core import cf_fs
-from codeflow.core import cf_git
+from codeflow.spec.cf_active_task import (  # re-exported context API
+    ACTIVE_STATUSES,
+    ActiveBaseline,
+    ActiveTask,
+    DEFAULT_ACTIVE_EXCLUDES,
+    DoctorResult,
+    PathSnapshot,
+    active_data,
+    active_paths,
+    block_active_task,
+    business_changes as _business_changes,
+    complete_active_task,
+    current_owned_paths,
+    doctor_active_task,
+    git_changes as _git_changes,
+    load_active_task,
+    pause_active_task,
+    resume_active_task,
+    save_active_task,
+    start_active_task,
+)
+from codeflow.spec.cf_spec_context_model import (  # re-exported context API
+    ArtifactRef,
+    BindingInput,
+    ContextError,
+    ContextSource,
+    Decision,
+    DriftChange,
+    DriftResult,
+    RuleBinding,
+    RuleStageStatus,
+    SpecBinding,
+    SpecContext,
+    context_sha256,
+    decision_from_data,
+    error_payload,
+    load_context,
+    mapping_field,
+    new_context,
+    now_iso,
+    save_context,
+    sequence_field,
+    string_field,
+    validate_decision,
+)
 from codeflow.spec.cf_spec_metadata import SpecHashes, SpecMetadata, SpecRule, load_spec_metadata
 from codeflow.spec.cf_spec_resolver import SpecCandidate, resolve_candidates
 from codeflow.task.cf_task_doc import TaskDocumentError, task_section
 from codeflow.core.cf_core import phase_timing
 
 
-CONTEXT_VERSION = 1
-STAGE_STATUSES = frozenset(
-    ("pending", "applied", "not_applicable", "waived", "verified", "stale", "conflict", "unverified")
-)
-DECISION_KINDS = frozenset(("not_applicable", "waived", "manual_verification"))
-_AGENT_IDENTITIES = frozenset(("agent", "assistant", "codex", "claude", "opencode", "costrict"))
 _FILE_HASH_CACHE: dict[str, tuple[int, int, int, str]] = {}
 _PERSISTENT_HASH_CACHE: dict[str, dict[str, object]] = {}
 _PERSISTENT_HASH_PATHS: set[str] = set()
 _MAX_HASH_CACHE_ENTRIES = 4096
-ACTIVE_STATUSES = frozenset(("activating", "active", "paused", "blocked", "completed"))
-DEFAULT_ACTIVE_EXCLUDES = (
-    ".code-flow/tasks/*",
-    ".code-flow/specs/_session/*",
-    ".code-flow/migrations/*",
-    ".code-flow/.*state*",
-    ".code-flow/.*cache*",
-    ".code-flow/.session-log.jsonl",
-    ".code-flow/.active-task.json",
-    ".code-flow/.active-task.lock",
-    ".code-flow/.stop.lock",
-    ".code-flow/worktrees/*",
-    ".code-flow/sessions/*",
-)
-
-
-class ContextError(ValueError):
-    """A stable context error suitable for JSON CLI output."""
-
-    def __init__(self, code: str, field: str, message: str, path: str = "") -> None:
-        self.code = code
-        self.field = field
-        self.message = message
-        self.path = path
-        location = f"{path}: " if path else ""
-        super().__init__(f"{location}{code} {field}: {message}")
-
-    def to_dict(self) -> dict[str, str]:
-        return {"code": self.code, "field": self.field, "message": self.message, "path": self.path}
-
-
-def error_payload(exc: Exception) -> Optional[dict]:
-    """Duck-typed ContextError recognition across duplicate module instances.
-
-    Direct script execution (`python3 cf_spec_context.py`) can make lazy
-    `import cf_spec_context` calls inside sibling modules load a second copy,
-    so `isinstance(exc, ContextError)` fails even though the error contract is
-    identical. Recognize it structurally instead of masking it as
-    `internal_error`.
-    """
-    to_dict = getattr(exc, "to_dict", None)
-    if not callable(to_dict) or not isinstance(getattr(exc, "code", None), str):
-        return None
-    payload = to_dict()
-    return payload if isinstance(payload, dict) else None
-
-
-@dataclass(frozen=True)
-class ContextSource:
-    type: str
-    ref: str
-
-
-@dataclass(frozen=True)
-class Decision:
-    kind: str
-    reason: str
-    confirmed_by: str
-    confirmed_at: str
-    source: str
-    expires_at: Optional[str]
-
-
-@dataclass(frozen=True)
-class ArtifactRef:
-    artifact: str
-    section_id: str
-    item_id: str
-    artifact_sha256: str
-
-
-@dataclass(frozen=True)
-class RuleStageStatus:
-    status: str
-    refs: tuple[ArtifactRef, ...]
-    decision: Optional[Decision]
-    evidence: tuple[Mapping[str, object], ...]
-
-
-@dataclass(frozen=True)
-class RuleBinding:
-    ref: str
-    summary: str
-    text_sha256: str
-    enforcement: str
-    verifier_ref: str
-    stage_status: Mapping[str, RuleStageStatus]
-    verifier_stage: str = "code"
-
-
-@dataclass(frozen=True)
-class SpecBinding:
-    spec_id: str
-    path: str
-    hashes: SpecHashes
-    selected_by: str
-    reason: str
-    enforcement: str
-    stages: tuple[str, ...]
-    rules: tuple[RuleBinding, ...]
-    status: str = "active"
-
-
-@dataclass(frozen=True)
-class SpecContext:
-    version: int
-    task: str
-    enforcement: str
-    updated_at: str
-    sources: tuple[ContextSource, ...]
-    bindings: tuple[SpecBinding, ...]
-
-
-@dataclass(frozen=True)
-class BindingInput:
-    candidate: SpecCandidate
-    selected_by: str
-    reason: str
-
-
-@dataclass(frozen=True)
-class DriftChange:
-    kind: str
-    spec_id: str
-    rule_ref: str
-    old_hash: str
-    new_hash: str
-    stages: tuple[str, ...]
-
-
-@dataclass(frozen=True)
-class DriftResult:
-    context: SpecContext
-    changes: tuple[DriftChange, ...]
-
-
-@dataclass(frozen=True)
-class PathSnapshot:
-    status: str
-    content_sha256: str
-
-
-@dataclass(frozen=True)
-class ActiveBaseline:
-    head: Optional[str]
-    captured_at: str
-    preexisting_changes: Mapping[str, PathSnapshot]
-    # head is frozen at start and never rewritten: task scope is the union of
-    # everything committed since head plus all working-tree changes.
-    # last_seen_head is observation-only (diagnostics), never scope input.
-    last_seen_head: Optional[str] = None
-
-
-@dataclass(frozen=True)
-class ActiveTask:
-    version: int
-    task_dir: str
-    task_id: str
-    status: str
-    context_sha256: str
-    baseline: ActiveBaseline
-    owned_paths: tuple[str, ...]
-    excluded_paths: tuple[str, ...]
-
-
-@dataclass(frozen=True)
-class DoctorResult:
-    action: str
-    active: ActiveTask
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def _atomic_text(target: Path, text: str) -> None:
-    """Atomic write with the Context's stable error code on failure."""
-    try:
-        cf_fs.atomic_write_text(target, text)
-    except OSError as exc:
-        raise ContextError("atomic_write_error", "file", str(exc), str(target)) from exc
-
-
-def _active_paths(root: str) -> tuple[Path, Path]:
-    flow = Path(root) / ".code-flow"
-    return flow / ".active-task.json", flow / ".active-task.lock"
-
-
-def _context_git_error(exc: cf_git.GitError, root: str) -> ContextError:
-    codes = ("git_unavailable", "invalid_git_status")
-    code = exc.code if exc.code in codes else "git_error"
-    return ContextError(code, "git", exc.message, root)
-
-
-def _git_head(root: str) -> Optional[str]:
-    try:
-        return cf_git.run_git(root, ("rev-parse", "HEAD")).strip()
-    except cf_git.GitError as exc:
-        if "unknown revision" in exc.message or "ambiguous argument" in exc.message:
-            return None
-        raise _context_git_error(exc, root) from exc
-
-
-def _git_changes(root: str) -> Mapping[str, str]:
-    try:
-        return cf_git.changed_entries(root)
-    except cf_git.GitError as exc:
-        raise _context_git_error(exc, root) from exc
-
-
-def _is_excluded(path: str, patterns: Sequence[str]) -> bool:
-    return any(fnmatchcase(path, pattern) for pattern in patterns)
-
-
-def _active_data(active: ActiveTask) -> dict[str, object]:
-    changes = {
-        path: {"status": item.status, "content_sha256": item.content_sha256}
-        for path, item in sorted(active.baseline.preexisting_changes.items())
-    }
-    return {
-        "version": active.version,
-        "task_dir": active.task_dir,
-        "task_id": active.task_id,
-        "status": active.status,
-        "context_sha256": active.context_sha256,
-        "baseline": {
-            "head": active.baseline.head,
-            "last_seen_head": active.baseline.last_seen_head,
-            "captured_at": active.baseline.captured_at,
-            "preexisting_changes": changes,
-        },
-        "owned_paths": list(active.owned_paths),
-        "excluded_paths": list(active.excluded_paths),
-    }
-
-
-def _snapshot_from_data(value: object, path: str) -> PathSnapshot:
-    data = _mapping(value, "preexisting_changes[]", path)
-    content_hash = data.get("content_sha256")
-    return PathSnapshot(
-        _string(data.get("status"), "status", path),
-        content_hash if isinstance(content_hash, str) else "",
-    )
-
-
-def _active_from_data(value: object, path: str) -> ActiveTask:
-    data = _mapping(value, "active", path)
-    baseline_data = _mapping(data.get("baseline"), "baseline", path)
-    raw_changes = _mapping(
-        baseline_data.get("preexisting_changes"), "baseline.preexisting_changes", path
-    )
-    version = data.get("version")
-    head = baseline_data.get("head")
-    if version != 1 or (head is not None and not isinstance(head, str)):
-        raise ContextError("invalid_active_marker", "version/baseline.head", "schema 不受支持", path)
-    status = _string(data.get("status"), "status", path)
-    if status not in ACTIVE_STATUSES:
-        raise ContextError("invalid_active_marker", "status", status, path)
-    baseline = ActiveBaseline(
-        head,
-        _string(baseline_data.get("captured_at"), "captured_at", path),
-        {key: _snapshot_from_data(item, path) for key, item in raw_changes.items()},
-        baseline_data.get("last_seen_head") if isinstance(baseline_data.get("last_seen_head"), str) else None,
-    )
-    return ActiveTask(
-        1,
-        _string(data.get("task_dir"), "task_dir", path),
-        _string(data.get("task_id"), "task_id", path),
-        status,
-        _string(data.get("context_sha256"), "context_sha256", path),
-        baseline,
-        tuple(_string(item, "owned_paths[]", path) for item in _sequence(data.get("owned_paths"), "owned_paths", path)),
-        tuple(_string(item, "excluded_paths[]", path) for item in _sequence(data.get("excluded_paths"), "excluded_paths", path)),
-    )
-
-
-def save_active_task(root: str, active: ActiveTask) -> None:
-    marker, unused_lock = _active_paths(root)
-    del unused_lock
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    _atomic_text(marker, json.dumps(_active_data(active), ensure_ascii=False, indent=2) + "\n")
-
-
-def load_active_task(root: str) -> ActiveTask:
-    marker, unused_lock = _active_paths(root)
-    del unused_lock
-    try:
-        value = json.loads(marker.read_text(encoding="utf-8"))
-        return _active_from_data(value, str(marker))
-    except ContextError:
-        raise
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ContextError("invalid_active_marker", "active", str(exc), str(marker)) from exc
 
 
 def task_contract_digest(root: str, task_dir: str, task_id: str) -> str:
@@ -425,546 +173,6 @@ def _resync_after_save(args: argparse.Namespace, context_path: Path) -> bool:
     return resync_active_hash(root, str(context_path.parent), current)
 
 
-def _lock_stale(lock: Path) -> bool:
-    """A lock is stale when its file is unreadable, carries no valid PID, or the
-    owning process is gone. A lock we cannot prove dead is never deleted (PID
-    reuse is accepted as a rare race)."""
-    try:
-        data = json.loads(lock.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return True
-    pid = data.get("pid")
-    if not isinstance(pid, int) or pid <= 0:
-        return True
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return True
-    except (PermissionError, OSError):
-        return False
-    return False
-
-
-def _acquire_active_lock(root: str) -> Path:
-    marker, lock = _active_paths(root)
-    lock.parent.mkdir(parents=True, exist_ok=True)
-    descriptor = -1
-    for _attempt in range(2):
-        try:
-            descriptor = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-            break
-        except FileExistsError:
-            if not _lock_stale(lock):
-                raise ContextError("active_lock_exists", "active.lock", "运行 doctor 检查残留 lock", str(lock)) from None
-            try:
-                lock.unlink()
-            except OSError as exc:
-                raise ContextError("active_lock_exists", "active.lock", f"残留 lock 清理失败: {exc}", str(lock)) from exc
-    else:
-        raise ContextError("active_lock_exists", "active.lock", "残留 lock 无法清理", str(lock))
-    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-        handle.write(json.dumps({"pid": os.getpid(), "marker": str(marker)}))
-    return lock
-
-
-def _release_active_lock(lock: Path) -> None:
-    try:
-        lock.unlink()
-    except FileNotFoundError:
-        return
-
-
-def _committed_since(root: str, base_head: Optional[str]) -> Mapping[str, str]:
-    """Paths committed between the frozen baseline head and current HEAD.
-
-    Returns {} when there is no baseline (pre-commit repo) or the range is
-    unresolvable (rewritten/pruned history) — working-tree changes still
-    flow through _business_changes, so scope never goes fully blind.
-    """
-    if not base_head:
-        return {}
-    try:
-        output = cf_git.run_git(root, ("diff", "--name-status", "-z", base_head, "HEAD", "--"))
-    except cf_git.GitError:
-        return {}
-    names: dict[str, str] = {}
-    tokens = output.split("\0")
-    index = 0
-    while index < len(tokens) and tokens[index]:
-        status, index = tokens[index], index + 1
-        code = status[:1]
-        if code in ("R", "C"):
-            if index + 1 >= len(tokens):
-                break
-            new_path, old_path = tokens[index], tokens[index + 1]
-            index += 2
-            if new_path:
-                names[new_path] = "renamed"
-            if old_path:
-                names[old_path] = "deleted"
-            continue
-        if index >= len(tokens) or not tokens[index]:
-            break
-        names[tokens[index]] = {"M": "modified", "A": "added", "D": "deleted"}.get(code, "changed")
-        index += 1
-    return names
-
-
-def _business_changes(root: str, excludes: Sequence[str]) -> Mapping[str, str]:
-    return {
-        path: status
-        for path, status in _git_changes(root).items()
-        if not _is_excluded(path, excludes)
-    }
-
-
-def _new_active(
-    root: str,
-    task_dir: str,
-    task_id: str,
-    context_sha256: str,
-    owned_preexisting: Sequence[str],
-) -> ActiveTask:
-    changes = _business_changes(root, DEFAULT_ACTIVE_EXCLUDES)
-    owned = tuple(sorted(set(owned_preexisting)))
-    unknown = tuple(path for path in owned if path not in changes)
-    unowned = tuple(path for path in changes if path not in owned)
-    if unknown:
-        raise ContextError("unknown_owned_path", "owned_paths", ", ".join(unknown), root)
-    if unowned:
-        raise ContextError("unowned_changes", "owned_paths", ", ".join(unowned), root)
-    # content_sha256 was a per-file hash but is never consumed by any gate (only
-    # baseline.head is compared); keep the schema field empty so start never hashes
-    # every uncommitted file.
-    snapshots = {
-        path: PathSnapshot(status, "") for path, status in changes.items()
-    }
-    head = _git_head(root)
-    baseline = ActiveBaseline(head, _now(), snapshots, head)
-    return ActiveTask(
-        1, task_dir, task_id, "activating", context_sha256, baseline, owned, DEFAULT_ACTIVE_EXCLUDES
-    )
-
-
-def start_active_task(
-    root: str,
-    task_dir: str,
-    task_id: str,
-    context_sha256: str,
-    owned_preexisting: Sequence[str] = (),
-) -> ActiveTask:
-    marker, unused_lock = _active_paths(root)
-    del unused_lock
-    lock = _acquire_active_lock(root)
-    try:
-        if marker.exists():
-            raise ContextError("active_exists", "active", "当前 worktree 已有 active TASK", str(marker))
-        active = _new_active(root, task_dir, task_id, context_sha256, owned_preexisting)
-        save_active_task(root, active)
-        active = replace(active, status="active")
-        save_active_task(root, active)
-        return active
-    finally:
-        _release_active_lock(lock)
-
-
-def _transition_active(root: str, expected: Sequence[str], target: str) -> ActiveTask:
-    lock = _acquire_active_lock(root)
-    try:
-        active = load_active_task(root)
-        if active.status not in expected:
-            raise ContextError("invalid_active_transition", "status", f"{active.status} -> {target}", root)
-        current_head = _git_head(root)
-        if active.baseline.head != current_head:
-            # Mid-task commits are a normal workflow. The baseline head stays
-            # frozen so committed work never drops out of scope; only the
-            # observation field advances for diagnostics.
-            active = replace(active, baseline=replace(active.baseline, last_seen_head=current_head))
-        updated = replace(active, status=target)
-        save_active_task(root, updated)
-        return updated
-    finally:
-        _release_active_lock(lock)
-
-
-def pause_active_task(root: str) -> ActiveTask:
-    return _transition_active(root, ("active",), "paused")
-
-
-def block_active_task(root: str) -> ActiveTask:
-    return _transition_active(root, ("active",), "blocked")
-
-
-def resume_active_task(root: str) -> ActiveTask:
-    return _transition_active(root, ("paused", "blocked"), "active")
-
-
-def current_owned_paths(root: str, active: ActiveTask) -> tuple[str, ...]:
-    changes = _business_changes(root, active.excluded_paths)
-    committed = {
-        path: status
-        for path, status in _committed_since(root, active.baseline.head).items()
-        if not _is_excluded(path, active.excluded_paths)
-    }
-    return tuple(sorted(set(active.owned_paths).union(changes).union(committed)))
-
-
-def complete_active_task(root: str, gate_passed: bool) -> ActiveTask:
-    if not gate_passed:
-        raise ContextError("gate_failed", "gate", "Done Gate 未通过", root)
-    completed = _transition_active(root, ("active",), "completed")
-    marker, unused_lock = _active_paths(root)
-    del unused_lock
-    try:
-        marker.unlink()
-    except OSError as exc:
-        raise ContextError("active_cleanup_failed", "active", str(exc), str(marker)) from exc
-    return completed
-
-
-def doctor_active_task(
-    root: str, expected_context_sha256: str, abandon: bool = False, resync: bool = False
-) -> DoctorResult:
-    marker, lock = _active_paths(root)
-    try:
-        active = load_active_task(root)
-    except ContextError as exc:
-        raise ContextError("recovery_required", "active", exc.message, str(marker)) from exc
-    if abandon:
-        marker.unlink()
-        _release_active_lock(lock)
-        return DoctorResult("abandoned", replace(active, status="completed"))
-    if resync:
-        # Self-heal: the context file is authoritative and the marker hash is a
-        # cache. Accept the current context when the marker is the only
-        # inconsistency; bind/decision/refresh already re-sync automatically,
-        # so this covers legacy markers and manual context edits.
-        repaired = replace(active, status="active", context_sha256=expected_context_sha256)
-        save_active_task(root, repaired)
-        _release_active_lock(lock)
-        return DoctorResult("resynced", repaired)
-    proven = active.context_sha256 == expected_context_sha256
-    proven = proven and active.baseline.head == _git_head(root)
-    if active.status != "activating" or not proven:
-        raise ContextError("recovery_required", "active", "状态或 hash 无法证明可自动恢复", str(marker))
-    repaired = replace(active, status="active")
-    save_active_task(root, repaired)
-    _release_active_lock(lock)
-    return DoctorResult("resumed", repaired)
-
-
-def _mapping(value: object, field: str, path: str) -> Mapping[str, object]:
-    if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
-        raise ContextError("invalid_context", field, "必须是字符串 key mapping", path)
-    return value
-
-
-def _sequence(value: object, field: str, path: str) -> Sequence[object]:
-    if not isinstance(value, list):
-        raise ContextError("invalid_context", field, "必须是列表", path)
-    return value
-
-
-def _string(value: object, field: str, path: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise ContextError("invalid_context", field, "必须是非空字符串", path)
-    return value.strip()
-
-
-def _decision_string(value: object, field: str, path: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise ContextError("invalid_decision", field, "必须是非空字符串", path)
-    return value.strip()
-
-
-def _timestamp(value: str, field: str) -> None:
-    try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise ContextError("invalid_decision", field, "必须是 RFC3339 时间") from exc
-    if parsed.tzinfo is None:
-        raise ContextError("invalid_decision", field, "必须包含时区")
-
-
-def _validate_decision(decision: Decision) -> None:
-    if decision.kind not in DECISION_KINDS:
-        raise ContextError("invalid_decision", "decision.kind", f"不支持 {decision.kind!r}")
-    for field in ("reason", "confirmed_by", "confirmed_at", "source"):
-        if not getattr(decision, field).strip():
-            raise ContextError("invalid_decision", f"decision.{field}", "必须是非空字符串")
-    identity = decision.confirmed_by.lower().split(":", 1)[0]
-    if identity in _AGENT_IDENTITIES:
-        raise ContextError("agent_confirmation_forbidden", "decision.confirmed_by", "Agent 不能自行确认")
-    _timestamp(decision.confirmed_at, "decision.confirmed_at")
-    if decision.kind == "waived" and not decision.expires_at:
-        raise ContextError("invalid_decision", "decision.expires_at", "waived 必须有失效时间")
-    if decision.expires_at:
-        _timestamp(decision.expires_at, "decision.expires_at")
-
-
-def _decision_from_data(value: object, path: str) -> Optional[Decision]:
-    if value is None:
-        return None
-    data = _mapping(value, "decision", path)
-    expires = data.get("expires_at")
-    if expires is not None and not isinstance(expires, str):
-        raise ContextError("invalid_decision", "decision.expires_at", "必须是字符串或 null", path)
-    decision = Decision(
-        _decision_string(data.get("kind"), "decision.kind", path),
-        _decision_string(data.get("reason"), "decision.reason", path),
-        _decision_string(data.get("confirmed_by"), "decision.confirmed_by", path),
-        _decision_string(data.get("confirmed_at"), "decision.confirmed_at", path),
-        _decision_string(data.get("source"), "decision.source", path),
-        expires,
-    )
-    _validate_decision(decision)
-    return decision
-
-
-def _decision_data(decision: Optional[Decision]) -> Optional[dict[str, object]]:
-    if decision is None:
-        return None
-    return {
-        "kind": decision.kind,
-        "reason": decision.reason,
-        "confirmed_by": decision.confirmed_by,
-        "confirmed_at": decision.confirmed_at,
-        "source": decision.source,
-        "expires_at": decision.expires_at,
-    }
-
-
-def _artifact_from_data(value: object, path: str) -> ArtifactRef:
-    data = _mapping(value, "refs[]", path)
-    return ArtifactRef(
-        _string(data.get("artifact"), "refs[].artifact", path),
-        _string(data.get("section_id"), "refs[].section_id", path),
-        _string(data.get("item_id"), "refs[].item_id", path),
-        _string(data.get("artifact_sha256"), "refs[].artifact_sha256", path),
-    )
-
-
-def _artifact_data(reference: ArtifactRef) -> dict[str, str]:
-    return {
-        "artifact": reference.artifact,
-        "section_id": reference.section_id,
-        "item_id": reference.item_id,
-        "artifact_sha256": reference.artifact_sha256,
-    }
-
-
-def _stage_from_data(value: object, field: str, path: str) -> RuleStageStatus:
-    data = _mapping(value, field, path)
-    status = _string(data.get("status"), f"{field}.status", path)
-    if status not in STAGE_STATUSES:
-        raise ContextError("invalid_context", f"{field}.status", f"不支持 {status!r}", path)
-    refs = tuple(_artifact_from_data(item, path) for item in _sequence(data.get("refs", []), f"{field}.refs", path))
-    evidence = tuple(_mapping(item, f"{field}.evidence[]", path) for item in _sequence(data.get("evidence", []), f"{field}.evidence", path))
-    decision = _decision_from_data(data.get("decision"), path)
-    if status == "applied" and not refs:
-        raise ContextError("invalid_context", f"{field}.refs", "applied 必须有 artifact ref", path)
-    if status in ("not_applicable", "waived") and decision is None:
-        raise ContextError("invalid_context", f"{field}.decision", f"{status} 必须有确认记录", path)
-    return RuleStageStatus(status, refs, decision, evidence)
-
-
-def _stage_data(status: RuleStageStatus) -> dict[str, object]:
-    return {
-        "status": status.status,
-        "refs": [_artifact_data(item) for item in status.refs],
-        "decision": _decision_data(status.decision),
-        "evidence": [dict(item) for item in status.evidence],
-    }
-
-
-def _rule_from_data(value: object, path: str) -> RuleBinding:
-    data = _mapping(value, "rules[]", path)
-    stages = _mapping(data.get("stage_status"), "rules[].stage_status", path)
-    parsed = {stage: _stage_from_data(item, f"stage_status.{stage}", path) for stage, item in stages.items()}
-    return RuleBinding(
-        _string(data.get("ref"), "rules[].ref", path),
-        _string(data.get("summary"), "rules[].summary", path),
-        _string(data.get("text_sha256"), "rules[].text_sha256", path),
-        _string(data.get("enforcement"), "rules[].enforcement", path),
-        _string(data.get("verifier_ref"), "rules[].verifier_ref", path),
-        parsed,
-        _string(data.get("verifier_stage", "code"), "rules[].verifier_stage", path),
-    )
-
-
-def _rule_data(rule: RuleBinding) -> dict[str, object]:
-    return {
-        "ref": rule.ref,
-        "summary": rule.summary,
-        "text_sha256": rule.text_sha256,
-        "enforcement": rule.enforcement,
-        "verifier_ref": rule.verifier_ref,
-        "verifier_stage": rule.verifier_stage,
-        "stage_status": {stage: _stage_data(status) for stage, status in rule.stage_status.items()},
-    }
-
-
-def _hashes_from_data(value: object, path: str) -> SpecHashes:
-    data = _mapping(value, "hashes", path)
-    return SpecHashes(
-        _string(data.get("file_sha256"), "hashes.file_sha256", path),
-        _string(data.get("metadata_sha256"), "hashes.metadata_sha256", path),
-        _string(data.get("rules_sha256"), "hashes.rules_sha256", path),
-    )
-
-
-def _binding_from_data(value: object, path: str) -> SpecBinding:
-    data = _mapping(value, "bindings[]", path)
-    stages = tuple(_string(item, "bindings[].stages[]", path) for item in _sequence(data.get("stages"), "bindings[].stages", path))
-    rules = tuple(_rule_from_data(item, path) for item in _sequence(data.get("rules"), "bindings[].rules", path))
-    return SpecBinding(
-        _string(data.get("spec_id"), "bindings[].spec_id", path),
-        _string(data.get("path"), "bindings[].path", path),
-        _hashes_from_data(data.get("hashes"), path),
-        _string(data.get("selected_by"), "bindings[].selected_by", path),
-        _string(data.get("reason"), "bindings[].reason", path),
-        _string(data.get("enforcement"), "bindings[].enforcement", path),
-        stages,
-        rules,
-        _string(data.get("status", "active"), "bindings[].status", path),
-    )
-
-
-def _binding_data(binding: SpecBinding) -> dict[str, object]:
-    return {
-        "spec_id": binding.spec_id,
-        "path": binding.path,
-        "status": binding.status,
-        "hashes": {
-            "file_sha256": binding.hashes.file_sha256,
-            "metadata_sha256": binding.hashes.metadata_sha256,
-            "rules_sha256": binding.hashes.rules_sha256,
-        },
-        "selected_by": binding.selected_by,
-        "reason": binding.reason,
-        "enforcement": binding.enforcement,
-        "stages": list(binding.stages),
-        "rules": [_rule_data(rule) for rule in binding.rules],
-    }
-
-
-def context_to_data(context: SpecContext) -> dict[str, object]:
-    return {
-        "version": context.version,
-        "task": context.task,
-        "enforcement": context.enforcement,
-        "updated_at": context.updated_at,
-        "sources": [{"type": item.type, "ref": item.ref} for item in context.sources],
-        "bindings": [_binding_data(binding) for binding in context.bindings],
-    }
-
-
-def context_to_identity(context: SpecContext) -> dict[str, object]:
-    """Stable identity projection for marker drift detection.
-
-    Excludes volatile runtime state (`updated_at`, `stage_status` including
-    evidence timestamps) so the active marker only invalidates when the bound
-    rules themselves change (rule/spec text, bindings, sources).
-    """
-    return {
-        "version": context.version,
-        "task": context.task,
-        "enforcement": context.enforcement,
-        "sources": [{"type": item.type, "ref": item.ref} for item in context.sources],
-        "bindings": [
-            {
-                "spec_id": binding.spec_id,
-                "path": binding.path,
-                "status": binding.status,
-                "hashes": {
-                    "file_sha256": binding.hashes.file_sha256,
-                    "metadata_sha256": binding.hashes.metadata_sha256,
-                    "rules_sha256": binding.hashes.rules_sha256,
-                },
-                "selected_by": binding.selected_by,
-                "reason": binding.reason,
-                "enforcement": binding.enforcement,
-                "stages": list(binding.stages),
-                "rules": [
-                    {
-                        "ref": rule.ref,
-                        "summary": rule.summary,
-                        "text_sha256": rule.text_sha256,
-                        "enforcement": rule.enforcement,
-                        "verifier_ref": rule.verifier_ref,
-                    }
-                    for rule in binding.rules
-                ],
-            }
-            for binding in context.bindings
-        ],
-    }
-
-
-def context_sha256(context: SpecContext) -> str:
-    """Deterministic identity hash binding the active marker to the bound rules.
-
-    Computed from the stable identity projection (never volatile runtime state),
-    so evidence timestamps and stage statuses cannot drift the marker.
-    """
-    import yaml
-    data = yaml.safe_dump(context_to_identity(context), sort_keys=True, allow_unicode=True).encode()
-    return hashlib.sha256(data).hexdigest()
-
-
-def new_context(task: str, sources: Sequence[tuple[str, str]]) -> SpecContext:
-    if not task.strip():
-        raise ContextError("invalid_context", "task", "必须是非空字符串")
-    parsed = tuple(ContextSource(_string(kind, "sources[].type", ""), _string(ref, "sources[].ref", "")) for kind, ref in sources)
-    return SpecContext(CONTEXT_VERSION, task.strip(), "required", _now(), parsed, ())
-
-
-def load_context(path: str, *, source: Optional[bytes] = None) -> SpecContext:
-    import yaml
-    try:
-        raw = Path(path).read_bytes() if source is None else source
-        loaded = yaml.safe_load(raw.decode("utf-8")) or {}
-    except (OSError, UnicodeError, yaml.YAMLError) as exc:
-        raise ContextError("context_read_error", "file", str(exc), path) from exc
-    return context_from_data(loaded, path)
-
-
-def context_from_data(loaded: object, path: str) -> SpecContext:
-    """Validate a parsed Context through the same schema for YAML and cache reads."""
-    data = _mapping(loaded, "context", path)
-    version = data.get("version")
-    if version != CONTEXT_VERSION:
-        raise ContextError("unsupported_version", "version", f"仅支持 {CONTEXT_VERSION}，收到 {version!r}", path)
-    source_values = _sequence(data.get("sources", []), "sources", path)
-    sources = tuple(
-        ContextSource(
-            _string(_mapping(item, "sources[]", path).get("type"), "sources[].type", path),
-            _string(_mapping(item, "sources[]", path).get("ref"), "sources[].ref", path),
-        )
-        for item in source_values
-    )
-    bindings = tuple(_binding_from_data(item, path) for item in _sequence(data.get("bindings", []), "bindings", path))
-    return SpecContext(
-        CONTEXT_VERSION,
-        _string(data.get("task"), "task", path),
-        _string(data.get("enforcement"), "enforcement", path),
-        _string(data.get("updated_at"), "updated_at", path),
-        sources,
-        bindings,
-    )
-
-
-def save_context(path: str, context: SpecContext) -> None:
-    import yaml
-    target = Path(path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    text = yaml.safe_dump(context_to_data(context), sort_keys=False, allow_unicode=True)
-    try:
-        _atomic_text(target, text)
-    except ContextError as exc:
-        raise ContextError("context_write_error", "file", str(exc), path) from exc
-
-
 def _binding_from_input(selection: BindingInput) -> SpecBinding:
     if not selection.selected_by.strip() or not selection.reason.strip():
         raise ContextError("invalid_binding", "selection", "selected_by/reason 必须非空")
@@ -1043,7 +251,7 @@ def bind_specs(context: SpecContext, selections: Sequence[BindingInput]) -> Spec
     ordered = tuple(bindings[key] for key in sorted(bindings))
     if ordered == context.bindings:
         return context
-    return replace(context, updated_at=_now(), bindings=ordered)
+    return replace(context, updated_at=now_iso(), bindings=ordered)
 
 
 def refresh_missing_specs(context: SpecContext, root: str) -> SpecContext:
@@ -1058,7 +266,7 @@ def refresh_missing_specs(context: SpecContext, root: str) -> SpecContext:
             stages = {stage: replace(status, status="stale") for stage, status in rule.stage_status.items()}
             rules.append(replace(rule, stage_status=stages))
         bindings.append(replace(binding, status="missing", rules=tuple(rules)))
-    return replace(context, updated_at=_now(), bindings=tuple(bindings))
+    return replace(context, updated_at=now_iso(), bindings=tuple(bindings))
 
 
 def _stale_rule(rule: RuleBinding) -> RuleBinding:
@@ -1233,7 +441,7 @@ def refresh_context(context: SpecContext, root: str, artifact_root: Optional[str
         phase_timing(f"context.refresh.{binding.spec_id}", phase_started)
         bindings.append(updated)
         changes.extend(binding_changes)
-    refreshed = replace(context, updated_at=_now(), bindings=tuple(bindings))
+    refreshed = replace(context, updated_at=now_iso(), bindings=tuple(bindings))
     phase_timing("context.refresh.total", started)
     if refreshed.bindings == context.bindings:
         return DriftResult(context, tuple(changes))
@@ -1254,7 +462,7 @@ def apply_decision(
 ) -> SpecContext:
     if batch:
         raise ContextError("batch_confirmation_forbidden", "batch", "N/A/豁免必须逐项确认")
-    _validate_decision(decision)
+    validate_decision(decision)
     target_status = {"not_applicable": "not_applicable", "waived": "waived", "manual_verification": "verified"}[decision.kind]
     found = False
     bindings: list[SpecBinding] = []
@@ -1272,7 +480,7 @@ def apply_decision(
         bindings.append(replace(binding, rules=tuple(changed_rules)))
     if not found:
         raise ContextError("unknown_rule", "rule_ref", f"未找到 {spec_id}#{rule_ref}")
-    return replace(context, updated_at=_now(), bindings=tuple(bindings))
+    return replace(context, updated_at=now_iso(), bindings=tuple(bindings))
 
 
 def _upsert_artifact_ref(
@@ -1321,7 +529,7 @@ def apply_artifact_ref(
         bindings.append(replace(binding, rules=tuple(rules)))
     if not found:
         raise ContextError("unknown_rule", "rule_ref", f"未找到 {spec_id}#{rule_ref}")
-    return replace(context, updated_at=_now(), bindings=tuple(bindings))
+    return replace(context, updated_at=now_iso(), bindings=tuple(bindings))
 
 
 def _json_payload(stream: IO[str]) -> Mapping[str, object]:
@@ -1336,7 +544,7 @@ def _json_payload(stream: IO[str]) -> Mapping[str, object]:
         loaded = json.loads(raw)
     except json.JSONDecodeError as exc:
         raise ContextError("invalid_json", "stdin", str(exc)) from exc
-    return _mapping(loaded, "stdin", "")
+    return mapping_field(loaded, "stdin", "")
 
 
 def _candidate_data(candidate: SpecCandidate) -> dict[str, object]:
@@ -1372,14 +580,14 @@ def _catalog_command(args: argparse.Namespace) -> dict[str, object]:
 
 
 def _application_ref(task_dir: str, value: Mapping[str, object]) -> ArtifactRef:
-    artifact = _string(value.get("artifact"), "applications[].artifact", "")
+    artifact = string_field(value.get("artifact"), "applications[].artifact", "")
     base = Path(task_dir).resolve()
     target = (base / artifact).resolve()
     if base != target and base not in target.parents:
         raise ContextError("artifact_outside_task", "applications[].artifact", artifact, task_dir)
     from codeflow.spec.cf_rule_readiness import artifact_problem
-    section = _string(value.get("section_id"), "applications[].section_id", "")
-    item = _string(value.get("item_id"), "applications[].item_id", "")
+    section = string_field(value.get("section_id"), "applications[].section_id", "")
+    item = string_field(value.get("item_id"), "applications[].item_id", "")
     problem = artifact_problem(str(base), artifact, section, item)
     if problem:
         raise ContextError(problem, "applications[]", f"{artifact}#{section}/{item}", task_dir)
@@ -1397,13 +605,13 @@ def _application_ref(task_dir: str, value: Mapping[str, object]) -> ArtifactRef:
 
 def _apply_payload(context: SpecContext, task_dir: str, payload: Mapping[str, object]) -> SpecContext:
     updated = context
-    for raw in _sequence(payload.get("applications", []), "applications", ""):
-        item = _mapping(raw, "applications[]", "")
+    for raw in sequence_field(payload.get("applications", []), "applications", ""):
+        item = mapping_field(raw, "applications[]", "")
         updated = apply_artifact_ref(
             updated,
-            _string(item.get("spec_id"), "applications[].spec_id", ""),
-            _string(item.get("rule_ref"), "applications[].rule_ref", ""),
-            _string(item.get("stage"), "applications[].stage", ""),
+            string_field(item.get("spec_id"), "applications[].spec_id", ""),
+            string_field(item.get("rule_ref"), "applications[].rule_ref", ""),
+            string_field(item.get("stage"), "applications[].stage", ""),
             _application_ref(task_dir, item),
         )
     return updated
@@ -1411,14 +619,14 @@ def _apply_payload(context: SpecContext, task_dir: str, payload: Mapping[str, ob
 
 def _decision_command(args: argparse.Namespace, payload: Mapping[str, object]) -> dict[str, object]:
     context_path = Path(args.task_dir) / "spec-context.yml"
-    decision = _decision_from_data(payload.get("decision"), str(context_path))
+    decision = decision_from_data(payload.get("decision"), str(context_path))
     if decision is None:
         raise ContextError("invalid_decision", "decision", "必须提供 decision")
     context = apply_decision(
         load_context(str(context_path)),
-        _string(payload.get("spec_id"), "spec_id", ""),
-        _string(payload.get("rule_ref"), "rule_ref", ""),
-        _string(payload.get("stage"), "stage", ""),
+        string_field(payload.get("spec_id"), "spec_id", ""),
+        string_field(payload.get("rule_ref"), "rule_ref", ""),
+        string_field(payload.get("stage"), "stage", ""),
         decision,
         payload.get("batch") is True,
     )
@@ -1426,9 +634,9 @@ def _decision_command(args: argparse.Namespace, payload: Mapping[str, object]) -
     _resync_after_save(args, context_path)
     # Report the status of the rule the decision targeted, not the first binding
     # (bindings[0].rules[0] previously returned an unrelated rule).
-    spec_id = _string(payload.get("spec_id"), "spec_id", "")
-    rule_ref = _string(payload.get("rule_ref"), "rule_ref", "")
-    stage = _string(payload.get("stage"), "stage", "")
+    spec_id = string_field(payload.get("spec_id"), "spec_id", "")
+    rule_ref = string_field(payload.get("rule_ref"), "rule_ref", "")
+    stage = string_field(payload.get("stage"), "stage", "")
     status = "unknown"
     for binding in context.bindings:
         if binding.spec_id != spec_id:
@@ -1442,25 +650,25 @@ def _decision_command(args: argparse.Namespace, payload: Mapping[str, object]) -
 
 def _bind_command(args: argparse.Namespace, payload: Mapping[str, object]) -> dict[str, object]:
     context_path = Path(args.task_dir) / "spec-context.yml"
-    paths = tuple(_string(item, "paths[]", "") for item in _sequence(payload.get("paths", []), "paths", ""))
+    paths = tuple(string_field(item, "paths[]", "") for item in sequence_field(payload.get("paths", []), "paths", ""))
     candidates = {item.spec_id: item for item in resolve_candidates(args.root, args.stage, paths)}
     selections: list[BindingInput] = []
-    for raw in _sequence(payload.get("selections"), "selections", ""):
-        item = _mapping(raw, "selections[]", "")
-        spec_id = _string(item.get("spec_id"), "selections[].spec_id", "")
+    for raw in sequence_field(payload.get("selections"), "selections", ""):
+        item = mapping_field(raw, "selections[]", "")
+        spec_id = string_field(item.get("spec_id"), "selections[].spec_id", "")
         if spec_id not in candidates:
             raise ContextError("unknown_candidate", "selections[].spec_id", spec_id)
         selections.append(
             BindingInput(
                 candidates[spec_id],
-                _string(item.get("selected_by"), "selections[].selected_by", ""),
-                _string(item.get("reason"), "selections[].reason", ""),
+                string_field(item.get("selected_by"), "selections[].selected_by", ""),
+                string_field(item.get("reason"), "selections[].reason", ""),
             )
         )
     if context_path.exists():
         context = load_context(str(context_path))
     else:
-        task = _string(payload.get("task"), "task", "")
+        task = string_field(payload.get("task"), "task", "")
         context = new_context(task, (("cli", "bind"),))
     context = bind_specs(context, selections)
     context = _apply_payload(context, args.task_dir, payload)
@@ -1481,7 +689,7 @@ def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> 
 
     recover_transition(args.root)
     if args.active_action in ("pause", "resume", "block", "complete"):
-        marker, _ = _active_paths(args.root)
+        marker = active_paths(args.root)[0]
         if marker.exists():
             current = load_active_task(args.root)
             if (current.task_id != args.task or
@@ -1497,14 +705,14 @@ def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> 
     task_file = locate_task_file(_directory(), args.task)
     if args.active_action == "start":
         owned = tuple(
-            _string(item, "owned_paths[]", "")
-            for item in _sequence(payload.get("owned_paths", []), "owned_paths", "")
+            string_field(item, "owned_paths[]", "")
+            for item in sequence_field(payload.get("owned_paths", []), "owned_paths", "")
         )
         if task_file is None:
             active = start_active_task(
                 args.root, args.task_dir, args.task, args.context_sha256, owned
             )
-            return {"ok": True, "active": _active_data(active)}
+            return {"ok": True, "active": active_data(active)}
         from codeflow.spec.cf_workflow_service import start_task
 
         try:
@@ -1551,8 +759,8 @@ def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> 
         if abandon and resync:
             raise ContextError("conflicting_recovery", "doctor", "abandon 与 resync 不能同时使用", args.task_dir)
         result = doctor_active_task(args.root, args.context_sha256, abandon, resync)
-        return {"ok": True, "action": result.action, "active": _active_data(result.active)}
-    return {"ok": True, "active": _active_data(active)}
+        return {"ok": True, "action": result.action, "active": active_data(result.active)}
+    return {"ok": True, "active": active_data(active)}
 
 
 def _start_command(args: argparse.Namespace, payload: Mapping[str, object]) -> dict[str, object]:
@@ -1565,8 +773,8 @@ def _start_command(args: argparse.Namespace, payload: Mapping[str, object]) -> d
     from codeflow.spec.cf_workflow_service import WorkflowError, start_task
 
     owned = tuple(
-        _string(item, "owned_paths[]", "")
-        for item in _sequence(payload.get("owned_paths", []), "owned_paths", "")
+        string_field(item, "owned_paths[]", "")
+        for item in sequence_field(payload.get("owned_paths", []), "owned_paths", "")
     )
     try:
         return start_task(
