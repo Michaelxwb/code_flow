@@ -41,9 +41,9 @@
 | S-13 | runtime-consolidation.design.md#2.5 验收条件 | system | 公开 CLI/Hook 输出 | TASK-008 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_legacy_removal"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-14 | runtime-consolidation.design.md#2.5 验收条件 | integration | verify_plan → 读取计数 | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_verify_plan_reads"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | E-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 快照 → 文件变更 → drift | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_snapshot_drift"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-15 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 层映射 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-16 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 私有 allowlist | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_private_symbol_guard"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| B-03 | runtime-consolidation.design.md#2.5 验收条件 | contract | allowlist 到期批次 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-15 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 层映射 | TASK-001 | stale | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-16 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 私有 allowlist | TASK-001 | stale | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_private_symbol_guard"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| B-03 | runtime-consolidation.design.md#2.5 验收条件 | contract | allowlist 到期批次 | TASK-001 | stale | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-17 | runtime-consolidation.design.md#2.5 验收条件 | system | 四平台安装 → hook 调用 | TASK-011 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_four_platform_install"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-18 | runtime-consolidation.design.md#2.5 验收条件 | integration | 旧平铺 → migrate → 包布局 | TASK-011 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_package_upgrade_cleanup"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-19 | runtime-consolidation.design.md#2.5 验收条件 | system | src/core → .code-flow → npm tarball | TASK-010 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_canonical_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
@@ -83,9 +83,9 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-15 | contract | 真实 AST 导入图 | 注入 L0→L2 边时测试失败并指出边 | tests/test_runtime_consolidation.py::test_dependency_direction | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_dependency_direction` | verified |
-| S-16 | contract | 真实 AST 导入图 | 新增私有导入失败；移除代码后 allowlist 条目失败 | tests/test_runtime_consolidation.py::test_private_symbol_guard | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_private_symbol_guard` | verified |
-| B-03 | contract | allowlist 元数据 | 超期条目导致失败 | tests/test_runtime_consolidation.py::test_allowlist_ratchet | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_allowlist_ratchet` | verified |
+| S-15 | contract | 真实 AST 导入图 | 注入 L0→L2 边时测试失败并指出边 | tests/test_runtime_consolidation.py::test_dependency_direction | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_dependency_direction` | stale |
+| S-16 | contract | 真实 AST 导入图 | 新增私有导入失败；移除代码后 allowlist 条目失败 | tests/test_runtime_consolidation.py::test_private_symbol_guard | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_private_symbol_guard` | stale |
+| B-03 | contract | allowlist 元数据 | 超期条目导致失败 | tests/test_runtime_consolidation.py::test_allowlist_ratchet | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_allowlist_ratchet` | stale |
 
 ### Acceptance Evidence
 
@@ -99,6 +99,9 @@
 - S-15: verified — automated command passed; run_id=0366c68bf50642c888ab1f4d53587760 (confirmed_by: runner)
 - S-16: verified — automated command passed; run_id=0366c68bf50642c888ab1f4d53587760 (confirmed_by: runner)
 - B-03: verified — automated command passed; run_id=0366c68bf50642c888ab1f4d53587760 (confirmed_by: runner)
+- S-15: stale — input changed: CHK-c387fd3e4838 (confirmed_by: runtime)
+- S-16: stale — input changed: CHK-91f1a8ad8a34 (confirmed_by: runtime)
+- B-03: stale — input changed: CHK-52a009106cde (confirmed_by: runtime)
 
 ### Log
 - [2026-10-26] created (draft)

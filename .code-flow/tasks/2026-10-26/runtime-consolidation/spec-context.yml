@@ -49,7 +49,7 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: verified
+        status: stale
         refs: []
         decision: null
         evidence:
@@ -120,7 +120,7 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: verified
+        status: stale
         refs: []
         decision: null
         evidence:
@@ -200,7 +200,7 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: verified
+        status: stale
         refs: []
         decision: null
         evidence:
@@ -271,7 +271,7 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: verified
+        status: stale
         refs: []
         decision: null
         evidence:
@@ -342,7 +342,7 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: verified
+        status: stale
         refs: []
         decision: null
         evidence:
@@ -443,7 +443,7 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: verified
+        status: stale
         refs: []
         decision: null
         evidence:
@@ -689,7 +689,7 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: verified
+        status: stale
         refs: []
         decision: null
         evidence:
@@ -747,7 +747,7 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: verified
+        status: stale
         refs: []
         decision: null
         evidence:
@@ -805,7 +805,7 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: verified
+        status: stale
         refs: []
         decision: null
         evidence:
@@ -897,7 +897,7 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: verified
+        status: stale
         refs: []
         decision: null
         evidence:
@@ -983,7 +983,7 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: verified
+        status: stale
         refs: []
         decision: null
         evidence:

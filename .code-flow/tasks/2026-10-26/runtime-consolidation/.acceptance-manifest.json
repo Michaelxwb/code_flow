@@ -1954,7 +1954,7 @@
       "kind": "functional",
       "boundary": "AST 导入图 → 层映射守卫",
       "owner": "TASK-001",
-      "status": "verified",
+      "status": "stale",
       "command": [
         "python3",
         "-m",
@@ -2083,6 +2083,9 @@
           "timeout": 60.0,
           "fingerprint": "98e91aadd36e5f000bb923841fe85c5eac143e67a589b567a5f8ec18e8b48cb7"
         }
+      ],
+      "stale_checks": [
+        "CHK-c387fd3e4838"
       ]
     },
     {
@@ -2092,7 +2095,7 @@
       "kind": "functional",
       "boundary": "AST 导入图 → 私有符号 allowlist",
       "owner": "TASK-001",
-      "status": "verified",
+      "status": "stale",
       "command": [
         "python3",
         "-m",
@@ -2221,6 +2224,9 @@
           "timeout": 60.0,
           "fingerprint": "1dd4d5c97d6570a36229c3eec58ed4b5ebb091d3d675d4355f8d39a15b2d7ccd"
         }
+      ],
+      "stale_checks": [
+        "CHK-91f1a8ad8a34"
       ]
     },
     {
@@ -2230,7 +2236,7 @@
       "kind": "functional",
       "boundary": "私有导入 allowlist 与批次元数据",
       "owner": "TASK-001",
-      "status": "verified",
+      "status": "stale",
       "command": [
         "python3",
         "-m",
@@ -2359,6 +2365,9 @@
           "timeout": 60.0,
           "fingerprint": "15e093ead8203d2296756a2a06daf26e63d2d57f8c70bf5913a1dcc19b6736f5"
         }
+      ],
+      "stale_checks": [
+        "CHK-52a009106cde"
       ]
     },
     {
