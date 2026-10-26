@@ -43,6 +43,7 @@ DEFAULT_ACTIVE_EXCLUDES = (
     ".code-flow/.active-task.json",
     ".code-flow/.active-task.lock",
     ".code-flow/worktrees/*",
+    ".code-flow/sessions/*",
 )
 
 
@@ -376,7 +377,7 @@ def load_active_task(root: str) -> ActiveTask:
 
 
 def task_contract_digest(root: str, task_dir: str, task_id: str) -> str:
-    """Digest of the active TASK's acceptance contract (Refs + Contract + Evidence).
+    """Legacy version digest of TASK Spec/Design refs and acceptance inputs.
 
     Two TASKs may share one Context hash while owning different scenarios; the
     digest separates their injection versions so switching TASKs re-injects.
@@ -400,7 +401,7 @@ def task_contract_digest(root: str, task_dir: str, task_id: str) -> str:
         end = text.find("\n## TASK-", start)
         section = text[start:] if end == -1 else text[start:end]
         chunks: list[str] = []
-        for heading in ("Acceptance-Refs", "Acceptance Contract", "Acceptance Evidence"):
+        for heading in ("Spec-Refs", "Source", "Design-Refs", "Acceptance-Refs", "Acceptance Contract", "Acceptance Evidence"):
             index = section.find(heading)
             if index == -1:
                 chunks.append(f"{heading}:missing")
@@ -964,12 +965,18 @@ def new_context(task: str, sources: Sequence[tuple[str, str]]) -> SpecContext:
     return SpecContext(CONTEXT_VERSION, task.strip(), "required", _now(), parsed, ())
 
 
-def load_context(path: str) -> SpecContext:
+def load_context(path: str, *, source: Optional[bytes] = None) -> SpecContext:
     import yaml
     try:
-        loaded = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
+        raw = Path(path).read_bytes() if source is None else source
+        loaded = yaml.safe_load(raw.decode("utf-8")) or {}
     except (OSError, UnicodeError, yaml.YAMLError) as exc:
         raise ContextError("context_read_error", "file", str(exc), path) from exc
+    return context_from_data(loaded, path)
+
+
+def context_from_data(loaded: object, path: str) -> SpecContext:
+    """Validate a parsed Context through the same schema for YAML and cache reads."""
     data = _mapping(loaded, "context", path)
     version = data.get("version")
     if version != CONTEXT_VERSION:
@@ -1838,6 +1845,11 @@ def _doctor_config(root: Path) -> list[dict[str, str]]:
     if schema != 1:
         return [_doctor_finding("config_schema_unsupported", "block", f"不支持的 schema {schema!r}",
                                 str(path), "code-flow migrate --spec-workflow --dry-run")]
+    mode = workflow.get("enforcement")
+    if isinstance(mode, str) and mode in {"warn", "inject"}:
+        return [_doctor_finding("legacy_enforcement_mode", "warn",
+                                "历史 warn/inject 模式会降低部分验证门禁；路由完整性错误仍阻断",
+                                str(path), "审查现有工作流后显式将 spec_workflow.enforcement 改为 required")]
     return []
 
 

@@ -437,6 +437,7 @@ def _write_target_ignore(staging: Path) -> None:
         ".active-task.lock\n"
         ".catalog-state.json\n"
         ".session-state.json\n"
+        ".context-state.json\n"
         ".task-projection-state.json\n"
         "migrations/\n"
         "backups/\n"

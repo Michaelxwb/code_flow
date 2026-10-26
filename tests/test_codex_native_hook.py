@@ -146,6 +146,7 @@ def test_corrupt_active_marker_injects_a_blocked_context(tmp_path: Path) -> None
     (tmp_path / ".code-flow/.active-task.json").write_text("{}")
     payload = json.loads(_invoke(tmp_path, "PreToolUse", PATCH))
     assert "SPEC_WORKFLOW_BLOCKED" in payload["hookSpecificOutput"]["additionalContext"]
+    assert payload["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 
 @pytest.mark.parametrize("event", ["Stop", "PreToolUse", "PostToolUse", "UserPromptSubmit"])
@@ -158,8 +159,13 @@ def test_installation_drift_blocks_stop_and_diagnoses_other_events(tmp_path: Pat
         assert result["decision"] == "block"
         assert "drifted" in result["reason"]
     else:
-        assert set(result) == {"systemMessage"}
         assert "drifted" in result["systemMessage"]
+        if event == "PreToolUse":
+            assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
+        elif event == "UserPromptSubmit":
+            assert result["decision"] == "block"
+        else:
+            assert set(result) == {"systemMessage"}
 
 
 def test_native_stop_blocks_corrupt_active_task(tmp_path: Path) -> None:

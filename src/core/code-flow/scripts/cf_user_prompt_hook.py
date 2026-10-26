@@ -7,41 +7,49 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
 import cf_log
 from cf_checks import detect_correction
 from cf_core import (
     _log,
+    ConfigError,
     ensure_utf8_io,
     load_config,
     normalize_path,
-    resolve_enforcement,
     resolve_quality_loop,
     resolve_session_id,
     timing_log,
 )
 from cf_session_state import load_session_state, save_session_state
-from cf_spec_context import injection_version
+from cf_injection import injection_output, injection_text
 from cf_spec_router import RouterError, RouteResult, route_prompt
 
 
-_PATH_RE = re.compile(r'[@`]?([a-zA-Z0-9_.][a-zA-Z0-9_./\\\-]*\.[a-zA-Z]{1,6})(?![a-zA-Z0-9_])')
-_EXT_RE = re.compile(r'\.(py|js|ts|go|rs|java|rb|cs|cpp|c|h)$')
+_PATH_RE = re.compile(r'`([^`\n]+)`|@?((?:[a-zA-Z]:[\\/]|/)?[a-zA-Z0-9_.][a-zA-Z0-9_./\\\-]*\.[a-zA-Z]{1,8})(?![a-zA-Z0-9_])')
+_EXT_RE = re.compile(r'\.(py|js|jsx|ts|tsx|vue|svelte|go|rs|java|rb|cs|cpp|c|h)$')
+_URL_RE = re.compile(r'\b[a-zA-Z][a-zA-Z0-9+.-]*://[^\s`<>]+')
 
 _COMPRESS_INTERVAL = 25
-_REINJECT_INTERVAL = 25
 _REMINDER_TEXT = (
     "⚠ 本会话已处理较多轮次，上下文较长；批量任务建议在任务间压缩上下文，或拆到新会话继续。"
 )
-_WARN_TEXT = "⚠ Spec Workflow 校验未通过（warn 模式）：{message} — 建议运行 cf-spec doctor 检查。"
 
 
-def extract_paths_from_prompt(prompt: str) -> list[str]:
+def extract_paths_from_prompt(prompt: str, root: str | None = None) -> list[str]:
     """Extract explicit file paths without semantic keyword inference."""
     paths = []
     seen = set()
-    for match in _PATH_RE.finditer(prompt):
-        candidate = normalize_path(match.group(1).lstrip('@`'))
+    for match in _PATH_RE.finditer(_URL_RE.sub("", prompt)):
+        candidate = normalize_path((match.group(1) or match.group(2)).lstrip('@'))
+        if '/' not in candidate and not _EXT_RE.search(candidate):
+            continue
+        if root is not None:
+            try:
+                target = Path(candidate) if Path(candidate).is_absolute() else Path(root) / candidate
+                candidate = target.resolve().relative_to(Path(root).resolve()).as_posix()
+            except ValueError as exc:
+                raise RouterError("path_outside_project", f"{candidate} is outside the project") from exc
         if candidate not in seen and ('/' in candidate or _EXT_RE.search(candidate)):
             paths.append(candidate)
             seen.add(candidate)
@@ -52,6 +60,8 @@ def _payload(text: str, mode: str) -> dict[str, object]:
     payload: dict[str, object] = {
         "hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": text}
     }
+    if mode == "blocked":
+        payload.update(decision="block", reason=text)
     if os.environ.get("CF_DEBUG") == "1":
         payload["debug"] = {"mode": mode}
     return payload
@@ -91,72 +101,24 @@ def _session_reminder(root: str, sid: str) -> str:
     return reminder
 
 
-def _route_with_enforcement(root: str, paths: list[str], sid: str, enforcement: str) -> tuple[RouteResult | None, str | None]:
-    """Route with enforcement-aware failure handling.
-
-    required — fail closed with the SPEC_WORKFLOW_BLOCKED message;
-    warn    — degrade to a short advisory message;
-    inject  — degrade silently.
-    Returns domain routing result or an enforcement diagnostic.
-    """
-    try:
-        return route_prompt(root, paths, sid), None
-    except RouterError as exc:
-        if enforcement == "required":
-            message = f"SPEC_WORKFLOW_BLOCKED [{exc.code}]: {exc}. Run cf-spec doctor before continuing."
-            return None, message
-        if enforcement == "warn":
-            return None, _WARN_TEXT.format(message=str(exc))
-        return None, None
-
-
-def _deduplicated_text(root: str, sid: str, result: RouteResult, config: dict[str, object]) -> str:
-    text = result.text
-    if result.mode == "task" and result.context_sha256:
-        # Dedup: inject once per session/task/contract version, refreshing
-        # at the compress cadence so long sessions do not re-pay 12k chars
-        # on every prompt. The key covers task_id and the TASK contract
-        # digest (not just the Context hash) so switching TASKs on a
-        # shared Context always re-injects the new contract.
-        state = load_session_state(root)
-        count = int(state.get("prompt_count", 0))
-        dirty = False
-        if not (config and resolve_quality_loop(config)["compress_reminder"]):
-            # compress_reminder off → _session_reminder never bumps the
-            # counter; maintain the cadence here so the periodic refresh
-            # still fires after compaction.
-            count += 1
-            state["prompt_count"] = count
-            dirty = True
-        version = injection_version(root, sid, result.context_sha256)
-        injected = state.get("injected_version")
-        last_inject = int(state.get("last_inject_prompt", 0))
-        if injected == version and count - last_inject < _REINJECT_INTERVAL:
-            text = ""
-        else:
-            state["injected_version"] = version
-            state["last_inject_prompt"] = count
-            dirty = True
-        if dirty:
-            save_session_state(root, state)
-    return text
-
-
 def build_prompt_context(prompt: str, sid: str, root: str) -> tuple[str, str]:
+    try:
+        return _build_prompt_context(prompt, sid, root)
+    except (ConfigError, RouterError, OSError, UnicodeError, ValueError, TypeError) as exc:
+        return f"SPEC_WORKFLOW_BLOCKED [{getattr(exc, 'code', 'invalid_prompt_context')}]: {exc}. Run cf-spec doctor before continuing.", "blocked"
+
+
+def _build_prompt_context(prompt: str, sid: str, root: str) -> tuple[str, str]:
     if not prompt.strip():
         return "", ""
     config = load_config(root)
-    enforcement = resolve_enforcement(config) if config else "required"
-    paths = extract_paths_from_prompt(prompt)
+    active = (Path(root) / ".code-flow/.active-task.json").exists()
+    paths = extract_paths_from_prompt(prompt, None if active else root)
     _record_correction(root, prompt, paths, sid)
-    result, error = _route_with_enforcement(root, paths, sid, enforcement)
-    if error is not None:
-        return error, "blocked" if enforcement == "required" else "warn"
-    if result is None:
-        return "", ""
+    result = route_prompt(root, paths, sid)
     reminder = _session_reminder(root, sid) if config and resolve_quality_loop(config)["compress_reminder"] else ""
-    text = _deduplicated_text(root, sid, result, config)
-    if text:
+    text = injection_text(root, sid, result, prompt=True)
+    if text and result.mode == "catalog":
         cf_log.append_event(root, "inject", {"specs": list(result.specs), "mode": result.mode, "source": result.mode}, sid)
     mode = result.mode if text else "reminder"
     return "\n\n".join(part.rstrip() for part in (text, reminder) if part), mode
@@ -167,9 +129,11 @@ def process_prompt(data: dict[str, object], root: str) -> None:
         prompt = data.get("prompt", "")
         if not isinstance(prompt, str) or not prompt.strip():
             return
-        text, mode = build_prompt_context(prompt, resolve_session_id(data), root)
-        if text:
-            sys.stdout.write(json.dumps(_payload(text, mode), ensure_ascii=False))
+        with injection_output():
+            text, mode = build_prompt_context(prompt, resolve_session_id(data), root)
+            if text:
+                sys.stdout.write(json.dumps(_payload(text, mode), ensure_ascii=False))
+                sys.stdout.flush()
     except (json.JSONDecodeError, UnicodeError, OSError, ValueError) as exc:
         _log(f"cf_user_prompt_hook error: {exc}")
 

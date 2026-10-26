@@ -5,7 +5,8 @@ import os
 import sys
 
 from cf_core import _log, ensure_utf8_io
-from cf_edit_service import after_edit, before_edit
+from cf_edit_service import after_edit, prepare_edits
+from cf_injection import injection_output, pre_tool_payload
 from cf_stop_hook import process_stop
 from cf_user_prompt_hook import process_prompt
 from cf_runtime_install import verify_install
@@ -51,10 +52,14 @@ def dispatch(data: dict[str, object]) -> None:
     if not isinstance(tool_input, dict) or not isinstance(tool_input.get("command"), str):
         raise ValueError("apply_patch requires tool_input.command")
     paths = validated_paths(root, cwd, parse_patch(tool_input["command"]))
+    if event == "PreToolUse":
+        text, blocked = prepare_edits(root, tuple(path for path, _ in paths), sid, "apply_patch")
+        if text:
+            sys.stdout.write(json.dumps(pre_tool_payload(text, blocked), ensure_ascii=False))
+        return
     feedback = []
     for path, deleted in paths:
-        text = (before_edit(root, path, sid, "apply_patch") if event == "PreToolUse"
-                else after_edit(root, path, sid, "apply_patch", deleted))
+        text = after_edit(root, path, sid, "apply_patch", deleted)
         if text and text not in feedback:
             feedback.append(text)
     if feedback:
@@ -74,12 +79,18 @@ def main() -> None:
             data = json.loads(raw)
             if not isinstance(data, dict):
                 raise ValueError("Codex hook event must be an object")
-            dispatch(data)
+            with injection_output():
+                dispatch(data)
+                sys.stdout.flush()
     except Exception as exc:
         _log(f"cf_codex_hook error: {exc}")
         message = f"code-flow Codex hook failed: {exc}. Run code-flow migrate --runtime --dry-run, then --apply."
         payload = ({"decision": "block", "reason": message} if isinstance(data, dict) and data.get("hook_event_name") == "Stop"
                    else {"systemMessage": message})
+        if isinstance(data, dict) and data.get("hook_event_name") == "PreToolUse":
+            payload.update(pre_tool_payload(message, True))
+        if isinstance(data, dict) and data.get("hook_event_name") == "UserPromptSubmit":
+            payload.update(decision="block", reason=message)
         sys.stdout.write(json.dumps(payload, ensure_ascii=False))
 
 

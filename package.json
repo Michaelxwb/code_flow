@@ -20,6 +20,8 @@
     "docs/migrations/runtime-0.8.0.md",
     "docs/migrations/runtime-0.9.0.md",
     "docs/acceptance-contract.md",
+    "docs/spec-injection-hardening.md",
+    "docs/spec-injection-performance.json",
     "docs/USAGE.md",
     "docs/ci/acceptance-evidence.md"
   ],

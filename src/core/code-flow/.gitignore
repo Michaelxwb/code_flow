@@ -3,6 +3,7 @@
 .active-task.lock
 .catalog-state.json
 .session-state.json
+.context-state.json
 .task-projection-state.json
 migrations/
 backups/

@@ -1,32 +1,14 @@
 """Platform-neutral edit routing and compliance services."""
 import os
 from pathlib import Path
+from typing import Sequence
 
 import cf_log
 from cf_checks import load_check_state, load_spec_checks, record_hits, run_checks, save_check_state
 from cf_core import (build_effective_mapping, effective_project_root, is_code_file, load_config,
                      match_domains, normalize_path, normalize_spec_entry, resolve_enforcement, resolve_quality_loop)
-from cf_session_state import load_session_state, save_session_state
-from cf_spec_context import ContextError, injection_version, load_active_task, load_context
-from cf_spec_resolver import resolve_candidate_headers
+from cf_injection import injection_text
 from cf_spec_router import RouterError, route_prompt
-
-_WARN_TEXT = "⚠ Spec Workflow 校验未通过（warn 模式）：{message} — 建议运行 cf-spec doctor 检查。"
-
-
-def _active_expansion(root: str, relative: str) -> tuple[str, ...]:
-    marker = Path(root) / ".code-flow/.active-task.json"
-    if not marker.exists():
-        return ()
-    active = load_active_task(root)
-    context = load_context(str(Path(root) / active.task_dir / "spec-context.yml"))
-    bound = {item.spec_id for item in context.bindings}
-    return tuple(
-        item.spec_id for item in resolve_candidate_headers(root, "code", (relative,))
-        if item.spec_id not in bound and item.enforcement == "required"
-        and getattr(item, "scope", "path") != "unmatched"
-    )
-
 
 FEEDBACK_HINT = '如认为误报，直接告诉我"这是误报"，我会标记忽略。'
 _REPORTED_KEY = "_reported"
@@ -80,40 +62,45 @@ def _feedback_text(violations: list[dict[str, object]]) -> str:
 
 
 def _routing_result(root: str, relative: str, sid: str) -> tuple[str, tuple[str, ...], bool]:
-    config = load_config(root)
-    enforcement = resolve_enforcement(config) if config else "required"
+    return _route_edits(root, (relative,), sid)
+
+
+def _route_edits(root: str, paths: Sequence[str], sid: str) -> tuple[str, tuple[str, ...], bool]:
     try:
-        expanded = _active_expansion(root, relative)
-        result = route_prompt(root, (relative,), sid)
-    except (RouterError, ContextError) as exc:
-        if enforcement == "required":
-            return f"SPEC_WORKFLOW_BLOCKED [{exc.code}]: {exc}. Run cf-spec doctor before continuing.", (), True
-        return (_WARN_TEXT.format(message=str(exc)) if enforcement == "warn" else ""), (), False
-    if expanded:
-        return f"⚠ 该路径引入未绑定 required Spec：{', '.join(expanded)} — 建议先 refresh Context / Plan 再继续编辑。", (), False
-    text = result.text
-    if result.mode == "task" and result.context_sha256:
-        state = load_session_state(root)
-        version = injection_version(root, sid, result.context_sha256)
-        if state.get("injected_version") == version:
-            text = ""
-        else:
-            state["injected_version"] = version
-            save_session_state(root, state)
-    return text, tuple(result.specs), False
+        result = route_prompt(root, paths, sid, check_scope=True)
+    except RouterError as exc:
+        return f"SPEC_WORKFLOW_BLOCKED [{exc.code}]: {exc}. Run cf-spec doctor before continuing.", (), True
+    text = injection_text(root, sid, result)
+    emitted = tuple(result.specs) if text else ()
+    if result.expanded_specs:
+        warning = f"⚠ 该路径引入未绑定 required Spec：{', '.join(result.expanded_specs)} — 建议先 refresh Context / Plan 再继续编辑。"
+        text = "\n\n".join(part for part in (warning, text) if part)
+    return text, emitted, False
 
 
 def prepare_edit(session_root: str, path: str, sid: str, tool: str) -> tuple[str, bool]:
-    absolute = path if os.path.isabs(path) else os.path.join(session_root, path)
-    root = effective_project_root(session_root, absolute)
-    relative = normalize_path(os.path.relpath(absolute, root))
-    text, specs, blocked = _routing_result(root, relative, sid)
-    cf_log.append_event(root, "edit_intent", {"file": relative, "tool": tool, "specs": list(specs)}, sid)
-    return text, blocked
+    return prepare_edits(session_root, (path,), sid, tool)
 
 
-def before_edit(session_root: str, path: str, sid: str, tool: str) -> str:
-    return prepare_edit(session_root, path, sid, tool)[0]
+def prepare_edits(session_root: str, paths: Sequence[str], sid: str, tool: str) -> tuple[str, bool]:
+    groups: dict[str, list[str]] = {}
+    for path in paths:
+        absolute = path if os.path.isabs(path) else os.path.join(session_root, path)
+        root = effective_project_root(session_root, absolute)
+        relative = normalize_path(os.path.relpath(absolute, root))
+        if relative not in groups.setdefault(root, []):
+            groups[root].append(relative)
+    feedback = []
+    rejected = False
+    for root, relative_paths in groups.items():
+        text, specs, blocked = _route_edits(root, relative_paths, sid)
+        rejected = rejected or blocked
+        if text:
+            feedback.append(text)
+        for relative in relative_paths:
+            cf_log.append_event(root, "edit_intent", {"file": relative, "tool": tool,
+                                "specs": list(specs), "blocked": blocked}, sid)
+    return "\n\n".join(dict.fromkeys(feedback)), rejected
 
 
 def _fresh_violations(root: str, path: str, content: str, checks: list[dict[str, object]], sid: str) -> list[dict[str, object]]:

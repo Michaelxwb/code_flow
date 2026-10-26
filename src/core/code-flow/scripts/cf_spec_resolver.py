@@ -19,8 +19,8 @@ from cf_spec_metadata import (
 
 
 SCOPE_PRIORITY = {"unmatched": 0, "global": 1, "path": 2, "task": 3}
-_config_cache: dict[str, tuple[int, int, Mapping[str, object]]] = {}
-_metadata_cache: dict[str, tuple[int, int, SpecMetadata]] = {}
+_config_cache: dict[str, tuple[int, int, int, Mapping[str, object]]] = {}
+_metadata_cache: dict[str, tuple[int, int, int, SpecMetadata]] = {}
 
 
 class SpecResolutionError(ValueError):
@@ -99,12 +99,12 @@ class _RuleSource:
     enforcement: str
 
 
-def _fingerprint(path: Path, field: str) -> tuple[int, int]:
+def _fingerprint(path: Path, field: str) -> tuple[int, int, int]:
     try:
         stat = path.stat()
     except OSError as exc:
         raise SpecResolutionError(str(path), field, f"读取状态失败: {exc}") from exc
-    return stat.st_mtime_ns, stat.st_size
+    return stat.st_mtime_ns, stat.st_ctime_ns, stat.st_size
 
 
 def _load_config(root: str) -> Mapping[str, object]:
@@ -112,17 +112,17 @@ def _load_config(root: str) -> Mapping[str, object]:
     path = Path(root) / ".code-flow" / "config.yml"
     if not path.is_file():
         raise SpecResolutionError(str(path), "config", "缺失 config.yml")
-    mtime, size = _fingerprint(path, "config")
+    signature = _fingerprint(path, "config")
     cached = _config_cache.get(str(path))
-    if cached and cached[:2] == (mtime, size):
-        return cached[2]
+    if cached and cached[:3] == signature:
+        return cached[3]
     try:
         loaded = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except (OSError, UnicodeError, yaml.YAMLError) as exc:
         raise SpecResolutionError(str(path), "config", f"解析失败: {exc}") from exc
     if not isinstance(loaded, dict) or not all(isinstance(key, str) for key in loaded):
         raise SpecResolutionError(str(path), "config", "顶层必须是字符串 key mapping")
-    _config_cache[str(path)] = (mtime, size, loaded)
+    _config_cache[str(path)] = (*signature, loaded)
     return loaded
 
 
@@ -161,12 +161,12 @@ def _non_injectable(mapping: Mapping[str, object], config_path: str) -> set[str]
 
 
 def _load_metadata(path: Path) -> SpecMetadata:
-    mtime, size = _fingerprint(path, "spec")
+    signature = _fingerprint(path, "spec")
     cached = _metadata_cache.get(str(path))
-    if cached and cached[:2] == (mtime, size):
-        return cached[2]
+    if cached and cached[:3] == signature:
+        return cached[3]
     metadata = load_spec_metadata(str(path))
-    _metadata_cache[str(path)] = (mtime, size, metadata)
+    _metadata_cache[str(path)] = (*signature, metadata)
     return metadata
 
 
@@ -231,7 +231,27 @@ def _spec_paths(spec_root: Path, excluded: set[str]) -> tuple[Path, ...]:
     return tuple(result)
 
 
-def resolve_candidates(root: str, stage: str, paths: Sequence[str]) -> tuple[SpecCandidate, ...]:
+def _routing_paths(
+    spec_root: Path, excluded: set[str], mapping: Mapping[str, object],
+    config_path: str, paths: Sequence[str], matched_only: bool,
+) -> tuple[Path, ...]:
+    discovered = _spec_paths(spec_root, excluded)
+    if not matched_only:
+        return discovered
+    relevant = []
+    for path in discovered:
+        relative = path.relative_to(spec_root).as_posix()
+        domain = relative.split("/", 1)[0]
+        patterns = _patterns(_domain_config(mapping, domain, config_path),
+                             f"path_mapping.{domain}.patterns", config_path)
+        if _candidate_scope(relative, patterns, paths)[0] != "unmatched":
+            relevant.append(path)
+    return tuple(relevant)
+
+
+def resolve_candidates(
+    root: str, stage: str, paths: Sequence[str], *, matched_only: bool = False,
+) -> tuple[SpecCandidate, ...]:
     if stage not in ALLOWED_STAGES:
         raise SpecResolutionError(root, "stage", f"不支持 stage: {stage!r}")
     normalized_paths = tuple(path.replace("\\", "/") for path in paths)
@@ -244,7 +264,7 @@ def resolve_candidates(root: str, stage: str, paths: Sequence[str]) -> tuple[Spe
         raise SpecResolutionError(str(spec_root), "specs", "缺失 specs 目录")
     candidates: list[SpecCandidate] = []
     ids: dict[str, str] = {}
-    for path in _spec_paths(spec_root, excluded):
+    for path in _routing_paths(spec_root, excluded, mapping, config_path, normalized_paths, matched_only):
         candidate = _candidate_for(path, spec_root, mapping, config_path, stage, normalized_paths)
         if candidate is None:
             continue
@@ -257,7 +277,8 @@ def resolve_candidates(root: str, stage: str, paths: Sequence[str]) -> tuple[Spe
 
 
 def resolve_candidate_headers(
-    root: str, stage: str, paths: Sequence[str]
+    root: str, stage: str, paths: Sequence[str], *, matched_only: bool = False,
+    excluded_paths: Sequence[str] = (),
 ) -> tuple[SpecCandidateHeader, ...]:
     """Resolve candidates from routing frontmatter without parsing bodies or hashes."""
     if stage not in ALLOWED_STAGES:
@@ -267,12 +288,13 @@ def resolve_candidate_headers(
     config_path = str(Path(root) / ".code-flow" / "config.yml")
     mapping = _path_mapping(config, config_path)
     excluded = _non_injectable(mapping, config_path)
+    excluded.update(excluded_paths)
     spec_root = Path(root) / ".code-flow" / "specs"
     if not spec_root.is_dir():
         raise SpecResolutionError(str(spec_root), "specs", "缺失 specs 目录")
     candidates: list[SpecCandidateHeader] = []
     ids: dict[str, str] = {}
-    for path in _spec_paths(spec_root, excluded):
+    for path in _routing_paths(spec_root, excluded, mapping, config_path, normalized_paths, matched_only):
         candidate = _candidate_header_for(path, spec_root, mapping, config_path, stage, normalized_paths)
         if candidate is None:
             continue

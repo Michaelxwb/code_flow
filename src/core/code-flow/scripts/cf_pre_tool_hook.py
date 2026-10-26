@@ -5,7 +5,9 @@ import os
 import sys
 
 from cf_core import _log, ensure_utf8_io, resolve_session_id, timing_log
-from cf_edit_service import before_edit
+from cf_edit_service import prepare_edit
+from cf_injection import injection_output, pre_tool_payload
+from cf_native_paths import project_root
 
 
 def main() -> None:
@@ -22,11 +24,20 @@ def main() -> None:
         path = (data.get("tool_input") or {}).get("file_path", "")
         if tool not in {"Edit", "Write", "MultiEdit"} or not isinstance(path, str) or not path:
             return
-        text = before_edit(os.getcwd(), path, resolve_session_id(data), tool)
-        if text:
-            sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": text}}, ensure_ascii=False))
+        directory = os.getcwd()
+        root = project_root(directory)
+        if not root:
+            return
+        absolute = path if os.path.isabs(path) else os.path.join(directory, path)
+        with injection_output():
+            text, blocked = prepare_edit(root, absolute, resolve_session_id(data), tool)
+            if text:
+                sys.stdout.write(json.dumps(pre_tool_payload(text, blocked), ensure_ascii=False))
+                sys.stdout.flush()
     except Exception as exc:
         _log(f"cf_pre_tool_hook.py error: {exc}")
+        text = f"SPEC_WORKFLOW_BLOCKED [pre_tool_error]: {exc}"
+        sys.stdout.write(json.dumps(pre_tool_payload(text, True), ensure_ascii=False))
 
 
 if __name__ == "__main__":

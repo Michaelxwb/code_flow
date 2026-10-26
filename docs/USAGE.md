@@ -593,7 +593,7 @@ applied 引用必须指向正确章节与条目，不能含待同步/待确认/T
 
 > **硬门禁**：`spec_workflow.schema_version` 非 `1` 时只有 `migrate --plan` 可用；Context 缺失/损坏时 fail-closed，不回退 Catalog。
 >
-> schema 1 的 Spec Workflow 使用 required 门禁，不提供 warn/inject/off 项目开关。`quality_loop` 的开关仅控制反馈能力，不关闭 Spec Gate。
+> 默认使用 `required`。运行时仍兼容历史 `warn/inject`：它们会降低部分验证门禁，doctor 返回 `legacy_enforcement_mode`，建议审查后显式改回 `required`。配置损坏、绑定 Spec 漂移、Context 无效、TASK 投影失败和注入超预算始终阻断，历史模式不能隐藏这些错误。`quality_loop` 控制质量反馈能力。
 
 ### `/cf-sync` — 双副本同步（internal）
 
@@ -977,7 +977,7 @@ budget:
   map_max: 400      # 单个 _map.md 最大 token
   catalog_max: 200  # Spec Catalog 目录上限（v0.5+）
 
-# schema 1 必须使用 required；不提供 warn/inject/off 门禁开关
+# 推荐 required；历史 warn/inject 的限制和迁移提示见 cf-spec doctor
 spec_workflow:
   schema_version: 1
   enforcement: required
@@ -1239,7 +1239,7 @@ spec 文件（含 frontmatter 的 description/checks）和 `CLAUDE.md` 提交到
 
 - `npm i -g @michaelxwb/code-flow@latest && code-flow init`：工具文件覆盖、合并文件智能合并、specs 不动
 - 新能力灰度：`quality_loop` 子开关支持单项关闭（如只开 post_check、关 correction_capture）
-- `quality_loop.enabled: false` 可关闭质量反馈；Spec Workflow 的 required Gate 仍生效，不能用 warn/inject 降低门禁强度。运行时升级回滚按迁移 journal 操作。
+- `quality_loop.enabled: false` 可关闭质量反馈；`required` 的 Spec Gate 仍生效。历史 `warn/inject` 会降低部分验证门禁，由 doctor 提示迁移，路由完整性错误始终阻断。运行时升级回滚按迁移 journal 操作。
 
 **管理员的关键转变**（v0.5）：过去判断"规范好不好"靠体感，现在有三组数据闭环——违规率说明规则是否被理解、修正率说明反馈是否有效、误报率说明机检是否过严。规范库的增删都有数据背书，做减法（退役僵尸规范）第一次变得有依据。
 
@@ -1280,7 +1280,7 @@ code-flow 通过 Codex 的 `UserPromptSubmit` Hook 在 prompt 提交前注入规
   → 规范内容注入到本次 prompt 上下文
 ```
 
-**四端差异**：Claude/Costrict 在"提交 prompt（UserPromptSubmit）"、"编辑前（PreToolUse）"、"编辑后（PostToolUse 合规反馈）"、"收尾（Stop 守门）"四个时机介入；Codex 同样四时机（hooks.json 注册）；OpenCode 使用原生 v2 prompt / tool-before / tool-after / context / idle API；反馈经 context 注入，idle 无 Stop 阻断接口。Codex 原生入口与其余平台入口共用 prompt 路由服务，session_id 由 `resolve_session_id()` 统一解析，PreToolUse 与 UserPromptSubmit 共享 `injected_version` 版本键不会重复注入。Hook stdout 统一用 `json.dumps(payload, ensure_ascii=False)`，避免中文 spec 被 escape 后 token 预算翻倍。
+**四端差异**：Claude/Costrict 在"提交 prompt（UserPromptSubmit）"、"编辑前（PreToolUse）"、"编辑后（PostToolUse 合规反馈）"、"收尾（Stop 守门）"四个时机介入；Codex 同样四时机（hooks.json 注册）；OpenCode 使用原生 v2 prompt / tool-before / tool-after / context / idle API；idle 无 Stop 阻断接口。四端共用注入服务，Prompt 与编辑前通过实际投影指纹去重。Claude/Costrict/Codex 的编辑前阻断使用 `permissionDecision: deny`；OpenCode 使用原生 `blocked` 结果。Hook stdout 统一用 `json.dumps(payload, ensure_ascii=False)`。
 
 ### 质量闭环 Hook（v0.5）
 
@@ -1368,9 +1368,15 @@ python3 -m pytest -q tests/test_opencode_native.py
 
 ### 会话状态
 
-`cf_pre_tool_hook.py` 与 `cf_user_prompt_hook.py` 通过 `.code-flow/.session-state.json` 的注入版本键去重，确保：
-- 每个会话独立（通过 session_id 隔离）
-- 已注入的 spec 不会重复注入
+注入状态保存在 `.code-flow/sessions/injection/<session-id 的 SHA256>.json`，Prompt 与编辑入口共享；`.session-state.json` 仅保存上下文压缩提醒计数。
+
+- TASK 和 path 模式按实际投影指纹去重，修改 `Spec-Refs`、合同或投影依赖后立即重新注入。
+- 每个会话独立，保留每 25 轮 Prompt 的周期重注入；成功输出后才提交去重状态，输出失败会保留重试机会。
+- 每个批量编辑事件按所属项目加载一次 Context；每次事件检查绑定 Spec 的源哈希，变化后要求 refresh。
+- path 注入使用 `min(budget.total, budget.l1_max)` 的估算 token 预算。超预算会阻断并提示创建聚焦 TASK 或缩小编辑范围，required 内容不会被静默截断。
+- Catalog 排除 `_session/` 与命令模板；目录超预算时显示省略数量，并提供 `code-flow spec catalog --root . --stage code --json` 获取完整约束候选。
+
+实现与回归场景见 [Specs 注入校验](spec-injection-hardening.md)。
 
 ---
 

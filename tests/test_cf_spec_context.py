@@ -552,10 +552,10 @@ def test_active_route_reuses_projection_until_task_mtime_changes(
     calls = 0
     original = cf_spec_router.project_task_session
 
-    def project(context: object, task_file: str, task_id: str) -> object:
+    def project(context: object, task_file: str, task_id: str, **kwargs: object) -> object:
         nonlocal calls
         calls += 1
-        return original(context, task_file, task_id)
+        return original(context, task_file, task_id, **kwargs)
 
     monkeypatch.setattr(cf_spec_router, "project_task_session", project)
     route_prompt(str(root), ("src/hook.py",), "s1")

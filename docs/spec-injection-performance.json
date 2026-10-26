@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-26",
+  "hardware": "Apple M5 Pro",
+  "python": "3.9.6",
+  "baseline_commit": "42a43b6",
+  "method": "Fresh Python process per Prompt/Hook, warm filesystem; direct service batch measurements use the same interpreter. Derived parse-cache cold/warm cases are identified separately. Milliseconds are machine-local samples, not SLAs.",
+  "path_prompt_one_match_500_specs": {
+    "before": {
+      "n": 10,
+      "median_ms": 229.33,
+      "p95_ms": 235.37,
+      "max_ms": 235.37
+    },
+    "after": {
+      "n": 10,
+      "median_ms": 56.02,
+      "p95_ms": 57.82,
+      "max_ms": 57.82
+    }
+  },
+  "unchanged_active_prompt_200_bindings": {
+    "before": {
+      "n": 10,
+      "median_ms": 285.23,
+      "p95_ms": 292.18,
+      "max_ms": 292.18
+    },
+    "after": {
+      "n": 10,
+      "median_ms": 56.48,
+      "p95_ms": 58.27,
+      "max_ms": 58.27
+    }
+  },
+  "edit_service_20_files_200_bindings_parse_cache_warm": {
+    "before": {
+      "n": 3,
+      "median_ms": 9631.24,
+      "p95_ms": 9641.59,
+      "max_ms": 9641.59
+    },
+    "after": {
+      "n": 3,
+      "median_ms": 8.03,
+      "p95_ms": 8.24,
+      "max_ms": 8.24
+    }
+  },
+  "installed_codex_20_files_200_bindings": {
+    "before": {
+      "timed_out": true,
+      "stdout_before_timeout": 0,
+      "elapsed_ms": 5004.3
+    },
+    "after": {
+      "bindings": 200,
+      "files": 20,
+      "fresh_python_process_each_event": true,
+      "timeout_seconds": 5,
+      "parse_cache_cold_ms": 333.36,
+      "cold_output_bytes": 455,
+      "parse_cache_warm_median_ms": 67.45,
+      "warm_max_ms": 68.53,
+      "warm_n": 10
+    }
+  },
+  "installed_integrity_check_after": {
+    "n": 20,
+    "median_ms": 3.14,
+    "p95_ms": 3.58,
+    "max_ms": 3.58
+  }
+}

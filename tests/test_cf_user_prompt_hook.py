@@ -212,7 +212,7 @@ def test_task_projection_reinjected_after_context_change(tmp_path: Path) -> None
     assert "TASK-001 Spec Context" in third, "context change must re-inject"
 
 
-def test_inject_enforcement_degrades_router_error_silently(tmp_path: Path) -> None:
+def test_inject_enforcement_cannot_hide_invalid_routing(tmp_path: Path) -> None:
     spec = tmp_path / ".code-flow/specs/app/rules.md"
     spec.parent.mkdir(parents=True)
     spec.write_text("# missing metadata\n", encoding="utf-8")
@@ -222,10 +222,12 @@ def test_inject_enforcement_degrades_router_error_silently(tmp_path: Path) -> No
     }
     (tmp_path / ".code-flow/config.yml").write_text(yaml.safe_dump(config), encoding="utf-8")
 
-    assert _run_raw(tmp_path, "edit src/app.py") == ""
+    result = json.loads(_run_raw(tmp_path, "edit src/app.py"))
+    assert result["decision"] == "block"
+    assert "invalid_spec_metadata" in result["reason"]
 
 
-def test_warn_enforcement_degrades_router_error_to_advisory(tmp_path: Path) -> None:
+def test_warn_enforcement_cannot_hide_invalid_routing(tmp_path: Path) -> None:
     spec = tmp_path / ".code-flow/specs/app/rules.md"
     spec.parent.mkdir(parents=True)
     spec.write_text("# missing metadata\n", encoding="utf-8")
@@ -236,8 +238,8 @@ def test_warn_enforcement_degrades_router_error_to_advisory(tmp_path: Path) -> N
     (tmp_path / ".code-flow/config.yml").write_text(yaml.safe_dump(config), encoding="utf-8")
 
     text = _run_raw(tmp_path, "edit src/app.py")
-    assert "warn 模式" in text
-    assert "SPEC_WORKFLOW_BLOCKED" not in text
+    assert json.loads(text)["decision"] == "block"
+    assert "SPEC_WORKFLOW_BLOCKED" in text
 
 
 def test_task_projection_refreshes_every_interval_without_reminder(tmp_path: Path) -> None:

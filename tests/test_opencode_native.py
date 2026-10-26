@@ -76,7 +76,9 @@ def test_native_scope_expansion_is_advisory(tmp_path: Path, monkeypatch: pytest.
     import cf_edit_service
     from cf_opencode_event import dispatch
     _project(tmp_path)
-    monkeypatch.setattr(cf_edit_service, "_active_expansion", lambda root, path: ("new-required",))
+    from cf_spec_router import RouteResult
+    monkeypatch.setattr(cf_edit_service, "route_prompt", lambda *args, **kwargs:
+                        RouteResult("task", "bound rules", (), "hash", ("new-required",)))
     result = dispatch({"directory": str(tmp_path), "kind": "tool.before", "event": {
         "sessionID": "expansion", "tool": "edit", "input": {"path": "src/a.py"},
     }})

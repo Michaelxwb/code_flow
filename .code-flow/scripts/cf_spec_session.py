@@ -71,8 +71,14 @@ def _rule_line(ref: str, rule: RuleBinding, compact: bool = False) -> str:
     return f"- `{ref}`: {rule.summary}\n  - {hashes}; artifacts={','.join(artifacts) or 'none'}\n"
 
 
+def _reference_header(section: str) -> str:
+    lines = re.findall(r"(?m)^- \*\*(?:Source|Design-Refs|Acceptance-Refs)\*\*:[ \t]*[^\n]*", section)
+    return "".join(line + "\n" for line in lines)
+
+
 def project_task_session(
-    context: SpecContext, task_file: str, task_id: str, max_chars: int = 12000
+    context: SpecContext, task_file: str, task_id: str, max_chars: int = 12000,
+    *, context_hash: Optional[str] = None,
 ) -> SessionProjection:
     section = _task_section(Path(task_file).read_text(encoding="utf-8"), task_id)
     refs = _refs(section)
@@ -81,7 +87,8 @@ def project_task_session(
     if missing:
         raise ValueError(f"unknown_spec_refs: {', '.join(missing)}")
     acceptance = _acceptance_contract(section)
-    header = f"# {task_id} Spec Context\n\n- Context-SHA256: `{context_sha256(context)}`\n\n## Required Rules\n"
+    header = (f"# {task_id} Spec Context\n\n- Context-SHA256: `{context_hash or context_sha256(context)}`\n"
+              + _reference_header(section) + "\n## Required Rules\n")
     footer = f"\n## Acceptance Contract\n{acceptance}\n"
     lines: list[str] = []
     for ref in refs:

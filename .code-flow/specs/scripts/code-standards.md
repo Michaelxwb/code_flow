@@ -119,7 +119,8 @@ except:
 - checks 执行必须有护栏：单条超时、内容大小上限、disabled 过滤（`cf_checks.run_checks` 模式）
 - 新增 hook 入口必须恒退出 0、no-op 场景静默、异常落 stderr（`cf_post_hook`/`cf_stop_hook` 同模式）
 - quality_loop 子能力必须可经 `resolve_quality_loop` 开关整体关闭，关闭后零 IO
-- required Spec Workflow 没有 off/advisory 项目级开关；schema 缺失或损坏必须 fail-closed
+- 本项目使用 required；历史 warn/inject 模式由 doctor 提示迁移。配置、绑定源、Context 与投影的完整性错误始终 fail-closed，不受验证降级模式影响。
+- 批量编辑按项目一次加载 Context、校验绑定源并检查全部路径；注入去重在成功输出后提交，投影版本必须包含实际输出的全部依赖。
 - 事件先后判断禁止依赖秒级时间戳（同秒事件无法排序），用日志追加顺序
 
 ## Patterns

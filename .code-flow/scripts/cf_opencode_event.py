@@ -5,7 +5,8 @@ import sys
 
 import cf_log
 from cf_core import _log, ensure_utf8_io
-from cf_edit_service import after_edit, prepare_edit
+from cf_edit_service import after_edit, prepare_edits
+from cf_injection import injection_output
 from cf_exec_base import execution_session
 from cf_native_paths import project_root, validated_paths
 from cf_patch import FileOperation, parse_patch
@@ -41,14 +42,13 @@ def tool_result(root: str, directory: str, kind: str, event: dict[str, object], 
         cf_log.degrade(root, "opencode_tool", f"{tool}: edit not confirmed (status={event.get('status')})", sid)
         return {"context": "", "blocked": False}
     paths = edit_paths(root, directory, event)
+    if kind == "tool.before":
+        context, blocked = prepare_edits(root, tuple(path for path, _ in paths), sid, str(tool))
+        return {"context": context, "blocked": blocked}
     text = []
     blocked = False
     for path, deleted in paths:
-        if kind == "tool.before":
-            feedback, rejected = prepare_edit(root, path, sid, str(tool))
-            blocked = blocked or rejected
-        else:
-            feedback = after_edit(root, path, sid, str(tool), deleted)
+        feedback = after_edit(root, path, sid, str(tool), deleted)
         if feedback:
             text.append(feedback)
     context = "\n\n".join(dict.fromkeys(text))
@@ -87,7 +87,11 @@ def main() -> None:
         data = json.loads(sys.stdin.read())
         if not isinstance(data, dict):
             raise ValueError("native RPC input must be an object")
-        result = dispatch(data)
+        with injection_output():
+            result = dispatch(data)
+            sys.stdout.write(json.dumps(result, ensure_ascii=False))
+            sys.stdout.flush()
+        return
     except Exception as exc:
         _log(f"cf_opencode_event error: {exc}")
         result = {"error": f"code-flow OpenCode runtime failed: {exc}. Run code-flow migrate --runtime --dry-run, then --apply."}

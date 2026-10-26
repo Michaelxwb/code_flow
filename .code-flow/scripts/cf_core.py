@@ -14,6 +14,12 @@ _effective_mapping_cache: dict = {}
 _ext_set_cache: dict = {}
 
 
+class ConfigError(ValueError):
+    """An existing project configuration cannot be read or validated."""
+
+    code = "invalid_config"
+
+
 def project_instruction_file(project_root: str, platform: str = "") -> str:
     """Select the installed platform's instruction file, with legacy fallback."""
     names = ("CLAUDE.md", "AGENTS.md") if platform in ("claude", "costrict") else ("AGENTS.md", "CLAUDE.md")
@@ -25,24 +31,27 @@ def load_config(project_root: str) -> dict:
     if not os.path.exists(config_path):
         return {}
     try:
-        mtime = os.path.getmtime(config_path)
-    except OSError:
-        return {}
+        info = os.stat(config_path)
+        signature = (info.st_mtime_ns, info.st_ctime_ns, info.st_size)
+    except OSError as exc:
+        raise ConfigError(f"{config_path}: {exc}") from exc
     cached = _config_cache.get(config_path)
-    if cached and cached["mtime"] == mtime:
+    if cached and cached["mtime"] == signature:
         return cached["data"]
     try:
         import yaml
-    except Exception:
-        return {}
+    except ImportError as exc:
+        raise ConfigError("PyYAML is required to read code-flow configuration") from exc
     try:
         with open(config_path, "r", encoding="utf-8") as file:
             data = yaml.safe_load(file)
-        result = data or {}
-        _config_cache[config_path] = {"mtime": mtime, "data": result}
+        if not isinstance(data, dict):
+            raise ConfigError(f"{config_path}: configuration must be a YAML mapping")
+        result = data
+        _config_cache[config_path] = {"mtime": signature, "data": result}
         return result
-    except Exception:
-        return {}
+    except (OSError, UnicodeError, yaml.YAMLError) as exc:
+        raise ConfigError(f"{config_path}: {exc}") from exc
 
 
 def estimate_tokens(text: str) -> int:
@@ -87,9 +96,6 @@ def _spec_path_from_entry(entry) -> str:
 
 
 def discover_spec_domains(project_root: str) -> dict:
-    cached = _spec_domains_cache.get(project_root)
-    if cached is not None:
-        return cached
     specs_root = os.path.join(project_root, ".code-flow", "specs")
     discovered = {}
     if not os.path.isdir(specs_root):
@@ -136,11 +142,11 @@ def _mapping_signature(mapping: dict) -> str:
 
 
 def build_effective_mapping(project_root: str, mapping: dict) -> dict:
-    cache_key = (project_root, _mapping_signature(mapping))
+    discovered = discover_spec_domains(project_root)
+    cache_key = (project_root, _mapping_signature(mapping), _mapping_signature(discovered))
     cached = _effective_mapping_cache.get(cache_key)
     if cached is not None:
         return cached
-    discovered = discover_spec_domains(project_root)
     effective = {}
 
     for domain, rel_paths in discovered.items():
@@ -630,7 +636,7 @@ def _catalog_entries(project_root: str, effective_mapping: dict) -> list:
             cfg = normalize_spec_entry(entry)
             rel = cfg.get("path", "")
             # tags: [] marks command-only templates — never advertised either
-            if not rel or not cfg.get("tags"):
+            if not rel or rel.startswith("_session/") or not cfg.get("tags"):
                 continue
             entries.append((cfg.get("tier", 1), rel, os.path.join(specs_root, rel)))
     # Tier 1 constraints first so budget truncation drops navigation maps first
@@ -638,63 +644,58 @@ def _catalog_entries(project_root: str, effective_mapping: dict) -> list:
     return entries
 
 
-def build_spec_catalog(
-    project_root: str, effective_mapping: dict, catalog_max: int = 200
-) -> str:
-    """Build the compact Catalog used only when no task or path is active.
-
-    The model performs the semantic matching itself by reading the catalog and
-    pulling relevant specs — replacing keyword-table guessing on prompts with
-    no explicit path evidence. Cached per project_root keyed by the mtimes of
-    config.yml and every listed spec file.
-    """
-    entries = _catalog_entries(project_root, effective_mapping)
-    if not entries:
-        return ""
-    config_path = os.path.join(project_root, ".code-flow", "config.yml")
-    signature = []
-    for path in [config_path] + [abs_path for _, _, abs_path in entries]:
-        try:
-            signature.append((path, os.path.getmtime(path)))
-        except OSError:
-            signature.append((path, 0.0))
-    signature = tuple(signature)
-    cached = _catalog_cache.get(project_root)
-    if cached and cached["signature"] == signature and cached["catalog_max"] == catalog_max:
-        return cached["catalog"]
-
+def _catalog_lines(entries: list[tuple[int, str, str]]) -> list[str]:
     lines = []
     for tier, rel, abs_path in entries:
         try:
             with open(abs_path, "r", encoding="utf-8") as f:
                 desc = spec_description(f.read())
-        except Exception:
+        except (OSError, UnicodeError) as exc:
+            _log(f"Spec Catalog read failed: {rel}: {exc}")
             continue
         suffix = "（导航地图）" if tier == 0 else ""
         lines.append(f"- `{rel}` — {desc or '(no description)'}{suffix}")
-    if not lines:
-        return ""
+    return lines
 
+
+def _bounded_catalog(lines: list[str], maximum: int) -> str:
     catalog = CATALOG_HEADER
     included = 0
+    def footer(count: int) -> str:
+        if count == len(lines):
+            return ""
+        return (f"\n已展示 {count}/{len(lines)} 项；其余规范请运行 "
+                "`code-flow spec catalog --root . --stage code --json` 获取。")
     for line in lines:
         candidate = catalog + "\n" + line
-        if estimate_tokens(candidate) > catalog_max:
-            break
+        if estimate_tokens(candidate + footer(included + 1)) > maximum:
+            continue
         catalog = candidate
         included += 1
-    if included < len(lines):
-        _log(
-            f"WARNING: spec catalog truncated to {included}/{len(lines)} "
-            f"entries (catalog_max={catalog_max} tokens)"
-        )
-    if included == 0:
+    text = catalog + footer(included)
+    if estimate_tokens(text) > maximum:
+        raise ConfigError("catalog_max is too small for the Catalog and complete-list command")
+    return text
+
+
+def build_spec_catalog(project_root: str, effective_mapping: dict, catalog_max: int = 200) -> str:
+    """Publish bounded navigation with an explicit complete-catalog entry point."""
+    entries = _catalog_entries(project_root, effective_mapping)
+    if not entries:
         return ""
-    _catalog_cache[project_root] = {
-        "signature": signature,
-        "catalog_max": catalog_max,
-        "catalog": catalog,
-    }
+    signature = []
+    for _, _, path in entries:
+        try:
+            info = os.stat(path)
+            signature.append((path, info.st_mtime_ns, info.st_ctime_ns, info.st_size))
+        except OSError:
+            signature.append((path, 0, 0, 0))
+    cached = _catalog_cache.get(project_root)
+    if cached and cached["signature"] == signature and cached["catalog_max"] == catalog_max:
+        return cached["catalog"]
+    lines = _catalog_lines(entries)
+    catalog = _bounded_catalog(lines, catalog_max) if lines else ""
+    _catalog_cache[project_root] = {"signature": signature, "catalog_max": catalog_max, "catalog": catalog}
     return catalog
 
 

@@ -2,7 +2,7 @@ version: 1
 
 spec_workflow:
     schema_version: 1
-    enforcement: required  # required=全门禁 | warn=门禁仅记录不阻断 | inject=只注入不门禁
+    enforcement: required  # 推荐全门禁；历史 warn/inject 仅兼容部分验证降级，路由完整性错误始终阻断
     drift_check: true
     scope_expansion_check: true
     metrics: true
