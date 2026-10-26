@@ -8,8 +8,8 @@ from typing import Protocol
 
 from codeflow.core import cf_fs
 from codeflow.core.cf_log import warn
-import codeflow.cli.cf_spec_context as cf_spec_context
-from codeflow.cli.cf_spec_context import (ContextError, SpecContext, context_from_data,
+import codeflow.spec.cf_spec_context_model as cf_spec_context_model
+from codeflow.spec.cf_spec_context_model import (ContextError, SpecContext, context_from_data,
                              context_sha256, context_to_data)
 
 
@@ -48,7 +48,7 @@ def _write(path: Path, payload: dict[str, object]) -> None:
 
 def load_snapshot(root: str, path: str, loader: ContextLoader) -> tuple[SpecContext, str]:
     source = Path(path).read_bytes()
-    parser = Path(cf_spec_context.__file__).read_bytes()
+    parser = Path(cf_spec_context_model.__file__).read_bytes()
     key = hashlib.sha256(str(Path(path).resolve()).encode("utf-8") + b"\0"
                          + hashlib.sha256(source).digest() + hashlib.sha256(parser).digest()).hexdigest()
     cache = Path(root) / ".code-flow/.context-state.json"

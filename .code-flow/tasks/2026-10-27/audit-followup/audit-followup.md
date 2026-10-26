@@ -31,8 +31,8 @@
 | S-02 | docs/codebase-consolidation-audit.md#A2 | unit | 真实 AST 导入图 + 双副本 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_runtime_consolidation.py::test_private_symbol_guard","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/** | - | - | no |
 | S-03 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + manifest 提取 | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_acceptance_manifest.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-04 | docs/codebase-consolidation-audit.md#A4 | integration | 真实 manifest 锁定/校验 + 临时需求目录 | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_cf_acceptance_manifest.py","tests/test_acceptance_contract_hardening.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-05 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + Context 文件 | TASK-003 | planned | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_spec_context.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-06 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 active marker + spec-context.yml + hook 子进程 | TASK-003 | planned | ["python3","-m","pytest","-q","tests/test_cf_workflow_service.py","tests/test_cf_spec_context.py","tests/test_cf_user_prompt_hook.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-05 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + Context 文件 | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_spec_context.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-06 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 active marker + spec-context.yml + hook 子进程 | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_cf_workflow_service.py","tests/test_cf_spec_context.py","tests/test_cf_user_prompt_hook.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-07 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + SCC 计算 | TASK-004 | planned | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-08 | docs/codebase-consolidation-audit.md#A3 | system | 真实 npm pack + node CLI/init/migrate | TASK-005 | verified | ["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"] | P2 | auto | none | tests/** | - | - | no |
 | S-09 | docs/codebase-consolidation-audit.md#A7 | integration | 真实 adapters 文件 + 归一化 parity | TASK-006 | verified | ["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"] | P2 | auto | none | tests/** | - | - | no |
@@ -41,6 +41,8 @@
 > 全部场景为工具链内部契约验证，不涉及浏览器，不声明 E2E。A4 的收益指标是 batch-4 边清零后 16 模块 SCC 缩到不超过 7 模块；不承诺一次消除剩余编排环。
 
 ---
+
+
 
 
 ## TASK-001: TASK 契约摘要收口
@@ -152,7 +154,7 @@
 
 ## TASK-003: Context 域职责与依赖收口
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P2
 - **Depends**: TASK-002
 - **Source**: docs/codebase-consolidation-audit.md#A4, docs/codebase-consolidation-audit.md#A8
@@ -167,32 +169,36 @@
 
 ### Checklist
 
-- [ ] 抽出 Spec Context 模型/序列化/哈希到低层模块，调用方不再导入 `cli.cf_spec_context` 获取模型
-- [ ] 抽出 active marker 与锁到独立模块，workflow service/transaction 不再导入 `cf_spec_context` 私有符号
-- [ ] `cf_context_cache`、`cf_evidence_store`、`cf_plan_quality` 不再导入 `cli.cf_spec_context`
-- [ ] 删除对应 3 条 `DEPENDENCY_EDGE_ALLOWLIST` 与 4 条 `PRIVATE_SYMBOL_ALLOWLIST`
-- [ ] [S-05][unit] 依赖守卫通过；`cf_spec_context` 物理行数降到 1,500 行以下
-- [ ] [S-06][integration] start/block/resume/finish、active marker 漂移、refresh/doctor、hook 注入行为不变
-- [ ] RULE-scripts-context-gate-001 verifier: python3 -m pytest -q tests/test_cf_spec_context.py tests/test_cf_spec_gate.py tests/test_cf_task_runtime.py
-- [ ] RULE-scripts-hook-protocol-001 verifier: python3 -m pytest -q tests/test_hook_command_robustness.py tests/test_cf_user_prompt_hook.py tests/test_cf_post_hook.py tests/test_codex_native_hook.py tests/test_opencode_native.py tests/test_runtime_contract.py
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 抽出 Spec Context 模型/序列化/哈希到低层模块，调用方不再导入 `cli.cf_spec_context` 获取模型
+- [x] 抽出 active marker 与锁到独立模块，workflow service/transaction 不再导入 `cf_spec_context` 私有符号
+- [x] `cf_context_cache`、`cf_evidence_store`、`cf_plan_quality` 不再导入 `cli.cf_spec_context`
+- [x] 删除对应 3 条 `DEPENDENCY_EDGE_ALLOWLIST` 与 4 条 `PRIVATE_SYMBOL_ALLOWLIST`
+- [x] [S-05][unit] 依赖守卫通过；`cf_spec_context` 物理行数降到 1,500 行以下
+- [x] [S-06][integration] start/block/resume/finish、active marker 漂移、refresh/doctor、hook 注入行为不变
+- [x] RULE-scripts-context-gate-001 verifier: python3 -m pytest -q tests/test_cf_spec_context.py tests/test_cf_spec_gate.py tests/test_cf_task_runtime.py
+- [x] RULE-scripts-hook-protocol-001 verifier: python3 -m pytest -q tests/test_hook_command_robustness.py tests/test_cf_user_prompt_hook.py tests/test_cf_post_hook.py tests/test_codex_native_hook.py tests/test_opencode_native.py tests/test_runtime_contract.py
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-05 | unit | 真实 AST 导入图、真实 Context 文件 | 3 条反向边与 4 个私有符号消失；行数达标 | `tests/test_runtime_consolidation.py::test_dependency_direction`、`test_private_symbol_guard` | `["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_runtime_consolidation.py::test_private_symbol_guard","tests/test_cf_spec_context.py"]` | planned |
-| S-06 | integration | 真实 git 仓库、active marker、spec-context.yml、hook 子进程 | 生命周期与注入结果不变 | `tests/test_cf_workflow_service.py`、`tests/test_cf_user_prompt_hook.py` | `["python3","-m","pytest","-q","tests/test_cf_workflow_service.py","tests/test_cf_spec_context.py","tests/test_cf_user_prompt_hook.py"]` | planned |
+| S-05 | unit | 真实 AST 导入图、真实 Context 文件 | 3 条反向边与 4 个私有符号消失；行数达标 | `tests/test_runtime_consolidation.py::test_dependency_direction`、`test_private_symbol_guard` | `["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_runtime_consolidation.py::test_private_symbol_guard","tests/test_cf_spec_context.py"]` | verified |
+| S-06 | integration | 真实 git 仓库、active marker、spec-context.yml、hook 子进程 | 生命周期与注入结果不变 | `tests/test_cf_workflow_service.py`、`tests/test_cf_user_prompt_hook.py` | `["python3","-m","pytest","-q","tests/test_cf_workflow_service.py","tests/test_cf_spec_context.py","tests/test_cf_user_prompt_hook.py"]` | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-05 | planned | planned | planned | planned | planned |
-| S-06 | planned | planned | planned | planned | planned |
+| S-05 | FAIL: test_dependency_direction 报 3 条反向边（cache/evidence/plan quality -> cf_spec_context）；test_private_symbol_guard 报 4 条私有导入；consumers import 测试 6 处命中；行数 2072 >= 1500 | PASS: dependency_direction + private_symbol_guard + test_cf_spec_context.py 37 passed；cf_spec_context 1280 行；全量 968 passed, 3 skipped | tests/test_runtime_consolidation.py::test_dependency_direction; ::test_private_symbol_guard; tests/test_cf_spec_context.py::test_context_owners_do_not_import_cli_entry; ::test_context_module_line_budget | 真实 AST 导入图（canonical/deployed 双副本）；真实 model/active 模块；双副本字节一致 | verified |
+| S-06 | N/A: 行为保持型重构，改动前既有生命周期用例为回归基线 | PASS: test_cf_workflow_service.py + test_cf_spec_context.py + test_cf_user_prompt_hook.py 70 passed；全量 968 passed, 3 skipped；context-gate verifier 66 passed；hook-protocol verifier 76 passed | tests/test_cf_workflow_service.py；tests/test_cf_spec_context.py；tests/test_cf_user_prompt_hook.py | 真实 git 仓库、active marker、spec-context.yml、hook 子进程 | verified |
+- S-05: verified — automated command passed; run_id=ebf4f3cdf360442a861fa6668a6ec1a0 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=ebf4f3cdf360442a861fa6668a6ec1a0 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-27] started
+- [2026-10-27] completed (done)
 
 ---
 

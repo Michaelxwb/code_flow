@@ -16,7 +16,8 @@ from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from typing import Mapping, Optional, Sequence
-from codeflow.cli.cf_spec_context import ActiveTask, SpecContext
+from codeflow.spec.cf_active_task import ActiveTask, active_data, load_active_task
+from codeflow.spec.cf_spec_context_model import ContextError, SpecContext
 from codeflow.task.cf_task_doc import TaskDocument, TaskDocumentError, parse_task_document
 from codeflow.spec.cf_workflow_transaction import recover_transition
 from codeflow.core.cf_task_state import FINISHED_STATUSES
@@ -250,15 +251,14 @@ def _sync_markdown(task_file: str, task_id: str, status: str, log_line: str = ""
 
 def _commit_state(root: str, task_file: str, task_id: str, status: str, previous: Optional[ActiveTask],
                   updated: Optional[ActiveTask], log_line: str = "", prepend: str = "") -> str:
-    from codeflow.cli.cf_spec_context import _active_data
     from codeflow.spec.cf_workflow_transaction import commit_transition
     marker = Path(root) / ".code-flow/.active-task.json"
     marker_before = marker.read_text(encoding="utf-8") if marker.exists() else None
     actual = json.loads(marker_before) if marker_before is not None else None
-    expected = _active_data(previous) if previous is not None else None
+    expected = active_data(previous) if previous is not None else None
     if actual != expected:
         raise WorkflowError("active_mismatch", "active task changed before commit")
-    marker_after = json.dumps(_active_data(updated), ensure_ascii=False, indent=2) + "\n" if updated is not None else None
+    marker_after = json.dumps(active_data(updated), ensure_ascii=False, indent=2) + "\n" if updated is not None else None
     task = Path(task_file)
     before = task.read_text(encoding="utf-8")
     after = _render_markdown(before, task_id, status, log_line, prepend)
@@ -408,7 +408,8 @@ def start_task(
     """Full Start Gate: hard preconditions first, then the guarded pipeline
     (refresh → manifest check → projection → activation), then the Markdown
     view flips to in-progress in the same call."""
-    from codeflow.cli.cf_spec_context import load_context, refresh_context, save_context, _new_active
+    from codeflow.cli.cf_spec_context import load_context, refresh_context, save_context
+    from codeflow.spec.cf_active_task import new_active
     from codeflow.cli.cf_spec_session import context_sha256
 
     recover_transition(root)
@@ -456,18 +457,17 @@ def start_task(
     save_context(str(context_path), refreshed.context)
     output = _write_projection(root, candidate, refreshed.context, task_id, session_output)
     try:
-        active = replace(_new_active(root, str(directory), task_id, current_hash, owned), status="active")
+        active = replace(new_active(root, str(directory), task_id, current_hash, owned), status="active")
         markdown = _commit_state(root, str(candidate), task_id, "in-progress", None, active, f"- [{_today()}] started")
     except Exception as exc:
         code = getattr(exc, "code", "activation_failed") if isinstance(exc, ValueError) else "activation_failed"
         raise WorkflowError(str(code), str(exc)) from exc
-    from codeflow.cli.cf_spec_context import _active_data
 
     return {
         "ok": True,
         "context_sha256": current_hash,
         "refresh_changes": [item.__dict__ for item in refreshed.changes],
-        "active": _active_data(active),
+        "active": active_data(active),
         "session_output": str(output),
         "acceptance_manifest": str(directory / ".acceptance-manifest.json") if (directory / ".acceptance-manifest.json").is_file() else None,
         "e2e_plan": e2e_plan,
@@ -476,8 +476,6 @@ def start_task(
 
 
 def _require_marker_task(root: str, task_id: str, task_dir: str, task_file: str) -> None:
-    from codeflow.cli.cf_spec_context import ContextError, load_active_task
-
     recover_transition(root)
     try:
         active = load_active_task(root)
@@ -493,8 +491,6 @@ def _require_marker_task(root: str, task_id: str, task_dir: str, task_file: str)
 
 def block_task(root: str, task_dir: str, task_file: str, task_id: str, reason: str) -> dict[str, object]:
     """Block a TASK: marker (when it is ours and active) plus Markdown view."""
-    from codeflow.cli.cf_spec_context import ContextError, load_active_task
-
     if not reason.strip():
         raise WorkflowError("block_reason_required", task_id)
     recover_transition(root)
@@ -530,8 +526,6 @@ def block_task(root: str, task_dir: str, task_file: str, task_id: str, reason: s
 
 def resume_task(root: str, task_dir: str, task_file: str, task_id: str) -> dict[str, object]:
     """Resume a blocked/paused TASK after its blockers clear."""
-    from codeflow.cli.cf_spec_context import load_active_task
-
     recover_transition(root)
     _, target = _resolve_paths(root, task_dir, task_file)
     task_file = str(target)
@@ -562,8 +556,6 @@ def resume_task(root: str, task_dir: str, task_file: str, task_id: str) -> dict[
 
 def complete_task(root: str, task_dir: str, task_file: str, task_id: str, gate_passed: bool) -> dict[str, object]:
     """Complete a TASK after its Done Gate passed; syncs both records."""
-    from codeflow.cli.cf_spec_context import load_active_task
-
     if not gate_passed:
         raise WorkflowError("gate_failed", task_id, ("Done Gate 未通过",))
     _require_marker_task(root, task_id, task_dir, task_file)
@@ -573,10 +565,9 @@ def complete_task(root: str, task_dir: str, task_file: str, task_id: str, gate_p
     if active.status != "active":
         raise WorkflowError("invalid_active_transition", active.status)
     completed = replace(active, status="completed")
-    from codeflow.cli.cf_spec_context import _active_data
 
     markdown = _commit_state(root, task_file, task_id, "done", active, None, f"- [{_today()}] completed (done)")
-    return {"ok": True, "task_id": task_id, "active": _active_data(completed), "markdown": markdown}
+    return {"ok": True, "task_id": task_id, "active": active_data(completed), "markdown": markdown}
 
 
 def provisional_task(root: str, task_dir: str, task_file: str, task_id: str, reason: str) -> dict[str, object]:
@@ -586,8 +577,6 @@ def provisional_task(root: str, task_dir: str, task_file: str, task_id: str, rea
     missing checks are fixed; provisional is explicitly open/unfinished for
     dependency, collect and archive gates.
     """
-    from codeflow.cli.cf_spec_context import load_active_task
-
     recover_transition(root)
     _require_marker_task(root, task_id, task_dir, task_file)
     _, target = _resolve_paths(root, task_dir, task_file)

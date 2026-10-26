@@ -7,6 +7,7 @@ from dataclasses import replace
 import hashlib
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -14,7 +15,9 @@ import pytest
 import yaml
 
 
-SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "core" / "code-flow" / "scripts"
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = ROOT / "src" / "core" / "code-flow" / "scripts"
+DEPLOYED_SCRIPTS = ROOT / ".code-flow" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_spec_context import (
@@ -49,6 +52,37 @@ from cf_spec_context import (
 from codeflow.spec import cf_spec_router
 from codeflow.spec.cf_spec_resolver import resolve_candidates
 from codeflow.spec.cf_spec_router import RouterError, route_prompt
+
+
+_CONTEXT_CLI_IMPORT = re.compile(
+    r"(?m)^\s*(?:from\s+codeflow\.cli\.cf_spec_context\b|import\s+codeflow\.cli\.cf_spec_context\b)"
+)
+
+
+def test_context_owners_do_not_import_cli_entry() -> None:
+    """[S-05] cache/evidence/plan quality 依赖低层模型，不反向导入 CLI 入口。"""
+    consumers = (
+        "codeflow/core/cf_context_cache.py",
+        "codeflow/evidence/cf_evidence_store.py",
+        "codeflow/acceptance/cf_plan_quality.py",
+    )
+    offenders = [
+        f"{scripts.name}/{relative}"
+        for scripts in (SCRIPTS, DEPLOYED_SCRIPTS)
+        for relative in consumers
+        if _CONTEXT_CLI_IMPORT.search((scripts / relative).read_text(encoding="utf-8"))
+    ]
+    assert not offenders, f"context consumers must import the low-level model: {offenders}"
+
+
+def test_context_module_line_budget() -> None:
+    """[S-05] cf_spec_context 只保留 CLI/doctor/决议编排，物理行数 < 1500。"""
+    for scripts in (SCRIPTS, DEPLOYED_SCRIPTS):
+        context = scripts / "codeflow" / "cli" / "cf_spec_context.py"
+        lines = len(context.read_text(encoding="utf-8").splitlines())
+        assert lines < 1500, f"{context.relative_to(ROOT)} still has {lines} lines"
+        assert (scripts / "codeflow" / "spec" / "cf_spec_context_model.py").is_file()
+        assert (scripts / "codeflow" / "spec" / "cf_active_task.py").is_file()
 
 
 def test_artifact_hash_cache_reuses_unchanged_file(tmp_path: Path, monkeypatch) -> None:

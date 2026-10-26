@@ -495,7 +495,7 @@ def compact_context_file(
     archive: bool = True,
 ) -> dict[str, object]:
     """Compact a persisted spec-context.yml in place and report what changed."""
-    from codeflow.cli.cf_spec_context import load_context, save_context
+    from codeflow.spec.cf_spec_context_model import load_context, save_context
 
     context_path = Path(path)
     context = load_context(str(context_path))
