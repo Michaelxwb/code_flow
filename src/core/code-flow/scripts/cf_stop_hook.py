@@ -15,6 +15,7 @@ import os
 import re
 import sys
 import time
+from dataclasses import replace
 
 import cf_log
 from cf_exec_base import execution_session
@@ -205,7 +206,9 @@ def _stop_feedback(root: str, sid: str, files: list[str], enforcement: str, dead
     elif config.state == VALID:
         validators = [item for item in config.validators if not is_heavy(item)]
         if validators:
-            outcome = run_validators(root, config, files, sid, deadline=deadline)
+            outcome = run_validators(
+                root, replace(config, validators=tuple(validators)), files, sid, deadline=deadline
+            )
             failures.extend(outcome.failures)
             truncated = outcome.truncated
     if not failures:
