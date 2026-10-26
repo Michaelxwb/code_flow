@@ -33,7 +33,7 @@
 | S-04 | docs/codebase-consolidation-audit.md#A4 | integration | 真实 manifest 锁定/校验 + 临时需求目录 | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_cf_acceptance_manifest.py","tests/test_acceptance_contract_hardening.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-05 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + Context 文件 | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_spec_context.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-06 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 active marker + spec-context.yml + hook 子进程 | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_cf_workflow_service.py","tests/test_cf_spec_context.py","tests/test_cf_user_prompt_hook.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-07 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + SCC 计算 | TASK-004 | planned | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-07 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + SCC 计算 | TASK-004 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-08 | docs/codebase-consolidation-audit.md#A3 | system | 真实 npm pack + node CLI/init/migrate | TASK-005 | verified | ["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"] | P2 | auto | none | tests/** | - | - | no |
 | S-09 | docs/codebase-consolidation-audit.md#A7 | integration | 真实 adapters 文件 + 归一化 parity | TASK-006 | verified | ["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-10 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 CLI 安装 + runner fixture 矩阵 | TASK-007 | verified | ["python3","-m","pytest","-q","tests/test_cli_spec_workflow.py","tests/test_cf_acceptance_runner.py"] | P2 | auto | none | tests/** | - | - | no |
@@ -97,6 +97,8 @@
 - S-02: verified — automated command passed; run_id=4aec17af02be41ad82841fa3378941f7 (confirmed_by: runner)
 - S-01: verified — automated command passed; run_id=bcde0604449945c484fd950fe4dfa240 (confirmed_by: runner)
 - S-02: verified — automated command passed; run_id=bcde0604449945c484fd950fe4dfa240 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=45b89e76982d41e087e2f53c5d16fa37 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=45b89e76982d41e087e2f53c5d16fa37 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -152,6 +154,8 @@
 - S-04: verified — automated command passed; run_id=4877e81ebf864ad3822f95cff8bb7d3f (confirmed_by: runner)
 - S-03: verified — automated command passed; run_id=428ad30f907a4c62ba5a342b21a290c4 (confirmed_by: runner)
 - S-04: verified — automated command passed; run_id=428ad30f907a4c62ba5a342b21a290c4 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=b855836d026a4e3d960686fb78af0f44 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=b855836d026a4e3d960686fb78af0f44 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -206,6 +210,8 @@
 - S-06: stale — input changed: CHK-27ddb78b4ad6 (confirmed_by: runtime)
 - S-05: verified — automated command passed; run_id=646a3609c392470fae722678c89e4dec (confirmed_by: runner)
 - S-06: verified — automated command passed; run_id=646a3609c392470fae722678c89e4dec (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=d2e6897186584874a8c2b6ba22a71f1f (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=d2e6897186584874a8c2b6ba22a71f1f (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -216,7 +222,7 @@
 
 ## TASK-004: 依赖棘轮推进到 batch 4
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P2
 - **Depends**: TASK-001, TASK-002, TASK-003
 - **Source**: docs/codebase-consolidation-audit.md#A4
@@ -231,26 +237,30 @@ TASK-001/002/003 完成后，batch 3 私有符号与 batch 4 反向边应已清�
 
 ### Checklist
 
-- [ ] 设置 `CURRENT_BATCH = 4`，确认无过期 allowlist 条目
-- [ ] 增加 SCC 回归测试：排除 `TYPE_CHECKING`，包含延迟导入；最大分量 ≤ 7，且不再包含 16 模块组
-- [ ] 合成一条 batch-4 反向边，守卫必须失败；移除后恢复通过
-- [ ] [S-07][unit] 架构守卫、私有符号守卫、棘轮测试全绿
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 设置 `CURRENT_BATCH = 4`，确认无过期 allowlist 条目
+- [x] 增加 SCC 回归测试：排除 `TYPE_CHECKING`，包含延迟导入；最大分量 ≤ 7，且不再包含 16 模块组
+- [x] 合成一条 batch-4 反向边，守卫必须失败；移除后恢复通过
+- [x] [S-07][unit] 架构守卫、私有符号守卫、棘轮测试全绿
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-07 | unit | 真实 AST 导入图、canonical/deployed 双副本 | batch 4 无过期条目；SCC ≤ 7；合成反向边失败 | `tests/test_runtime_consolidation.py::test_dependency_direction`、`test_allowlist_ratchet`、`test_scc_budget` | `["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"]` | planned |
+| S-07 | unit | 真实 AST 导入图、canonical/deployed 双副本 | batch 4 无过期条目；SCC ≤ 7；合成反向边失败 | `tests/test_runtime_consolidation.py::test_dependency_direction`、`test_allowlist_ratchet`、`test_scc_budget` | `["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"]` | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-07 | planned | planned | planned | planned | planned |
+| S-07 | N/A: ratchet/guard task; batch-4 edges were removed by TASK-002/003; synthetic edge assertion is the RED guard | PASS: 36 passed in test_runtime_consolidation.py; max SCC 6; no expired allowlist entries | tests/test_runtime_consolidation.py::test_scc_budget; ::test_allowlist_ratchet; ::test_dependency_direction | real AST import graph over 75 modules, excluding TYPE_CHECKING and including delayed imports | verified |
+- S-07: verified — automated command passed; run_id=1e8ebdc13cd641a3bd6c8188179726fc (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=5e8516a9b1074061b07005c00ac5bb41 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-27] started
+- [2026-10-27] completed (done)
 
 ---
 
@@ -295,6 +305,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 - S-08: stale — input changed: CHK-f6ae7934bfda (confirmed_by: runtime)
 - S-08: verified — automated command passed; run_id=5f3a7bfc79694e60850ddd509e8f7221 (confirmed_by: runner)
 - S-08: verified — automated command passed; run_id=f98c9dffe23c49bbb7788c43953b7bb5 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=f1aff932cbf44437be1c17fc0ea27522 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -344,6 +355,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 - S-09: stale — input changed: CHK-1592ed61c3ae (confirmed_by: runtime)
 - S-09: verified — automated command passed; run_id=eaec7856fc914cb692a590d41e912862 (confirmed_by: runner)
 - S-09: verified — automated command passed; run_id=273691944ca34433affe59a2d57b922a (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=edf1713c26194d67b21a15d9db9f0815 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -392,6 +404,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 - S-10: verified — automated command passed; run_id=4a4f58ea280b49c5a6d8fb52967dcf6f (confirmed_by: runner)
 - S-10: stale — input changed: CHK-06e561265170 (confirmed_by: runtime)
 - S-10: verified — automated command passed; run_id=0e189596c87049e6ae27f530c19a6cf4 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=23d96fa9b0be41889fec7b5ce5b48778 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)

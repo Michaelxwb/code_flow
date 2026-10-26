@@ -35,7 +35,7 @@ RUNTIME_IGNORE_END = "# <<< code-flow:runtime schema=1"
 RUNTIME_IGNORE_ENTRIES = 20
 sys.path.insert(0, str(SCRIPTS))
 
-CURRENT_BATCH = 3
+CURRENT_BATCH = 4
 
 LAYERS: dict[str, int] = {
     "cf_acceptance_evidence": 1,
@@ -313,6 +313,59 @@ def test_allowlist_ratchet() -> None:
     assert not expired_symbols, f"symbols past their cleanup batch: {expired_symbols}"
     synthetic = [("cf_log", "cf_spec_context", CURRENT_BATCH)]
     assert _expired(synthetic, CURRENT_BATCH) == synthetic
+
+
+def _strongly_connected_sizes(edges: set[tuple[str, str]]) -> list[int]:
+    graph: dict[str, set[str]] = {}
+    for source, target in edges:
+        graph.setdefault(source, set()).add(target)
+        graph.setdefault(target, set())
+    index: dict[str, int] = {}
+    low: dict[str, int] = {}
+    stack: list[str] = []
+    on_stack: set[str] = set()
+    sizes: list[int] = []
+    counter = [0]
+
+    def visit(node: str) -> None:
+        index[node] = low[node] = counter[0]
+        counter[0] += 1
+        stack.append(node)
+        on_stack.add(node)
+        for target in graph.get(node, ()):
+            if target not in index:
+                visit(target)
+                low[node] = min(low[node], low[target])
+            elif target in on_stack:
+                low[node] = min(low[node], index[target])
+        if low[node] != index[node]:
+            return
+        size = 0
+        while True:
+            member = stack.pop()
+            on_stack.discard(member)
+            size += 1
+            if member == node:
+                break
+        if size > 1:
+            sizes.append(size)
+
+    for node in graph:
+        if node not in index:
+            visit(node)
+    return sizes
+
+
+def test_scc_budget() -> None:
+    """[S-07] batch-4 边清零后最大 SCC 不超过 7 个模块，重引反向边必须失败。"""
+    modules = _script_modules(SCRIPTS)
+    edges: set[tuple[str, str]] = set()
+    for path in _script_files(SCRIPTS):
+        edges |= _import_edges(path, modules)
+    sizes = _strongly_connected_sizes(edges)
+    assert max(sizes, default=1) <= 7, f"dependency SCCs must stay <= 7: {sorted(sizes, reverse=True)}"
+    synthetic = {("cf_context_cache", "cf_spec_context")}
+    assert _layer_violations(synthetic) == synthetic, "reintroducing a batch-4 edge must fail"
 
 
 def test_task_parser_single_source() -> None:
