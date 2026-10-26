@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from shlex import quote
@@ -105,6 +106,28 @@ def _scenario_snapshot(snapshot: PlanSnapshot, source_file: str) -> Optional[Fil
     return _read_snapshot(Path(source_file)) if Path(source_file).is_file() else None
 
 
+def _checklist_issues(text: str) -> list[dict[str, str]]:
+    """Flag scenario IDs used in a Checklist but not declared in Acceptance-Refs.
+
+    Cross-task boundaries start as this mismatch: a task writes another task's
+    scenario into its checklist, then the plan assigns the scenario to only one
+    owner. Reported as a non-blocking warning for existing plans.
+    """
+    issues: list[dict[str, str]] = []
+    sections = re.split(r"(?m)^## (TASK-\d+):", text)
+    for index in range(1, len(sections), 2):
+        task_id, body = sections[index], sections[index + 1]
+        refs = re.search(r"(?m)^- \*\*Acceptance-Refs\*\*:[ \t]*(.*)$", body)
+        declared = set(re.findall(r"\b(?:S|E|B)-\d+\b", refs.group(1))) if refs else set()
+        checklist = body.partition("### Checklist")[2].partition("### Acceptance Contract")[0]
+        used = set(re.findall(r"\b(?:S|E|B)-\d+\b", checklist))
+        for scenario in sorted(used - declared):
+            issues.append({"code": "checklist_scenario_not_in_refs", "task": task_id, "scenario": scenario})
+        for scenario in sorted(declared - used):
+            issues.append({"code": "acceptance_ref_not_in_checklist", "task": task_id, "scenario": scenario})
+    return issues
+
+
 def verify_plan(directory: str, task_file: str, require_scenarios: bool = False,
                 *, snapshot: Optional[PlanSnapshot] = None) -> dict[str, object]:
     from codeflow.cli.cf_acceptance_manifest import validate_manifest
@@ -149,6 +172,7 @@ def verify_plan(directory: str, task_file: str, require_scenarios: bool = False,
     context = load_context(str(base / "spec-context.yml"))
     gate = validate_stage(context, "plan", root=str(_root(base)), task_dir=directory)
     coverage = validate_plan_coverage(context, task_file, text=plan.task.text)
+    checklist = _checklist_issues(plan.task.text)
     blocked = (not quality["ok"] or projection or not registration["ok"] or
                design["decision"] != "pass" or gate.decision != "pass" or coverage.decision != "pass")
     recovery = (["code-flow spec refresh --task-dir " + quote(str(base)) +
@@ -156,4 +180,5 @@ def verify_plan(directory: str, task_file: str, require_scenarios: bool = False,
                 if any(issue.code == "rule_artifact_stale" for issue in gate.errors) else [])
     return {"decision": "block" if blocked else "pass", "gate": result_to_data(gate), "next": recovery,
             "coverage": result_to_data(coverage), "e2e_quality": quality,
-            "registration": registration, "design_lint": design, "projection": projection}
+            "registration": registration, "design_lint": design, "projection": projection,
+            "checklist": checklist}

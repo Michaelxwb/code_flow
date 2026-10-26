@@ -984,24 +984,54 @@ def merge(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, 
                 )
         elif isinstance(previous, Mapping) and previous_status == "passed":
             payload["batch_smoke"] = dict(previous)
+    _update_run_meta(root, run_id, {
+        "merge": {
+            "status": "passed" if payload.get("ok") else "blocked",
+            "code": str(payload.get("code", "")),
+            "at": datetime.now(timezone.utc).isoformat(),
+        }
+    })
     return payload
+
+
+def _cleanup_block_reason(meta: Mapping[str, object], force: bool) -> tuple[str, str]:
+    """Refuse cleanup while the latest merge is not in a passed state."""
+    if force:
+        return "", ""
+    merge_state = meta.get("merge")
+    if isinstance(merge_state, Mapping) and merge_state.get("status") != "passed":
+        code = str(merge_state.get("code") or "")
+        if code == "batch_smoke_failed":
+            return (
+                "batch_smoke_failed",
+                "批次 smoke failed，保留 worktree；修复后重新 merge，或 --force 明确放弃现场",
+            )
+        return (
+            "merge_not_passed",
+            f"最近一次 merge 状态为 {merge_state.get('status') or 'missing'}（{code or 'no code'}）；"
+            "保留 worktree，修复后重新 merge，或 --force 明确放弃现场",
+        )
+    smoke = meta.get("batch_smoke")
+    if isinstance(smoke, Mapping) and smoke.get("status") in _BATCH_SMOKE_BLOCKING:
+        return (
+            "batch_smoke_failed",
+            f"批次 smoke {smoke.get('status')}，保留 worktree；"
+            "修复后重新 merge，或 --force 明确放弃现场",
+        )
+    return "", ""
 
 
 def cleanup(root: Path, run_id: str, force: bool) -> dict[str, object]:
     root = root.resolve()
     meta = _read_run_meta(root, run_id)
-    smoke = meta.get("batch_smoke")
-    if not force and isinstance(smoke, Mapping) and smoke.get("status") in _BATCH_SMOKE_BLOCKING:
-        message = (
-            f"批次 smoke {smoke.get('status')}，保留 worktree；"
-            "修复后重新 merge，或 --force 明确放弃现场"
-        )
+    code, message = _cleanup_block_reason(meta, force)
+    if code:
         return {
             "ok": False, "action": "cleanup", "run_id": run_id,
-            "code": "batch_smoke_failed", "message": message,
+            "code": code, "message": message,
             "results": [
                 {"task": item.get("task"), "removed": False,
-                 "code": "batch_smoke_failed", "message": message}
+                 "code": code, "message": message}
                 for item in meta.get("worktrees", []) if isinstance(item, dict)
             ],
         }

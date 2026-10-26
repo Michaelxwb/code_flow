@@ -11,7 +11,7 @@ and `cf_task_workflow` (layer counts). Dependencies stay in L0/L1: `cf_core`,
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 import fnmatch
 import hashlib
@@ -45,6 +45,10 @@ class ValidatorConfig:
     validators: tuple[Mapping[str, object], ...] = ()
     error: str = ""
     path: str = ""
+
+    def without_heavy(self) -> "ValidatorConfig":
+        """Return a config with only lightweight validators (Stop policy)."""
+        return replace(self, validators=tuple(item for item in self.validators if not is_heavy(item)))
 
 
 class ValidatorRun(NamedTuple):

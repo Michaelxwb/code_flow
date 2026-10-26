@@ -12,6 +12,7 @@ from codeflow.evidence.cf_evidence_store import EvidenceStore, discover_project_
 from codeflow.acceptance.cf_acceptance_schema import check_outcome, load_manifest, recorded_check_hash, scenario_check_ids
 
 STATES = frozenset(("planned", "pending", "tbd", "verified", "unverified", "stale", "failed", "incomplete", "not_configured", "e2e_deferred", "env_blocked", "manual_pending", "accepted_risk"))
+_COVERAGE_STATES = STATES | {"designed"}
 _EVIDENCE_STATUS = {
     "passed": "passed",
     "failed": "failed",
@@ -32,7 +33,7 @@ def line_status(line: str, scenario_id: str) -> str:
         return ""
     if line.lstrip().startswith("|"):
         cells = [cell.strip().lower() for cell in line.strip().strip("|").split("|")]
-        return next((cell for cell in reversed(cells) if cell in STATES), "")
+        return next((cell for cell in reversed(cells) if cell in _COVERAGE_STATES), "")
     match = re.match(r"^\s*[-*]\s+[^:]+:\s*([a-z0-9_]+)\b", line, re.I)
     return match.group(1).lower() if match and match.group(1).lower() in STATES else ""
 
@@ -43,7 +44,7 @@ def _status_line(line: str, scenario_id: str, status: str) -> str:
     if line.lstrip().startswith("|"):
         cells = line.split("|")
         for index in range(len(cells) - 1, 0, -1):
-            if cells[index].strip().lower() in STATES:
+            if cells[index].strip().lower() in _COVERAGE_STATES:
                 cells[index] = f" {status} "
                 return "|".join(cells)
         return line.rstrip().rstrip("|") + f"| {status} |"

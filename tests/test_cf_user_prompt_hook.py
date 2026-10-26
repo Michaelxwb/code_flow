@@ -45,6 +45,14 @@ def test_outside_project_path_does_not_block_prompt(tmp_path: Path) -> None:
     assert "SPEC_WORKFLOW_BLOCKED" not in text
 
 
+def test_harness_metadata_paths_are_ignored(tmp_path: Path) -> None:
+    prompt = (
+        "<task-notification><output-file>src/inside.py</output-file></task-notification>\n"
+        "修改 src/outside.py"
+    )
+    assert extract_paths_from_prompt(prompt, str(tmp_path)) == ["src/outside.py"]
+
+
 def _run(root: Path, prompt: str) -> dict:
     output = io.StringIO()
     payload = json.dumps({"prompt": prompt, "session_id": "session-1"})

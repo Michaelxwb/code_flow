@@ -35,7 +35,7 @@ def _task_section(text: str, task_id: str) -> str:
     raise ValueError(f"task_not_found: {task_id}")
 
 
-_EMPTY_REF_MARKERS = frozenset(("n/a", "none", "null", "-", "—"))
+_EMPTY_REF_MARKERS = frozenset(("n/a", "na", "none", "null", "-", "—", "无", "todo", "tbd", "待定"))
 
 
 def _refs(section: str) -> tuple[str, ...]:

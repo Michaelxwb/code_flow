@@ -15,7 +15,15 @@ sys.path.insert(0, str(SCRIPTS))
 
 from cf_spec_context import BindingInput, bind_specs, load_context, new_context, save_context
 from codeflow.spec.cf_spec_resolver import resolve_candidates
-from cf_spec_session import context_sha256, project_task_session
+from cf_spec_session import _refs, context_sha256, project_task_session
+
+
+def test_refs_accept_empty_markers() -> None:
+    assert _refs("- **Spec-Refs**: 无\n") == ()
+    assert _refs("- **Spec-Refs**: N/A\n") == ()
+    assert _refs("- **Spec-Refs**: 无, cli-code-standards#RULE-cli-001\n") == (
+        "cli-code-standards#RULE-cli-001",
+    )
 
 
 def _spec(count: int) -> str:

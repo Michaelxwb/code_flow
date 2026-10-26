@@ -23,7 +23,15 @@ sys.path.insert(0, str(SCRIPTS))
 from cf_acceptance_manifest import write_manifest  # noqa: E402
 from cf_acceptance_runner import run_manifest  # noqa: E402
 from codeflow.evidence.cf_evidence_store import EvidenceStore  # noqa: E402
-from cf_task_parallel import ParallelError, cleanup, collect, main, merge, prepare  # noqa: E402
+from cf_task_parallel import ParallelError, _cleanup_block_reason, cleanup, collect, main, merge, prepare  # noqa: E402
+
+
+def test_cleanup_requires_passed_merge() -> None:
+    assert _cleanup_block_reason({"merge": {"status": "blocked"}}, False)[0] == "merge_not_passed"
+    assert _cleanup_block_reason({"merge": {"status": "blocked", "code": "batch_smoke_failed"}}, False)[0] == "batch_smoke_failed"
+    assert _cleanup_block_reason({"merge": {"status": "passed"}}, False)[0] == ""
+    assert _cleanup_block_reason({"merge": {"status": "blocked"}}, True)[0] == ""
+    assert _cleanup_block_reason({"batch_smoke": {"status": "failed"}}, False)[0] == "batch_smoke_failed"
 
 
 TASK_FILE = ".code-flow/tasks/2026-09-29/demo/demo.md"
