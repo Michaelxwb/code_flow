@@ -15,6 +15,7 @@ import time
 from typing import IO, Mapping, Optional, Sequence
 
 from cf_spec_context import Decision, RuleBinding, RuleStageStatus, SpecBinding, SpecContext, load_context
+from cf_task_doc import TaskDocumentError, parse_task_document
 from cf_core import phase_timing
 
 
@@ -213,12 +214,7 @@ def validate_stage(
 
 
 def _task_sections(text: str) -> Mapping[str, str]:
-    matches = list(re.finditer(r"(?m)^## (TASK-\d+):[^\n]*$", text))
-    sections: dict[str, str] = {}
-    for index, match in enumerate(matches):
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        sections[match.group(1)] = text[match.start():end]
-    return sections
+    return {task.id: task.body for task in parse_task_document(text).tasks}
 
 
 def _plan_issue(code: str, binding: SpecBinding, rule: RuleBinding, message: str) -> GateIssue:
@@ -255,7 +251,11 @@ def validate_plan_coverage(context: SpecContext, artifact: str) -> GateResult:
     except OSError as exc:
         issue = GateIssue("plan_read_error", "", "", "plan", str(exc))
         return GateResult("block", (issue,), (), ())
-    sections = _task_sections(text)
+    try:
+        sections = _task_sections(text)
+    except TaskDocumentError as exc:
+        issue = GateIssue(exc.code, "", "", "plan", str(exc))
+        return GateResult("block", (issue,), (), ())
     errors: list[GateIssue] = []
     for binding in context.bindings:
         for rule in binding.rules:

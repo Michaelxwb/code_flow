@@ -2026,7 +2026,7 @@
       "kind": "functional",
       "boundary": "纯解析函数 parse_task_document",
       "owner": "TASK-004",
-      "status": "designed",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -2067,7 +2067,94 @@
       "features": [
         "FEAT-03"
       ],
-      "check": "CHK-807da8f84a53"
+      "check": "CHK-807da8f84a53",
+      "revision": 1,
+      "evidence": {
+        "id": "S-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "check_id": "CHK-807da8f84a53",
+        "input_hash": "43c133d4035693a130f6cee6a7041d829f35fcaa75138c47738a0ac32431a3b1",
+        "check_config": {
+          "id": "CHK-807da8f84a53",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_task_heading_edges"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/test_runtime_consolidation.py"
+          ],
+          "preflight": [],
+          "paths": []
+        },
+        "revision": 1,
+        "run_id": "9afa4746a6dc4e099488df183017e0b8",
+        "executed_at": "2026-10-26T15:05:35.804418+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_runtime_consolidation.py::test_task_heading_edges"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "43c133d4035693a130f6cee6a7041d829f35fcaa75138c47738a0ac32431a3b1"
+      },
+      "runs": [
+        {
+          "id": "S-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "check_id": "CHK-807da8f84a53",
+          "input_hash": "43c133d4035693a130f6cee6a7041d829f35fcaa75138c47738a0ac32431a3b1",
+          "check_config": {
+            "id": "CHK-807da8f84a53",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_runtime_consolidation.py::test_task_heading_edges"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/test_runtime_consolidation.py"
+            ],
+            "preflight": [],
+            "paths": []
+          },
+          "revision": 1,
+          "run_id": "9afa4746a6dc4e099488df183017e0b8",
+          "executed_at": "2026-10-26T15:05:35.804418+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_task_heading_edges"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "43c133d4035693a130f6cee6a7041d829f35fcaa75138c47738a0ac32431a3b1"
+        }
+      ]
     },
     {
       "id": "S-07",
@@ -2076,7 +2163,7 @@
       "kind": "functional",
       "boundary": "parse_task_document → workflow/session/index/gate/plan 五个消费者",
       "owner": "TASK-004",
-      "status": "designed",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -2119,7 +2206,94 @@
       "features": [
         "FEAT-03"
       ],
-      "check": "CHK-e8b4d99c83ec"
+      "check": "CHK-e8b4d99c83ec",
+      "revision": 1,
+      "evidence": {
+        "id": "S-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "check_id": "CHK-e8b4d99c83ec",
+        "input_hash": "c8d36bd4ae6f243bba3a1fe0d9938431733859f4815f8e7e0b92e63126cb4038",
+        "check_config": {
+          "id": "CHK-e8b4d99c83ec",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_duplicate_task_id"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/test_runtime_consolidation.py"
+          ],
+          "preflight": [],
+          "paths": []
+        },
+        "revision": 1,
+        "run_id": "9afa4746a6dc4e099488df183017e0b8",
+        "executed_at": "2026-10-26T15:05:35.804418+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_runtime_consolidation.py::test_duplicate_task_id"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "c8d36bd4ae6f243bba3a1fe0d9938431733859f4815f8e7e0b92e63126cb4038"
+      },
+      "runs": [
+        {
+          "id": "S-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "check_id": "CHK-e8b4d99c83ec",
+          "input_hash": "c8d36bd4ae6f243bba3a1fe0d9938431733859f4815f8e7e0b92e63126cb4038",
+          "check_config": {
+            "id": "CHK-e8b4d99c83ec",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_runtime_consolidation.py::test_duplicate_task_id"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/test_runtime_consolidation.py"
+            ],
+            "preflight": [],
+            "paths": []
+          },
+          "revision": 1,
+          "run_id": "9afa4746a6dc4e099488df183017e0b8",
+          "executed_at": "2026-10-26T15:05:35.804418+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_duplicate_task_id"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "c8d36bd4ae6f243bba3a1fe0d9938431733859f4815f8e7e0b92e63126cb4038"
+        }
+      ]
     },
     {
       "id": "S-08",
@@ -2128,7 +2302,7 @@
       "kind": "functional",
       "boundary": "纯解析函数 status 投影",
       "owner": "TASK-004",
-      "status": "designed",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -2169,7 +2343,94 @@
       "features": [
         "FEAT-03"
       ],
-      "check": "CHK-8765c9928c83"
+      "check": "CHK-8765c9928c83",
+      "revision": 1,
+      "evidence": {
+        "id": "S-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "check_id": "CHK-8765c9928c83",
+        "input_hash": "299c73e03eb39fb2784e2142eb8372d57dcbac20cde2a6b9b521fdb9d2bc6b7e",
+        "check_config": {
+          "id": "CHK-8765c9928c83",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_missing_status_draft"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/test_runtime_consolidation.py"
+          ],
+          "preflight": [],
+          "paths": []
+        },
+        "revision": 1,
+        "run_id": "9afa4746a6dc4e099488df183017e0b8",
+        "executed_at": "2026-10-26T15:05:35.804418+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_runtime_consolidation.py::test_missing_status_draft"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "299c73e03eb39fb2784e2142eb8372d57dcbac20cde2a6b9b521fdb9d2bc6b7e"
+      },
+      "runs": [
+        {
+          "id": "S-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "check_id": "CHK-8765c9928c83",
+          "input_hash": "299c73e03eb39fb2784e2142eb8372d57dcbac20cde2a6b9b521fdb9d2bc6b7e",
+          "check_config": {
+            "id": "CHK-8765c9928c83",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_runtime_consolidation.py::test_missing_status_draft"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/test_runtime_consolidation.py"
+            ],
+            "preflight": [],
+            "paths": []
+          },
+          "revision": 1,
+          "run_id": "9afa4746a6dc4e099488df183017e0b8",
+          "executed_at": "2026-10-26T15:05:35.804418+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_missing_status_draft"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "299c73e03eb39fb2784e2142eb8372d57dcbac20cde2a6b9b521fdb9d2bc6b7e"
+        }
+      ]
     },
     {
       "id": "B-02",
@@ -2178,7 +2439,7 @@
       "kind": "functional",
       "boundary": "纯解析函数边界输入",
       "owner": "TASK-004",
-      "status": "designed",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -2219,7 +2480,94 @@
       "features": [
         "FEAT-03"
       ],
-      "check": "CHK-dcf1a100f72f"
+      "check": "CHK-dcf1a100f72f",
+      "revision": 1,
+      "evidence": {
+        "id": "B-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "check_id": "CHK-dcf1a100f72f",
+        "input_hash": "9ac73f714406ffd0152e8d2a9b05a62483b601f8aaa5741119ec5cb204b8a5e2",
+        "check_config": {
+          "id": "CHK-dcf1a100f72f",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_task_doc_boundaries"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/test_runtime_consolidation.py"
+          ],
+          "preflight": [],
+          "paths": []
+        },
+        "revision": 1,
+        "run_id": "9afa4746a6dc4e099488df183017e0b8",
+        "executed_at": "2026-10-26T15:05:35.804418+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_runtime_consolidation.py::test_task_doc_boundaries"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "9ac73f714406ffd0152e8d2a9b05a62483b601f8aaa5741119ec5cb204b8a5e2"
+      },
+      "runs": [
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "check_id": "CHK-dcf1a100f72f",
+          "input_hash": "9ac73f714406ffd0152e8d2a9b05a62483b601f8aaa5741119ec5cb204b8a5e2",
+          "check_config": {
+            "id": "CHK-dcf1a100f72f",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_runtime_consolidation.py::test_task_doc_boundaries"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/test_runtime_consolidation.py"
+            ],
+            "preflight": [],
+            "paths": []
+          },
+          "revision": 1,
+          "run_id": "9afa4746a6dc4e099488df183017e0b8",
+          "executed_at": "2026-10-26T15:05:35.804418+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_task_doc_boundaries"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "9ac73f714406ffd0152e8d2a9b05a62483b601f8aaa5741119ec5cb204b8a5e2"
+        }
+      ]
     },
     {
       "id": "S-09",

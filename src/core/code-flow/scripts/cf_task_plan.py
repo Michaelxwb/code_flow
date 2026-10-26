@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, Optional, Sequence
 
+from cf_task_doc import TaskDocumentError, parse_task_document
+
 
 HOURS_PER_DAY = 8.0
 DEFAULT_MAX_TASKS = 25
@@ -91,25 +93,24 @@ def parse_plan_tasks(task_file: str) -> tuple[PlanTask, ...]:
         text = Path(task_file).read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         raise ValueError(f"task_read_error: {exc}") from exc
-    matches = list(re.finditer(r"(?m)^## (TASK-\d+):[ \t]*(.*)$", text))
+    try:
+        document = parse_task_document(text, source=str(task_file))
+    except TaskDocumentError as exc:
+        raise ValueError(str(exc)) from exc
     tasks: list[PlanTask] = []
-    for index, match in enumerate(matches):
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        section = text[match.start():end]
-        estimate_raw = _field(section, "Estimate")
+    for task in document.tasks:
+        estimate_raw = task.fields.get("Estimate", "")
         tasks.append(
             PlanTask(
-                task_id=match.group(1),
-                title=match.group(2).strip(),
-                status=_field(section, "Status") or "draft",
+                task_id=task.id,
+                title=task.title,
+                status=task.status,
                 estimate_raw=estimate_raw,
                 hours=parse_estimate_hours(estimate_raw),
-                capability=_capability(section),
-                scenario_count=_scenario_count(section),
+                capability=_capability(task.body),
+                scenario_count=_scenario_count(task.body),
             )
         )
-    if not tasks:
-        raise ValueError("no TASK sections found")
     return tuple(tasks)
 
 

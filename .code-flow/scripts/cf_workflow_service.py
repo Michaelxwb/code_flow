@@ -17,6 +17,7 @@ from datetime import date
 from pathlib import Path
 from typing import Mapping, Optional, Sequence
 from cf_spec_context import ActiveTask, SpecContext
+from cf_task_doc import TaskDocument, TaskDocumentError, parse_task_document
 from cf_workflow_transaction import recover_transition
 from cf_task_state import FINISHED_STATUSES
 
@@ -49,22 +50,27 @@ def locate_task_file(task_dir: str, task_id: str) -> Optional[Path]:
     return matches[0] if len(matches) == 1 else None
 
 
-def read_task_section(task_file: str, task_id: str) -> str:
+def _task_document(task_file: str) -> TaskDocument:
     try:
         text = Path(task_file).read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         raise WorkflowError("task_read_error", str(exc)) from exc
-    start = text.find(f"## {task_id}:")
-    if start == -1:
-        raise WorkflowError("task_not_found", task_id, (task_file,))
-    end = text.find("\n## TASK-", start)
-    return text[start:] if end == -1 else text[start:end]
+    try:
+        return parse_task_document(text, source=str(task_file))
+    except TaskDocumentError as exc:
+        raise WorkflowError(exc.code, str(exc), exc.details) from exc
+
+
+def read_task_section(task_file: str, task_id: str) -> str:
+    for task in _task_document(task_file).tasks:
+        if task.id == task_id:
+            return task.body
+    raise WorkflowError("task_not_found", task_id, (task_file,))
 
 
 def section_status(section: str) -> str:
     """Markdown status; absent Status line means draft (pre-contract tasks)."""
-    match = re.search(r"(?m)^- \*\*Status\*\*:[ \t]*([^\n]+)", section)
-    return match.group(1).strip() if match else "draft"
+    return parse_task_document(section).tasks[0].status
 
 
 def task_truth_issues(task_file: str, task_id: str, context: SpecContext,
@@ -99,10 +105,7 @@ def task_truth_issues(task_file: str, task_id: str, context: SpecContext,
 
 
 def section_depends(section: str) -> tuple[str, ...]:
-    match = re.search(r"(?m)^- \*\*Depends\*\*:[ \t]*([^\n]*)", section)
-    if match is None:
-        return ()
-    return tuple(part.strip() for part in re.split(r"[,，\s]+", match.group(1).strip()) if re.fullmatch(r"TASK-\d+", part.strip()))
+    return parse_task_document(section).tasks[0].depends
 
 
 def section_notes(section: str) -> tuple[str, ...]:
@@ -114,15 +117,7 @@ def section_notes(section: str) -> tuple[str, ...]:
 
 
 def _all_statuses(task_file: str) -> Mapping[str, str]:
-    try:
-        text = Path(task_file).read_text(encoding="utf-8")
-    except (OSError, UnicodeError):
-        return {}
-    statuses: dict[str, str] = {}
-    for match in re.finditer(r"(?m)^## (TASK-\d+):[^\n]*$", text):
-        section = read_task_section(task_file, match.group(1))
-        statuses[match.group(1)] = section_status(section)
-    return statuses
+    return {task.id: task.status for task in _task_document(task_file).tasks}
 
 
 def check_startable(task_file: str, task_id: str) -> list[str]:

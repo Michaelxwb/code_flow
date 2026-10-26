@@ -80,6 +80,7 @@ LAYERS: dict[str, int] = {
     "cf_stop_guard": 0,
     "cf_stop_hook": 3,
     "cf_sync": 3,
+    "cf_task_doc": 1,
     "cf_task_index": 1,
     "cf_task_merge": 2,
     "cf_task_parallel": 2,
@@ -532,19 +533,115 @@ def test_stop_json_protocol(tmp_path: Path) -> None:
 
 
 def test_task_heading_edges() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-004")
+    """[S-06] 行内示例、缩进/引用示例与围栏代码块中的标题都不参与解析。"""
+    from cf_task_doc import parse_task_document
+
+    text = (
+        "# Tasks\n\n"
+        "普通段落提到 ## TASK-999: inline example 不算标题\n"
+        "  ## TASK-998: indented example\n"
+        "```markdown\n"
+        "## TASK-002: fenced with backticks\n"
+        "```\n"
+        "~~~\n"
+        "## TASK-003: fenced with tildes\n"
+        "~~~\n"
+        "> ## TASK-997: quoted example\n"
+        "## TASK-001: first real\n"
+        "- **Status**: draft\n\n"
+        "## TASK-004: second real\n"
+        "- **Status**: done\n"
+    )
+
+    document = parse_task_document(text)
+
+    assert [task.id for task in document.tasks] == ["TASK-001", "TASK-004"]
+    assert [task.title for task in document.tasks] == ["first real", "second real"]
 
 
-def test_duplicate_task_id() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-004")
+def test_duplicate_task_id(tmp_path: Path) -> None:
+    """[S-07] 五个消费者对重复 TASK ID 一致拒绝，禁止择一。"""
+    from cf_spec_context import SpecContext
+    from cf_spec_gate import validate_plan_coverage
+    from cf_spec_session import _task_section
+    from cf_task_index import parse_task_file
+    from cf_task_plan import parse_plan_tasks
+    from cf_workflow_service import WorkflowError, read_task_section
+
+    text = (
+        "## TASK-001: first\n"
+        "- **Status**: draft\n\n"
+        "## TASK-001: second\n"
+        "- **Status**: done\n"
+    )
+    task_file = tmp_path / "tasks.md"
+    task_file.write_text(text, encoding="utf-8")
+
+    with pytest.raises(WorkflowError) as workflow_error:
+        read_task_section(str(task_file), "TASK-001")
+    assert workflow_error.value.code == "duplicate_task_id"
+
+    with pytest.raises(ValueError, match="duplicate_task_id"):
+        _task_section(text, "TASK-001")
+
+    with pytest.raises(ValueError, match="duplicate_task_id"):
+        parse_task_file(str(task_file))
+
+    with pytest.raises(ValueError, match="duplicate_task_id"):
+        parse_plan_tasks(str(task_file))
+
+    context = SpecContext(
+        version=1, task="duplicate", enforcement="required", updated_at="",
+        sources=(), bindings=(),
+    )
+    gate = validate_plan_coverage(context, str(task_file))
+    assert gate.decision == "block"
+    assert [issue.code for issue in gate.errors] == ["duplicate_task_id"]
 
 
 def test_missing_status_draft() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-004")
+    """[S-08] 缺 Status 行时投影为 draft，未知状态保留原文。"""
+    from cf_task_doc import parse_task_document
+
+    text = (
+        "## TASK-001: no status\n"
+        "- **Depends**: TASK-002\n\n"
+        "## TASK-002: finished\n"
+        "- **Status**: done\n"
+    )
+
+    document = parse_task_document(text)
+
+    assert [task.status for task in document.tasks] == ["draft", "done"]
+    assert document.tasks[0].depends == ("TASK-002",)
 
 
 def test_task_doc_boundaries() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-004")
+    """[B-02] CRLF 文档正常解析；无 TASK 段落抛 task_document_empty。"""
+    from cf_task_doc import TaskDocumentError, parse_task_document
+
+    crlf = (
+        "## TASK-001: crlf task\r\n"
+        "- **Status**: done\r\n"
+        "- **Depends**: TASK-002\r\n"
+        "\r\n"
+        "## TASK-002: dependency\r\n"
+        "- **Status**: draft\r\n"
+    )
+
+    document = parse_task_document(crlf, source="crlf.md")
+
+    assert [(task.id, task.status) for task in document.tasks] == [
+        ("TASK-001", "done"),
+        ("TASK-002", "draft"),
+    ]
+    assert document.tasks[0].depends == ("TASK-002",)
+    assert document.source == "crlf.md"
+
+    for empty in ("", "# Tasks\n\nNo sections here.\n"):
+        with pytest.raises(TaskDocumentError) as error:
+            parse_task_document(empty)
+        assert error.value.code == "task_document_empty"
 
 
 def test_task_flow_consistency() -> None:
