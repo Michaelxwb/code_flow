@@ -1,7 +1,7 @@
 version: 1
 task: runtime-consolidation
 enforcement: required
-updated_at: '2026-10-26T15:57:00.955534+00:00'
+updated_at: '2026-10-26T15:57:06.832912+00:00'
 sources:
 - type: cli
   ref: bind
@@ -89,7 +89,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-010
           item_id: TASK-010
-          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+          artifact_sha256: ce21fd2543074477d5b2137b3fad454d7d4a4386f2d934627bbd971845f4aa97
         - artifact: runtime-consolidation.md
           section_id: TASK-010
           item_id: TASK-010
@@ -177,7 +177,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+          artifact_sha256: ce21fd2543074477d5b2137b3fad454d7d4a4386f2d934627bbd971845f4aa97
         - artifact: runtime-consolidation.md
           section_id: TASK-002
           item_id: TASK-002
@@ -256,7 +256,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
-          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+          artifact_sha256: ce21fd2543074477d5b2137b3fad454d7d4a4386f2d934627bbd971845f4aa97
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
@@ -335,7 +335,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
-          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+          artifact_sha256: ce21fd2543074477d5b2137b3fad454d7d4a4386f2d934627bbd971845f4aa97
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
@@ -443,7 +443,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
-          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+          artifact_sha256: ce21fd2543074477d5b2137b3fad454d7d4a4386f2d934627bbd971845f4aa97
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
@@ -518,7 +518,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
-          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+          artifact_sha256: ce21fd2543074477d5b2137b3fad454d7d4a4386f2d934627bbd971845f4aa97
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
@@ -764,7 +764,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+          artifact_sha256: ce21fd2543074477d5b2137b3fad454d7d4a4386f2d934627bbd971845f4aa97
         - artifact: runtime-consolidation.md
           section_id: TASK-001
           item_id: TASK-001
@@ -830,7 +830,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+          artifact_sha256: ce21fd2543074477d5b2137b3fad454d7d4a4386f2d934627bbd971845f4aa97
         - artifact: runtime-consolidation.md
           section_id: TASK-001
           item_id: TASK-001
@@ -932,7 +932,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
-          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+          artifact_sha256: ce21fd2543074477d5b2137b3fad454d7d4a4386f2d934627bbd971845f4aa97
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
@@ -1026,7 +1026,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+          artifact_sha256: ce21fd2543074477d5b2137b3fad454d7d4a4386f2d934627bbd971845f4aa97
         - artifact: runtime-consolidation.md
           section_id: TASK-005
           item_id: TASK-005
@@ -1120,7 +1120,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-010
           item_id: TASK-010
-          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+          artifact_sha256: ce21fd2543074477d5b2137b3fad454d7d4a4386f2d934627bbd971845f4aa97
         - artifact: runtime-consolidation.md
           section_id: TASK-010
           item_id: TASK-010
