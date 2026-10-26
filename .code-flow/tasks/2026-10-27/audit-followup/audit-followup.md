@@ -35,12 +35,13 @@
 | S-06 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 active marker + spec-context.yml + hook 子进程 | TASK-003 | planned | ["python3","-m","pytest","-q","tests/test_cf_workflow_service.py","tests/test_cf_spec_context.py","tests/test_cf_user_prompt_hook.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-07 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + SCC 计算 | TASK-004 | planned | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-08 | docs/codebase-consolidation-audit.md#A3 | system | 真实 npm pack + node CLI/init/migrate | TASK-005 | verified | ["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"] | P2 | auto | none | tests/** | - | - | no |
-| S-09 | docs/codebase-consolidation-audit.md#A7 | integration | 真实 adapters 文件 + 归一化 parity | TASK-006 | planned | ["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-09 | docs/codebase-consolidation-audit.md#A7 | integration | 真实 adapters 文件 + 归一化 parity | TASK-006 | verified | ["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-10 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 CLI 安装 + runner fixture 矩阵 | TASK-007 | planned | ["python3","-m","pytest","-q","tests/test_cli_spec_workflow.py","tests/test_cf_acceptance_runner.py"] | P2 | auto | none | tests/** | - | - | no |
 
 > 全部场景为工具链内部契约验证，不涉及浏览器，不声明 E2E。A4 的收益指标是 batch-4 边清零后 16 模块 SCC 缩到不超过 7 模块；不承诺一次消除剩余编排环。
 
 ---
+
 
 ## TASK-001: TASK 契约摘要收口
 
@@ -275,7 +276,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 
 ## TASK-006: 平台正文单一来源生成
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P2
 - **Depends**:
 - **Source**: docs/codebase-consolidation-audit.md#A7
@@ -290,29 +291,32 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 
 ### Checklist
 
-- [ ] 扩展生成器：读取 commands.json 与 canonical Claude 正文，生成 Codex/Costrict/OpenCode 正文
-- [ ] 绑定 token 规则集中声明，生成可重复、幂等，提供 `--check` 失败退出
-- [ ] 生成结果与当前 64 份正文逐字一致（或差异仅为已确认的适配 token）
-- [ ] [S-09][integration] adapter parity、模板一致性测试通过；人为改动生成物后 `--check` 失败
-- [ ] [S-09][integration] 生成器零外部依赖，示例块/错误信息/步骤说明未被删除
-- [ ] RULE-cli-dependency-allowlist-001 verifier: python3 -m pytest -q tests/test_cli_spec_workflow.py::test_package_manifest_includes_migrator_without_new_dependency
-- [ ] RULE-cli-platform-parity-001 verifier: python3 -m pytest -q tests/test_adapter_parity.py
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 扩展生成器：读取 commands.json 与 canonical Claude 正文，生成 Codex/Costrict/OpenCode 正文
+- [x] 绑定 token 规则集中声明，生成可重复、幂等，提供 `--check` 失败退出
+- [x] 生成结果与当前 64 份正文逐字一致（或差异仅为已确认的适配 token）
+- [x] [S-09][integration] adapter parity、模板一致性测试通过；人为改动生成物后 `--check` 失败
+- [x] [S-09][integration] 生成器零外部依赖，示例块/错误信息/步骤说明未被删除
+- [x] RULE-cli-dependency-allowlist-001 verifier: python3 -m pytest -q tests/test_cli_spec_workflow.py::test_package_manifest_includes_migrator_without_new_dependency
+- [x] RULE-cli-platform-parity-001 verifier: python3 -m pytest -q tests/test_adapter_parity.py
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-09 | integration | 真实 4 平台正文、真实 commands.json | 生成幂等；parity 通过；--check 捕获漂移 | `tests/test_adapter_parity.py`、`tests/test_spec_workflow_templates.py` | `["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"]` | planned |
+| S-09 | integration | 真实 4 平台正文、真实 commands.json | 生成幂等；parity 通过；--check 捕获漂移 | `tests/test_adapter_parity.py`、`tests/test_spec_workflow_templates.py` | `["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"]` | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-09 | planned | planned | planned | planned | planned |
+| S-09 | FAIL: drift check returned 0 for tampered temp copy; --root ignored; tampered body not regenerated | PASS: test_adapter_parity.py 23 passed; --check exit 0; full suite 963 passed, 3 skipped | tests/test_adapter_parity.py::test_s09_generated_platform_bodies_have_no_drift; ::test_s09_generator_check_detects_body_drift; ::test_s09_generator_is_idempotent_and_preserves_bodies; ::test_s09_generator_preserves_examples_errors_and_steps; ::test_s09_generator_uses_only_node_builtins | real 4-platform source bodies + real commands.json/platform-bindings.json; tampered temp repo detected | verified |
+- S-09: verified — automated command passed; run_id=2c80dc8bcfeb4283acd0d6ea380604c5 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-27] started
+- [2026-10-27] completed (done)
 
 ---
 
