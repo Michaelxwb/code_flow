@@ -6,6 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 import hashlib
 import json
+import math
 import sys
 from pathlib import Path
 import time
@@ -33,6 +34,15 @@ from cf_spec_verify import VerificationEvidence, VerificationScope, run_all_veri
 from cf_core import load_config, phase_timing, resolve_quality_loop
 from cf_acceptance_schema import load_manifest, validate_execution_baseline
 from cf_exec_base import execution_session
+from cf_validators import (
+    PARSE_ERROR,
+    VALID,
+    ValidatorConfig,
+    is_heavy,
+    resolve_validators,
+    run_validators,
+    trigger_matches,
+)
 
 
 @dataclass(frozen=True)
@@ -397,31 +407,34 @@ def _run_finish_validation(root: str, files: tuple[str, ...]) -> tuple[str, int]
     if not quality.get("finish_check"):
         return "", 0
     include_heavy = bool(quality.get("heavy_at_finish"))
-    from cf_validation import validate_files
-
     try:
-        result = validate_files(root, files, include_heavy=include_heavy)
-    except (OSError, ValueError) as exc:
-        return f"finish validation error: {exc}", 0
-    deferred_heavy = 0
-    if not include_heavy:
-        from cf_stop_hook import load_validators, trigger_matches
-
-        deferred_heavy = sum(
+        config, effective = resolve_validators(root)
+        if config.state == PARSE_ERROR:
+            return f"finish validation blocked: invalid_validation_config: {config.error}", 0
+        deferred_heavy = 0 if include_heavy else sum(
             1
-            for validator in load_validators(root)
-            if isinstance(validator, dict)
-            and validator.get("heavy") is True
+            for validator in effective
+            if is_heavy(validator)
             and any(trigger_matches(str(validator.get("trigger", "")), name) for name in files)
         )
-    reason = result.get("reason")
-    if result.get("decision") == "pass" or reason in ("no_changes", "no_validators_configured"):
+        validators = [item for item in effective if include_heavy or not is_heavy(item)]
+        if not validators:
+            return "", deferred_heavy
+        maximum = sum(float(item.get("timeout", 30000)) / 1000 for item in validators)
+        if not math.isfinite(maximum) or maximum <= 0:
+            raise ValueError("validation budget must be finite and positive")
+        with execution_session():
+            outcome = run_validators(root, ValidatorConfig(VALID, tuple(validators)), list(files),
+                                     "cf-validate", time.monotonic() + maximum, strict=True, cache=True)
+    except (OSError, ValueError) as exc:
+        return f"finish validation error: {exc}", 0
+    if not outcome.failures and not outcome.truncated:
         return "", deferred_heavy
-    failures = result.get("failures")
-    names = ", ".join(str(item.get("name", "validator")) for item in failures[:3]) if isinstance(failures, list) and failures else "validator"
-    if result.get("incomplete") and not failures:
+    if outcome.truncated and not outcome.failures:
         return "finish validation 预算耗尽：部分 validator 未执行", deferred_heavy
-    suffix = "（预算耗尽，部分未执行）" if result.get("incomplete") else ""
+    names = (", ".join(str(item.get("name", "validator")) for item in outcome.failures[:3])
+             if outcome.failures else "validator")
+    suffix = "（预算耗尽，部分未执行）" if outcome.truncated else ""
     return f"finish validation failed{suffix}: {names}", deferred_heavy
 
 

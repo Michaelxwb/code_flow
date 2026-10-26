@@ -464,7 +464,7 @@ def test_validation_scope_git_changes_excludes_managed(tmp_path: Path) -> None:
 # --- 10. validator skip_if_missing ---
 
 def test_validator_skip_if_missing_does_not_block(tmp_path: Path) -> None:
-    from cf_stop_hook import run_validators
+    from cf_validators import VALID, ValidatorConfig, run_validators
 
     _write(tmp_path / "src/app.py", "x = 1\n")
     validator = {
@@ -473,13 +473,13 @@ def test_validator_skip_if_missing_does_not_block(tmp_path: Path) -> None:
         "timeout": 30000, "skip_if_missing": True,
     }
     failures, truncated, _ = run_validators(
-        str(tmp_path), [validator], ["src/app.py"], "s1", total_budget=10.0,
+        str(tmp_path), ValidatorConfig(VALID, (validator,)), ["src/app.py"], "s1",
     )
     assert failures == [] and truncated is False
 
 
 def test_validator_without_skip_if_missing_still_fails(tmp_path: Path) -> None:
-    from cf_stop_hook import run_validators
+    from cf_validators import VALID, ValidatorConfig, run_validators
 
     _write(tmp_path / "src/app.py", "x = 1\n")
     validator = {
@@ -488,7 +488,7 @@ def test_validator_without_skip_if_missing_still_fails(tmp_path: Path) -> None:
         "timeout": 30000,
     }
     failures, _truncated, _ = run_validators(
-        str(tmp_path), [validator], ["src/app.py"], "s1", total_budget=10.0,
+        str(tmp_path), ValidatorConfig(VALID, (validator,)), ["src/app.py"], "s1",
     )
     assert len(failures) == 1
 

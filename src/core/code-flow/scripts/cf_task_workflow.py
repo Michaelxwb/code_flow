@@ -655,11 +655,11 @@ def _validation_view(details: Mapping[str, object]) -> dict[str, object]:
 
 
 def _validator_execution_count(root: str, selected: Sequence[str], reused: int) -> int:
-    from cf_stop_hook import trigger_matches
-    from cf_validation import _validators
+    from cf_validators import resolve_validators, trigger_matches
 
+    _config, validators = resolve_validators(root)
     applicable = 0
-    for validator in _validators(root):
+    for validator in validators:
         if not isinstance(validator, Mapping):
             continue
         trigger = str(validator.get("trigger", ""))
