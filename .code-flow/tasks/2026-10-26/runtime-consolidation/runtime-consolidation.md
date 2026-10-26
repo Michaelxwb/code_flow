@@ -1,0 +1,499 @@
+# Tasks: 运行时收敛与分层演进
+
+- **Source**: `runtime-consolidation.design.md`
+- **Created**: 2026-10-26
+- **Updated**: 2026-10-26
+
+## Proposal
+
+先收敛三处已复现的契约分歧（安装资源、validator、TASK 解析），再抽离公共原语并清理旧路径，最后在依赖环与私有导入归零后做一次机械的包化搬迁。目标不是减少文件数，而是让同一事实只有一个权威解释、依赖严格单向，同时保持四平台部署协议不变。
+
+### Alignment
+
+- **Scope**: 审计 A1/A2/A3/A4/A5/A6；分层守卫；公共原语；条件触发的包化与入口 shim。
+- **Decisions**: 契约先于目录；validator 引擎放入 L1 `cf_validators.py`；TASK 解析放入纯模块 `cf_task_doc.py`；新模块需 ≥3 个真实消费者；22 个外部入口路径冻结。
+- **Non-goals**: A7 平台正文生成；A8 大模块拆分；模块数量目标；入口 dispatcher；新依赖或持久缓存。
+- **Acceptance**: `runtime-consolidation.scenarios.md` 的 27 个场景全部有唯一 owner；三处分歧消除；依赖环与私有跨模块导入归零。
+
+---
+
+## Acceptance Coverage
+
+| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 | 优先级 | 执行方式 | 环境 | 输入 | E2E理由 | 触发路径 | 冒烟 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| S-01 | runtime-consolidation.design.md#2.5 验收条件 | system | npm pack tarball → init → .code-flow/.gitignore | TASK-002 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_packed_install_ignore"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-02 | runtime-consolidation.design.md#2.5 验收条件 | integration | 旧 ignore → init upgrade → 合并块 | TASK-002 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_upgrade_preserves_user_ignore"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| B-01 | runtime-consolidation.design.md#2.5 验收条件 | integration | 用户自有 ignore 文件 | TASK-002 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_user_owned_ignore_untouched"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| E-01 | runtime-consolidation.design.md#2.5 验收条件 | integration | canonical .gitignore → cli.js → pytest | TASK-002 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_canonical_ignore_drift"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-03 | runtime-consolidation.design.md#2.5 验收条件 | integration | validation.yml → validate/Stop/finish | TASK-003 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_validator_corrupt_consistent"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 无 validation.yml → 策略分支 | TASK-003 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_validator_missing_policy"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-05 | runtime-consolidation.design.md#2.5 验收条件 | integration | heavy_at_finish → finish 结果 | TASK-003 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_heavy_deferral"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| E-02 | runtime-consolidation.design.md#2.5 验收条件 | integration | Stop stdin/stdout JSON | TASK-003 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_stop_json_protocol"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-06 | runtime-consolidation.design.md#2.5 验收条件 | unit | parse_task_document | TASK-004 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_heading_edges"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-07 | runtime-consolidation.design.md#2.5 验收条件 | integration | 五个 TASK 消费者 | TASK-004 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_duplicate_task_id"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-08 | runtime-consolidation.design.md#2.5 验收条件 | unit | status 投影 | TASK-004 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_missing_status_draft"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| B-02 | runtime-consolidation.design.md#2.5 验收条件 | unit | CRLF/空文档 | TASK-004 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_doc_boundaries"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-09 | runtime-consolidation.design.md#2.5 验收条件 | system | start → finish → spec gate | TASK-005 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_flow_consistency"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| E-03 | runtime-consolidation.design.md#2.5 验收条件 | integration | 任务文件 → plan gate | TASK-005 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_plan_gate_duplicate"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-10 | runtime-consolidation.design.md#2.5 验收条件 | integration | 真实 git 仓库 → cf_git | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_git_primitive_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-11 | runtime-consolidation.design.md#2.5 验收条件 | integration | 文件系统 → atomic_write_text | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_atomic_write"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-12 | runtime-consolidation.design.md#2.5 验收条件 | unit | parse_frontmatter / table_columns | TASK-007 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_markdown_primitives"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-13 | runtime-consolidation.design.md#2.5 验收条件 | system | 公开 CLI/Hook 输出 | TASK-008 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_legacy_removal"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-14 | runtime-consolidation.design.md#2.5 验收条件 | integration | verify_plan → 读取计数 | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_verify_plan_reads"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| E-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 快照 → 文件变更 → drift | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_snapshot_drift"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-15 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 层映射 | TASK-001 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-16 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 私有 allowlist | TASK-001 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_private_symbol_guard"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| B-03 | runtime-consolidation.design.md#2.5 验收条件 | contract | allowlist 到期批次 | TASK-001 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-17 | runtime-consolidation.design.md#2.5 验收条件 | system | 四平台安装 → hook 调用 | TASK-011 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_four_platform_install"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-18 | runtime-consolidation.design.md#2.5 验收条件 | integration | 旧平铺 → migrate → 包布局 | TASK-011 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_package_upgrade_cleanup"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-19 | runtime-consolidation.design.md#2.5 验收条件 | system | src/core → .code-flow → npm tarball | TASK-010 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_canonical_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| E-05 | runtime-consolidation.design.md#2.5 验收条件 | integration | 迁移 staging → 失败 → rollback | TASK-011 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_migration_rollback"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+
+> 27 个场景全部有唯一 owner；无 E2E（CLI/运行时工具，跨入口用 integration/system/contract）。
+
+---
+
+## TASK-001: 基线冻结与分层守卫
+
+- **Status**: in-progress
+- **Priority**: P0
+- **Depends**: 无
+- **Source**: runtime-consolidation.design.md#3.2 架构设计, runtime-consolidation.design.md#3.5 质量实现方案
+- **Spec-Refs**: scripts-code-standards#RULE-scripts-no-print-debug-001, scripts-code-standards#RULE-scripts-no-bare-except-001
+- **Acceptance-Refs**: S-15, S-16, B-03
+- **Estimate**: 1.5d
+- **Capability**: 运行 `pytest -q tests` 时，新增的依赖方向与私有符号守卫能指出违规边，并把当前 33 个私有导入与存量环列入带到期批次的 allowlist。
+
+### Description
+
+在不搬目录的前提下建立架构护栏：维护模块→层映射、依赖边 allowlist、私有符号 allowlist；新增违规失败，allowlist 条目消失也失败（棘轮）。同时把 4 个 JS 测试纳入默认 pytest 入口，避免 ignore 漂移再次漏网。工作树先冻结为可独立审查的提交。
+
+### Checklist
+
+- [ ] 交付 `基线守卫 + 默认测试入口`，并提供 `pytest -q tests` 全绿的可重复演示
+- [ ] 冻结当前工作树，按主题形成独立提交，确保后续批次 diff 可审查
+- [ ] [S-15][contract] 新增 `tests/test_runtime_consolidation.py::test_dependency_direction`，用 AST 解析 `src/core/code-flow/scripts/*.py`，断言 L0/L1 不导入 L2/L3；存量违规进入带批次号的 allowlist
+- [ ] [S-16][contract] 新增 `test_private_symbol_guard`，扫描 `from cf_x import _y`，allowlist 首期为 33 个存量符号
+- [ ] [B-03][contract] 新增 `test_allowlist_ratchet`，allowlist 条目必须仍被引用，且超过批次期限时失败
+- [ ] [E-01][integration] 新增 `tests/test_js_suites.py`，用 subprocess 执行 4 个 `tests/*.js`，让 `pytest -q tests` 覆盖 JS 套件
+- [ ] 运行 `python3 -m pytest -q tests` 与 `node tests/test_cli_merge_helpers.js`
+- [ ] 运行 Spec verifier：`RULE-scripts-no-print-debug-001` / `RULE-scripts-no-bare-except-001`（regex 扫描）
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-15 | contract | 真实 AST 导入图 | 注入 L0→L2 边时测试失败并指出边 | tests/test_runtime_consolidation.py::test_dependency_direction | planned | planned |
+| S-16 | contract | 真实 AST 导入图 | 新增私有导入失败；移除代码后 allowlist 条目失败 | tests/test_runtime_consolidation.py::test_private_symbol_guard | planned | planned |
+| B-03 | contract | allowlist 元数据 | 超期条目导致失败 | tests/test_runtime_consolidation.py::test_allowlist_ratchet | planned | planned |
+
+### Acceptance Evidence
+
+> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+
+### Log
+- [2026-10-26] created (draft)
+- [2026-10-26] started
+
+---
+
+## TASK-002: 安装资源单一来源
+
+- **Status**: draft
+- **Priority**: P0
+- **Depends**: TASK-001
+- **Source**: runtime-consolidation.design.md#3.3 数据设计, runtime-consolidation.design.md#3.4 接口设计
+- **Spec-Refs**: cli-code-standards#RULE-cli-user-content-preservation-001
+- **Acceptance-Refs**: S-01, S-02, B-01, E-01
+- **Estimate**: 1.5d
+- **Capability**: 真实 `npm pack` 安装后 `.code-flow/.gitignore` 包含全部 20 条运行时忽略项；升级保留用户自定义行。
+
+### Description
+
+补齐 `RUNTIME_GITIGNORE` 缺失的 `.stop.lock`、`.context-state.json`，同步迁移器缺失的 `.runtime-install.json`、`.runtime-migration.lock/`；把 canonical `.gitignore` 加入 CLI 规则的 verifier scope。行为修复与“一份声明生成三处”的重构分开，本任务只做行为修复与对齐守卫。
+
+### Checklist
+
+- [ ] 交付 `真实安装产物 ignore 完整`，并提供 `npm pack` + 空项目 init 的演示
+- [ ] [S-01][system] 更新 `src/cli.js` 的 `RUNTIME_GITIGNORE`，覆盖 20 条；真实 tarball 安装断言包含 `.stop.lock` 与 `.context-state.json`
+- [ ] [S-02][integration] 验证 upgrade 只改托管块，删除的托管项恢复、用户行保留
+- [ ] [B-01][integration] 无托管标记的用户文件字节级不变
+- [ ] [E-01][integration] 将 `src/core/code-flow/.gitignore` 加入 `RULE-cli-user-content-preservation-001` 的 verifier files scope；模板与内嵌列表漂移时默认测试失败
+- [ ] 同步 `cf_spec_migrate._write_target_ignore` 的两条缺失项
+- [ ] 运行 Spec verifier：`RULE-cli-user-content-preservation-001`
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-01 | system | 真实 npm tarball + 文件系统 | 20 条齐全且包含两个缺项 | tests/test_runtime_consolidation.py::test_packed_install_ignore | planned | planned |
+| S-02 | integration | 真实 init upgrade | 托管项恢复、用户行保留 | tests/test_runtime_consolidation.py::test_upgrade_preserves_user_ignore | planned | planned |
+| B-01 | integration | 用户自有 ignore 文件 | 字节级不变 | tests/test_runtime_consolidation.py::test_user_owned_ignore_untouched | planned | planned |
+| E-01 | integration | canonical 模板 + CLI + pytest | 漂移时默认测试非零 | tests/test_runtime_consolidation.py::test_canonical_ignore_drift | planned | planned |
+
+### Acceptance Evidence
+
+> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+
+### Log
+- [2026-10-26] created (draft)
+
+---
+
+## TASK-003: validator 引擎收口
+
+- **Status**: draft
+- **Priority**: P0
+- **Depends**: TASK-001
+- **Source**: runtime-consolidation.design.md#3.2 架构设计, runtime-consolidation.design.md#3.4 接口设计
+- **Spec-Refs**: 无（引擎 API 由 TASK-001 的 scripts 规则覆盖）
+- **Acceptance-Refs**: S-03, S-04, S-05, E-02
+- **Estimate**: 2d
+- **Capability**: 同一份损坏的 `validation.yml` 在 validate、Stop、finish 三个入口返回一致的阻断与 `invalid_validation_config`。
+
+### Description
+
+新增 L1 `cf_validators.py`，持有 `load_validators`（missing/empty/valid/parse_error 四态）、`run_validators`、`trigger_matches` 与内容指纹缓存。`cf_stop_hook` 退化为 Hook 适配；`cf_validation` 与 `cf_task_runtime` 消费同一结果。
+
+### Checklist
+
+- [ ] 交付 `三入口一致的 validator 结论`，并提供同一坏 YAML 的三入口演示
+- [ ] [S-03][integration] 实现四态配置；损坏配置在三入口均 block，reason=`invalid_validation_config`
+- [ ] [S-04][integration] 保持缺失/空配置的既有产品策略，并显式测试
+- [ ] [S-05][integration] heavy validator 的 finish 延期与 deferred_heavy 计数保持不变
+- [ ] [E-02][integration] Stop 输出单个 JSON 对象，decision/reason 明确
+- [ ] 删除 `cf_stop_hook` 中的引擎实现，更新 `cf_validation`、`cf_task_runtime`、`cf_task_workflow` 的导入
+- [ ] 运行相关测试与 `code-flow validate`
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-03 | integration | 真实 YAML + 三入口 | 三者一致 block | tests/test_runtime_consolidation.py::test_validator_corrupt_consistent | planned | planned |
+| S-04 | integration | 无 YAML 项目 | validate block / finish 放行 | tests/test_runtime_consolidation.py::test_validator_missing_policy | planned | planned |
+| S-05 | integration | heavy 配置 | deferred_heavy=1 | tests/test_runtime_consolidation.py::test_heavy_deferral | planned | planned |
+| E-02 | integration | Stop stdin/stdout | 合法 JSON + reason | tests/test_runtime_consolidation.py::test_stop_json_protocol | planned | planned |
+
+### Acceptance Evidence
+
+> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+
+### Log
+- [2026-10-26] created (draft)
+
+---
+
+## TASK-004: TASK 文档单一解析核心
+
+- **Status**: draft
+- **Priority**: P0
+- **Depends**: TASK-001
+- **Source**: runtime-consolidation.design.md#3.3 数据设计, runtime-consolidation.design.md#3.4 接口设计
+- **Spec-Refs**: 无（解析器由 TASK-005 的 context-gate 规则覆盖）
+- **Acceptance-Refs**: S-06, S-07, S-08, B-02
+- **Estimate**: 2d
+- **Capability**: 同一份 TASK 文档在 workflow 与 session 两个入口读出一致状态；行内示例、围栏标题、重复 ID、CRLF 都有确定结论。
+
+### Description
+
+新增纯模块 `cf_task_doc.py`：锚定标题、围栏感知、重复 ID fail closed、缺 Status 记 draft。先切换 `cf_workflow_service` 与 `cf_spec_session`，保留 `TaskNode`/`PlanTask` 投影。
+
+### Checklist
+
+- [ ] 交付 `TASK 解析唯一权威（前两个消费者）`，并提供两个复现场景的演示
+- [ ] [S-06][unit] 行内示例与围栏代码块中的标题不识别
+- [ ] [S-07][integration] 重复 TASK ID 在所有消费者一致拒绝
+- [ ] [S-08][unit] 缺 Status 返回 draft
+- [ ] [B-02][unit] CRLF 正常解析；无 TASK 段落抛 `task_document_empty`
+- [ ] 切换 `cf_workflow_service.read_task_section/section_status` 与 `cf_spec_session._task_section`
+- [ ] 运行两个复现测试与真实任务目录解析
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-06 | unit | 真实解析函数 | 只返回真实标题 | tests/test_runtime_consolidation.py::test_task_heading_edges | planned | planned |
+| S-07 | integration | 五个消费者 | 一致拒绝 | tests/test_runtime_consolidation.py::test_duplicate_task_id | planned | planned |
+| S-08 | unit | 解析函数 | status=draft | tests/test_runtime_consolidation.py::test_missing_status_draft | planned | planned |
+| B-02 | unit | 解析函数 | CRLF/空文档结论 | tests/test_runtime_consolidation.py::test_task_doc_boundaries | planned | planned |
+
+### Acceptance Evidence
+
+> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+
+### Log
+- [2026-10-26] created (draft)
+
+---
+
+## TASK-005: TASK 解析剩余消费者与单一解析守卫
+
+- **Status**: draft
+- **Priority**: P0
+- **Depends**: TASK-004
+- **Source**: runtime-consolidation.design.md#3.2 架构设计, runtime-consolidation.design.md#3.4 接口设计
+- **Spec-Refs**: scripts-code-standards#RULE-scripts-context-gate-001
+- **Acceptance-Refs**: S-09, E-03
+- **Estimate**: 1.5d
+- **Capability**: `index`、`gate`、`plan`、`manifest`、`stop` 五个消费者全部改用同一解析器；正则 `^## TASK-` 只出现在 `cf_task_doc.py`。
+
+### Description
+
+切换剩余 5 处解析点，新增“单一解析器”守卫；保证 plan gate 与真实任务闭环行为一致。
+
+### Checklist
+
+- [ ] 交付 `TASK 解析 7→1`，并提供 grep 守卫与真实 start→finish 演示
+- [ ] 切换 `cf_task_index.parse_task_file`、`cf_spec_gate._task_sections`、`cf_task_plan.parse_plan_tasks`、`cf_acceptance_manifest` 的 Contract 提取、`cf_stop_hook._TASK_SECTION_RE`
+- [ ] [S-09][system] 真实任务目录 start → finish → spec gate 三命令状态一致
+- [ ] [E-03][integration] plan gate 对重复 ID 返回 block
+- [ ] 新增守卫：`^## TASK-` 正则只允许出现在 `cf_task_doc.py`
+- [ ] 运行 Spec verifier：`RULE-scripts-context-gate-001`
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-09 | system | 真实任务目录 + 三命令 | 状态一致 | tests/test_runtime_consolidation.py::test_task_flow_consistency | planned | planned |
+| E-03 | integration | 任务文件 → plan gate | block + duplicate_task_id | tests/test_runtime_consolidation.py::test_plan_gate_duplicate | planned | planned |
+
+### Acceptance Evidence
+
+> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+
+### Log
+- [2026-10-26] created (draft)
+
+---
+
+## TASK-006: Git 与原子文件原语
+
+- **Status**: draft
+- **Priority**: P1
+- **Depends**: TASK-001
+- **Source**: runtime-consolidation.design.md#3.4 接口设计
+- **Spec-Refs**: 无
+- **Acceptance-Refs**: S-10, S-11
+- **Estimate**: 2d
+- **Capability**: `cf_git.py` 与 `cf_fs.py` 成为唯一 Git/原子写实现，三个消费者行为一致。
+
+### Description
+
+抽取 `_run_git` ×3、`_git_changes`、`_git_tracked_files` 到 `cf_git.py`；抽取 `_atomic_text`、`_read/_write` 到 `cf_fs.py`；日志 `_log` ×3 统一走 `cf_log` 公开函数。新模块不得导入 L2/L3。
+
+### Checklist
+
+- [ ] 交付 `Git/原子写单一实现`，并提供三个消费者的对照测试
+- [ ] [S-10][integration] `cf_spec_context`、`cf_evidence_store`、`cf_task_parallel` 返回相同变更集合
+- [ ] [S-11][integration] 原子写在注入异常后保留原内容并清理临时文件
+- [ ] 新增 `cf_git.py`、`cf_fs.py`；将 `_log` 统一为 `cf_log` 公开函数
+- [ ] 更新私有导入 allowlist，移除已清零的条目
+- [ ] 运行守卫测试与相关模块测试
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-10 | integration | 真实 git 仓库 | 三消费者一致 | tests/test_runtime_consolidation.py::test_git_primitive_parity | planned | planned |
+| S-11 | integration | 真实文件系统 | 原内容保留、临时文件清理 | tests/test_runtime_consolidation.py::test_atomic_write | planned | planned |
+
+### Acceptance Evidence
+
+> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+
+### Log
+- [2026-10-26] created (draft)
+
+---
+
+## TASK-007: Markdown 与表格原语
+
+- **Status**: draft
+- **Priority**: P1
+- **Depends**: TASK-001
+- **Source**: runtime-consolidation.design.md#3.4 接口设计
+- **Spec-Refs**: 无
+- **Acceptance-Refs**: S-12
+- **Estimate**: 1.5d
+- **Capability**: frontmatter 与表格列解析各只有一份实现，列序变化时按表头定位。
+
+### Description
+
+新增 `cf_markdown.py`（或并入 `cf_task_doc.py` 的纯解析部分），收敛 `cf_core._FRONTMATTER_RE`、`cf_scenarios._frontmatter`、`cf_audit/_traceability/_acceptance_manifest` 的表格列解析。
+
+### Checklist
+
+- [ ] 交付 `Markdown/表格单实现`，并提供三类边界输入测试
+- [ ] [S-12][unit] 无 frontmatter 返回空映射；无表头返回空索引；列序变化按表头定位
+- [ ] 切换 5 处调用点，删除重复实现
+- [ ] 更新私有导入 allowlist
+- [ ] 运行守卫测试与相关解析测试
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-12 | unit | 纯解析函数 | 三类输入结论 | tests/test_runtime_consolidation.py::test_markdown_primitives | planned | planned |
+
+### Acceptance Evidence
+
+> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+
+### Log
+- [2026-10-26] created (draft)
+
+---
+
+## TASK-008: 旧路径与导航清理
+
+- **Status**: draft
+- **Priority**: P1
+- **Depends**: TASK-004, TASK-006, TASK-007
+- **Source**: runtime-consolidation.design.md#2.4 范围与边界, runtime-consolidation.design.md#3.2 架构设计
+- **Spec-Refs**: 无
+- **Acceptance-Refs**: S-13
+- **Estimate**: 1d
+- **Capability**: 删除无生产调用的旧 Spec 函数与专属词表后，公开 CLI/Hook 输出与路由结果不变。
+
+### Description
+
+删除 `read_matched_specs`、`read_specs`、`extract_context_tags` 及只服务它们的词表/正则；清理 `cf_task_state` 中无消费者的常量；更新 `scripts/_map.md` 与 `code-standards.md` 的过期导航。
+
+### Checklist
+
+- [ ] 交付 `旧路径删除 + 导航修正`，并提供删除前后公开入口对照
+- [ ] [S-13][system] 公开 CLI 与 Hook 输出、路由结果与基线一致
+- [ ] 删除三个旧函数与专属测试，确认无 `getattr`/星号导入的隐藏调用
+- [ ] 更新 `_map.md` 注入章节与 `code-standards.md` Avoid 条目
+- [ ] 运行公开命令回归
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-13 | system | 公开 CLI/Hook | 输出与路由不变 | tests/test_runtime_consolidation.py::test_legacy_removal | planned | planned |
+
+### Acceptance Evidence
+
+> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+
+### Log
+- [2026-10-26] created (draft)
+
+---
+
+## TASK-009: verify_plan 单次操作快照
+
+- **Status**: draft
+- **Priority**: P1
+- **Depends**: TASK-003, TASK-004
+- **Source**: runtime-consolidation.design.md#3.5 质量实现方案
+- **Spec-Refs**: 无
+- **Acceptance-Refs**: S-14, E-04
+- **Estimate**: 2d
+- **Capability**: 单次 `verify_plan` 对 TASK、场景、manifest 各至多读取一次，结果与漂移判断保持正确。
+
+### Description
+
+聚合入口加载一次已验证快照并传给子步骤；不新增持久缓存；加载后文件变化必须触发 drift 阻断。
+
+### Checklist
+
+- [ ] 交付 `verify_plan 单次加载`，并提供读取计数与结果对照
+- [ ] [S-14][integration] TASK/场景/manifest 读取次数 ≤1，结果不变
+- [ ] [E-04][integration] 两次使用之间文件变化触发 drift 阻断
+- [ ] 保持各 API 单独使用时的校验行为
+- [ ] 运行相关测试
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-14 | integration | 读取计数探针 | ≤1 次且结果不变 | tests/test_runtime_consolidation.py::test_verify_plan_reads | planned | planned |
+| E-04 | integration | 快照 + 文件变更 | drift 阻断 | tests/test_runtime_consolidation.py::test_snapshot_drift | planned | planned |
+
+### Acceptance Evidence
+
+> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+
+### Log
+- [2026-10-26] created (draft)
+
+---
+
+## TASK-010: 内部模块包化
+
+- **Status**: draft
+- **Priority**: P1
+- **Depends**: TASK-005, TASK-008, TASK-009
+- **Source**: runtime-consolidation.design.md#4.1 部署架构, runtime-consolidation.design.md#4.4 数据迁移
+- **Spec-Refs**: cli-code-standards#RULE-cli-dependency-allowlist-001, scripts-code-standards#RULE-scripts-canonical-parity-001
+- **Acceptance-Refs**: S-19
+- **Estimate**: 2d
+- **Capability**: 37 个无外部路径模块进入 `codeflow/` 包，双副本与 npm 产物保持 parity，不新增依赖。
+
+### Description
+
+在守卫全绿后，将无外部路径消费者模块 `git mv` 进 `codeflow/{core,spec,task,acceptance,evidence}`，更新 258 条内部导入与 65 个测试文件；同步 `src/core` 与 `.code-flow` 双副本。
+
+### Checklist
+
+- [ ] 交付 `内部模块包化`，并提供 parity 测试与 tarball 文件清单
+- [ ] [S-19][system] 双副本文件集一致，tarball 包含包树
+- [ ] 不新增 npm/Python 依赖
+- [ ] 更新测试导入为包导入
+- [ ] 运行 Spec verifier：`RULE-cli-dependency-allowlist-001`、`RULE-scripts-canonical-parity-001`
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-19 | system | 双副本 + npm tarball | 文件集一致、包树存在 | tests/test_runtime_consolidation.py::test_canonical_parity | planned | planned |
+
+### Acceptance Evidence
+
+> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+
+### Log
+- [2026-10-26] created (draft)
+
+---
+
+## TASK-011: 入口 shim 与迁移兼容
+
+- **Status**: draft
+- **Priority**: P1
+- **Depends**: TASK-010
+- **Source**: runtime-consolidation.design.md#4.1 部署架构, runtime-consolidation.design.md#4.2 发布与回滚, runtime-consolidation.design.md#4.4 数据迁移
+- **Spec-Refs**: cli-code-standards#RULE-cli-platform-parity-001, cli-code-standards#RULE-cli-hook-guard-001, cli-code-standards#RULE-cli-migration-transaction-001, cli-code-standards#RULE-cli-opencode-native-001, scripts-code-standards#RULE-scripts-hook-protocol-001
+- **Acceptance-Refs**: S-17, S-18, E-05
+- **Estimate**: 2d
+- **Capability**: 22 个入口路径保持不变并退化为 shim；四平台 fresh/upgrade 安装可用；迁移失败可回滚到旧布局。
+
+### Description
+
+生成 22 个入口 shim，保持 host 命令路径；安装器写入包树并更新 `runtime-install.json`；迁移清理旧平铺实现，保留一个版本窗口；失败走 journal rollback。
+
+### Checklist
+
+- [ ] 交付 `入口 shim + 可回滚迁移`，并提供四平台 fresh/upgrade 与 rollback 演示
+- [ ] [S-17][system] 四平台安装后 22 个入口存在，Hook 返回合法 JSON 或静默 no-op
+- [ ] [S-18][integration] 旧平铺升级后 shim 存在、旧实现清理、manifest 校验通过
+- [ ] [E-05][integration] 迁移失败后 rollback 恢复旧布局与版本
+- [ ] 保留一个发布版本的兼容窗口
+- [ ] 运行 Spec verifiers：`RULE-cli-platform-parity-001`、`RULE-cli-hook-guard-001`、`RULE-cli-migration-transaction-001`、`RULE-cli-opencode-native-001`、`RULE-scripts-hook-protocol-001`
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-17 | system | 四平台安装 + Hook | 路径存在、JSON/no-op | tests/test_runtime_consolidation.py::test_four_platform_install | planned | planned |
+| S-18 | integration | 旧平铺 → migrate | 清理 + manifest | tests/test_runtime_consolidation.py::test_package_upgrade_cleanup | planned | planned |
+| E-05 | integration | staging → 失败 → rollback | 恢复旧布局 | tests/test_runtime_consolidation.py::test_migration_rollback | planned | planned |
+
+### Acceptance Evidence
+
+> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+
+### Log
+- [2026-10-26] created (draft)
