@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 import re
 import sys
-from typing import IO, Mapping, Sequence
+from typing import IO, Mapping, Optional, Sequence
 
 _ID = re.compile(r"\b(?:FEAT|API|NFR(?:-[A-Z]+)?|S|E|B)-\d+\b")
 _REQUIRED = {"lite": ("需求概述", "功能方案", "范围与边界", "验收条件"),
@@ -112,12 +112,15 @@ def _feature_issues(documents: Sequence[Mapping[str, object]],
     return issues
 
 
-def lint_designs(files: Sequence[str], scenarios_file: str = "", template: str = "auto") -> dict[str, object]:
+def lint_designs(files: Sequence[str], scenarios_file: str = "", template: str = "auto", *,
+                 scenarios: Optional[Sequence[Mapping[str, object]]] = None) -> dict[str, object]:
     documents = [_document(Path(name)) for name in files]
-    scenarios: list[Mapping[str, object]] = []
-    if scenarios_file:
-        from cf_scenarios import parse_scenarios
-        scenarios = parse_scenarios(scenarios_file)["scenarios"]
+    if scenarios is None:
+        scenarios = []
+        if scenarios_file:
+            from cf_scenarios import parse_scenarios
+            scenarios = parse_scenarios(scenarios_file)["scenarios"]
+    scenarios = list(scenarios)
     defined = {reference for document in documents for reference in document["definitions"]}
     defined.update(str(row["id"]) for row in scenarios)
     issues = _reference_issues(documents, defined)
@@ -135,10 +138,13 @@ def lint_designs(files: Sequence[str], scenarios_file: str = "", template: str =
             "files": list(files), "definitions": sorted(defined)}
 
 
-def lint_requirement(task_file: str, scenarios_file: str = "") -> dict[str, object]:
+def lint_requirement(task_file: str, scenarios_file: str = "", *,
+                     task_text: Optional[str] = None,
+                     scenarios: Optional[Sequence[Mapping[str, object]]] = None) -> dict[str, object]:
     directory = Path(task_file).parent
     files = {str(path.resolve()) for path in directory.glob("*.design.md")}
-    text = Path(task_file).read_text(encoding="utf-8").split("## TASK-", 1)[0]
+    text = (Path(task_file).read_text(encoding="utf-8") if task_text is None else task_text)
+    text = text.split("## TASK-", 1)[0]
     roots = [directory, *[parent.parent for parent in directory.parents if parent.name == ".code-flow"]]
     for name in re.findall(r"[\w./-]+\.design\.md", text):
         resolved = next(((root / name).resolve() for root in roots if (root / name).is_file()), None)
@@ -146,7 +152,8 @@ def lint_requirement(task_file: str, scenarios_file: str = "") -> dict[str, obje
             return {"decision": "block", "findings": [_issue("design_source_missing", name, "", "引用的设计文件不存在")],
                     "files": sorted(files)}
         files.add(str(resolved))
-    return lint_designs(sorted(files), scenarios_file) if files else {"decision": "pass", "findings": [], "files": []}
+    return lint_designs(sorted(files), scenarios_file, scenarios=scenarios) if files else {
+        "decision": "pass", "findings": [], "files": []}
 
 
 def main(argv: Sequence[str] | None = None, stdout: IO[str] = sys.stdout) -> int:

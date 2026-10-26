@@ -973,12 +973,67 @@ def test_legacy_removal(tmp_path: Path) -> None:
     assert scopes["backend/database.md"] == "unmatched"
 
 
-def test_verify_plan_reads() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-009")
+def _plan_repo(tmp_path: Path) -> tuple[Path, Path, Path]:
+    from cf_acceptance_manifest import write_manifest
+    from test_audit_mainline_e2e import _repo
+
+    root, demand = _repo(tmp_path)
+    task_file = demand / "work.md"
+    source_file = demand / "demo.scenarios.md"
+    rows = [
+        {"id": scenario_id, "level": "integration", "boundary": "real", "steps": ["run the check"],
+         "expected": ["exit code 0"], "expected_refs": [{"expected": 1, "steps": [1]}]}
+        for scenario_id in ("S-01", "S-02")
+    ]
+    source_file.write_text(yaml.safe_dump({"schema": 1, "scenarios": rows}, allow_unicode=True),
+                           encoding="utf-8")
+    write_manifest(str(task_file), str(demand / ".acceptance-manifest.json"), str(source_file))
+    return root, demand, source_file
 
 
-def test_snapshot_drift() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-009")
+def test_verify_plan_reads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """[S-14] 单次 verify_plan 对 TASK/场景/manifest 各至多读取一次，结果不变。"""
+    from cf_plan_quality import verify_plan
+
+    _root_dir, demand, source_file = _plan_repo(tmp_path)
+    task_file = demand / "work.md"
+    targets = {"task": task_file, "scenarios": source_file,
+               "manifest": demand / ".acceptance-manifest.json"}
+    counts = {name: 0 for name in targets}
+    original = Path.read_text
+
+    def counting_read_text(self: Path, *args: object, **kwargs: object) -> str:
+        for name, target in targets.items():
+            if self.resolve() == target.resolve():
+                counts[name] += 1
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", counting_read_text)
+    result = verify_plan(str(demand), str(task_file))
+
+    assert result["decision"] == "pass", result
+    assert counts == {"task": 1, "scenarios": 1, "manifest": 1}, counts
+    assert result["e2e_quality"]["ok"] is True
+    assert result["registration"]["ok"] is True
+    assert result["design_lint"]["decision"] == "pass"
+    assert result["coverage"]["decision"] == "pass"
+    assert result["gate"]["decision"] == "pass"
+
+
+def test_snapshot_drift(tmp_path: Path) -> None:
+    """[E-04] 快照加载后 TASK 变化必须 drift 阻断，不能继续使用陈旧快照。"""
+    from cf_plan_quality import load_plan_snapshot, verify_plan
+
+    _root_dir, demand, _source = _plan_repo(tmp_path)
+    task_file = demand / "work.md"
+    snapshot = load_plan_snapshot(str(demand), str(task_file))
+    assert verify_plan(str(demand), str(task_file), snapshot=snapshot)["decision"] == "pass"
+
+    task_file.write_text(task_file.read_text(encoding="utf-8") + "\n## drift\n", encoding="utf-8")
+    result = verify_plan(str(demand), str(task_file), snapshot=snapshot)
+
+    assert result["decision"] == "block", result
+    assert result["reason"] == "plan_snapshot_drift"
 
 
 def test_four_platform_install() -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, Optional
 
 
 EXEC_MODES = ("auto", "manual", "deferred", "aspirational")
@@ -226,8 +226,8 @@ def _validate_check_environment(check_id: str, item: Mapping[str, object]) -> No
         raise ValueError(f"invalid check {check_id}:paths")
 
 
-def load_manifest(path: Path) -> dict[str, object]:
-    data = json.loads(path.read_text(encoding="utf-8"))
+def load_manifest(path: Path, *, text: Optional[str] = None) -> dict[str, object]:
+    data = json.loads(path.read_text(encoding="utf-8") if text is None else text)
     if not isinstance(data, dict):
         raise ValueError("invalid acceptance manifest: expected object")
     quality_schema = data.get("quality_schema", 1)

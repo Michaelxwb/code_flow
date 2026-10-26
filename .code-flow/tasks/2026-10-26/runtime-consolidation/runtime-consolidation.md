@@ -39,8 +39,8 @@
 | S-11 | runtime-consolidation.design.md#2.5 验收条件 | integration | 文件系统 → atomic_write_text | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_atomic_write"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
 | S-12 | runtime-consolidation.design.md#2.5 验收条件 | unit | parse_frontmatter / table_columns | TASK-007 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_markdown_primitives"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
 | S-13 | runtime-consolidation.design.md#2.5 验收条件 | system | 公开 CLI/Hook 输出 | TASK-008 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_legacy_removal"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
-| S-14 | runtime-consolidation.design.md#2.5 验收条件 | integration | verify_plan → 读取计数 | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_verify_plan_reads"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| E-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 快照 → 文件变更 → drift | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_snapshot_drift"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-14 | runtime-consolidation.design.md#2.5 验收条件 | integration | verify_plan → 读取计数 | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_verify_plan_reads"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
+| E-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 快照 → 文件变更 → drift | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_snapshot_drift"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
 | S-15 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 层映射 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-16 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 私有 allowlist | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_private_symbol_guard"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | B-03 | runtime-consolidation.design.md#2.5 验收条件 | contract | allowlist 到期批次 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
@@ -52,6 +52,8 @@
 > 27 个场景全部有唯一 owner；无 E2E（CLI/运行时工具，跨入口用 integration/system/contract）。
 
 ---
+
+
 
 
 ## TASK-001: 基线冻结与分层守卫
@@ -525,11 +527,11 @@
 
 ## TASK-009: verify_plan 单次操作快照
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-003, TASK-004
 - **Source**: runtime-consolidation.design.md#3.5 质量实现方案
-- **Spec-Refs**: 无
+- **Spec-Refs**: N/A
 - **Acceptance-Refs**: S-14, E-04
 - **Estimate**: 2d
 - **Capability**: 单次 `verify_plan` 对 TASK、场景、manifest 各至多读取一次，结果与漂移判断保持正确。
@@ -540,25 +542,39 @@
 
 ### Checklist
 
-- [ ] 交付 `verify_plan 单次加载`，并提供读取计数与结果对照
-- [ ] [S-14][integration] TASK/场景/manifest 读取次数 ≤1，结果不变
-- [ ] [E-04][integration] 两次使用之间文件变化触发 drift 阻断
-- [ ] 保持各 API 单独使用时的校验行为
-- [ ] 运行相关测试
+- [x] 交付 `verify_plan 单次加载`，并提供读取计数与结果对照
+- [x] [S-14][integration] TASK/场景/manifest 读取次数 ≤1，结果不变
+- [x] [E-04][integration] 两次使用之间文件变化触发 drift 阻断
+- [x] 保持各 API 单独使用时的校验行为
+- [x] 运行相关测试
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-14 | integration | 读取计数探针 | ≤1 次且结果不变 | tests/test_runtime_consolidation.py::test_verify_plan_reads | planned | planned |
-| E-04 | integration | 快照 + 文件变更 | drift 阻断 | tests/test_runtime_consolidation.py::test_snapshot_drift | planned | planned |
+| S-14 | integration | 读取计数探针 | ≤1 次且结果不变 | tests/test_runtime_consolidation.py::test_verify_plan_reads | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_verify_plan_reads` | verified |
+| E-04 | integration | 快照 + 文件变更 | drift 阻断 | tests/test_runtime_consolidation.py::test_snapshot_drift | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_snapshot_drift` | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-14 | 替换 skeleton 后运行：`AssertionError: {'manifest': 2, 'scenarios': 3, 'task': 4}` | PASS: 1 passed（两用例合计 2 passed） | `test_verify_plan_reads` 用 `Path.read_text` 计数探针断言 `counts == {"task": 1, "scenarios": 1, "manifest": 1}`，并核对 decision/e2e_quality/registration/design_lint/coverage/gate 结果不变 | 真实 `_repo` 临时仓库 + `write_manifest` 锁定 manifest/场景源；仅计数探针包裹 `Path.read_text`，不替换解析 | verified |
+| E-04 | 替换 skeleton 后运行：`ImportError: cannot import name 'load_plan_snapshot'` | PASS: 1 passed | `test_snapshot_drift` 先用快照验证 pass，再向 TASK 追加内容并复用同一快照，断言 `decision == "block"` 且 `reason == "plan_snapshot_drift"` | 真实文件写入改变 size/mtime；快照仅比较 stat 指纹，不重读内容，陈旧快照被阻断而非复用 | verified |
+
+全量回归：`python3 -m pytest -q tests` = 927 passed, 10 skipped。
+- 相关回归：`tests/test_runtime_consolidation.py tests/test_design_and_registration_gates.py tests/test_acceptance_contract_hardening.py tests/test_workflow_issue_regressions.py tests/test_cf_acceptance_manifest.py tests/test_cf_e2e_precision.py tests/test_cf_manifest_strict.py tests/test_cf_scenarios.py tests/test_cf_task_spec_workflow.py tests/test_audit_mainline_e2e.py` = 159 passed, 7 skipped。
+- 双副本同步：`src/core/code-flow/scripts/` 与 `.code-flow/scripts/` 六个文件一致。
+- S-14: verified — automated command passed; run_id=d50559d1bf4449379ce4dece3f7a10fe (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=d50559d1bf4449379ce4dece3f7a10fe (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
+- [2026-10-26] `Spec-Refs: 无` → `N/A`（`cf_spec_session` 的空引用标记不含“无”，与 TASK-006 对齐）
+- [2026-10-26] started
+- [2026-10-26] implemented: `PlanSnapshot` 单次读取 TASK/场景/manifest 并传参给 `validate_manifest`/`lint_requirement`/`validate_plan_coverage`；drift 用 stat 指纹阻断；未新增缓存或模块
+- [2026-10-26] verified: S-14/E-04 通过；全量 pytest 927 passed
+- [2026-10-26] completed (done)
 
 ---
 

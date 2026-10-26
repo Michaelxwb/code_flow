@@ -245,14 +245,15 @@ def _rule_plan_issues(
     return tuple(issues)
 
 
-def validate_plan_coverage(context: SpecContext, artifact: str) -> GateResult:
+def validate_plan_coverage(context: SpecContext, artifact: str,
+                           *, text: Optional[str] = None) -> GateResult:
     try:
-        text = Path(artifact).read_text(encoding="utf-8")
+        raw = Path(artifact).read_text(encoding="utf-8") if text is None else text
     except OSError as exc:
         issue = GateIssue("plan_read_error", "", "", "plan", str(exc))
         return GateResult("block", (issue,), (), ())
     try:
-        sections = _task_sections(text)
+        sections = _task_sections(raw)
     except TaskDocumentError as exc:
         issue = GateIssue(exc.code, "", "", "plan", str(exc))
         return GateResult("block", (issue,), (), ())
