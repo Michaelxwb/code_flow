@@ -28,12 +28,12 @@ from cf_acceptance_schema import (check_outcome, load_manifest, recorded_check_h
                                   scenario_check_ids, verified_evidence)
 from cf_acceptance_risk import risk_counts
 from cf_evidence_store import EvidenceStore
+from cf_markdown import column_index, is_separator_row, table_cells
 from cf_traceability import build_traceability, build_traceability_many, build_traceability_from_scenarios
 
 _SCENARIO_RE = re.compile(r"\b[SEB]-\d+\b")
 _RULE_RE = re.compile(r"^RULE-\d+$")
 _TASK_RE = re.compile(r"^TASK-\d+$")
-_SEPARATOR_RE = re.compile(r"^:?-{2,}:?$")
 
 _TRACE_FINDINGS = {
     "unknown_scenario": ("unknown_scenario", "scenario-source", "coverage_ids", "Coverage 引用了场景源中不存在的场景"),
@@ -76,27 +76,18 @@ def _first_table(text: str) -> tuple[list[str], list[list[str]]]:
     header: Optional[list[str]] = None
     rows: list[list[str]] = []
     for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped.startswith("|"):
+        cells = table_cells(line)
+        if not cells:
             if header is not None:
                 break
             continue
-        cells = [item.strip() for item in stripped.strip("|").split("|")]
-        if all(_SEPARATOR_RE.match(cell.replace(" ", "")) for cell in cells):
+        if is_separator_row(cells):
             continue
         if header is None:
-            header = cells
+            header = list(cells)
         else:
-            rows.append(cells)
+            rows.append(list(cells))
     return header or [], rows
-
-
-def _column(header: Sequence[str], *names: str) -> int:
-    for name in names:
-        for index, cell in enumerate(header):
-            if name.lower() in cell.lower():
-                return index
-    return -1
 
 
 def _cell(row: Sequence[str], index: int) -> str:
@@ -107,9 +98,9 @@ def parse_design_rules(design_file: str) -> list[dict[str, object]]:
     """Read RULE-* rows from design §2.5.1 (IDs and verified scenarios)."""
     text = Path(design_file).read_text(encoding="utf-8")
     header, rows = _first_table(_section_body(text, r"2\.5\.1"))
-    id_index = _column(header, "id")
-    description_index = _column(header, "描述", "description")
-    scenario_index = _column(header, "验证场景", "场景")
+    id_index = column_index(header, "id")
+    description_index = column_index(header, "描述", "description")
+    scenario_index = column_index(header, "验证场景", "场景")
     rules: list[dict[str, object]] = []
     for row in rows:
         rule_id = _cell(row, id_index) if id_index >= 0 else _cell(row, 0)
@@ -127,7 +118,7 @@ def parse_design_risks(design_file: str) -> list[dict[str, object]]:
     """Read §5 risk rows; risk IDs are synthesized from their derived order."""
     text = Path(design_file).read_text(encoding="utf-8")
     header, rows = _first_table(_section_body(text, r"5\."))
-    level_index = _column(header, "等级", "level")
+    level_index = column_index(header, "等级", "level")
     risks: list[dict[str, object]] = []
     for index, row in enumerate(rows):
         title = _cell(row, 0)

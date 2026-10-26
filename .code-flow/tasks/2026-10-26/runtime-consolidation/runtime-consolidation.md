@@ -37,7 +37,7 @@
 | E-03 | runtime-consolidation.design.md#2.5 验收条件 | integration | 任务文件 → plan gate | TASK-005 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_plan_gate_duplicate"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-10 | runtime-consolidation.design.md#2.5 验收条件 | integration | 真实 git 仓库 → cf_git | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_git_primitive_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-11 | runtime-consolidation.design.md#2.5 验收条件 | integration | 文件系统 → atomic_write_text | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_atomic_write"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-12 | runtime-consolidation.design.md#2.5 验收条件 | unit | parse_frontmatter / table_columns | TASK-007 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_markdown_primitives"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-12 | runtime-consolidation.design.md#2.5 验收条件 | unit | parse_frontmatter / table_columns | TASK-007 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_markdown_primitives"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
 | S-13 | runtime-consolidation.design.md#2.5 验收条件 | system | 公开 CLI/Hook 输出 | TASK-008 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_legacy_removal"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-14 | runtime-consolidation.design.md#2.5 验收条件 | integration | verify_plan → 读取计数 | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_verify_plan_reads"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | E-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 快照 → 文件变更 → drift | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_snapshot_drift"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
@@ -319,11 +319,11 @@
 
 ## TASK-007: Markdown 与表格原语
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-001
 - **Source**: runtime-consolidation.design.md#3.4 接口设计
-- **Spec-Refs**: 无
+- **Spec-Refs**: N/A
 - **Acceptance-Refs**: S-12
 - **Estimate**: 1.5d
 - **Capability**: frontmatter 与表格列解析各只有一份实现，列序变化时按表头定位。
@@ -334,24 +334,32 @@
 
 ### Checklist
 
-- [ ] 交付 `Markdown/表格单实现`，并提供三类边界输入测试
-- [ ] [S-12][unit] 无 frontmatter 返回空映射；无表头返回空索引；列序变化按表头定位
-- [ ] 切换 5 处调用点，删除重复实现
-- [ ] 更新私有导入 allowlist
-- [ ] 运行守卫测试与相关解析测试
+- [x] 交付 `Markdown/表格单实现`，并提供三类边界输入测试
+- [x] [S-12][unit] 无 frontmatter 返回空映射；无表头返回空索引；列序变化按表头定位
+- [x] 切换 5 处调用点，删除重复实现
+- [x] 更新私有导入 allowlist
+- [x] 运行守卫测试与相关解析测试
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-12 | unit | 纯解析函数 | 三类输入结论 | tests/test_runtime_consolidation.py::test_markdown_primitives | planned | planned |
+| S-12 | unit | 纯解析函数 | 三类输入结论 | tests/test_runtime_consolidation.py::test_markdown_primitives | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_markdown_primitives` | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-12 | 先写 `test_markdown_primitives` 后运行：`ModuleNotFoundError: No module named 'cf_markdown'` | PASS: 1 passed | `test_markdown_primitives` 三类断言：无 frontmatter → `{}` 且正文不变；无表头/仅分隔行 → `{}`；表头列序反转后按表头文本取到正确索引 | 真实调用 `cf_markdown.parse_frontmatter` / `table_columns` 纯函数，无 mock；全量 `python3 -m pytest -q` = 907 passed, 26 skipped | verified |
+
+> 收敛明细：`cf_core`（删除 `_FRONTMATTER_RE`，委托 `parse_frontmatter`）、`cf_scenarios`（删除 `_frontmatter`）、`cf_audit`/`cf_traceability`（删除 `_column` 与本地分隔行正则）、`cf_acceptance_manifest`（`_column_indexes` 复用 `column_index`，覆盖表解析复用 `table_cells`），`cf_checks`/`cf_stop_hook` 改为公开函数消费；私有 allowlist 删除 6 条已消失条目。
+- S-12: verified — automated command passed; run_id=dc17a8ad105a4c6bbd0d4b8559aef161 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
+- [2026-10-26] started
+- [2026-10-26] cf_markdown 原语落地；5 处重复解析收敛；RED/GREEN 记录于 Acceptance Evidence
+- [2026-10-26] completed (done)
 
 ---
 

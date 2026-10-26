@@ -20,7 +20,8 @@ from typing import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 
-from cf_core import _FRONTMATTER_RE, normalize_path
+from cf_core import normalize_path
+from cf_markdown import frontmatter_block
 
 CHECK_TIMEOUT_SECONDS = 2.0
 MAX_CONTENT_BYTES = 256 * 1024
@@ -165,12 +166,12 @@ def parse_spec_checks(content: str) -> tuple:
     """Parse frontmatter checks → (checks, errors). Both lists, never raises."""
     if not isinstance(content, str):
         return [], []
-    match = _FRONTMATTER_RE.match(content)
-    if not match or "checks:" not in match.group(1):
+    match = frontmatter_block(content)
+    if match is None or "checks:" not in match:
         return [], []
     try:
         import yaml
-        meta = yaml.safe_load(match.group(1)) or {}
+        meta = yaml.safe_load(match) or {}
     except Exception as exc:
         return [], [f"frontmatter YAML 解析失败: {exc}"]
     raw = meta.get("checks")

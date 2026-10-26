@@ -6,6 +6,8 @@ import re
 import sys
 import time
 
+from cf_markdown import parse_frontmatter
+
 # --- Config cache (fix #3: avoid re-parsing YAML on every hook call) ---
 
 _config_cache: dict = {}
@@ -572,30 +574,13 @@ def resolve_enforcement(config: dict) -> str:
     return "required"
 
 
-_FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.*?)\n---[ \t]*\n?", re.DOTALL)
-
-
 def parse_spec_frontmatter(content: str) -> tuple:
     """Split optional YAML frontmatter from spec content → (meta, body).
 
-    Parses only flat `key: value` string pairs — enough for `description:` —
-    so the hook hot path never needs pyyaml for this. Content without
-    frontmatter returns ({}, content) unchanged.
+    Flat `key: value` parsing keeps the hook hot path free of pyyaml; content
+    without frontmatter returns ({}, content) unchanged.
     """
-    if not isinstance(content, str):
-        return {}, content
-    match = _FRONTMATTER_RE.match(content)
-    if not match:
-        return {}, content
-    meta: dict = {}
-    for line in match.group(1).splitlines():
-        key, sep, value = line.partition(":")
-        if not sep:
-            continue
-        key = key.strip()
-        if key:
-            meta[key] = value.strip().strip('"').strip("'")
-    return meta, content[match.end():]
+    return parse_frontmatter(content)
 
 
 def spec_description(content: str) -> str:

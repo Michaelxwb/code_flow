@@ -1,7 +1,7 @@
 version: 1
 task: runtime-consolidation
 enforcement: required
-updated_at: '2026-10-26T14:18:23.012162+00:00'
+updated_at: '2026-10-26T14:32:00.854572+00:00'
 sources:
 - type: cli
   ref: bind
@@ -45,7 +45,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-010
           item_id: TASK-010
-          artifact_sha256: 1f66f4deb76f579ab35bb3678eec6b0bf1550b8b9aa249f7b41103d846a06b8f
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       code:
@@ -59,6 +59,18 @@ bindings:
           rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
           artifact_sha256: null
           diff_sha256: 55662eaf606874cdb7fd494fd3ea00abff1d7cb5b184c8dcdc289a7e4da11c96
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
+          executed_at: '2026-10-26T14:39:42.201977+00:00'
+          status: unverified
+          rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
+          artifact_sha256: null
+          diff_sha256: 9a48c5d792950617d48e5ce1c77b83a8b034e703e3c34fe817fecc707d3b8a08
           result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
           error_code: deferred_to_review
           details:
@@ -93,7 +105,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 1f66f4deb76f579ab35bb3678eec6b0bf1550b8b9aa249f7b41103d846a06b8f
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       code:
@@ -107,6 +119,18 @@ bindings:
           rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
           artifact_sha256: null
           diff_sha256: 55662eaf606874cdb7fd494fd3ea00abff1d7cb5b184c8dcdc289a7e4da11c96
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
+          executed_at: '2026-10-26T14:39:42.202031+00:00'
+          status: unverified
+          rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
+          artifact_sha256: null
+          diff_sha256: 9a48c5d792950617d48e5ce1c77b83a8b034e703e3c34fe817fecc707d3b8a08
           result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
           error_code: deferred_to_review
           details:
@@ -141,7 +165,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
-          artifact_sha256: 1f66f4deb76f579ab35bb3678eec6b0bf1550b8b9aa249f7b41103d846a06b8f
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       code:
@@ -155,6 +179,18 @@ bindings:
           rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
           artifact_sha256: null
           diff_sha256: 55662eaf606874cdb7fd494fd3ea00abff1d7cb5b184c8dcdc289a7e4da11c96
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
+          executed_at: '2026-10-26T14:39:42.202048+00:00'
+          status: unverified
+          rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
+          artifact_sha256: null
+          diff_sha256: 9a48c5d792950617d48e5ce1c77b83a8b034e703e3c34fe817fecc707d3b8a08
           result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
           error_code: deferred_to_review
           details:
@@ -189,7 +225,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
-          artifact_sha256: 1f66f4deb76f579ab35bb3678eec6b0bf1550b8b9aa249f7b41103d846a06b8f
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       code:
@@ -203,6 +239,18 @@ bindings:
           rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
           artifact_sha256: null
           diff_sha256: 55662eaf606874cdb7fd494fd3ea00abff1d7cb5b184c8dcdc289a7e4da11c96
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
+          executed_at: '2026-10-26T14:39:42.202056+00:00'
+          status: unverified
+          rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
+          artifact_sha256: null
+          diff_sha256: 9a48c5d792950617d48e5ce1c77b83a8b034e703e3c34fe817fecc707d3b8a08
           result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
           error_code: deferred_to_review
           details:
@@ -237,7 +285,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
-          artifact_sha256: 1f66f4deb76f579ab35bb3678eec6b0bf1550b8b9aa249f7b41103d846a06b8f
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       code:
@@ -251,6 +299,18 @@ bindings:
           rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
           artifact_sha256: null
           diff_sha256: 55662eaf606874cdb7fd494fd3ea00abff1d7cb5b184c8dcdc289a7e4da11c96
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
+          executed_at: '2026-10-26T14:39:42.202062+00:00'
+          status: unverified
+          rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
+          artifact_sha256: null
+          diff_sha256: 9a48c5d792950617d48e5ce1c77b83a8b034e703e3c34fe817fecc707d3b8a08
           result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
           error_code: deferred_to_review
           details:
@@ -286,7 +346,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
-          artifact_sha256: 1f66f4deb76f579ab35bb3678eec6b0bf1550b8b9aa249f7b41103d846a06b8f
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       code:
@@ -300,6 +360,18 @@ bindings:
           rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
           artifact_sha256: null
           diff_sha256: 55662eaf606874cdb7fd494fd3ea00abff1d7cb5b184c8dcdc289a7e4da11c96
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
+          executed_at: '2026-10-26T14:39:42.202067+00:00'
+          status: unverified
+          rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
+          artifact_sha256: null
+          diff_sha256: 9a48c5d792950617d48e5ce1c77b83a8b034e703e3c34fe817fecc707d3b8a08
           result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
           error_code: deferred_to_review
           details:
@@ -514,7 +586,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 1f66f4deb76f579ab35bb3678eec6b0bf1550b8b9aa249f7b41103d846a06b8f
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       code:
@@ -528,6 +600,17 @@ bindings:
           rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
           artifact_sha256: null
           diff_sha256: 55662eaf606874cdb7fd494fd3ea00abff1d7cb5b184c8dcdc289a7e4da11c96
+          result_sha256: cd34184c6cf8bec13ea62fdab575a0707633b5cfccc70e59c4cd1cdbf606ed4e
+          error_code: null
+          details:
+            checked_files: 2
+            violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-10-26T14:40:05.182835+00:00'
+          status: verified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: 9a48c5d792950617d48e5ce1c77b83a8b034e703e3c34fe817fecc707d3b8a08
           result_sha256: cd34184c6cf8bec13ea62fdab575a0707633b5cfccc70e59c4cd1cdbf606ed4e
           error_code: null
           details:
@@ -561,7 +644,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 1f66f4deb76f579ab35bb3678eec6b0bf1550b8b9aa249f7b41103d846a06b8f
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       code:
@@ -579,6 +662,17 @@ bindings:
           error_code: null
           details:
             checked_files: 42
+            violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-10-26T14:40:05.186238+00:00'
+          status: verified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: 9a48c5d792950617d48e5ce1c77b83a8b034e703e3c34fe817fecc707d3b8a08
+          result_sha256: 8986a06c99e5237702e0737f10a5153e86cc8b75e11a4cd5e92297fffc0ba73b
+          error_code: null
+          details:
+            checked_files: 17
             violations: []
       review:
         status: pending
@@ -608,7 +702,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-011
           item_id: TASK-011
-          artifact_sha256: 1f66f4deb76f579ab35bb3678eec6b0bf1550b8b9aa249f7b41103d846a06b8f
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       code:
@@ -644,6 +738,34 @@ bindings:
               69 passed in 11.33s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-10-26T14:39:56.867339+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: 9a48c5d792950617d48e5ce1c77b83a8b034e703e3c34fe817fecc707d3b8a08
+          result_sha256: f7c4b21b9a7dcce50d3d2d7dbbe2c906d03cdbbb0cdc54cc64252d346ff9dff7
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            - tests/test_codex_native_hook.py
+            - tests/test_opencode_native.py
+            - tests/test_runtime_contract.py
+            exit_code: 0
+            stdout_sha256: 88afe1f91f2da6a3ad331a556620764f3491b97391d3286cbc7b70c0fe539a83
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '.....................................................................    [100%]
+
+              69 passed in 11.98s
+
+              '
       review:
         status: pending
         refs: []
@@ -672,7 +794,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 1f66f4deb76f579ab35bb3678eec6b0bf1550b8b9aa249f7b41103d846a06b8f
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       code:
@@ -705,6 +827,31 @@ bindings:
               64 passed in 7.89s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-10-26T14:40:04.660193+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: 9a48c5d792950617d48e5ce1c77b83a8b034e703e3c34fe817fecc707d3b8a08
+          result_sha256: a78d5712ba78f77e22050bed502d59e4020a0a3471045af75edb2b443c11bf12
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            stdout_sha256: 50a57526efe9181c225d33840619cf151518f437f21dab4f3a87808472cd0f64
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '................................................................         [100%]
+
+              64 passed in 7.67s
+
+              '
       review:
         status: pending
         refs: []
@@ -733,7 +880,7 @@ bindings:
         - artifact: runtime-consolidation.md
           section_id: TASK-010
           item_id: TASK-010
-          artifact_sha256: 1f66f4deb76f579ab35bb3678eec6b0bf1550b8b9aa249f7b41103d846a06b8f
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       code:
@@ -764,6 +911,31 @@ bindings:
             output: '........................                                                 [100%]
 
               24 passed in 0.44s
+
+              '
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-10-26T14:40:05.181336+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: 9a48c5d792950617d48e5ce1c77b83a8b034e703e3c34fe817fecc707d3b8a08
+          result_sha256: 5224a97e75d4c8afa50892114a3e5230d0a5de6f7b7da985091f3ba5ee862b88
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            stdout_sha256: f76dd8c0d124530873de7bfce5826885cb1fcde06b9e5688c0c762bcee2db6dd
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '........................                                                 [100%]
+
+              24 passed in 0.39s
 
               '
       review:

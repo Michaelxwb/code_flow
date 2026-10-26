@@ -1402,7 +1402,7 @@
       "kind": "functional",
       "boundary": "纯函数 parse_frontmatter 与 table_columns",
       "owner": "TASK-007",
-      "status": "designed",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -1443,7 +1443,94 @@
       "features": [
         "FEAT-04"
       ],
-      "check": "CHK-71e953005848"
+      "check": "CHK-71e953005848",
+      "revision": 1,
+      "evidence": {
+        "id": "S-12",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "check_id": "CHK-71e953005848",
+        "input_hash": "d59d642ec00e05efc4eea5358384298a2d225ed7fd9d1c961ff8eebc0dadde17",
+        "check_config": {
+          "id": "CHK-71e953005848",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_markdown_primitives"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/test_runtime_consolidation.py"
+          ],
+          "preflight": [],
+          "paths": []
+        },
+        "revision": 1,
+        "run_id": "dc17a8ad105a4c6bbd0d4b8559aef161",
+        "executed_at": "2026-10-26T14:39:42.044810+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_runtime_consolidation.py::test_markdown_primitives"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "d59d642ec00e05efc4eea5358384298a2d225ed7fd9d1c961ff8eebc0dadde17"
+      },
+      "runs": [
+        {
+          "id": "S-12",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "check_id": "CHK-71e953005848",
+          "input_hash": "d59d642ec00e05efc4eea5358384298a2d225ed7fd9d1c961ff8eebc0dadde17",
+          "check_config": {
+            "id": "CHK-71e953005848",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_runtime_consolidation.py::test_markdown_primitives"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/test_runtime_consolidation.py"
+            ],
+            "preflight": [],
+            "paths": []
+          },
+          "revision": 1,
+          "run_id": "dc17a8ad105a4c6bbd0d4b8559aef161",
+          "executed_at": "2026-10-26T14:39:42.044810+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_markdown_primitives"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "d59d642ec00e05efc4eea5358384298a2d225ed7fd9d1c961ff8eebc0dadde17"
+        }
+      ]
     },
     {
       "id": "S-13",

@@ -18,6 +18,8 @@ from typing import IO, Mapping, Optional, Sequence
 
 import yaml
 
+from cf_markdown import frontmatter_block
+
 
 SCHEMA_VERSION = 1
 SCENARIO_ID = re.compile(r"^[SEB]-\d+$")
@@ -39,12 +41,13 @@ class ScenarioError(ValueError):
         self.details = dict(details) if details else {}
 
 
-def _frontmatter(text: str) -> str:
+def _frontmatter_text(text: str) -> str:
+    """YAML body for `yaml.safe_load`; unclosed delimiters fail closed."""
+    block = frontmatter_block(text)
+    if block is not None:
+        return block
     if text.startswith("---"):
-        end = text.find("\n---", 3)
-        if end == -1:
-            raise ScenarioError("scenario_source_invalid_frontmatter", "frontmatter 缺少闭合 ---")
-        return text[3:end]
+        raise ScenarioError("scenario_source_invalid_frontmatter", "frontmatter 缺少闭合 ---")
     return text
 
 
@@ -123,7 +126,7 @@ def parse_scenarios(path: object) -> dict[str, object]:
     except (OSError, UnicodeError) as exc:
         raise ScenarioError("scenario_source_unreadable", str(exc), {"path": str(target)}) from exc
     try:
-        data = yaml.safe_load(_frontmatter(text))
+        data = yaml.safe_load(_frontmatter_text(text))
     except yaml.YAMLError as exc:
         raise ScenarioError("scenario_source_invalid_yaml", str(exc), {"path": str(target)}) from exc
     document = _mapping(data, "scenarios")

@@ -29,6 +29,7 @@ from cf_spec_context import load_active_task
 from cf_task_runtime import run_done_gate
 from cf_stop_guard import StopAlreadyRunning, stop_guard
 from cf_acceptance_evidence import line_status, scenario_line
+from cf_acceptance_manifest import coverage_execution
 from cf_core import (
     _log,
     ensure_utf8_io,
@@ -147,23 +148,6 @@ def _subsection(section: str, heading: str) -> str:
     return match.group(1) if match else ""
 
 
-def _coverage_execution(coverage: str, scenario: str) -> tuple[str, str]:
-    from cf_acceptance_manifest import _column_indexes, _column_value, _kind, _parse_exec
-    columns: dict[str, int] = {}
-    for line in coverage.splitlines():
-        if not line.strip().startswith("|"):
-            continue
-        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        header = _column_indexes(cells)
-        if "level" in header:
-            columns = header
-        if cells and cells[0] == scenario:
-            fields = cells[1:]
-            return (_kind(_column_value(fields, columns, "level", 1)),
-                    _parse_exec(_column_value(fields, columns, "exec", 9)))
-    return "", ""
-
-
 def _acceptance_gap(task_id: str, section: str, coverage: str) -> str:
 
     status = re.search(r"(?m)^- \*\*Status\*\*: ([^\n]+)", section)
@@ -186,7 +170,7 @@ def _acceptance_gap(task_id: str, section: str, coverage: str) -> str:
         return f"{task_id} 缺少 Acceptance Contract 或 Acceptance Evidence"
     for scenario in scenarios:
         task_status = status.group(1).strip()
-        row_kind, row_exec = _coverage_execution(coverage, scenario)
+        row_kind, row_exec = coverage_execution(coverage, scenario)
         if task_status == "done" and (row_kind == "e2e" or row_exec == "deferred"):
             allowed = {"verified", "e2e_deferred"}
         elif task_status == "done" and row_kind == "manual":
