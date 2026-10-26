@@ -6,6 +6,7 @@ import re
 import sys
 import time
 
+import cf_log
 from cf_markdown import parse_frontmatter
 
 # --- Config cache (fix #3: avoid re-parsing YAML on every hook call) ---
@@ -707,8 +708,8 @@ def assemble_context(specs: list, heading: str) -> str:
 
 
 def _log(msg: str) -> None:
-    """Log to stderr (fix #9: don't pollute stdout which is hook output)."""
-    print(msg, file=sys.stderr)
+    """Diagnostics go to stderr through the shared L0 writer (fix #9)."""
+    cf_log.warn(msg)
 
 
 _PROCESS_START = time.monotonic()

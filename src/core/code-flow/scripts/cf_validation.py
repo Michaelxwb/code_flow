@@ -10,8 +10,9 @@ from typing import IO, Optional, Sequence
 import sys
 import time
 
+import cf_git
 from cf_exec_base import execution_session
-from cf_spec_context import _git_changes, current_owned_paths, load_active_task
+from cf_spec_context import current_owned_paths, load_active_task
 from cf_validators import PARSE_ERROR, VALID, ValidatorConfig, is_heavy, resolve_validators, run_validators
 
 
@@ -41,7 +42,7 @@ def validation_scope(root: str, files: Sequence[str] = ()) -> tuple[str, ...]:
     if (base / ".code-flow/.active-task.json").exists():
         scoped = current_owned_paths(str(base), load_active_task(str(base)))
     else:
-        scoped = tuple(sorted(_git_changes(str(base))))
+        scoped = tuple(sorted(cf_git.changed_files(str(base))))
     return tuple(sorted(item for item in scoped if not _is_managed(item)))
 
 

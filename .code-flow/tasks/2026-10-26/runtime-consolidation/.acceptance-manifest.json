@@ -2680,7 +2680,7 @@
       "kind": "functional",
       "boundary": "真实 git 仓库 → cf_git 公共函数",
       "owner": "TASK-006",
-      "status": "designed",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -2722,7 +2722,94 @@
       "features": [
         "FEAT-04"
       ],
-      "check": "CHK-9540efa5ec9c"
+      "check": "CHK-9540efa5ec9c",
+      "revision": 1,
+      "evidence": {
+        "id": "S-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "check_id": "CHK-9540efa5ec9c",
+        "input_hash": "e5fc03ab6f6dc0c292ce3dc2095f6dea4e8fd7a9f94ada8b7b657f8770aceedb",
+        "check_config": {
+          "id": "CHK-9540efa5ec9c",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_git_primitive_parity"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/test_runtime_consolidation.py"
+          ],
+          "preflight": [],
+          "paths": []
+        },
+        "revision": 1,
+        "run_id": "c198c8e430724f7f8dbd88da411232d1",
+        "executed_at": "2026-10-26T15:07:28.183170+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_runtime_consolidation.py::test_git_primitive_parity"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "e5fc03ab6f6dc0c292ce3dc2095f6dea4e8fd7a9f94ada8b7b657f8770aceedb"
+      },
+      "runs": [
+        {
+          "id": "S-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "check_id": "CHK-9540efa5ec9c",
+          "input_hash": "e5fc03ab6f6dc0c292ce3dc2095f6dea4e8fd7a9f94ada8b7b657f8770aceedb",
+          "check_config": {
+            "id": "CHK-9540efa5ec9c",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_runtime_consolidation.py::test_git_primitive_parity"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/test_runtime_consolidation.py"
+            ],
+            "preflight": [],
+            "paths": []
+          },
+          "revision": 1,
+          "run_id": "c198c8e430724f7f8dbd88da411232d1",
+          "executed_at": "2026-10-26T15:07:28.183170+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_git_primitive_parity"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "e5fc03ab6f6dc0c292ce3dc2095f6dea4e8fd7a9f94ada8b7b657f8770aceedb"
+        }
+      ]
     },
     {
       "id": "S-11",
@@ -2731,7 +2818,7 @@
       "kind": "functional",
       "boundary": "真实文件系统 → atomic_write_text",
       "owner": "TASK-006",
-      "status": "designed",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -2773,7 +2860,94 @@
       "features": [
         "FEAT-04"
       ],
-      "check": "CHK-8d218d1ef961"
+      "check": "CHK-8d218d1ef961",
+      "revision": 1,
+      "evidence": {
+        "id": "S-11",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "check_id": "CHK-8d218d1ef961",
+        "input_hash": "ba023601b5a69dd7ca28d2e1a6173f6ec0df82ec963a8f0fd2cdc1d95340cb6f",
+        "check_config": {
+          "id": "CHK-8d218d1ef961",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_atomic_write"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/test_runtime_consolidation.py"
+          ],
+          "preflight": [],
+          "paths": []
+        },
+        "revision": 1,
+        "run_id": "c198c8e430724f7f8dbd88da411232d1",
+        "executed_at": "2026-10-26T15:07:28.183170+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_runtime_consolidation.py::test_atomic_write"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "ba023601b5a69dd7ca28d2e1a6173f6ec0df82ec963a8f0fd2cdc1d95340cb6f"
+      },
+      "runs": [
+        {
+          "id": "S-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "check_id": "CHK-8d218d1ef961",
+          "input_hash": "ba023601b5a69dd7ca28d2e1a6173f6ec0df82ec963a8f0fd2cdc1d95340cb6f",
+          "check_config": {
+            "id": "CHK-8d218d1ef961",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_runtime_consolidation.py::test_atomic_write"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/test_runtime_consolidation.py"
+            ],
+            "preflight": [],
+            "paths": []
+          },
+          "revision": 1,
+          "run_id": "c198c8e430724f7f8dbd88da411232d1",
+          "executed_at": "2026-10-26T15:07:28.183170+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_atomic_write"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "ba023601b5a69dd7ca28d2e1a6173f6ec0df82ec963a8f0fd2cdc1d95340cb6f"
+        }
+      ]
     },
     {
       "id": "S-12",

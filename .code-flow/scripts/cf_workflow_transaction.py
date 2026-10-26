@@ -5,14 +5,12 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from cf_spec_context import _acquire_active_lock, _atomic_text, _release_active_lock
+import cf_fs
+from cf_spec_context import _acquire_active_lock, _release_active_lock
 
 
 def _read(path: Path) -> Optional[str]:
-    try:
-        return path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        return None
+    return cf_fs.read_text(path)
 
 
 def _write(path: Path, value: Optional[str]) -> None:
@@ -21,7 +19,7 @@ def _write(path: Path, value: Optional[str]) -> None:
     if value is None:
         path.unlink()
     else:
-        _atomic_text(path, value)
+        cf_fs.atomic_write_text(path, value)
 
 
 def _journal_path(root: str) -> Path:
@@ -82,7 +80,7 @@ def commit_transition(root: str, task: Path, before: str, after: str,
         _records(root, {"version": 1, "files": rows})
         if any(_read(Path(row["path"])) != row["before"] for row in rows):
             raise ValueError("workflow concurrent change; retry transition")
-        _atomic_text(journal, json.dumps({"version": 1, "files": rows}, ensure_ascii=False))
+        cf_fs.atomic_write_text(journal, json.dumps({"version": 1, "files": rows}, ensure_ascii=False))
         try:
             for row in rows:
                 _write(Path(row["path"]), row["after"])

@@ -17,14 +17,14 @@ from cf_acceptance_manifest import record_manual_evidence
 from cf_acceptance_runner import run_manifest
 from cf_acceptance_schema import load_manifest, scenario_check_ids, validate_execution_baseline, verified_evidence
 from cf_exec_base import execution_session
+import cf_git
 from cf_spec_context import (ContextError, DEFAULT_ACTIVE_EXCLUDES, Decision, SpecContext,
-                             _git_changes, _run_git, apply_decision, load_active_task,
-                             load_context, save_context, start_active_task)
+                             apply_decision, load_active_task, load_context, save_context,
+                             start_active_task)
 from cf_spec_gate import evidence_deferral_kind, validate_stage
 from cf_spec_metadata import load_spec_metadata
 from cf_spec_session import context_sha256
-from cf_spec_verify import (VerificationScope, _git_tracked_files, run_all_verifiers,
-                             store_verification_evidence)
+from cf_spec_verify import (VerificationScope, run_all_verifiers, store_verification_evidence)
 from cf_exec_base import worktree_fingerprint
 from cf_task_index import parse_task_file
 from cf_task_runtime import (_NON_EXECUTION_ERRORS, _apply_evidence, _evidence_data,
@@ -141,7 +141,7 @@ def _batch_selection(directory: Path, tasks: Sequence[str],
 def _batch_working_changes(root: str) -> tuple[str, ...]:
     """Current business changes, ignoring the paths the active marker excludes."""
     return tuple(sorted(
-        path for path in _git_changes(root)
+        path for path in cf_git.changed_files(root)
         if not any(fnmatch.fnmatchcase(path, pattern) for pattern in DEFAULT_ACTIVE_EXCLUDES)
     ))
 
@@ -415,16 +415,16 @@ def _demand_tasks(directory: Path) -> list[tuple[Path, str, str]]:
 
 def _head_token(root: str) -> str:
     try:
-        return "head:" + _run_git(root, ("rev-parse", "HEAD")).strip()
-    except ContextError:
+        return "head:" + cf_git.run_git(root, ("rev-parse", "HEAD")).strip()
+    except cf_git.GitError:
         return "head:none"
 
 
 def _review_scope(root: str) -> VerificationScope:
-    files = set(_git_tracked_files(root))
+    files = set(cf_git.tracked_files(root))
     try:
-        files.update(_git_changes(root))
-    except ContextError:
+        files.update(cf_git.changed_files(root))
+    except cf_git.GitError:
         pass
     return VerificationScope(root, tuple(sorted(files)), _head_token(root))
 
@@ -674,7 +674,7 @@ def _validators_layer(root: str, profile: str,
         from cf_validation import validate_files
 
         if files is None:
-            files = tuple(sorted(_git_tracked_files(root)))
+            files = tuple(sorted(cf_git.tracked_files(root)))
         details = validate_files(root, files, include_heavy=profile == "full")
     except (OSError, ValueError) as exc:
         return _layer_result("block", reason="validation_error", detail=str(exc))

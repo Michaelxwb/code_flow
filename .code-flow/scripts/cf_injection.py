@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Callable, Iterator, TYPE_CHECKING
 
 import cf_log
-from cf_core import _log
 
 if TYPE_CHECKING:
     from cf_spec_router import RouteResult
@@ -71,12 +70,12 @@ def _save_state(path: Path, state: dict[str, object]) -> None:
         temporary.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
         os.replace(temporary, path)
     except (OSError, UnicodeError, TypeError) as exc:
-        _log(f"cf_injection: dedup state unavailable: {exc}")
+        cf_log.warn(f"cf_injection: dedup state unavailable: {exc}")
     finally:
         try:
             temporary.unlink(missing_ok=True)
         except OSError as exc:
-            _log(f"cf_injection: cannot remove temporary dedup state: {exc}")
+            cf_log.warn(f"cf_injection: cannot remove temporary dedup state: {exc}")
 
 
 def _commit(root: str, sid: str, result: RouteResult, count: int, fingerprint: str, emitted: bool) -> None:

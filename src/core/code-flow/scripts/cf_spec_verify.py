@@ -10,7 +10,6 @@ import fnmatch
 import hashlib
 import json
 from pathlib import Path
-import subprocess
 from threading import Lock
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -19,6 +18,7 @@ from typing import Mapping, Optional, Sequence
 from cf_checks import run_regex_verifier
 from cf_spec_metadata import SpecMetadata, SpecRule, SpecVerifier
 from cf_exec_base import execution_session, run_command
+import cf_git
 
 
 _RESULT_CACHE: dict[str, dict[str, object]] = {}
@@ -87,18 +87,6 @@ def _matches_scope(path: str, patterns: Sequence[str]) -> bool:
     return False
 
 
-def _git_tracked_files(root: str) -> tuple[str, ...]:
-    try:
-        outcome = subprocess.run(
-            ("git", "ls-files"), cwd=root, text=True, encoding="utf-8", capture_output=True, check=False
-        )
-    except OSError:
-        return ()
-    if outcome.returncode != 0:
-        return ()
-    return tuple(_normalize_scope_path(line) for line in outcome.stdout.splitlines() if line.strip())
-
-
 def scoped_files(verifier: SpecVerifier, scope: VerificationScope) -> tuple[str, ...]:
     """作用域命中的文件集合：git tracked ∪ 任务持有文件，按 verifier.files 过滤。
 
@@ -107,7 +95,7 @@ def scoped_files(verifier: SpecVerifier, scope: VerificationScope) -> tuple[str,
     if not verifier.files:
         return ()
     candidates = {_normalize_scope_path(item) for item in scope.files if item.strip()}
-    candidates.update(_git_tracked_files(scope.root))
+    candidates.update(cf_git.tracked_files(scope.root))
     return tuple(sorted(path for path in candidates if _matches_scope(path, verifier.files)))
 
 

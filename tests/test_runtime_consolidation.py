@@ -53,6 +53,8 @@ LAYERS: dict[str, int] = {
     "cf_evidence_store": 1,
     "cf_exec_base": 0,
     "cf_feedback": 3,
+    "cf_fs": 0,
+    "cf_git": 0,
     "cf_injection": 2,
     "cf_log": 0,
     "cf_markdown": 1,
@@ -99,7 +101,6 @@ LAYERS: dict[str, int] = {
 
 # (importer, imported module, batch after which the edge must be gone)
 DEPENDENCY_EDGE_ALLOWLIST = frozenset({
-    ("cf_acceptance_evidence", "cf_spec_context", 4),
     ("cf_acceptance_schema", "cf_acceptance_manifest", 4),
     ("cf_context_cache", "cf_spec_context", 4),
     ("cf_evidence_store", "cf_spec_context", 4),
@@ -112,20 +113,11 @@ DEPENDENCY_EDGE_ALLOWLIST = frozenset({
 
 # (importer, source module, private symbol, batch after which it must be gone)
 PRIVATE_SYMBOL_ALLOWLIST = frozenset({
-    ("cf_acceptance_evidence", "cf_spec_context", "_atomic_text", 4),
     ("cf_acceptance_registration", "cf_check_registration", "_collected", 6),
     ("cf_acceptance_registration", "cf_check_registration", "_execution_argv", 6),
     ("cf_acceptance_registration", "cf_check_registration", "_pytest_markers", 6),
     ("cf_acceptance_registration", "cf_check_registration", "_registration_issues", 6),
     ("cf_acceptance_registration", "cf_check_registration", "_requirements", 6),
-    ("cf_codex_hook", "cf_core", "_log", 4),
-    ("cf_context_cache", "cf_core", "_log", 4),
-    ("cf_injection", "cf_core", "_log", 4),
-    ("cf_opencode_event", "cf_core", "_log", 4),
-    ("cf_post_hook", "cf_core", "_log", 4),
-    ("cf_pre_tool_hook", "cf_core", "_log", 4),
-    ("cf_spec_router", "cf_core", "_log", 4),
-    ("cf_stop_hook", "cf_core", "_log", 4),
     ("cf_task_parallel", "cf_task_merge", "_check_conflicts", 6),
     ("cf_task_parallel", "cf_task_runtime", "_task_scope_specs", 6),
     ("cf_task_runtime", "cf_spec_session", "_refs", 3),
@@ -133,21 +125,14 @@ PRIVATE_SYMBOL_ALLOWLIST = frozenset({
     ("cf_task_workflow", "cf_acceptance_runner", "_accepted_risk", 6),
     ("cf_task_workflow", "cf_acceptance_runner", "_owned", 6),
     ("cf_task_workflow", "cf_acceptance_runner", "_select_profile", 6),
-    ("cf_task_workflow", "cf_spec_context", "_git_changes", 4),
-    ("cf_task_workflow", "cf_spec_context", "_run_git", 4),
-    ("cf_task_workflow", "cf_spec_verify", "_git_tracked_files", 4),
     ("cf_task_workflow", "cf_task_runtime", "_NON_EXECUTION_ERRORS", 6),
     ("cf_task_workflow", "cf_task_runtime", "_apply_evidence", 6),
     ("cf_task_workflow", "cf_task_runtime", "_evidence_data", 6),
     ("cf_task_workflow", "cf_workflow_service", "_require_marker_task", 7),
     ("cf_task_workflow", "cf_workflow_service", "_sync_markdown", 7),
-    ("cf_user_prompt_hook", "cf_core", "_log", 4),
-    ("cf_validation", "cf_spec_context", "_git_changes", 4),
     ("cf_workflow_service", "cf_spec_context", "_active_data", 7),
-    ("cf_workflow_service", "cf_spec_context", "_atomic_text", 4),
     ("cf_workflow_service", "cf_spec_context", "_new_active", 7),
     ("cf_workflow_transaction", "cf_spec_context", "_acquire_active_lock", 7),
-    ("cf_workflow_transaction", "cf_spec_context", "_atomic_text", 4),
     ("cf_workflow_transaction", "cf_spec_context", "_release_active_lock", 7),
 })
 
@@ -652,12 +637,73 @@ def test_plan_gate_duplicate() -> None:
     pytest.skip("plan skeleton: implemented in TASK-005")
 
 
-def test_git_primitive_parity() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-006")
+def _git_repo_with_changes(root: Path) -> None:
+    def git(*arguments: str) -> None:
+        subprocess.run(("git", *arguments), cwd=str(root), text=True, capture_output=True,
+                       check=True, timeout=30)
+
+    git("init", "-q")
+    git("config", "user.email", "test@example.com")
+    git("config", "user.name", "Test")
+    (root / "tracked.txt").write_text("one\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "init")
+    (root / "tracked.txt").write_text("two\n", encoding="utf-8")
+    (root / "untracked.txt").write_text("new\n", encoding="utf-8")
 
 
-def test_atomic_write() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-006")
+def test_git_primitive_parity(tmp_path: Path) -> None:
+    """[S-10] 真实 git 仓库：spec_context / evidence_store / task_parallel 变更集合一致。"""
+    from cf_evidence_store import _run_git
+    from cf_git import changed_entries, changed_files, run_git
+    from cf_spec_context import _git_changes
+    from cf_task_parallel import _status_paths
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    _git_repo_with_changes(root)
+    expected = {"tracked.txt", "untracked.txt"}
+
+    spec_changes = _git_changes(str(root))
+    assert set(spec_changes) == expected
+    assert spec_changes["tracked.txt"] == "modified"
+    assert spec_changes["untracked.txt"] == "untracked"
+
+    parallel_changes = set(_status_paths(root))
+    assert parallel_changes == expected
+
+    raw = _run_git(root, ("status", "--porcelain=v1", "-z", "--untracked-files=all"))
+    assert raw is not None
+    evidence_changes = {record[3:] for record in raw.split("\0") if record}
+    assert evidence_changes == expected
+
+    assert set(changed_files(str(root))) == expected
+    assert set(changed_entries(str(root))) == expected
+    toplevel = run_git(str(root), ("rev-parse", "--show-toplevel")).strip()
+    assert Path(toplevel).resolve() == root.resolve()
+
+
+def test_atomic_write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """[S-11] 真实文件系统：注入异常后目标文件保留原内容，临时文件被清理。"""
+    import cf_fs
+
+    target = tmp_path / "state.json"
+    original = '{"ok": true}\n'
+    cf_fs.write_text(str(target), original)
+
+    def fail_replace(source: str, destination: str) -> None:
+        raise OSError(f"injected replace failure: {source} -> {destination}")
+
+    monkeypatch.setattr(cf_fs.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="injected replace failure"):
+        cf_fs.atomic_write_text(str(target), '{"ok": false}\n')
+
+    assert target.read_text(encoding="utf-8") == original
+    assert list(tmp_path.glob(f".{target.name}.*.tmp")) == []
+
+    monkeypatch.undo()
+    cf_fs.atomic_write_text(str(target), '{"ok": false}\n')
+    assert target.read_text(encoding="utf-8") == '{"ok": false}\n'
 
 
 def test_markdown_primitives(monkeypatch: pytest.MonkeyPatch) -> None:

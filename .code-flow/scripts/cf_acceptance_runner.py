@@ -16,13 +16,13 @@ import json
 import os
 import re
 import subprocess
-import tempfile
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from pathlib import Path
 import sys
 from typing import IO, Mapping, Optional, Sequence
 
+import cf_fs
 from cf_exec_base import (
     execution_key,
     invalidate_executions,
@@ -573,19 +573,7 @@ def _unit_command(unit: Mapping[str, object]) -> tuple[list[str], str, float]:
 def _atomic_checkpoint(path: Path, payload: Mapping[str, object]) -> None:
     """Checkpoint files are replaced atomically, like every other evidence file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-    except OSError:
-        try:
-            os.unlink(temporary)
-        except OSError:
-            pass
-        raise
+    cf_fs.atomic_write_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
 
 
 def _checkpoint_path(manifest_file: str, root: str) -> Path:
@@ -619,7 +607,10 @@ class _Checkpoint:
 
     def _read(self) -> dict[str, Mapping[str, object]]:
         try:
-            data = json.loads(self.path.read_text(encoding="utf-8"))
+            text = cf_fs.read_text(self.path)
+            if text is None:
+                return {}
+            data = json.loads(text)
         except (OSError, ValueError):
             return {}
         checks = data.get("checks") if isinstance(data, Mapping) else None

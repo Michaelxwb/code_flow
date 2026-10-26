@@ -20,7 +20,6 @@ import math
 import os
 from pathlib import Path
 import re
-import sys
 import time
 from typing import Mapping, NamedTuple, Optional, Sequence
 
@@ -36,10 +35,6 @@ PARSE_ERROR = "parse_error"
 VALIDATION_CACHE_FILE = ".validation-cache.json"
 MAX_VALIDATION_CACHE_ENTRIES = 256
 _BRACE_RE = re.compile(r"\{([^{}]+)\}")
-
-
-def _log(message: str) -> None:
-    sys.stderr.write(f"[cf-validators] {message}\n")
 
 
 @dataclass(frozen=True)
@@ -83,7 +78,7 @@ def trigger_matches(trigger: str, rel_path: str) -> bool:
 
 
 def _parse_error(path: str, message: str) -> ValidatorConfig:
-    _log(f"{path}: {message}")
+    cf_log.warn(f"{path}: {message}")
     return ValidatorConfig(PARSE_ERROR, error=message, path=path)
 
 

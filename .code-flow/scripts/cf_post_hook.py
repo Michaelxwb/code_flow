@@ -4,7 +4,8 @@ import json
 import os
 import sys
 
-from cf_core import _log, ensure_utf8_io, resolve_session_id, timing_log
+from cf_core import ensure_utf8_io, resolve_session_id, timing_log
+from cf_log import warn
 from cf_edit_service import after_edit
 
 
@@ -12,7 +13,7 @@ def main() -> None:
     try:
         ensure_utf8_io()
         if sys.stdin.isatty():
-            _log("cf_post_hook.py: missing stdin event")
+            warn("cf_post_hook.py: missing stdin event")
             return
         raw = sys.stdin.read()
         if not raw.strip():
@@ -26,7 +27,7 @@ def main() -> None:
         if text:
             sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": text}}, ensure_ascii=False))
     except Exception as exc:
-        _log(f"cf_post_hook.py error: {exc}")
+        warn(f"cf_post_hook.py error: {exc}")
 
 
 if __name__ == "__main__":

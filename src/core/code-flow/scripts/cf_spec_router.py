@@ -14,7 +14,6 @@ from typing import Mapping, Optional, Sequence
 
 from cf_core import (
     assemble_context,
-    _log,
     ConfigError,
     build_effective_mapping,
     build_spec_catalog,
@@ -24,6 +23,7 @@ from cf_core import (
     parse_spec_frontmatter,
     resolve_compress,
 )
+from cf_log import warn
 from cf_spec_context import ContextError, SpecContext, load_active_task, load_context
 from cf_context_cache import load_snapshot
 from cf_spec_resolver import resolve_candidate_headers, resolve_candidates
@@ -269,7 +269,7 @@ def _save_catalog_state(root: str, state: Mapping[str, object]) -> None:
     except OSError as exc:
         if temporary and Path(temporary).exists():
             Path(temporary).unlink()
-        _log(f"Spec Catalog dedup state could not be saved: {exc}")
+        warn(f"Spec Catalog dedup state could not be saved: {exc}")
 
 
 def _catalog_route(root: str, session_id: str, config: Mapping[str, object]) -> RouteResult:

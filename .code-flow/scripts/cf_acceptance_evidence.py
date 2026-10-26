@@ -92,8 +92,8 @@ def sync_task_evidence(task: Path, scenario_id: str, confirmed_by: str, evidence
         text = text[:coverage.start(1)] + body + text[coverage.end(1):]
     elif not owner:
         return "skipped_no_owner"
-    from cf_spec_context import _atomic_text
-    _atomic_text(task, text)
+    from cf_fs import atomic_write_text
+    atomic_write_text(task, text)
     return "synced"
 
 
@@ -265,7 +265,7 @@ def invalidate_manifest_evidence(root: Path, manifest: Path,
                                  fingerprint: str) -> list[dict[str, object]]:
     """Mark outdated conclusions without changing historical execution evidence."""
     from cf_check_inputs import check_input_hashes
-    from cf_spec_context import _atomic_text
+    from cf_fs import atomic_write_text
     data = load_manifest(manifest)
     checks = {str(check["id"]): check for check in data.get("checks", [])}
     hashes = check_input_hashes(str(root), checks, fingerprint)
@@ -278,7 +278,7 @@ def invalidate_manifest_evidence(root: Path, manifest: Path,
         changed.append({"scenario_id": row["id"], "checks": stale})
     if not changed:
         return []
-    _atomic_text(manifest, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+    atomic_write_text(manifest, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
     task_name = data.get("task_file")
     if isinstance(task_name, str) and task_name:
         task = (manifest.parent / task_name).resolve()
@@ -313,8 +313,8 @@ def persist_results(path: Path, data: dict[str, object], results: Sequence[Mappi
             if len(runs) > 50:
                 del runs[:-50]
         updates.append((row, record, status))
-    from cf_spec_context import _atomic_text
-    _atomic_text(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+    from cf_fs import atomic_write_text
+    atomic_write_text(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
     _store_evidence_runs(path, rows, results, run_key, executed_at, fingerprint)
     task_name = data.get("task_file")
     if isinstance(task_name, str) and task_name:

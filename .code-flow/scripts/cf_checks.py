@@ -15,11 +15,11 @@ Contract (spec-quality-loop.design.md §2.3.2 / §3.4 / §3.5):
 import fnmatch
 import os
 import re
-import sys
 from typing import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 
+import cf_log
 from cf_core import normalize_path
 from cf_markdown import frontmatter_block
 
@@ -38,10 +38,6 @@ _checks_cache: dict = {}
 STATE_NAME = ".check-state.json"
 FP_DISABLE_COUNT = 3
 FP_DISABLE_RATE = 0.10
-
-
-def _log(msg: str) -> None:
-    sys.stderr.write(f"[cf-checks] {msg}\n")
 
 
 def state_path(project_root: str) -> str:
@@ -68,7 +64,7 @@ def save_check_state(project_root: str, state: dict) -> bool:
             json.dump(state, f, ensure_ascii=False)
         return True
     except Exception as exc:
-        _log(f"save_check_state failed: {exc}")
+        cf_log.warn(f"save_check_state failed: {exc}")
         return False
 
 
@@ -205,7 +201,7 @@ def load_spec_checks(spec_abs_path: str) -> tuple:
         with open(spec_abs_path, "r", encoding="utf-8") as f:
             checks, errors = parse_spec_checks(f.read())
     except Exception as exc:
-        _log(f"load_spec_checks failed {spec_abs_path}: {exc}")
+        cf_log.warn(f"load_spec_checks failed {spec_abs_path}: {exc}")
         return [], []
     _checks_cache[spec_abs_path] = {
         "mtime": mtime, "checks": checks, "errors": errors,

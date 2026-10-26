@@ -43,6 +43,7 @@ from cf_task_state import FINISHED_STATUSES
 from cf_acceptance_schema import load_manifest, scenario_check_ids
 from cf_evidence_store import EvidenceStore
 from cf_exec_base import worktree_fingerprint
+import cf_git
 from cf_runtime_install import verify_install
 
 
@@ -80,13 +81,10 @@ class ParallelEvidenceError(ParallelError):
 
 
 def _run_git(root: Path, arguments: Sequence[str]) -> str:
-    result = subprocess.run(
-        ("git", *arguments), cwd=str(root), text=True, encoding="utf-8", capture_output=True, check=False
-    )
-    if result.returncode != 0:
-        message = result.stderr.strip() or "Git command failed"
-        raise ParallelError("git_error", message)
-    return result.stdout
+    try:
+        return cf_git.run_git(str(root), arguments)
+    except cf_git.GitError as exc:
+        raise ParallelError(exc.code, exc.message) from exc
 
 
 def _assert_repo(root: Path) -> None:
@@ -99,23 +97,10 @@ def _assert_repo(root: Path) -> None:
 
 
 def _status_paths(root: Path) -> list[str]:
-    output = _run_git(root, ("status", "--porcelain=v1", "-z", "--untracked-files=all"))
-    tokens = output.split("\0")
-    paths: list[str] = []
-    index = 0
-    while index < len(tokens) and tokens[index]:
-        record = tokens[index]
-        if len(record) < 4:
-            raise ParallelError("invalid_git_status", record)
-        code, path = record[:2], record[3:]
-        paths.append(path)
-        if code[:1] in ("R", "C"):
-            if index + 1 < len(tokens) and tokens[index + 1]:
-                paths.append(tokens[index + 1])
-            index += 2
-        else:
-            index += 1
-    return paths
+    try:
+        return list(cf_git.changed_files(str(root)))
+    except cf_git.GitError as exc:
+        raise ParallelError(exc.code, exc.message) from exc
 
 
 def _require_ignored(root: Path) -> None:
