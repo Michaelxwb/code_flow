@@ -12,6 +12,7 @@ const runtime = require('./runtime');
 const runtimeMigration = require('./migrate/runtime');
 const commandRegistry = JSON.parse(fs.readFileSync(path.join(__dirname, 'core/code-flow/runtime-commands.json'), 'utf8'));
 const runtimeFamilies = [...new Set(Object.keys(commandRegistry.commands).map(command => command.split(' ')[0]))];
+const installPlan = JSON.parse(fs.readFileSync(path.join(__dirname, 'adapters/install-plan.json'), 'utf8'));
 
 const usage = [
   'Usage: code-flow init [--force] [--platform=<claude|codex|costrict|opencode>] [--backup-dir=<path>]',
@@ -118,13 +119,9 @@ function writeAdapterVersions(cwd, versions) {
 
 // Marker dirs proving a platform was installed before per-platform tracking.
 function platformFilesExist(cwd, platform) {
-  const markers = {
-    claude: ['.claude/commands'],
-    codex: ['.agents/skills'],
-    costrict: ['.costrict/commands'],
-    opencode: ['.opencode/commands'],
-  };
-  return (markers[platform] || []).some(rel => fs.existsSync(path.join(cwd, rel)));
+  const spec = installPlan.platforms[platform];
+  const markers = spec ? spec.markers : [];
+  return markers.some(rel => fs.existsSync(path.join(cwd, rel)));
 }
 
 // --- Merge functions ---
@@ -754,6 +751,167 @@ function parseStringFlag(args, name) {
   return '';
 }
 
+// --- Install orchestration driven by adapters/install-plan.json ---
+
+function initResults() {
+  return { created: [], updated: [], merged: [], skipped: [], removed: [] };
+}
+
+const INSTALL_MERGERS = {
+  claudeMd: mergeClaudeMd,
+  settingsJson: mergeSettingsJson,
+  codexHooksJson: mergeCodexHooksJson,
+  codexConfigToml: mergeCodexConfigToml,
+  opencodeJson: mergeOpencodeJson,
+};
+
+// Track + copy helper for directory trees. Core files derive their category
+// per file; declared platform trees pass a single category.
+function installTree(opts) {
+  const { srcDir, destDir, prefix, mode, category, ensureDest, runtimeMigration, results } = opts;
+  if (ensureDest) fs.mkdirSync(destDir, { recursive: true });
+  if (!fs.existsSync(srcDir)) return;
+  for (const rel of collectFiles(srcDir, '')) {
+    installTreeEntry({
+      src: path.join(srcDir, rel),
+      dest: path.join(destDir, rel),
+      label: path.join(prefix, rel),
+      mode,
+      category,
+      runtimeMigration,
+      results,
+    });
+  }
+}
+
+function installTreeEntry(opts) {
+  const { src, dest, label, mode, category, runtimeMigration, results } = opts;
+  const cat = category || fileCategory(label);
+  if (runtimeMigration && cat === 'user' && !fs.existsSync(dest)) return;
+  if (!fs.existsSync(dest)) {
+    results.created.push(label);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.copyFileSync(src, dest);
+  } else if (mode === 'force') {
+    results.updated.push(label);
+    fs.copyFileSync(src, dest);
+  } else if (mode === 'upgrade' && cat === 'tool') {
+    results.updated.push(label);
+    fs.copyFileSync(src, dest);
+  } else {
+    results.skipped.push(label);
+  }
+}
+
+function installPlatform(cwd, adaptersDir, platform, mode, runtimeMigration, results) {
+  const spec = installPlan.platforms[platform];
+  if (!spec) return;
+  for (const entry of spec.entries) {
+    if (entry.kind === 'file') {
+      installAdapterFile({
+        src: path.join(adaptersDir, entry.src),
+        dest: path.join(cwd, entry.dest),
+        label: entry.label,
+        mode,
+        mergeFn: INSTALL_MERGERS[entry.merger],
+        toolOnUpgrade: entry.category === 'tool',
+        results,
+      });
+    } else if (entry.kind === 'dir') {
+      installTree({
+        srcDir: path.join(adaptersDir, entry.src),
+        destDir: path.join(cwd, entry.dest),
+        prefix: entry.prefix,
+        mode,
+        category: entry.category,
+        ensureDest: Boolean(entry.ensure),
+        runtimeMigration,
+        results,
+      });
+    } else if (entry.kind === 'stamp') {
+      stampPackageVersion(path.join(cwd, entry.path));
+    }
+  }
+}
+
+function stampPackageVersion(file) {
+  if (!fs.existsSync(file)) return;
+  const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  data.version = pkg.version;
+  fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+}
+
+function resolvePlatformMode(cwd, platform, mode, force, options) {
+  const adapterVersions = readAdapterVersions(cwd);
+  const adapterPrev = typeof adapterVersions.adapters[platform] === 'string'
+    ? adapterVersions.adapters[platform]
+    : null;
+  if (options.runtimeMigration) return 'upgrade';
+  if (force) return 'force';
+  if (!adapterPrev && !platformFilesExist(cwd, platform)) return 'fresh';
+  if (
+    (adapterPrev && compareVersions(adapterPrev, pkg.version) < 0) ||
+    (!adapterPrev && platformFilesExist(cwd, platform)) ||
+    mode === 'upgrade'
+  ) {
+    return 'upgrade';
+  }
+  return 'current';
+}
+
+function mergeConfigOnUpgrade(cwd, coreDir, mode, options, results) {
+  const configSrc = path.join(coreDir, 'code-flow', 'config.yml');
+  const configDest = path.join(cwd, '.code-flow', 'config.yml');
+  if (mode !== 'upgrade' || options.runtimeMigration ||
+      !fs.existsSync(configDest) || !fs.existsSync(configSrc)) {
+    return;
+  }
+  const added = mergeConfigYml(configSrc, configDest);
+  if (added.length === 0) return;
+  // Replace the skipped entry with merged
+  const idx = results.skipped.indexOf('.code-flow/config.yml');
+  if (idx !== -1) results.skipped.splice(idx, 1);
+  results.merged.push(`.code-flow/config.yml — added: ${added.join(', ')}`);
+}
+
+function recordInstall(cwd, platform) {
+  const adapterVersions = readAdapterVersions(cwd);
+  adapterVersions.adapters[platform] = pkg.version;
+  adapterVersions.core = pkg.version;
+  writeAdapterVersions(cwd, adapterVersions);
+  runtime.writeInstall(cwd, Object.keys(adapterVersions.adapters));
+  writeVersion(cwd, pkg.version);
+}
+
+function printInitSummary(mode, platformMode, installedVersion, results) {
+  if (mode === 'upgrade') {
+    process.stdout.write(`\ncode-flow upgraded: ${installedVersion} → ${pkg.version}\n\n`);
+  } else if (mode === 'current' && platformMode === 'current' &&
+             results.created.length === 0 && results.updated.length === 0 &&
+             results.merged.length === 0) {
+    process.stdout.write(`code-flow v${pkg.version} already up to date.\n`);
+    process.exit(0);
+  } else if (mode === 'force') {
+    process.stdout.write(`\ncode-flow v${pkg.version} force-initialized!\n\n`);
+  } else {
+    process.stdout.write(`\ncode-flow v${pkg.version} initialized!\n\n`);
+  }
+  for (const group of installPlan.summary) {
+    const items = results[group.key] || [];
+    if (items.length === 0) continue;
+    process.stdout.write(`${group.title}\n`);
+    for (const item of items) process.stdout.write(`  ${group.marker} ${item}\n`);
+  }
+}
+
+function printNextSteps(platform, mode) {
+  const spec = installPlan.platforms[platform];
+  const steps = spec && spec.next_steps[mode === 'fresh' ? 'fresh' : 'upgrade'];
+  if (!steps || steps.length === 0) return;
+  process.stdout.write('\nNext steps:\n');
+  for (const line of steps) process.stdout.write(`${line}\n`);
+}
+
 // --- Main init ---
 
 function runInit(force, platform, opts) {
@@ -780,320 +938,39 @@ function runInit(force, platform, opts) {
   // upgrading one platform can never mask another platform's staleness.
   // A global upgrade also refreshes the selected platform (previous behavior).
   const mode = options.runtimeMigration ? 'upgrade' : modeFor(installedVersion, force);
-  const adapterVersions = readAdapterVersions(cwd);
-  const adapterPrev = typeof adapterVersions.adapters[platform] === 'string'
-    ? adapterVersions.adapters[platform]
-    : null;
-  let platformMode;
-  if (options.runtimeMigration) {
-    platformMode = 'upgrade';
-  } else if (force) {
-    platformMode = 'force';
-  } else if (!adapterPrev && !platformFilesExist(cwd, platform)) {
-    platformMode = 'fresh';
-  } else if (
-    (adapterPrev && compareVersions(adapterPrev, pkg.version) < 0) ||
-    (!adapterPrev && platformFilesExist(cwd, platform)) ||
-    mode === 'upgrade'
-  ) {
-    platformMode = 'upgrade';
-  } else {
-    platformMode = 'current';
-  }
-
-  const created = [];
-  const updated = [];
-  const merged = [];
-  const skipped = [];
-  const removed = [];
-  const results = { created, updated, merged, skipped };
-
-  // Track + copy helper for directory trees. dirMode is resolved per area:
-  // core files follow the global mode, platform files follow platformMode.
-  const processDir = (srcDir, destDir, prefix, dirMode) => {
-    const effective = dirMode || mode;
-    if (!fs.existsSync(srcDir)) return;
-    const files = collectFiles(srcDir, '');
-    for (const rel of files) {
-      const src = path.join(srcDir, rel);
-      const dest = path.join(destDir, rel);
-      const label = path.join(prefix, rel);
-      const cat = fileCategory(label);
-
-      if (options.runtimeMigration && cat === 'user' && !fs.existsSync(dest)) continue;
-
-      if (!fs.existsSync(dest)) {
-        created.push(label);
-        fs.mkdirSync(path.dirname(dest), { recursive: true });
-        fs.copyFileSync(src, dest);
-      } else if (effective === 'force') {
-        updated.push(label);
-        fs.copyFileSync(src, dest);
-      } else if (effective === 'upgrade' && cat === 'tool') {
-        updated.push(label);
-        fs.copyFileSync(src, dest);
-      } else {
-        skipped.push(label);
-      }
-    }
-  };
+  const platformMode = resolvePlatformMode(cwd, platform, mode, force, options);
+  const results = initResults();
 
   // Process .code-flow/ (core)
-  processDir(path.join(coreDir, 'code-flow'), path.join(cwd, '.code-flow'), '.code-flow', mode);
+  installTree({
+    srcDir: path.join(baseDir, installPlan.core.source),
+    destDir: path.join(cwd, installPlan.core.dest),
+    prefix: installPlan.core.prefix,
+    mode,
+    runtimeMigration: options.runtimeMigration,
+    results,
+  });
   // npm tarballs never include .gitignore, so the published package must write
   // the runtime ignore list itself (or extend it on upgrade).
   ensureRuntimeGitignore(cwd, results);
-
-  // Process Claude adapter
-  if (platform === 'claude') {
-    installAdapterFile({
-      src: path.join(adaptersDir, 'claude', 'CLAUDE.md'),
-      dest: path.join(cwd, 'CLAUDE.md'),
-      label: 'CLAUDE.md',
-      mode: platformMode,
-      mergeFn: mergeClaudeMd,
-      toolOnUpgrade: false,
-      results,
-    });
-
-    fs.mkdirSync(path.join(cwd, '.claude', 'commands'), { recursive: true });
-    processDir(
-      path.join(adaptersDir, 'claude', 'commands'),
-      path.join(cwd, '.claude', 'commands'),
-      '.claude/commands', platformMode
-    );
-
-    installAdapterFile({
-      src: path.join(adaptersDir, 'claude', 'settings.local.json'),
-      dest: path.join(cwd, '.claude', 'settings.local.json'),
-      label: '.claude/settings.local.json',
-      mode: platformMode,
-      mergeFn: mergeSettingsJson,
-      toolOnUpgrade: false,
-      results,
-    });
-  }
-
-  // Process Costrict adapter
-  if (platform === 'costrict') {
-    installAdapterFile({
-      src: path.join(adaptersDir, 'costrict', 'CLAUDE.md'),
-      dest: path.join(cwd, 'CLAUDE.md'),
-      label: 'CLAUDE.md',
-      mode: platformMode,
-      mergeFn: mergeClaudeMd,
-      toolOnUpgrade: false,
-      results,
-    });
-
-    fs.mkdirSync(path.join(cwd, '.costrict', 'commands'), { recursive: true });
-    processDir(
-      path.join(adaptersDir, 'costrict', 'commands'),
-      path.join(cwd, '.costrict', 'commands'),
-      '.costrict/commands', platformMode
-    );
-
-    installAdapterFile({
-      src: path.join(adaptersDir, 'costrict', 'settings.local.json'),
-      dest: path.join(cwd, '.costrict', 'settings.local.json'),
-      label: '.costrict/settings.local.json',
-      mode: platformMode,
-      mergeFn: mergeSettingsJson,
-      toolOnUpgrade: false,
-      results,
-    });
-  }
-
-  // Process Codex adapter
-  if (platform === 'codex') {
-    installAdapterFile({
-      src: path.join(adaptersDir, 'codex', 'AGENTS.md'),
-      dest: path.join(cwd, 'AGENTS.md'),
-      label: 'AGENTS.md',
-      mode: platformMode,
-      mergeFn: mergeClaudeMd,
-      toolOnUpgrade: false,
-      results,
-    });
-
-    installAdapterFile({
-      src: path.join(adaptersDir, 'codex', 'hooks.json'),
-      dest: path.join(cwd, '.codex', 'hooks.json'),
-      label: '.codex/hooks.json',
-      mode: platformMode,
-      mergeFn: mergeCodexHooksJson,
-      toolOnUpgrade: false,
-      results,
-    });
-
-    installAdapterFile({
-      src: path.join(adaptersDir, 'codex', 'config.toml'),
-      dest: path.join(cwd, '.codex', 'config.toml'),
-      label: '.codex/config.toml',
-      mode: platformMode,
-      mergeFn: mergeCodexConfigToml,
-      toolOnUpgrade: false,
-      results,
-    });
-
-    // Project-level .agents/skills/ (version-controlled, committed to repo)
-    processDir(
-      path.join(adaptersDir, 'codex', 'skills'),
-      path.join(cwd, '.agents', 'skills'),
-      '.agents/skills', platformMode
-    );
-  }
-
-  // Process OpenCode adapter
-  if (platform === 'opencode') {
-    installAdapterFile({
-      src: path.join(adaptersDir, 'opencode', 'AGENTS.md'),
-      dest: path.join(cwd, 'AGENTS.md'),
-      label: 'AGENTS.md',
-      mode: platformMode,
-      mergeFn: mergeClaudeMd,
-      toolOnUpgrade: false,
-      results,
-    });
-
-    // Plugin files under .opencode/plugins/code-flow/
-    processDir(
-      path.join(adaptersDir, 'opencode', 'plugins'),
-      path.join(cwd, '.opencode', 'plugins'),
-      '.opencode/plugins', platformMode
-    );
-
-    // Stamp main package version into the plugin's package.json
-    const pluginPkgPath = path.join(cwd, '.opencode', 'plugins', 'code-flow', 'package.json');
-    if (fs.existsSync(pluginPkgPath)) {
-      const pluginPkg = JSON.parse(fs.readFileSync(pluginPkgPath, 'utf8'));
-      pluginPkg.version = pkg.version;
-      fs.writeFileSync(pluginPkgPath, JSON.stringify(pluginPkg, null, 2) + '\n');
-    }
-
-    // Command files under .opencode/commands/
-    processDir(
-      path.join(adaptersDir, 'opencode', 'commands'),
-      path.join(cwd, '.opencode', 'commands'),
-      '.opencode/commands', platformMode
-    );
-
-    installAdapterFile({
-      src: path.join(adaptersDir, 'opencode', 'opencode.json'),
-      dest: path.join(cwd, 'opencode.json'),
-      label: 'opencode.json',
-      mode: platformMode,
-      mergeFn: mergeOpencodeJson,
-      toolOnUpgrade: false,
-      results,
-    });
-  }
-
-  // Merge config.yml on upgrade
-  const configSrc = path.join(coreDir, 'code-flow', 'config.yml');
-  const configDest = path.join(cwd, '.code-flow', 'config.yml');
-  if (mode === 'upgrade' && !options.runtimeMigration && fs.existsSync(configDest) && fs.existsSync(configSrc)) {
-    const added = mergeConfigYml(configSrc, configDest);
-    if (added.length > 0) {
-      // Replace the skipped entry with merged
-      const idx = skipped.indexOf('.code-flow/config.yml');
-      if (idx !== -1) skipped.splice(idx, 1);
-      merged.push(`.code-flow/config.yml — added: ${added.join(', ')}`);
-    }
-  }
+  installPlatform(cwd, adaptersDir, platform, platformMode, options.runtimeMigration, results);
+  mergeConfigOnUpgrade(cwd, coreDir, mode, options, results);
 
   // Clean up legacy .claude/skills/ (claude domain only; user-owned kept, managed backed up)
-  removeLegacyClaudeSkills(cwd, removed, { platform, backupDir: options.backupDir || '' });
+  removeLegacyClaudeSkills(cwd, results.removed, { platform, backupDir: options.backupDir || '' });
 
   // Clean up renamed orphan scripts (only meaningful on upgrade)
   if (mode === 'upgrade' || mode === 'force') {
-    removeOrphanFiles(cwd, removed);
+    removeOrphanFiles(cwd, results.removed);
   }
 
   // Install pyyaml — probe first, fall back through PEP 668 strategies
   ensurePyYaml();
 
-  // Write version (legacy global file kept for compatibility) + per-platform records
-  adapterVersions.adapters[platform] = pkg.version;
-  adapterVersions.core = pkg.version;
-  writeAdapterVersions(cwd, adapterVersions);
-  runtime.writeInstall(cwd, Object.keys(adapterVersions.adapters));
-  writeVersion(cwd, pkg.version);
+  recordInstall(cwd, platform);
 
-  // Output summary
-  if (mode === 'upgrade') {
-    process.stdout.write(`\ncode-flow upgraded: ${installedVersion} → ${pkg.version}\n\n`);
-  } else if (mode === 'current' && platformMode === 'current' && created.length === 0 && updated.length === 0 && merged.length === 0) {
-    process.stdout.write(`code-flow v${pkg.version} already up to date.\n`);
-    process.exit(0);
-  } else if (mode === 'force') {
-    process.stdout.write(`\ncode-flow v${pkg.version} force-initialized!\n\n`);
-  } else {
-    process.stdout.write(`\ncode-flow v${pkg.version} initialized!\n\n`);
-  }
-
-  if (updated.length > 0) {
-    process.stdout.write('Updated (tool-managed):\n');
-    for (const f of updated) process.stdout.write(`  ↑ ${f}\n`);
-  }
-  if (merged.length > 0) {
-    process.stdout.write('Merged (new sections added):\n');
-    for (const f of merged) process.stdout.write(`  ⊕ ${f}\n`);
-  }
-  if (created.length > 0) {
-    process.stdout.write('Created:\n');
-    for (const f of created) process.stdout.write(`  + ${f}\n`);
-  }
-  if (skipped.length > 0) {
-    process.stdout.write('Skipped (user-customized):\n');
-    for (const f of skipped) process.stdout.write(`  · ${f}\n`);
-  }
-  if (removed.length > 0) {
-    process.stdout.write('Removed (deprecated):\n');
-    for (const f of removed) process.stdout.write(`  ✕ ${f}\n`);
-  }
-
-  process.stdout.write('\nNext steps:\n');
-  if (platform === 'codex') {
-    if (mode === 'fresh') {
-      process.stdout.write('  1. Edit AGENTS.md — fill in team/project info\n');
-      process.stdout.write('  2. Run /hooks in Codex CLI and trust the code-flow hooks if prompted\n');
-      process.stdout.write('  3. Run $cf-init in Codex CLI to auto-scan and populate specs\n');
-      process.stdout.write('     Or manually edit .code-flow/specs/ to fill in your coding standards\n');
-    } else {
-      process.stdout.write('  Run /hooks in Codex CLI and trust changed code-flow hooks if prompted\n');
-      process.stdout.write('  Run $cf-learn in Codex CLI to update specs with project conventions\n');
-      process.stdout.write('  Run $cf-learn --map to update retrieval maps\n');
-    }
-  } else if (platform === 'costrict') {
-    if (mode === 'fresh') {
-      process.stdout.write('  1. Edit CLAUDE.md — fill in team/project info\n');
-      process.stdout.write('  2. Run /cf-init in Costrict to auto-scan and populate specs\n');
-      process.stdout.write('     Or manually edit .code-flow/specs/ to fill in your coding standards\n');
-    } else {
-      process.stdout.write('  Run /cf-learn in Costrict to update specs with project conventions\n');
-      process.stdout.write('  Run /cf-learn --map to update retrieval maps\n');
-    }
-  } else if (platform === 'opencode') {
-    if (mode === 'fresh') {
-      process.stdout.write('  1. Edit AGENTS.md — fill in team/project info\n');
-      process.stdout.write('  2. Start opencode in this directory — the plugin auto-loads\n');
-      process.stdout.write('  3. Run /cf-init in OpenCode to auto-scan and populate specs\n');
-      process.stdout.write('     Or manually edit .code-flow/specs/ to fill in your coding standards\n');
-    } else {
-      process.stdout.write('  Run /cf-learn in OpenCode to update specs with project conventions\n');
-      process.stdout.write('  Run /cf-learn --map to update retrieval maps\n');
-    }
-  } else {
-    if (mode === 'fresh') {
-      process.stdout.write('  1. Edit CLAUDE.md — fill in team/project info\n');
-      process.stdout.write('  2. Run /cf-init in Claude Code to auto-scan and populate specs\n');
-      process.stdout.write('     Or manually edit .code-flow/specs/ to fill in your coding standards\n');
-    } else {
-      process.stdout.write('  Run /cf-learn in Claude Code to update specs with project conventions\n');
-      process.stdout.write('  Run /cf-learn --map to update retrieval maps\n');
-    }
-  }
+  printInitSummary(mode, platformMode, installedVersion, results);
+  printNextSteps(platform, mode);
   process.exit(0);
 }
 

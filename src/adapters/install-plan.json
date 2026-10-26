@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "core": {
+    "source": "core/code-flow",
+    "dest": ".code-flow",
+    "prefix": ".code-flow",
+    "category": null
+  },
+  "summary": [
+    { "key": "updated", "title": "Updated (tool-managed):", "marker": "↑" },
+    { "key": "merged", "title": "Merged (new sections added):", "marker": "⊕" },
+    { "key": "created", "title": "Created:", "marker": "+" },
+    { "key": "skipped", "title": "Skipped (user-customized):", "marker": "·" },
+    { "key": "removed", "title": "Removed (deprecated):", "marker": "✕" }
+  ],
+  "platforms": {
+    "claude": {
+      "markers": [".claude/commands"],
+      "entries": [
+        { "kind": "file", "src": "claude/CLAUDE.md", "dest": "CLAUDE.md", "label": "CLAUDE.md", "category": "merge", "merger": "claudeMd" },
+        { "kind": "dir", "src": "claude/commands", "dest": ".claude/commands", "prefix": ".claude/commands", "category": "tool", "ensure": true },
+        { "kind": "file", "src": "claude/settings.local.json", "dest": ".claude/settings.local.json", "label": ".claude/settings.local.json", "category": "merge", "merger": "settingsJson" }
+      ],
+      "next_steps": {
+        "fresh": [
+          "  1. Edit CLAUDE.md — fill in team/project info",
+          "  2. Run /cf-init in Claude Code to auto-scan and populate specs",
+          "     Or manually edit .code-flow/specs/ to fill in your coding standards"
+        ],
+        "upgrade": [
+          "  Run /cf-learn in Claude Code to update specs with project conventions",
+          "  Run /cf-learn --map to update retrieval maps"
+        ]
+      }
+    },
+    "costrict": {
+      "markers": [".costrict/commands"],
+      "entries": [
+        { "kind": "file", "src": "costrict/CLAUDE.md", "dest": "CLAUDE.md", "label": "CLAUDE.md", "category": "merge", "merger": "claudeMd" },
+        { "kind": "dir", "src": "costrict/commands", "dest": ".costrict/commands", "prefix": ".costrict/commands", "category": "tool", "ensure": true },
+        { "kind": "file", "src": "costrict/settings.local.json", "dest": ".costrict/settings.local.json", "label": ".costrict/settings.local.json", "category": "merge", "merger": "settingsJson" }
+      ],
+      "next_steps": {
+        "fresh": [
+          "  1. Edit CLAUDE.md — fill in team/project info",
+          "  2. Run /cf-init in Costrict to auto-scan and populate specs",
+          "     Or manually edit .code-flow/specs/ to fill in your coding standards"
+        ],
+        "upgrade": [
+          "  Run /cf-learn in Costrict to update specs with project conventions",
+          "  Run /cf-learn --map to update retrieval maps"
+        ]
+      }
+    },
+    "codex": {
+      "markers": [".agents/skills"],
+      "entries": [
+        { "kind": "file", "src": "codex/AGENTS.md", "dest": "AGENTS.md", "label": "AGENTS.md", "category": "merge", "merger": "claudeMd" },
+        { "kind": "file", "src": "codex/hooks.json", "dest": ".codex/hooks.json", "label": ".codex/hooks.json", "category": "merge", "merger": "codexHooksJson" },
+        { "kind": "file", "src": "codex/config.toml", "dest": ".codex/config.toml", "label": ".codex/config.toml", "category": "merge", "merger": "codexConfigToml" },
+        { "kind": "dir", "src": "codex/skills", "dest": ".agents/skills", "prefix": ".agents/skills", "category": "tool" }
+      ],
+      "next_steps": {
+        "fresh": [
+          "  1. Edit AGENTS.md — fill in team/project info",
+          "  2. Run /hooks in Codex CLI and trust the code-flow hooks if prompted",
+          "  3. Run $cf-init in Codex CLI to auto-scan and populate specs",
+          "     Or manually edit .code-flow/specs/ to fill in your coding standards"
+        ],
+        "upgrade": [
+          "  Run /hooks in Codex CLI and trust changed code-flow hooks if prompted",
+          "  Run $cf-learn in Codex CLI to update specs with project conventions",
+          "  Run $cf-learn --map to update retrieval maps"
+        ]
+      }
+    },
+    "opencode": {
+      "markers": [".opencode/commands"],
+      "entries": [
+        { "kind": "file", "src": "opencode/AGENTS.md", "dest": "AGENTS.md", "label": "AGENTS.md", "category": "merge", "merger": "claudeMd" },
+        { "kind": "dir", "src": "opencode/plugins", "dest": ".opencode/plugins", "prefix": ".opencode/plugins", "category": "tool" },
+        { "kind": "stamp", "path": ".opencode/plugins/code-flow/package.json", "category": "tool" },
+        { "kind": "dir", "src": "opencode/commands", "dest": ".opencode/commands", "prefix": ".opencode/commands", "category": "tool" },
+        { "kind": "file", "src": "opencode/opencode.json", "dest": "opencode.json", "label": "opencode.json", "category": "merge", "merger": "opencodeJson" }
+      ],
+      "next_steps": {
+        "fresh": [
+          "  1. Edit AGENTS.md — fill in team/project info",
+          "  2. Start opencode in this directory — the plugin auto-loads",
+          "  3. Run /cf-init in OpenCode to auto-scan and populate specs",
+          "     Or manually edit .code-flow/specs/ to fill in your coding standards"
+        ],
+        "upgrade": [
+          "  Run /cf-learn in OpenCode to update specs with project conventions",
+          "  Run /cf-learn --map to update retrieval maps"
+        ]
+      }
+    }
+  }
+}
