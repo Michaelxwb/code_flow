@@ -27,15 +27,15 @@
 
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 | 优先级 | 执行方式 | 环境 | 输入 | E2E理由 | 触发路径 | 冒烟 |
 |--------|---------|---------|-------------|---------|------|---------|--------|---------|------|------|--------|---------|------|
-| S-01 | docs/codebase-consolidation-audit.md#A2 | unit | 真实 `cf_task_doc` 解析器 + 临时 TASK 文档 | TASK-001 | stale | ["python3","-m","pytest","-q","tests/test_cf_injection_version.py","tests/test_runtime_consolidation.py"] | P1 | auto | none | tests/** | - | - | no |
-| S-02 | docs/codebase-consolidation-audit.md#A2 | unit | 真实 AST 导入图 + 双副本 | TASK-001 | stale | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_runtime_consolidation.py::test_private_symbol_guard","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/** | - | - | no |
-| S-03 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + manifest 提取 | TASK-002 | stale | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_acceptance_manifest.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-04 | docs/codebase-consolidation-audit.md#A4 | integration | 真实 manifest 锁定/校验 + 临时需求目录 | TASK-002 | stale | ["python3","-m","pytest","-q","tests/test_cf_acceptance_manifest.py","tests/test_acceptance_contract_hardening.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-01 | docs/codebase-consolidation-audit.md#A2 | unit | 真实 `cf_task_doc` 解析器 + 临时 TASK 文档 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_cf_injection_version.py","tests/test_runtime_consolidation.py"] | P1 | auto | none | tests/** | - | - | no |
+| S-02 | docs/codebase-consolidation-audit.md#A2 | unit | 真实 AST 导入图 + 双副本 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_runtime_consolidation.py::test_private_symbol_guard","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/** | - | - | no |
+| S-03 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + manifest 提取 | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_acceptance_manifest.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-04 | docs/codebase-consolidation-audit.md#A4 | integration | 真实 manifest 锁定/校验 + 临时需求目录 | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_cf_acceptance_manifest.py","tests/test_acceptance_contract_hardening.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-05 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + Context 文件 | TASK-003 | planned | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_spec_context.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-06 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 active marker + spec-context.yml + hook 子进程 | TASK-003 | planned | ["python3","-m","pytest","-q","tests/test_cf_workflow_service.py","tests/test_cf_spec_context.py","tests/test_cf_user_prompt_hook.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-07 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + SCC 计算 | TASK-004 | planned | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-08 | docs/codebase-consolidation-audit.md#A3 | system | 真实 npm pack + node CLI/init/migrate | TASK-005 | stale | ["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"] | P2 | auto | none | tests/** | - | - | no |
-| S-09 | docs/codebase-consolidation-audit.md#A7 | integration | 真实 adapters 文件 + 归一化 parity | TASK-006 | stale | ["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-08 | docs/codebase-consolidation-audit.md#A3 | system | 真实 npm pack + node CLI/init/migrate | TASK-005 | verified | ["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"] | P2 | auto | none | tests/** | - | - | no |
+| S-09 | docs/codebase-consolidation-audit.md#A7 | integration | 真实 adapters 文件 + 归一化 parity | TASK-006 | verified | ["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-10 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 CLI 安装 + runner fixture 矩阵 | TASK-007 | planned | ["python3","-m","pytest","-q","tests/test_cli_spec_workflow.py","tests/test_cf_acceptance_runner.py"] | P2 | auto | none | tests/** | - | - | no |
 
 > 全部场景为工具链内部契约验证，不涉及浏览器，不声明 E2E。A4 的收益指标是 batch-4 边清零后 16 模块 SCC 缩到不超过 7 模块；不承诺一次消除剩余编排环。
@@ -74,8 +74,8 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-01 | unit | `cf_task_doc.parse_task_document`、真实临时 TASK 文件 | 示例不参与；Contract 改动改变 digest；重复 ID 不取首段 | `tests/test_runtime_consolidation.py::test_task_contract_digest_uses_canonical_sections` | `["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"]` | stale |
-| S-02 | unit | 真实 AST 导入图、canonical/deployed 双副本 | batch 3 无过期 allowlist，私有导入消失 | `tests/test_runtime_consolidation.py::test_dependency_direction` 等 | `["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_runtime_consolidation.py::test_private_symbol_guard","tests/test_runtime_consolidation.py::test_allowlist_ratchet"]` | stale |
+| S-01 | unit | `cf_task_doc.parse_task_document`、真实临时 TASK 文件 | 示例不参与；Contract 改动改变 digest；重复 ID 不取首段 | `tests/test_runtime_consolidation.py::test_task_contract_digest_uses_canonical_sections` | `["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"]` | verified |
+| S-02 | unit | 真实 AST 导入图、canonical/deployed 双副本 | batch 3 无过期 allowlist，私有导入消失 | `tests/test_runtime_consolidation.py::test_dependency_direction` 等 | `["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_runtime_consolidation.py::test_private_symbol_guard","tests/test_runtime_consolidation.py::test_allowlist_ratchet"]` | verified |
 
 ### Acceptance Evidence
 
@@ -87,6 +87,8 @@
 - S-02: verified — automated command passed; run_id=83eea59b5ab1453894ec453f9f12fbae (confirmed_by: runner)
 - S-01: stale — input changed: CHK-5bed1a0744d5 (confirmed_by: runtime)
 - S-02: stale — input changed: CHK-b3051cc489a2 (confirmed_by: runtime)
+- S-01: verified — automated command passed; run_id=4aec17af02be41ad82841fa3378941f7 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=4aec17af02be41ad82841fa3378941f7 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -125,8 +127,8 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-03 | unit | 真实 AST 导入图、真实 manifest 提取 | 3 条反向边消失；提取字段一致 | `tests/test_runtime_consolidation.py::test_dependency_direction` | `["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_acceptance_manifest.py"]` | stale |
-| S-04 | integration | 真实 manifest 文件、临时需求目录 | 锁定/漂移/投影/单次读取行为不变 | `tests/test_cf_acceptance_manifest.py`、`tests/test_acceptance_contract_hardening.py` | `["python3","-m","pytest","-q","tests/test_cf_acceptance_manifest.py","tests/test_acceptance_contract_hardening.py"]` | stale |
+| S-03 | unit | 真实 AST 导入图、真实 manifest 提取 | 3 条反向边消失；提取字段一致 | `tests/test_runtime_consolidation.py::test_dependency_direction` | `["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_acceptance_manifest.py"]` | verified |
+| S-04 | integration | 真实 manifest 文件、临时需求目录 | 锁定/漂移/投影/单次读取行为不变 | `tests/test_cf_acceptance_manifest.py`、`tests/test_acceptance_contract_hardening.py` | `["python3","-m","pytest","-q","tests/test_cf_acceptance_manifest.py","tests/test_acceptance_contract_hardening.py"]` | verified |
 
 ### Acceptance Evidence
 
@@ -138,6 +140,8 @@
 - S-04: verified — automated command passed; run_id=23ff1f5fd0814770833e9f7bf128dfae (confirmed_by: runner)
 - S-03: stale — input changed: CHK-72d2e9821fbe (confirmed_by: runtime)
 - S-04: stale — input changed: CHK-1078c53d3738 (confirmed_by: runtime)
+- S-03: verified — automated command passed; run_id=4877e81ebf864ad3822f95cff8bb7d3f (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=4877e81ebf864ad3822f95cff8bb7d3f (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -262,7 +266,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-08 | system | 真实 npm tarball、node CLI、Python 迁移器 | 三处派生一致；20 条完整；用户内容保留 | `tests/test_runtime_consolidation.py::test_packed_install_ignore`、`tests/test_spec_workflow_migrate.js` | `["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"]` | stale |
+| S-08 | system | 真实 npm tarball、node CLI、Python 迁移器 | 三处派生一致；20 条完整；用户内容保留 | `tests/test_runtime_consolidation.py::test_packed_install_ignore`、`tests/test_spec_workflow_migrate.js` | `["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"]` | verified |
 
 ### Acceptance Evidence
 
@@ -271,6 +275,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 | S-08 | FAIL: ENOENT `src/core/code-flow/scripts/runtime-resources.json` in test_runtime_ignore_single_source and both new migrate JS cases | PASS: pytest 34 passed; node migrate 10/10 tests; merge helpers 22/22 | tests/test_runtime_consolidation.py::test_runtime_ignore_single_source; ::test_packed_install_ignore; tests/test_spec_workflow_migrate.js S-08 cases | real `npm pack` tarball + packed CLI init; real Python migrator staging on temp project; canonical/deployed declaration byte-identical | verified |
 - S-08: verified — automated command passed; run_id=7d51b235c996466aa2ff5996e7814bb2 (confirmed_by: runner)
 - S-08: stale — input changed: CHK-f6ae7934bfda (confirmed_by: runtime)
+- S-08: verified — automated command passed; run_id=5f3a7bfc79694e60850ddd509e8f7221 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -309,7 +314,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-09 | integration | 真实 4 平台正文、真实 commands.json | 生成幂等；parity 通过；--check 捕获漂移 | `tests/test_adapter_parity.py`、`tests/test_spec_workflow_templates.py` | `["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"]` | stale |
+| S-09 | integration | 真实 4 平台正文、真实 commands.json | 生成幂等；parity 通过；--check 捕获漂移 | `tests/test_adapter_parity.py`、`tests/test_spec_workflow_templates.py` | `["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"]` | verified |
 
 ### Acceptance Evidence
 
@@ -318,6 +323,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 | S-09 | FAIL: drift check returned 0 for tampered temp copy; --root ignored; tampered body not regenerated | PASS: test_adapter_parity.py 23 passed; --check exit 0; full suite 963 passed, 3 skipped | tests/test_adapter_parity.py::test_s09_generated_platform_bodies_have_no_drift; ::test_s09_generator_check_detects_body_drift; ::test_s09_generator_is_idempotent_and_preserves_bodies; ::test_s09_generator_preserves_examples_errors_and_steps; ::test_s09_generator_uses_only_node_builtins | real 4-platform source bodies + real commands.json/platform-bindings.json; tampered temp repo detected | verified |
 - S-09: verified — automated command passed; run_id=2c80dc8bcfeb4283acd0d6ea380604c5 (confirmed_by: runner)
 - S-09: stale — input changed: CHK-1592ed61c3ae (confirmed_by: runtime)
+- S-09: verified — automated command passed; run_id=eaec7856fc914cb692a590d41e912862 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
