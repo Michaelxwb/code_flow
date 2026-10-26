@@ -12,13 +12,13 @@ from __future__ import annotations
 import argparse
 import os
 import json
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, Mapping, Optional, Sequence
 
 
+from cf_task_doc import TaskDocument, TaskDocumentError, parse_task_document
 from cf_task_plan import (
     DEFAULT_MAX_TASKS,
     TASK_SIZES,
@@ -34,6 +34,11 @@ class TaskNode:
     depends: tuple[str, ...]
 
 
+def project_task_nodes(document: TaskDocument) -> tuple[TaskNode, ...]:
+    """Project a parsed TaskDocument into the index node shape."""
+    return tuple(TaskNode(task.id, task.status, task.depends) for task in document.tasks)
+
+
 def parse_task_file(task_file: str) -> tuple[TaskNode, ...]:
     """Parse every `## TASK-xxx` section into status/depends nodes.
 
@@ -45,25 +50,11 @@ def parse_task_file(task_file: str) -> tuple[TaskNode, ...]:
         text = Path(task_file).read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         raise ValueError(f"task_read_error: {exc}") from exc
-    nodes: list[TaskNode] = []
-    matches = list(re.finditer(r"(?m)^## (TASK-\d+):[^\n]*$", text))
-    for index, match in enumerate(matches):
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        section = text[match.start():end]
-        status_match = re.search(r"(?m)^- \*\*Status\*\*:[ \t]*([^\n]+)", section)
-        status = status_match.group(1).strip() if status_match else "draft"
-        depends_match = re.search(r"(?m)^- \*\*Depends\*\*:[ \t]*([^\n]*)", section)
-        depends: tuple[str, ...] = ()
-        if depends_match:
-            depends = tuple(
-                part.strip()
-                for part in re.split(r"[,，\s]+", depends_match.group(1).strip())
-                if re.fullmatch(r"TASK-\d+", part.strip())
-            )
-        nodes.append(TaskNode(match.group(1), status, depends))
-    if not nodes:
-        raise ValueError("no TASK sections found")
-    return tuple(nodes)
+    try:
+        document = parse_task_document(text, source=str(task_file))
+    except TaskDocumentError as exc:
+        raise ValueError(str(exc)) from exc
+    return project_task_nodes(document)
 
 
 def task_batches(nodes: Sequence[TaskNode]) -> list[list[str]]:

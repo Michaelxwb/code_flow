@@ -29,10 +29,10 @@
 | S-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 无 validation.yml → 策略分支 | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_validator_missing_policy"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-05 | runtime-consolidation.design.md#2.5 验收条件 | integration | heavy_at_finish → finish 结果 | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_heavy_deferral"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | E-02 | runtime-consolidation.design.md#2.5 验收条件 | integration | Stop stdin/stdout JSON | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_stop_json_protocol"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-06 | runtime-consolidation.design.md#2.5 验收条件 | unit | parse_task_document | TASK-004 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_heading_edges"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-07 | runtime-consolidation.design.md#2.5 验收条件 | integration | 五个 TASK 消费者 | TASK-004 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_duplicate_task_id"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-08 | runtime-consolidation.design.md#2.5 验收条件 | unit | status 投影 | TASK-004 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_missing_status_draft"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| B-02 | runtime-consolidation.design.md#2.5 验收条件 | unit | CRLF/空文档 | TASK-004 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_doc_boundaries"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-06 | runtime-consolidation.design.md#2.5 验收条件 | unit | parse_task_document | TASK-004 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_heading_edges"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-07 | runtime-consolidation.design.md#2.5 验收条件 | integration | 五个 TASK 消费者 | TASK-004 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_duplicate_task_id"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-08 | runtime-consolidation.design.md#2.5 验收条件 | unit | status 投影 | TASK-004 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_missing_status_draft"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| B-02 | runtime-consolidation.design.md#2.5 验收条件 | unit | CRLF/空文档 | TASK-004 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_doc_boundaries"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-09 | runtime-consolidation.design.md#2.5 验收条件 | system | start → finish → spec gate | TASK-005 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_flow_consistency"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | E-03 | runtime-consolidation.design.md#2.5 验收条件 | integration | 任务文件 → plan gate | TASK-005 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_plan_gate_duplicate"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-10 | runtime-consolidation.design.md#2.5 验收条件 | integration | 真实 git 仓库 → cf_git | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_git_primitive_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
@@ -237,11 +237,11 @@
 
 ## TASK-004: TASK 文档单一解析核心
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: runtime-consolidation.design.md#3.3 数据设计, runtime-consolidation.design.md#3.4 接口设计
-- **Spec-Refs**: 无（解析器由 TASK-005 的 context-gate 规则覆盖）
+- **Spec-Refs**: N/A
 - **Acceptance-Refs**: S-06, S-07, S-08, B-02
 - **Estimate**: 2d
 - **Capability**: 同一份 TASK 文档在 workflow 与 session 两个入口读出一致状态；行内示例、围栏标题、重复 ID、CRLF 都有确定结论。
@@ -252,29 +252,44 @@
 
 ### Checklist
 
-- [ ] 交付 `TASK 解析唯一权威（前两个消费者）`，并提供两个复现场景的演示
-- [ ] [S-06][unit] 行内示例与围栏代码块中的标题不识别
-- [ ] [S-07][integration] 重复 TASK ID 在所有消费者一致拒绝
-- [ ] [S-08][unit] 缺 Status 返回 draft
-- [ ] [B-02][unit] CRLF 正常解析；无 TASK 段落抛 `task_document_empty`
-- [ ] 切换 `cf_workflow_service.read_task_section/section_status` 与 `cf_spec_session._task_section`
-- [ ] 运行两个复现测试与真实任务目录解析
+- [x] 交付 `TASK 解析唯一权威（前两个消费者）`，并提供两个复现场景的演示
+- [x] [S-06][unit] 行内示例与围栏代码块中的标题不识别
+- [x] [S-07][integration] 重复 TASK ID 在所有消费者一致拒绝
+- [x] [S-08][unit] 缺 Status 返回 draft
+- [x] [B-02][unit] CRLF 正常解析；无 TASK 段落抛 `task_document_empty`
+- [x] 切换 `cf_workflow_service.read_task_section/section_status` 与 `cf_spec_session._task_section`
+- [x] 运行两个复现测试与真实任务目录解析
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-06 | unit | 真实解析函数 | 只返回真实标题 | tests/test_runtime_consolidation.py::test_task_heading_edges | planned | planned |
-| S-07 | integration | 五个消费者 | 一致拒绝 | tests/test_runtime_consolidation.py::test_duplicate_task_id | planned | planned |
-| S-08 | unit | 解析函数 | status=draft | tests/test_runtime_consolidation.py::test_missing_status_draft | planned | planned |
-| B-02 | unit | 解析函数 | CRLF/空文档结论 | tests/test_runtime_consolidation.py::test_task_doc_boundaries | planned | planned |
+| S-06 | unit | 真实解析函数 | 只返回真实标题 | tests/test_runtime_consolidation.py::test_task_heading_edges | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_task_heading_edges` | verified |
+| S-07 | integration | 五个消费者 | 一致拒绝 | tests/test_runtime_consolidation.py::test_duplicate_task_id | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_duplicate_task_id` | verified |
+| S-08 | unit | 解析函数 | status=draft | tests/test_runtime_consolidation.py::test_missing_status_draft | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_missing_status_draft` | verified |
+| B-02 | unit | 解析函数 | CRLF/空文档结论 | tests/test_runtime_consolidation.py::test_task_doc_boundaries | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_task_doc_boundaries` | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-06 | `test_task_heading_edges` 因 `cf_task_doc` 不存在而 ModuleNotFoundError；基线 `parse_task_file` 对含围栏 `## TASK-002` 的文档返回 `[('TASK-001','done'),('TASK-002','draft')]`，把围栏标题当真实段落 | PASS: 1 passed | `document.tasks` ID/title 列表断言（`test_task_heading_edges`） | 真实解析函数；行内、缩进、引用、反引号/波浪线围栏标题混合文档 | verified |
+| S-07 | `test_duplicate_task_id` 失败：`read_task_section` `DID NOT RAISE`，基线五消费者对两个 TASK-001 择一（首/末条）而非拒绝 | PASS: 1 passed | workflow `WorkflowError.code == "duplicate_task_id"`；session/index/plan `match="duplicate_task_id"`；gate `decision=block` 且 `errors[0].code` | 真实临时任务文件，五个消费者逐一读取；gate 使用真实 `validate_plan_coverage` + 真实文件 | verified |
+| S-08 | `test_missing_status_draft` 因 `cf_task_doc` 不存在而 ModuleNotFoundError；基线 `section_status` 已默认 draft（无生产 RED，不伪造失败），但 status 由每个消费者各自正则解释 | PASS: 1 passed | `[task.status ...] == ["draft", "done"]` 与 depends 断言 | 真实解析函数；缺 Status 段落 + 未知/已知状态保留 | verified |
+| B-02 | `test_task_doc_boundaries` 因 `cf_task_doc` 不存在而 ModuleNotFoundError；基线空文档抛 `ValueError: no TASK sections found`，没有稳定的 `task_document_empty` 错误码 | PASS: 1 passed | CRLF 两段落 ID/status/depends/source 断言；空文档 `TaskDocumentError.code == "task_document_empty"` | 真实解析函数；CRLF 全文与 `""`/无 TASK 文本 | verified |
+
+> 全量回归：`python3 -m pytest -q` → 919 passed / 14 skipped。真实任务目录 `runtime-consolidation.md` 解析出 11 个 TASK，状态与 Markdown 一致（TASK-004 为 in-progress）。双副本 `src/core/code-flow/scripts/` 与 `.code-flow/scripts/` 逐字节一致；新增 `cf_task_doc` 层映射为 1。
+- S-06: verified — automated command passed; run_id=9afa4746a6dc4e099488df183017e0b8 (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=9afa4746a6dc4e099488df183017e0b8 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=9afa4746a6dc4e099488df183017e0b8 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=9afa4746a6dc4e099488df183017e0b8 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
+- [2026-10-26] started
+- [2026-10-26] cf_task_doc 单一解析器落地；workflow/session/index/gate/plan 五个消费者切换到同一解析；双副本同步
+- [2026-10-26] RED/GREEN recorded; full pytest suite 919 passed / 14 skipped
+- [2026-10-26] completed (done)
 
 ---
 

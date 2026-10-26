@@ -13,6 +13,7 @@ import sys
 from typing import IO, Mapping, Optional, Sequence
 
 from cf_spec_context import RuleBinding, SpecContext, context_sha256, load_context
+from cf_task_doc import parse_task_document
 
 
 @dataclass(frozen=True)
@@ -28,12 +29,10 @@ class SessionProjection:
 
 
 def _task_section(text: str, task_id: str) -> str:
-    match = re.search(rf"(?m)^## {re.escape(task_id)}:[^\n]*$", text)
-    if match is None:
-        raise ValueError(f"task_not_found: {task_id}")
-    following = re.search(r"(?m)^## TASK-\d+:", text[match.end():])
-    end = match.end() + following.start() if following else len(text)
-    return text[match.start():end]
+    for task in parse_task_document(text).tasks:
+        if task.id == task_id:
+            return task.body
+    raise ValueError(f"task_not_found: {task_id}")
 
 
 _EMPTY_REF_MARKERS = frozenset(("n/a", "none", "null", "-", "—"))
