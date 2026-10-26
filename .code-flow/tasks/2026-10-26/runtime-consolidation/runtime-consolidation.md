@@ -111,6 +111,9 @@
 - S-15: verified — automated command passed; run_id=220296de5c624103bfec88900480a2be (confirmed_by: runner)
 - S-16: verified — automated command passed; run_id=220296de5c624103bfec88900480a2be (confirmed_by: runner)
 - B-03: verified — automated command passed; run_id=220296de5c624103bfec88900480a2be (confirmed_by: runner)
+- S-15: verified — automated command passed; run_id=4997da8d9fc74bcbb0666a886c1f0f60 (confirmed_by: runner)
+- S-16: verified — automated command passed; run_id=4997da8d9fc74bcbb0666a886c1f0f60 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=4997da8d9fc74bcbb0666a886c1f0f60 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -178,6 +181,10 @@
 - S-02: verified — automated command passed; run_id=eaeb359d9fb54ffe9fcd0b33aa5fb877 (confirmed_by: runner)
 - B-01: verified — automated command passed; run_id=eaeb359d9fb54ffe9fcd0b33aa5fb877 (confirmed_by: runner)
 - E-01: verified — automated command passed; run_id=eaeb359d9fb54ffe9fcd0b33aa5fb877 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=ca22a6f1b14641a88543f466bdc885d2 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=ca22a6f1b14641a88543f466bdc885d2 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=ca22a6f1b14641a88543f466bdc885d2 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=ca22a6f1b14641a88543f466bdc885d2 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -246,6 +253,10 @@
 - S-04: verified — automated command passed; run_id=297ffceead3e4fd5931edbb5cbbcfabb (confirmed_by: runner)
 - S-05: verified — automated command passed; run_id=297ffceead3e4fd5931edbb5cbbcfabb (confirmed_by: runner)
 - E-02: verified — automated command passed; run_id=297ffceead3e4fd5931edbb5cbbcfabb (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=98a0752b922b4ebda0acee6c5f0ed1ee (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=98a0752b922b4ebda0acee6c5f0ed1ee (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=98a0752b922b4ebda0acee6c5f0ed1ee (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=98a0752b922b4ebda0acee6c5f0ed1ee (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -312,6 +323,10 @@
 - S-07: verified — automated command passed; run_id=326a61cec0d847cf905bff14b73df019 (confirmed_by: runner)
 - S-08: verified — automated command passed; run_id=326a61cec0d847cf905bff14b73df019 (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=326a61cec0d847cf905bff14b73df019 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=528a0c306e6a4e6c9d9ce0315b6bffd9 (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=528a0c306e6a4e6c9d9ce0315b6bffd9 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=528a0c306e6a4e6c9d9ce0315b6bffd9 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=528a0c306e6a4e6c9d9ce0315b6bffd9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -365,6 +380,10 @@
 - RED `test_manifest_and_stop_reject_duplicate_task_id`：`_contract_commands` DID NOT RAISE，Stop 未产出 duplicate_task_id；GREEN：manifest 抛 `duplicate_task_id`，Stop failure detail 含该错误码。
 - S-09: verified — automated command passed; run_id=a8ef306ce84c4849901aa66a4ec77af6 (confirmed_by: runner)
 - E-03: verified — automated command passed; run_id=a8ef306ce84c4849901aa66a4ec77af6 (confirmed_by: runner)
+- S-09: stale — input changed: CHK-52b0b9cec656 (confirmed_by: runtime)
+- E-03: stale — input changed: CHK-eb7525efb4b7 (confirmed_by: runtime)
+- S-09: verified — automated command passed; run_id=09fa2084ae6b4f1f9ead5bf4c469bb3d (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=09fa2084ae6b4f1f9ead5bf4c469bb3d (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -422,6 +441,8 @@
 - S-11: stale — input changed: CHK-8d218d1ef961 (confirmed_by: runtime)
 - S-10: verified — automated command passed; run_id=7e3668da68e04f4894f138c8085ba8f6 (confirmed_by: runner)
 - S-11: verified — automated command passed; run_id=7e3668da68e04f4894f138c8085ba8f6 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=6b2700cc17c540babef3c9fb446b902f (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=6b2700cc17c540babef3c9fb446b902f (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -472,6 +493,7 @@
 - S-12: verified — automated command passed; run_id=c7f638bc2046483692b5e90f101481c9 (confirmed_by: runner)
 - S-12: stale — input changed: CHK-71e953005848 (confirmed_by: runtime)
 - S-12: verified — automated command passed; run_id=110ed15d46d348c4aa5a4a48a324cb2a (confirmed_by: runner)
+- S-12: verified — automated command passed; run_id=637422397c974429a07d5837204f3a6c (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -516,6 +538,8 @@
 |--------|-----|-------|---------|-------------|------|
 | S-13 | `test_legacy_removal` 失败：`canonical cf_core still exports read_matched_specs`（1 failed）。纯重构无生产缺陷，RED 来自移除守卫断言 | PASS: 1 passed；全量 `python3 -m pytest -q tests` → 925 passed, 11 skipped | `tests/test_runtime_consolidation.py::test_legacy_removal`：canonical/live `cf_core` 均无旧符号；安装后 Hook 的 Catalog 路由仍列 8 个 spec、显式路径路由只注入 3 个 frontend spec；`spec catalog` 返回 8 项且 scope 为 path/unmatched | 真实 `node src/cli.js init --platform=claude` 临时项目 + 子进程运行安装后的 `cf_user_prompt_hook.py` + `node src/cli.js spec catalog`，无 mock | verified |
 - S-13: verified — automated command passed; run_id=86e36b7214904c82ada41b0e3d87257b (confirmed_by: runner)
+- S-13: stale — input changed: CHK-3e2b61002b19 (confirmed_by: runtime)
+- S-13: verified — automated command passed; run_id=7e29676100434497b21e3546e022a89d (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -567,6 +591,10 @@
 - 双副本同步：`src/core/code-flow/scripts/` 与 `.code-flow/scripts/` 六个文件一致。
 - S-14: verified — automated command passed; run_id=d50559d1bf4449379ce4dece3f7a10fe (confirmed_by: runner)
 - E-04: verified — automated command passed; run_id=d50559d1bf4449379ce4dece3f7a10fe (confirmed_by: runner)
+- S-14: stale — input changed: CHK-90d733d73244 (confirmed_by: runtime)
+- E-04: stale — input changed: CHK-3d32dec0fdc1 (confirmed_by: runtime)
+- S-14: verified — automated command passed; run_id=21581b314aa44e57a7f9e8115d71cfe6 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=21581b314aa44e57a7f9e8115d71cfe6 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)

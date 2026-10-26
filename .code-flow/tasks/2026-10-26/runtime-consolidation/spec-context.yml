@@ -1,7 +1,7 @@
 version: 1
 task: runtime-consolidation
 enforcement: required
-updated_at: '2026-10-26T15:28:36.944680+00:00'
+updated_at: '2026-10-26T15:43:45.994543+00:00'
 sources:
 - type: cli
   ref: bind
@@ -22,6 +22,343 @@ bindings:
   - code
   - review
   rules:
+  - ref: RULE-cli-dependency-allowlist-001
+    summary: CLI runtime dependencies must stay within the reviewed package allowlist;
+      migration work must not add an undeclared dependency.
+    text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
+    enforcement: required
+    verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
+    verifier_stage: code
+    stage_status:
+      code:
+        status: unverified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
+          executed_at: '2026-10-26T15:37:04.345754+00:00'
+          status: unverified
+          rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
+          artifact_sha256: null
+          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-cli-dependency-allowlist-001
+          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.md
+          section_id: TASK-010
+          item_id: TASK-010
+          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+        - artifact: runtime-consolidation.md
+          section_id: TASK-010
+          item_id: TASK-010
+          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
+        - artifact: runtime-consolidation.md
+          section_id: TASK-010
+          item_id: TASK-010
+          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-cli-user-content-preservation-001
+    summary: Init, merge, and migration helpers must preserve user-owned configuration
+      and content.
+    text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
+    enforcement: required
+    verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
+    verifier_stage: code
+    stage_status:
+      code:
+        status: unverified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
+          executed_at: '2026-10-26T15:37:04.345776+00:00'
+          status: unverified
+          rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
+          artifact_sha256: null
+          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-cli-user-content-preservation-001
+          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+        - artifact: runtime-consolidation.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
+        - artifact: runtime-consolidation.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-cli-platform-parity-001
+    summary: Claude, Codex, Costrict, and OpenCode adapters must retain normalized
+      command content and canonical/deployed parity.
+    text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
+    enforcement: required
+    verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
+    verifier_stage: code
+    stage_status:
+      code:
+        status: unverified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
+          executed_at: '2026-10-26T15:37:04.345782+00:00'
+          status: unverified
+          rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
+          artifact_sha256: null
+          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-cli-platform-parity-001
+          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-cli-hook-guard-001
+    summary: Installed hook commands must resolve the project safely and remain no-op
+      outside a code-flow project.
+    text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
+    enforcement: required
+    verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
+    verifier_stage: code
+    stage_status:
+      code:
+        status: unverified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
+          executed_at: '2026-10-26T15:37:04.345787+00:00'
+          status: unverified
+          rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
+          artifact_sha256: null
+          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-cli-hook-guard-001
+          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-cli-migration-transaction-001
+    summary: The breaking migration must provide dry-run, backup, journaled apply,
+      rollback, idempotence, and version-last commit semantics.
+    text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
+    enforcement: required
+    verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
+    verifier_stage: code
+    stage_status:
+      code:
+        status: unverified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
+          executed_at: '2026-10-26T15:37:04.345791+00:00'
+          status: unverified
+          rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
+          artifact_sha256: null
+          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-cli-migration-transaction-001
+          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-cli-opencode-native-001
+    summary: OpenCode v2 callbacks must consume native event fields, isolate feedback
+      by instance/session/location, and expose runtime failures without translating
+      another platform's hook protocol.
+    text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
+    enforcement: required
+    verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
+    verifier_stage: code
+    stage_status:
+      code:
+        status: unverified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
+          executed_at: '2026-10-26T15:37:04.345795+00:00'
+          status: unverified
+          rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
+          artifact_sha256: null
+          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-cli-opencode-native-001
+          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
   - ref: PATTERN-cli-001
     summary: 新增模板文件：放在 src/core/ 或 src/adapters/ 下，fileCategory() 自动分类
     text_sha256: b435afeca91e187e9f9b74de3b2d48705ca8d019c929796ba7fc7301c370ad48
@@ -186,348 +523,11 @@ bindings:
         refs: []
         decision: null
         evidence: []
-  - ref: RULE-cli-dependency-allowlist-001
-    summary: CLI runtime dependencies must stay within the reviewed package allowlist;
-      migration work must not add an undeclared dependency.
-    text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
-    enforcement: required
-    verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
-    verifier_stage: code
-    stage_status:
-      code:
-        status: unverified
-        refs: []
-        decision: null
-        evidence:
-        - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
-          executed_at: '2026-10-26T15:37:04.345754+00:00'
-          status: unverified
-          rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
-          artifact_sha256: null
-          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
-          details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
-      design:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.design.md
-          section_id: Spec Compliance Matrix
-          item_id: RULE-cli-dependency-allowlist-001
-          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.md
-          section_id: TASK-010
-          item_id: TASK-010
-          artifact_sha256: 0a7cef4fa947ddeda8bdf1ce149bbffe837480d03daec9cacc819fb65bce6ece
-        - artifact: runtime-consolidation.md
-          section_id: TASK-010
-          item_id: TASK-010
-          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
-        - artifact: runtime-consolidation.md
-          section_id: TASK-010
-          item_id: TASK-010
-          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-cli-hook-guard-001
-    summary: Installed hook commands must resolve the project safely and remain no-op
-      outside a code-flow project.
-    text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
-    enforcement: required
-    verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
-    verifier_stage: code
-    stage_status:
-      code:
-        status: unverified
-        refs: []
-        decision: null
-        evidence:
-        - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
-          executed_at: '2026-10-26T15:37:04.345787+00:00'
-          status: unverified
-          rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
-          artifact_sha256: null
-          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
-          details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
-      design:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.design.md
-          section_id: Spec Compliance Matrix
-          item_id: RULE-cli-hook-guard-001
-          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: 0a7cef4fa947ddeda8bdf1ce149bbffe837480d03daec9cacc819fb65bce6ece
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-cli-migration-transaction-001
-    summary: The breaking migration must provide dry-run, backup, journaled apply,
-      rollback, idempotence, and version-last commit semantics.
-    text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
-    enforcement: required
-    verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
-    verifier_stage: code
-    stage_status:
-      code:
-        status: unverified
-        refs: []
-        decision: null
-        evidence:
-        - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
-          executed_at: '2026-10-26T15:37:04.345791+00:00'
-          status: unverified
-          rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
-          artifact_sha256: null
-          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
-          details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
-      design:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.design.md
-          section_id: Spec Compliance Matrix
-          item_id: RULE-cli-migration-transaction-001
-          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: 0a7cef4fa947ddeda8bdf1ce149bbffe837480d03daec9cacc819fb65bce6ece
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-cli-opencode-native-001
-    summary: OpenCode v2 callbacks must consume native event fields, isolate feedback
-      by instance/session/location, and expose runtime failures without translating
-      another platform's hook protocol.
-    text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
-    enforcement: required
-    verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
-    verifier_stage: code
-    stage_status:
-      code:
-        status: unverified
-        refs: []
-        decision: null
-        evidence:
-        - verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
-          executed_at: '2026-10-26T15:37:04.345795+00:00'
-          status: unverified
-          rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
-          artifact_sha256: null
-          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
-          details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
-      design:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.design.md
-          section_id: Spec Compliance Matrix
-          item_id: RULE-cli-opencode-native-001
-          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: 0a7cef4fa947ddeda8bdf1ce149bbffe837480d03daec9cacc819fb65bce6ece
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-cli-platform-parity-001
-    summary: Claude, Codex, Costrict, and OpenCode adapters must retain normalized
-      command content and canonical/deployed parity.
-    text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
-    enforcement: required
-    verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
-    verifier_stage: code
-    stage_status:
-      code:
-        status: unverified
-        refs: []
-        decision: null
-        evidence:
-        - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
-          executed_at: '2026-10-26T15:37:04.345782+00:00'
-          status: unverified
-          rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
-          artifact_sha256: null
-          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
-          details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
-      design:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.design.md
-          section_id: Spec Compliance Matrix
-          item_id: RULE-cli-platform-parity-001
-          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: 0a7cef4fa947ddeda8bdf1ce149bbffe837480d03daec9cacc819fb65bce6ece
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-cli-user-content-preservation-001
-    summary: Init, merge, and migration helpers must preserve user-owned configuration
-      and content.
-    text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
-    enforcement: required
-    verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
-    verifier_stage: code
-    stage_status:
-      code:
-        status: unverified
-        refs: []
-        decision: null
-        evidence:
-        - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
-          executed_at: '2026-10-26T15:37:04.345776+00:00'
-          status: unverified
-          rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
-          artifact_sha256: null
-          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
-          details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
-      design:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.design.md
-          section_id: Spec Compliance Matrix
-          item_id: RULE-cli-user-content-preservation-001
-          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.md
-          section_id: TASK-002
-          item_id: TASK-002
-          artifact_sha256: 0a7cef4fa947ddeda8bdf1ce149bbffe837480d03daec9cacc819fb65bce6ece
-        - artifact: runtime-consolidation.md
-          section_id: TASK-002
-          item_id: TASK-002
-          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
-        - artifact: runtime-consolidation.md
-          section_id: TASK-002
-          item_id: TASK-002
-          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
 - spec_id: scripts-code-standards
   path: scripts/code-standards.md
   status: active
   hashes:
-    file_sha256: 9f2de3e727f497ad85eadcfe1f635ff9701cd234707ec1cafb817926e802257e
+    file_sha256: f074c97ca91daceec3b2e7f3b2a8672032dd132bd4439faed7b58ab196e4983b
     metadata_sha256: 1a080f178a6cc806a462b457d6b831b3ccb42ed14a07092b7bff380dcc674939
     rules_sha256: a78a60d13e2473c23756d62aa501f494500270cd62e66e3c72a334c4c69b634d
   selected_by: plan
@@ -539,6 +539,327 @@ bindings:
   - code
   - review
   rules:
+  - ref: RULE-scripts-no-print-debug-001
+    summary: Hook modules must not write debug output with print(), preserving the
+      stdout JSON protocol.
+    text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+    verifier_stage: code
+    stage_status:
+      code:
+        status: stale
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-10-26T15:37:25.143447+00:00'
+          status: verified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
+          result_sha256: cd34184c6cf8bec13ea62fdab575a0707633b5cfccc70e59c4cd1cdbf606ed4e
+          error_code: null
+          details:
+            checked_files: 2
+            violations: []
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-no-print-debug-001
+          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+        - artifact: runtime-consolidation.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
+        - artifact: runtime-consolidation.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-no-bare-except-001
+    summary: Python modules must not use a bare except clause that silently erases
+      failure context.
+    text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+    verifier_stage: code
+    stage_status:
+      code:
+        status: stale
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-10-26T15:37:25.145546+00:00'
+          status: verified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
+          result_sha256: fe2a22f5c0fecfb6bbced497722c0f2fe0c01f65b0a24927c625f05e6d5ff48a
+          error_code: null
+          details:
+            checked_files: 9
+            violations: []
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-no-bare-except-001
+          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+        - artifact: runtime-consolidation.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
+        - artifact: runtime-consolidation.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-hook-protocol-001
+    summary: Installed hooks must keep guarded project resolution, valid JSON output,
+      silent no-op behavior, and explicit stderr diagnostics.
+    text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+    verifier_stage: code
+    stage_status:
+      code:
+        status: stale
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-10-26T15:37:16.451632+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
+          result_sha256: 73bbbc1e62e8a991c8a6dd951a75400f21e7c627b5bce155fc0624c15cd7835a
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            - tests/test_codex_native_hook.py
+            - tests/test_opencode_native.py
+            - tests/test_runtime_contract.py
+            exit_code: 0
+            stdout_sha256: d492df47f3941426b7fec8ccce9e3b089fff4df720e9a44664d317265753a8dd
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '........................................................................
+              [100%]
+
+              72 passed in 11.73s
+
+              '
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-hook-protocol-001
+          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-context-gate-001
+    summary: Spec Context refresh, scope expansion, verifier Evidence, and required
+      Stage Gates must remain deterministic and fail-closed.
+    text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+    verifier_stage: code
+    stage_status:
+      code:
+        status: stale
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-10-26T15:37:24.581016+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
+          result_sha256: de6c16bc122b5c0126144af8f9ce6ca77498ad3f592d94383c56319f744eb3e2
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            stdout_sha256: 632353885c87f91f375369b60b6f9827aa8749ccd599608a83f6cce900d3b723
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '................................................................         [100%]
+
+              64 passed in 7.99s
+
+              '
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-context-gate-001
+          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.md
+          section_id: TASK-005
+          item_id: TASK-005
+          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+        - artifact: runtime-consolidation.md
+          section_id: TASK-005
+          item_id: TASK-005
+          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
+        - artifact: runtime-consolidation.md
+          section_id: TASK-005
+          item_id: TASK-005
+          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-canonical-parity-001
+    summary: Canonical Python runtime, live deployment, templates, and platform adapters
+      must remain synchronized without legacy runtime residue.
+    text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+    verifier_stage: code
+    stage_status:
+      code:
+        status: stale
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-10-26T15:37:25.141927+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
+          result_sha256: dbd5249bafcc7e711ff7bdb40afe5b375a99567a630691bfc1e7c1f47a2ecf2c
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            stdout_sha256: 7e96a15cc5c7a2280ccc3a0a714e37a47b5065f016a97f5e45b5e7130c0f28b7
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '........................                                                 [100%]
+
+              24 passed in 0.43s
+
+              '
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-canonical-parity-001
+          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-consolidation.md
+          section_id: TASK-010
+          item_id: TASK-010
+          artifact_sha256: 245e6004c703ffbdf1e3cc2e575b8746afa0ef7e8c8c678ada71d739e8326aff
+        - artifact: runtime-consolidation.md
+          section_id: TASK-010
+          item_id: TASK-010
+          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
+        - artifact: runtime-consolidation.md
+          section_id: TASK-010
+          item_id: TASK-010
+          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
   - ref: PATTERN-scripts-001
     summary: 单一功能的 schema、resolver、gate、migration 可放在 `cf_<feature>.py` **feature-scoped
       core module**；跨功能稳定原语才进入 `cf_core.py`
@@ -807,327 +1128,6 @@ bindings:
       plan:
         status: pending
         refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-scripts-canonical-parity-001
-    summary: Canonical Python runtime, live deployment, templates, and platform adapters
-      must remain synchronized without legacy runtime residue.
-    text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
-    enforcement: required
-    verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
-    verifier_stage: code
-    stage_status:
-      code:
-        status: verified
-        refs: []
-        decision: null
-        evidence:
-        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
-          executed_at: '2026-10-26T15:37:25.141927+00:00'
-          status: verified
-          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
-          artifact_sha256: null
-          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
-          result_sha256: dbd5249bafcc7e711ff7bdb40afe5b375a99567a630691bfc1e7c1f47a2ecf2c
-          error_code: null
-          details:
-            argv:
-            - python3
-            - -m
-            - pytest
-            - -q
-            - tests/test_spec_workflow_templates.py
-            - tests/test_adapter_parity.py
-            - tests/test_spec_workflow_residue.py
-            exit_code: 0
-            stdout_sha256: 7e96a15cc5c7a2280ccc3a0a714e37a47b5065f016a97f5e45b5e7130c0f28b7
-            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-            output: '........................                                                 [100%]
-
-              24 passed in 0.43s
-
-              '
-      design:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.design.md
-          section_id: Spec Compliance Matrix
-          item_id: RULE-scripts-canonical-parity-001
-          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.md
-          section_id: TASK-010
-          item_id: TASK-010
-          artifact_sha256: 0a7cef4fa947ddeda8bdf1ce149bbffe837480d03daec9cacc819fb65bce6ece
-        - artifact: runtime-consolidation.md
-          section_id: TASK-010
-          item_id: TASK-010
-          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
-        - artifact: runtime-consolidation.md
-          section_id: TASK-010
-          item_id: TASK-010
-          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-scripts-context-gate-001
-    summary: Spec Context refresh, scope expansion, verifier Evidence, and required
-      Stage Gates must remain deterministic and fail-closed.
-    text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
-    enforcement: required
-    verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
-    verifier_stage: code
-    stage_status:
-      code:
-        status: verified
-        refs: []
-        decision: null
-        evidence:
-        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
-          executed_at: '2026-10-26T15:37:24.581016+00:00'
-          status: verified
-          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
-          artifact_sha256: null
-          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
-          result_sha256: de6c16bc122b5c0126144af8f9ce6ca77498ad3f592d94383c56319f744eb3e2
-          error_code: null
-          details:
-            argv:
-            - python3
-            - -m
-            - pytest
-            - -q
-            - tests/test_cf_spec_context.py
-            - tests/test_cf_spec_gate.py
-            - tests/test_cf_task_runtime.py
-            exit_code: 0
-            stdout_sha256: 632353885c87f91f375369b60b6f9827aa8749ccd599608a83f6cce900d3b723
-            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-            output: '................................................................         [100%]
-
-              64 passed in 7.99s
-
-              '
-      design:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.design.md
-          section_id: Spec Compliance Matrix
-          item_id: RULE-scripts-context-gate-001
-          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.md
-          section_id: TASK-005
-          item_id: TASK-005
-          artifact_sha256: 0a7cef4fa947ddeda8bdf1ce149bbffe837480d03daec9cacc819fb65bce6ece
-        - artifact: runtime-consolidation.md
-          section_id: TASK-005
-          item_id: TASK-005
-          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
-        - artifact: runtime-consolidation.md
-          section_id: TASK-005
-          item_id: TASK-005
-          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-scripts-hook-protocol-001
-    summary: Installed hooks must keep guarded project resolution, valid JSON output,
-      silent no-op behavior, and explicit stderr diagnostics.
-    text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
-    enforcement: required
-    verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
-    verifier_stage: code
-    stage_status:
-      code:
-        status: verified
-        refs: []
-        decision: null
-        evidence:
-        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
-          executed_at: '2026-10-26T15:37:16.451632+00:00'
-          status: verified
-          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
-          artifact_sha256: null
-          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
-          result_sha256: 73bbbc1e62e8a991c8a6dd951a75400f21e7c627b5bce155fc0624c15cd7835a
-          error_code: null
-          details:
-            argv:
-            - python3
-            - -m
-            - pytest
-            - -q
-            - tests/test_hook_command_robustness.py
-            - tests/test_cf_user_prompt_hook.py
-            - tests/test_cf_post_hook.py
-            - tests/test_codex_native_hook.py
-            - tests/test_opencode_native.py
-            - tests/test_runtime_contract.py
-            exit_code: 0
-            stdout_sha256: d492df47f3941426b7fec8ccce9e3b089fff4df720e9a44664d317265753a8dd
-            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-            output: '........................................................................
-              [100%]
-
-              72 passed in 11.73s
-
-              '
-      design:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.design.md
-          section_id: Spec Compliance Matrix
-          item_id: RULE-scripts-hook-protocol-001
-          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: 0a7cef4fa947ddeda8bdf1ce149bbffe837480d03daec9cacc819fb65bce6ece
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
-        - artifact: runtime-consolidation.md
-          section_id: TASK-011
-          item_id: TASK-011
-          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-scripts-no-bare-except-001
-    summary: Python modules must not use a bare except clause that silently erases
-      failure context.
-    text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
-    enforcement: required
-    verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
-    verifier_stage: code
-    stage_status:
-      code:
-        status: verified
-        refs: []
-        decision: null
-        evidence:
-        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
-          executed_at: '2026-10-26T15:37:25.145546+00:00'
-          status: verified
-          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
-          artifact_sha256: null
-          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
-          result_sha256: fe2a22f5c0fecfb6bbced497722c0f2fe0c01f65b0a24927c625f05e6d5ff48a
-          error_code: null
-          details:
-            checked_files: 9
-            violations: []
-      design:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.design.md
-          section_id: Spec Compliance Matrix
-          item_id: RULE-scripts-no-bare-except-001
-          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.md
-          section_id: TASK-001
-          item_id: TASK-001
-          artifact_sha256: 0a7cef4fa947ddeda8bdf1ce149bbffe837480d03daec9cacc819fb65bce6ece
-        - artifact: runtime-consolidation.md
-          section_id: TASK-001
-          item_id: TASK-001
-          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
-        - artifact: runtime-consolidation.md
-          section_id: TASK-001
-          item_id: TASK-001
-          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-scripts-no-print-debug-001
-    summary: Hook modules must not write debug output with print(), preserving the
-      stdout JSON protocol.
-    text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
-    enforcement: required
-    verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
-    verifier_stage: code
-    stage_status:
-      code:
-        status: verified
-        refs: []
-        decision: null
-        evidence:
-        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
-          executed_at: '2026-10-26T15:37:25.143447+00:00'
-          status: verified
-          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
-          artifact_sha256: null
-          diff_sha256: 0c4950f8b60bdc13b82a45226d0a2850674aa91b34b5f0e70e2245ed787ecf4e
-          result_sha256: cd34184c6cf8bec13ea62fdab575a0707633b5cfccc70e59c4cd1cdbf606ed4e
-          error_code: null
-          details:
-            checked_files: 2
-            violations: []
-      design:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.design.md
-          section_id: Spec Compliance Matrix
-          item_id: RULE-scripts-no-print-debug-001
-          artifact_sha256: 0ae0a0a23f66410063227f4312b70789989fefc7b094ad271a80e2b2915028b5
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: runtime-consolidation.md
-          section_id: TASK-001
-          item_id: TASK-001
-          artifact_sha256: 0a7cef4fa947ddeda8bdf1ce149bbffe837480d03daec9cacc819fb65bce6ece
-        - artifact: runtime-consolidation.md
-          section_id: TASK-001
-          item_id: TASK-001
-          artifact_sha256: f92fbb2e29bb67b3988f54e1da79d1aed5ffb81bbf9d784336d4d9d6be39bedd
-        - artifact: runtime-consolidation.md
-          section_id: TASK-001
-          item_id: TASK-001
-          artifact_sha256: de7fb4c4a5042157cf4a22b1236c0fcfde3ccc55caf40ae86f552e7e11772eab
         decision: null
         evidence: []
       review:
