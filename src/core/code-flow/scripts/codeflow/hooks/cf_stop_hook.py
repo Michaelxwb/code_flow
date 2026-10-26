@@ -24,7 +24,7 @@ from codeflow.core.cf_stop_guard import StopAlreadyRunning, stop_guard
 from codeflow.acceptance.cf_acceptance_evidence import line_status, scenario_line
 from codeflow.task.cf_task_doc import TaskDocumentError, parse_task_document
 from codeflow.core.cf_validators import PARSE_ERROR, VALID, load_validators, run_validators
-from codeflow.cli.cf_acceptance_manifest import coverage_execution
+from codeflow.acceptance.cf_acceptance_manifest_core import coverage_execution
 from codeflow.core.cf_core import (
     ensure_utf8_io,
     load_config,

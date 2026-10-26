@@ -89,6 +89,21 @@ def test_manifest_requires_coverage_table(tmp_path: Path) -> None:
         extract_manifest(str(task))
 
 
+def test_low_level_manifest_owner_matches_cli_entry(tmp_path: Path) -> None:
+    """[S-03] 提取/校验由 acceptance 低层模块持有，CLI 入口逐字段一致。"""
+    from codeflow.acceptance.cf_acceptance_manifest_core import (
+        extract_manifest as core_extract,
+        validate_manifest as core_validate,
+    )
+
+    task = tmp_path / "demo.md"
+    manifest = tmp_path / ".acceptance-manifest.json"
+    task.write_text(TASK_WITH_COMMAND, encoding="utf-8")
+    assert core_extract(str(task)) == extract_manifest(str(task))
+    write_manifest(str(task), str(manifest))
+    assert core_validate(str(task), str(manifest)) == validate_manifest(str(task), str(manifest))
+
+
 def test_manual_evidence_requires_user_and_marks_verified(tmp_path: Path) -> None:
     task = tmp_path / "manual.md"
     manifest = tmp_path / ".acceptance-manifest.json"

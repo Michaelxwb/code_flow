@@ -1,7 +1,7 @@
 version: 1
 task: audit-followup
 enforcement: required
-updated_at: '2026-10-26T17:26:42.421229+00:00'
+updated_at: '2026-10-26T17:31:06.088347+00:00'
 sources:
 - type: cli
   ref: bind
@@ -41,7 +41,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-006
           item_id: TASK-006
-          artifact_sha256: 685644ed22c12a6a1f6328651559a18bfd7e2d17209c3f2d1ba0b6ca83c1ea3b
+          artifact_sha256: ef3d18b6a4898073df4aced8a35ab3f9552bb90f5cdc9fb967f8956a8ed47322
         decision: null
         evidence: []
       code:
@@ -55,6 +55,18 @@ bindings:
           rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
           artifact_sha256: null
           diff_sha256: ecdb2037b6f186b34c244094aee647d0b4c247a70c6d275b0d4c0777f2966925
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
+          executed_at: '2026-10-26T17:38:11.687866+00:00'
+          status: unverified
+          rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
+          artifact_sha256: null
+          diff_sha256: d0c7431c24769ceb77e2646bbdb95590e034ac8fee82f33b59c32782820d71ff
           result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
           error_code: deferred_to_review
           details:
@@ -85,7 +97,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 685644ed22c12a6a1f6328651559a18bfd7e2d17209c3f2d1ba0b6ca83c1ea3b
+          artifact_sha256: ef3d18b6a4898073df4aced8a35ab3f9552bb90f5cdc9fb967f8956a8ed47322
         decision: null
         evidence: []
       code:
@@ -99,6 +111,18 @@ bindings:
           rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
           artifact_sha256: null
           diff_sha256: ecdb2037b6f186b34c244094aee647d0b4c247a70c6d275b0d4c0777f2966925
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
+          executed_at: '2026-10-26T17:38:11.687894+00:00'
+          status: unverified
+          rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
+          artifact_sha256: null
+          diff_sha256: d0c7431c24769ceb77e2646bbdb95590e034ac8fee82f33b59c32782820d71ff
           result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
           error_code: deferred_to_review
           details:
@@ -129,7 +153,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-006
           item_id: TASK-006
-          artifact_sha256: 685644ed22c12a6a1f6328651559a18bfd7e2d17209c3f2d1ba0b6ca83c1ea3b
+          artifact_sha256: ef3d18b6a4898073df4aced8a35ab3f9552bb90f5cdc9fb967f8956a8ed47322
         decision: null
         evidence: []
       code:
@@ -143,6 +167,18 @@ bindings:
           rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
           artifact_sha256: null
           diff_sha256: ecdb2037b6f186b34c244094aee647d0b4c247a70c6d275b0d4c0777f2966925
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
+          executed_at: '2026-10-26T17:38:11.687900+00:00'
+          status: unverified
+          rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
+          artifact_sha256: null
+          diff_sha256: d0c7431c24769ceb77e2646bbdb95590e034ac8fee82f33b59c32782820d71ff
           result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
           error_code: deferred_to_review
           details:
@@ -173,7 +209,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-007
           item_id: TASK-007
-          artifact_sha256: 685644ed22c12a6a1f6328651559a18bfd7e2d17209c3f2d1ba0b6ca83c1ea3b
+          artifact_sha256: ef3d18b6a4898073df4aced8a35ab3f9552bb90f5cdc9fb967f8956a8ed47322
         decision: null
         evidence: []
       code:
@@ -187,6 +223,18 @@ bindings:
           rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
           artifact_sha256: null
           diff_sha256: ecdb2037b6f186b34c244094aee647d0b4c247a70c6d275b0d4c0777f2966925
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
+          executed_at: '2026-10-26T17:38:11.687905+00:00'
+          status: unverified
+          rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
+          artifact_sha256: null
+          diff_sha256: d0c7431c24769ceb77e2646bbdb95590e034ac8fee82f33b59c32782820d71ff
           result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
           error_code: deferred_to_review
           details:
@@ -217,7 +265,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 685644ed22c12a6a1f6328651559a18bfd7e2d17209c3f2d1ba0b6ca83c1ea3b
+          artifact_sha256: ef3d18b6a4898073df4aced8a35ab3f9552bb90f5cdc9fb967f8956a8ed47322
         decision: null
         evidence: []
       code:
@@ -231,6 +279,18 @@ bindings:
           rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
           artifact_sha256: null
           diff_sha256: ecdb2037b6f186b34c244094aee647d0b4c247a70c6d275b0d4c0777f2966925
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
+          executed_at: '2026-10-26T17:38:11.687910+00:00'
+          status: unverified
+          rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
+          artifact_sha256: null
+          diff_sha256: d0c7431c24769ceb77e2646bbdb95590e034ac8fee82f33b59c32782820d71ff
           result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
           error_code: deferred_to_review
           details:
@@ -262,7 +322,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-007
           item_id: TASK-007
-          artifact_sha256: 685644ed22c12a6a1f6328651559a18bfd7e2d17209c3f2d1ba0b6ca83c1ea3b
+          artifact_sha256: ef3d18b6a4898073df4aced8a35ab3f9552bb90f5cdc9fb967f8956a8ed47322
         decision: null
         evidence: []
       code:
@@ -276,6 +336,18 @@ bindings:
           rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
           artifact_sha256: null
           diff_sha256: ecdb2037b6f186b34c244094aee647d0b4c247a70c6d275b0d4c0777f2966925
+          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
+          error_code: deferred_to_review
+          details:
+            reason: review_stage
+            deferral_kind: review_stage
+            deferred_to_review: true
+        - verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
+          executed_at: '2026-10-26T17:38:11.687915+00:00'
+          status: unverified
+          rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
+          artifact_sha256: null
+          diff_sha256: d0c7431c24769ceb77e2646bbdb95590e034ac8fee82f33b59c32782820d71ff
           result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
           error_code: deferred_to_review
           details:
@@ -514,7 +586,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 685644ed22c12a6a1f6328651559a18bfd7e2d17209c3f2d1ba0b6ca83c1ea3b
+          artifact_sha256: ef3d18b6a4898073df4aced8a35ab3f9552bb90f5cdc9fb967f8956a8ed47322
         decision: null
         evidence: []
       code:
@@ -532,6 +604,17 @@ bindings:
           error_code: null
           details:
             checked_files: 1
+            violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-10-26T17:38:36.930960+00:00'
+          status: verified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: d0c7431c24769ceb77e2646bbdb95590e034ac8fee82f33b59c32782820d71ff
+          result_sha256: cd34184c6cf8bec13ea62fdab575a0707633b5cfccc70e59c4cd1cdbf606ed4e
+          error_code: null
+          details:
+            checked_files: 2
             violations: []
       review:
         status: pending
@@ -557,7 +640,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 685644ed22c12a6a1f6328651559a18bfd7e2d17209c3f2d1ba0b6ca83c1ea3b
+          artifact_sha256: ef3d18b6a4898073df4aced8a35ab3f9552bb90f5cdc9fb967f8956a8ed47322
         decision: null
         evidence: []
       code:
@@ -575,6 +658,17 @@ bindings:
           error_code: null
           details:
             checked_files: 10
+            violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-10-26T17:38:36.933585+00:00'
+          status: verified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: d0c7431c24769ceb77e2646bbdb95590e034ac8fee82f33b59c32782820d71ff
+          result_sha256: 2819b179d7e4398b467e49d213d8f16b7ff074f658eab5bc8e17dd26f9df9672
+          error_code: null
+          details:
+            checked_files: 14
             violations: []
       review:
         status: pending
@@ -600,7 +694,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 685644ed22c12a6a1f6328651559a18bfd7e2d17209c3f2d1ba0b6ca83c1ea3b
+          artifact_sha256: ef3d18b6a4898073df4aced8a35ab3f9552bb90f5cdc9fb967f8956a8ed47322
         decision: null
         evidence: []
       code:
@@ -639,6 +733,37 @@ bindings:
               76 passed in 12.67s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-10-26T17:38:27.080064+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: d0c7431c24769ceb77e2646bbdb95590e034ac8fee82f33b59c32782820d71ff
+          result_sha256: bb58377e655ffffc88d27d6ebb716b1bc1a0f157a5d4d5779f0d43f7856a79bd
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            - tests/test_codex_native_hook.py
+            - tests/test_opencode_native.py
+            - tests/test_runtime_contract.py
+            exit_code: 0
+            stdout_sha256: 6b0d799a03166795eee1eaf4f065dfd271b2694941d8127a3d6c7efbd1f87030
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '........................................................................
+              [ 94%]
+
+              ....                                                                     [100%]
+
+              76 passed in 15.00s
+
+              '
       review:
         status: pending
         refs: []
@@ -663,7 +788,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 685644ed22c12a6a1f6328651559a18bfd7e2d17209c3f2d1ba0b6ca83c1ea3b
+          artifact_sha256: ef3d18b6a4898073df4aced8a35ab3f9552bb90f5cdc9fb967f8956a8ed47322
         decision: null
         evidence: []
       code:
@@ -696,6 +821,31 @@ bindings:
               64 passed in 8.50s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-10-26T17:38:36.301189+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: d0c7431c24769ceb77e2646bbdb95590e034ac8fee82f33b59c32782820d71ff
+          result_sha256: 35f11f12f8d939932036c9f29db6f1fff7f291b0473600102cb3d954f2abe71e
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            stdout_sha256: 60e756b65bd9acb8b095fdab44100901bda4b3c23cfee2c0fd1800c9455c435e
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '................................................................         [100%]
+
+              64 passed in 8.66s
+
+              '
       review:
         status: pending
         refs: []
@@ -720,7 +870,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 685644ed22c12a6a1f6328651559a18bfd7e2d17209c3f2d1ba0b6ca83c1ea3b
+          artifact_sha256: ef3d18b6a4898073df4aced8a35ab3f9552bb90f5cdc9fb967f8956a8ed47322
         decision: null
         evidence: []
       code:
@@ -751,6 +901,31 @@ bindings:
             output: '........................                                                 [100%]
 
               24 passed in 0.48s
+
+              '
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-10-26T17:38:36.929100+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: d0c7431c24769ceb77e2646bbdb95590e034ac8fee82f33b59c32782820d71ff
+          result_sha256: 8b7c20891c9492dc7b1bdfa522c8d557fb0d9a28fea49134e84322b66d53a61f
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            stdout_sha256: 337c113abd7c573406827735f52ea8690cba132adb13f444bf14b6b2e0be704a
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '........................                                                 [100%]
+
+              24 passed in 0.46s
 
               '
       review:

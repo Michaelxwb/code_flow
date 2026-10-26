@@ -268,7 +268,7 @@ def validate_execution_baseline(path: Path, data: Mapping[str, object]) -> None:
     if not task.is_file():
         raise ValueError(f"acceptance task file missing: {task}")
     if "## Acceptance Coverage" in task.read_text(encoding="utf-8"):
-        from codeflow.cli.cf_acceptance_manifest import validate_manifest
+        from codeflow.acceptance.cf_acceptance_manifest_core import validate_manifest
         valid, reason = validate_manifest(str(task), str(path))
         if not valid:
             raise ValueError(reason)

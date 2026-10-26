@@ -38,6 +38,7 @@ CURRENT_BATCH = 3
 LAYERS: dict[str, int] = {
     "cf_acceptance_evidence": 1,
     "cf_acceptance_manifest": 2,
+    "cf_acceptance_manifest_core": 1,
     "cf_acceptance_plan": 1,
     "cf_acceptance_registration": 2,
     "cf_acceptance_risk": 1,
@@ -104,13 +105,10 @@ LAYERS: dict[str, int] = {
 
 # (importer, imported module, batch after which the edge must be gone)
 DEPENDENCY_EDGE_ALLOWLIST = frozenset({
-    ("cf_acceptance_schema", "cf_acceptance_manifest", 4),
     ("cf_context_cache", "cf_spec_context", 4),
     ("cf_evidence_store", "cf_spec_context", 4),
-    ("cf_plan_quality", "cf_acceptance_manifest", 4),
     ("cf_plan_quality", "cf_spec_context", 4),
     ("cf_plan_quality", "cf_spec_gate", 6),
-    ("cf_scenarios", "cf_acceptance_manifest", 4),
     ("cf_task_parallel", "cf_task_workflow", 6),
 })
 
@@ -275,6 +273,28 @@ def test_dependency_direction() -> None:
     assert not stale, f"allowlist entries no longer violate; remove them: {stale}"
     synthetic = {("cf_log", "cf_spec_context")}
     assert _layer_violations(synthetic) == synthetic, "guard must flag L0 -> L2 imports"
+
+
+_CLI_MANIFEST_IMPORT = re.compile(
+    r"(?m)^\s*(?:from\s+codeflow\.cli\.cf_acceptance_manifest\b"
+    r"|from\s+codeflow\.cli\s+import\s+[^\n]*\bcf_acceptance_manifest\b)"
+)
+
+
+def test_acceptance_manifest_consumers_use_low_level_owner() -> None:
+    """[S-03] schema/plan quality/scenarios 只依赖 acceptance 低层 owner，不反向导入 CLI 入口。"""
+    consumers = (
+        "codeflow/acceptance/cf_acceptance_schema.py",
+        "codeflow/acceptance/cf_plan_quality.py",
+        "codeflow/cli/cf_scenarios.py",
+    )
+    offenders = [
+        f"{scripts.name}/{relative}"
+        for scripts in (SCRIPTS, DEPLOYED_SCRIPTS)
+        for relative in consumers
+        if _CLI_MANIFEST_IMPORT.search((scripts / relative).read_text(encoding="utf-8"))
+    ]
+    assert not offenders, f"acceptance consumers must import the low-level owner: {offenders}"
 
 
 def test_private_symbol_guard() -> None:
