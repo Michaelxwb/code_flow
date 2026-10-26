@@ -21,10 +21,10 @@
 
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 | 优先级 | 执行方式 | 环境 | 输入 | E2E理由 | 触发路径 | 冒烟 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| S-01 | runtime-consolidation.design.md#2.5 验收条件 | system | npm pack tarball → init → .code-flow/.gitignore | TASK-002 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_packed_install_ignore"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-02 | runtime-consolidation.design.md#2.5 验收条件 | integration | 旧 ignore → init upgrade → 合并块 | TASK-002 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_upgrade_preserves_user_ignore"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| B-01 | runtime-consolidation.design.md#2.5 验收条件 | integration | 用户自有 ignore 文件 | TASK-002 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_user_owned_ignore_untouched"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| E-01 | runtime-consolidation.design.md#2.5 验收条件 | integration | canonical .gitignore → cli.js → pytest | TASK-002 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_canonical_ignore_drift"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-01 | runtime-consolidation.design.md#2.5 验收条件 | system | npm pack tarball → init → .code-flow/.gitignore | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_packed_install_ignore"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-02 | runtime-consolidation.design.md#2.5 验收条件 | integration | 旧 ignore → init upgrade → 合并块 | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_upgrade_preserves_user_ignore"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| B-01 | runtime-consolidation.design.md#2.5 验收条件 | integration | 用户自有 ignore 文件 | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_user_owned_ignore_untouched"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| E-01 | runtime-consolidation.design.md#2.5 验收条件 | integration | canonical .gitignore → cli.js → pytest | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_canonical_ignore_drift"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-03 | runtime-consolidation.design.md#2.5 验收条件 | integration | validation.yml → validate/Stop/finish | TASK-003 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_validator_corrupt_consistent"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 无 validation.yml → 策略分支 | TASK-003 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_validator_missing_policy"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-05 | runtime-consolidation.design.md#2.5 验收条件 | integration | heavy_at_finish → finish 结果 | TASK-003 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_heavy_deferral"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
@@ -110,7 +110,7 @@
 
 ## TASK-002: 安装资源单一来源
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: runtime-consolidation.design.md#3.3 数据设计, runtime-consolidation.design.md#3.4 接口设计
@@ -125,29 +125,42 @@
 
 ### Checklist
 
-- [ ] 交付 `真实安装产物 ignore 完整`，并提供 `npm pack` + 空项目 init 的演示
-- [ ] [S-01][system] 更新 `src/cli.js` 的 `RUNTIME_GITIGNORE`，覆盖 20 条；真实 tarball 安装断言包含 `.stop.lock` 与 `.context-state.json`
-- [ ] [S-02][integration] 验证 upgrade 只改托管块，删除的托管项恢复、用户行保留
-- [ ] [B-01][integration] 无托管标记的用户文件字节级不变
-- [ ] [E-01][integration] 将 `src/core/code-flow/.gitignore` 加入 `RULE-cli-user-content-preservation-001` 的 verifier files scope；模板与内嵌列表漂移时默认测试失败
-- [ ] 同步 `cf_spec_migrate._write_target_ignore` 的两条缺失项
-- [ ] 运行 Spec verifier：`RULE-cli-user-content-preservation-001`
+- [x] 交付 `真实安装产物 ignore 完整`，并提供 `npm pack` + 空项目 init 的演示
+- [x] [S-01][system] 更新 `src/cli.js` 的 `RUNTIME_GITIGNORE`，覆盖 20 条；真实 tarball 安装断言包含 `.stop.lock` 与 `.context-state.json`
+- [x] [S-02][integration] 验证 upgrade 只改托管块，删除的托管项恢复、用户行保留
+- [x] [B-01][integration] 无托管标记的用户文件字节级不变
+- [x] [E-01][integration] 将 `src/core/code-flow/.gitignore` 加入 `RULE-cli-user-content-preservation-001` 的 verifier files scope；模板与内嵌列表漂移时默认测试失败
+- [x] 同步 `cf_spec_migrate._write_target_ignore` 的两条缺失项
+- [x] 运行 Spec verifier：`RULE-cli-user-content-preservation-001`
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-01 | system | 真实 npm tarball + 文件系统 | 20 条齐全且包含两个缺项 | tests/test_runtime_consolidation.py::test_packed_install_ignore | planned | planned |
-| S-02 | integration | 真实 init upgrade | 托管项恢复、用户行保留 | tests/test_runtime_consolidation.py::test_upgrade_preserves_user_ignore | planned | planned |
-| B-01 | integration | 用户自有 ignore 文件 | 字节级不变 | tests/test_runtime_consolidation.py::test_user_owned_ignore_untouched | planned | planned |
-| E-01 | integration | canonical 模板 + CLI + pytest | 漂移时默认测试非零 | tests/test_runtime_consolidation.py::test_canonical_ignore_drift | planned | planned |
+| S-01 | system | 真实 npm tarball + 文件系统 | 20 条齐全且包含两个缺项 | tests/test_runtime_consolidation.py::test_packed_install_ignore | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_packed_install_ignore` | verified |
+| S-02 | integration | 真实 init upgrade | 托管项恢复、用户行保留 | tests/test_runtime_consolidation.py::test_upgrade_preserves_user_ignore | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_upgrade_preserves_user_ignore` | verified |
+| B-01 | integration | 用户自有 ignore 文件 | 字节级不变 | tests/test_runtime_consolidation.py::test_user_owned_ignore_untouched | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_user_owned_ignore_untouched` | verified |
+| E-01 | integration | canonical 模板 + CLI + pytest | 漂移时默认测试非零 | tests/test_runtime_consolidation.py::test_canonical_ignore_drift | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_canonical_ignore_drift` | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-01 | `test_packed_install_ignore` 失败：真实 tarball init 生成 18 条（`assert 18 == 20`），缺 `.stop.lock`、`.context-state.json` | PASS: 4 passed | `test_packed_install_ignore` 的 20 条计数、两个缺项成员与 canonical 全量相等断言 | 真实 `npm pack` tarball → tarfile 解包 → 空项目 `node .../cli.js init --platform=claude` | verified |
+| S-02 | `test_upgrade_preserves_user_ignore` 失败：升级后仍缺 `{'.stop.lock'}` | PASS: 4 passed | `test_upgrade_preserves_user_ignore` 的托管块集合/去重断言与用户尾部字节相等断言 | 真实 `.version=0.7.0` 项目 → `node src/cli.js init` upgrade | verified |
+| B-01 | 无生产 RED：回归守卫，修复前已通过（不伪造失败） | PASS: 4 passed | `test_user_owned_ignore_untouched` 的 `read_bytes()` 前后相等断言 | 真实无托管标记 `.code-flow/.gitignore` → init | verified |
+| E-01 | shadow 仓库 baseline 守卫退出 1，报 canonical 与 CLI 漂移（缺 `.context-state.json`、`.stop.lock`） | PASS: 4 passed | `test_canonical_ignore_drift` 的 baseline exit=0 与注入 `.drift-probe-cache.json` 后 exit!=0 且输出含条目断言 | src 副本 + 真实 `node tests/test_cli_merge_helpers.js` 套件两次运行 | verified |
+- S-01: verified — automated command passed; run_id=e98c58a3f94746d3bbc70a1397184048 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=e98c58a3f94746d3bbc70a1397184048 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=e98c58a3f94746d3bbc70a1397184048 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=e98c58a3f94746d3bbc70a1397184048 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
+- [2026-10-26] started
+- [2026-10-26] RED→GREEN: 4 个验收用例实现；`RUNTIME_GITIGNORE` 与 `_write_target_ignore` 补齐缺项；canonical `.gitignore` 纳入 verifier scope；移除 `KNOWN_FAILURES` 棘轮条目
+- [2026-10-26] verifier: `node tests/test_cli_merge_helpers.js` 22 passed；`pytest -q tests` 910 passed / 23 skipped
+- [2026-10-26] completed (done)
 
 ---
 

@@ -3,8 +3,7 @@
 `pytest -q tests` previously skipped `tests/*.js`, which let the runtime ignore
 list drift for several releases. This wrapper makes every JS suite part of the
 default flow. `KNOWN_FAILURES` is a ratchet: a listed suite must still fail, so
-the entry has to be deleted as soon as its fix lands (TASK-002 owns the current
-`test_cli_merge_helpers.js` failure).
+the entry has to be deleted as soon as its fix lands.
 """
 from __future__ import annotations
 
@@ -15,9 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 JS_SUITES = sorted((ROOT / "tests").glob("test_*.js"))
 
-KNOWN_FAILURES: dict[str, str] = {
-    "test_cli_merge_helpers.js": "TASK-002 fixes the RUNTIME_GITIGNORE drift (E-01)",
-}
+KNOWN_FAILURES: dict[str, str] = {}
 
 
 def _run_suite(node: str, suite: Path) -> subprocess.CompletedProcess[str]:

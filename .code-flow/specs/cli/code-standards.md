@@ -16,6 +16,7 @@ verifiers:
     type: test
     files:
       - src/cli.js
+      - src/core/code-flow/.gitignore
       - package.json
       - tests/test_cli_merge_helpers.js
     config:
