@@ -11,12 +11,12 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import subprocess
 import sys
-import tempfile
 import time
 from typing import IO, Mapping, Optional, Sequence
 
+import cf_fs
+import cf_git
 from cf_spec_metadata import SpecHashes, SpecMetadata, SpecRule, load_spec_metadata
 from cf_spec_resolver import SpecCandidate, resolve_candidates
 from cf_core import phase_timing
@@ -208,24 +208,10 @@ def _now() -> str:
 
 
 def _atomic_text(target: Path, text: str) -> None:
-    temporary = ""
+    """Atomic write with the Context's stable error code on failure."""
     try:
-        with tempfile.NamedTemporaryFile(
-            "w",
-            encoding="utf-8",
-            dir=str(target.parent),
-            prefix=f".{target.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as handle:
-            temporary = handle.name
-            handle.write(text)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, target)
+        cf_fs.atomic_write_text(target, text)
     except OSError as exc:
-        if temporary and Path(temporary).exists():
-            Path(temporary).unlink()
         raise ContextError("atomic_write_error", "file", str(exc), str(target)) from exc
 
 
@@ -234,62 +220,26 @@ def _active_paths(root: str) -> tuple[Path, Path]:
     return flow / ".active-task.json", flow / ".active-task.lock"
 
 
-def _run_git(root: str, arguments: Sequence[str]) -> str:
-    try:
-        result = subprocess.run(
-            ("git", *arguments), cwd=root, text=True, encoding="utf-8", capture_output=True, check=False
-        )
-    except OSError as exc:
-        raise ContextError("git_unavailable", "git", str(exc), root) from exc
-    if result.returncode != 0:
-        message = result.stderr.strip() or "Git command failed"
-        raise ContextError("git_error", "git", message, root)
-    return result.stdout
+def _context_git_error(exc: cf_git.GitError, root: str) -> ContextError:
+    codes = ("git_unavailable", "invalid_git_status")
+    code = exc.code if exc.code in codes else "git_error"
+    return ContextError(code, "git", exc.message, root)
 
 
 def _git_head(root: str) -> Optional[str]:
     try:
-        return _run_git(root, ("rev-parse", "HEAD")).strip()
-    except ContextError as exc:
+        return cf_git.run_git(root, ("rev-parse", "HEAD")).strip()
+    except cf_git.GitError as exc:
         if "unknown revision" in exc.message or "ambiguous argument" in exc.message:
             return None
-        raise
-
-
-def _status_name(code: str) -> str:
-    if code == "??":
-        return "untracked"
-    if "D" in code:
-        return "deleted"
-    if "A" in code:
-        return "added"
-    if "M" in code:
-        return "modified"
-    return "changed"
+        raise _context_git_error(exc, root) from exc
 
 
 def _git_changes(root: str) -> Mapping[str, str]:
-    output = _run_git(root, ("status", "--porcelain=v1", "-z", "--untracked-files=all"))
-    records = output.split("\0")
-    changes: dict[str, str] = {}
-    index = 0
-    while index < len(records) and records[index]:
-        record = records[index]
-        if len(record) < 4:
-            raise ContextError("invalid_git_status", "git.status", record, root)
-        code, path = record[:2], record[3:]
-        index += 1
-        if "R" in code or "C" in code:
-            # porcelain -z rename/copy emits two records: "XY <new>" then "<old>"
-            if index >= len(records) or not records[index]:
-                raise ContextError("invalid_git_status", "git.status", f"{code} {path}", root)
-            old_path = records[index]
-            index += 1
-            changes[path] = _status_name(code)
-            changes[old_path] = "deleted"
-            continue
-        changes[path] = _status_name(code)
-    return changes
+    try:
+        return cf_git.changed_entries(root)
+    except cf_git.GitError as exc:
+        raise _context_git_error(exc, root) from exc
 
 
 def _is_excluded(path: str, patterns: Sequence[str]) -> bool:
@@ -531,8 +481,8 @@ def _committed_since(root: str, base_head: Optional[str]) -> Mapping[str, str]:
     if not base_head:
         return {}
     try:
-        output = _run_git(root, ("diff", "--name-status", "-z", base_head, "HEAD", "--"))
-    except ContextError:
+        output = cf_git.run_git(root, ("diff", "--name-status", "-z", base_head, "HEAD", "--"))
+    except cf_git.GitError:
         return {}
     names: dict[str, str] = {}
     tokens = output.split("\0")

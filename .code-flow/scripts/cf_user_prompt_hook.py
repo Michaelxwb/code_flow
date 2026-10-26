@@ -12,7 +12,6 @@ from pathlib import Path
 import cf_log
 from cf_checks import detect_correction
 from cf_core import (
-    _log,
     ConfigError,
     ensure_utf8_io,
     load_config,
@@ -135,20 +134,20 @@ def process_prompt(data: dict[str, object], root: str) -> None:
                 sys.stdout.write(json.dumps(_payload(text, mode), ensure_ascii=False))
                 sys.stdout.flush()
     except (json.JSONDecodeError, UnicodeError, OSError, ValueError) as exc:
-        _log(f"cf_user_prompt_hook error: {exc}")
+        cf_log.warn(f"cf_user_prompt_hook error: {exc}")
 
 
 def main() -> None:
     try:
         ensure_utf8_io()
         if sys.stdin.isatty():
-            _log("cf_user_prompt_hook.py: missing stdin event")
+            cf_log.warn("cf_user_prompt_hook.py: missing stdin event")
             return
         raw = sys.stdin.read()
         if raw.strip():
             process_prompt(json.loads(raw), os.getcwd())
     except (json.JSONDecodeError, OSError, ValueError) as exc:
-        _log(f"cf_user_prompt_hook.py bad_stdin_json: {exc}")
+        cf_log.warn(f"cf_user_prompt_hook.py bad_stdin_json: {exc}")
 
 
 if __name__ == "__main__":

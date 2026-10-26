@@ -4,7 +4,8 @@ import json
 import os
 import sys
 
-from cf_core import _log, ensure_utf8_io, resolve_session_id, timing_log
+from cf_core import ensure_utf8_io, resolve_session_id, timing_log
+from cf_log import warn
 from cf_edit_service import prepare_edit
 from cf_injection import injection_output, pre_tool_payload
 from cf_native_paths import project_root
@@ -14,7 +15,7 @@ def main() -> None:
     try:
         ensure_utf8_io()
         if sys.stdin.isatty():
-            _log("cf_pre_tool_hook.py: missing stdin event")
+            warn("cf_pre_tool_hook.py: missing stdin event")
             return
         raw = sys.stdin.read()
         if not raw.strip():
@@ -35,7 +36,7 @@ def main() -> None:
                 sys.stdout.write(json.dumps(pre_tool_payload(text, blocked), ensure_ascii=False))
                 sys.stdout.flush()
     except Exception as exc:
-        _log(f"cf_pre_tool_hook.py error: {exc}")
+        warn(f"cf_pre_tool_hook.py error: {exc}")
         text = f"SPEC_WORKFLOW_BLOCKED [pre_tool_error]: {exc}"
         sys.stdout.write(json.dumps(pre_tool_payload(text, True), ensure_ascii=False))
 

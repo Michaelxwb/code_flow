@@ -210,10 +210,10 @@ def _render_markdown(text: str, task_id: str, status: str, log_line: str = "", p
 
 
 def _sync_markdown(task_file: str, task_id: str, status: str, log_line: str = "", prepend: str = "") -> str:
-    from cf_spec_context import _atomic_text
+    from cf_fs import atomic_write_text
     target = Path(task_file)
     text = target.read_text(encoding="utf-8")
-    _atomic_text(target, _render_markdown(text, task_id, status, log_line, prepend))
+    atomic_write_text(target, _render_markdown(text, task_id, status, log_line, prepend))
     return "synced"
 
 
@@ -260,7 +260,7 @@ def _validate_start_manifest(directory: Path, candidate: Path) -> None:
 
 
 def _write_projection(root: str, candidate: Path, context: SpecContext, task_id: str, session_output: str) -> Path:
-    from cf_spec_context import _atomic_text
+    from cf_fs import atomic_write_text
     from cf_spec_session import project_task_session
     try:
         projection = project_task_session(context, str(candidate), task_id)
@@ -273,7 +273,7 @@ def _write_projection(root: str, candidate: Path, context: SpecContext, task_id:
     )
     try:
         output.parent.mkdir(parents=True, exist_ok=True)
-        _atomic_text(output, projection.text)
+        atomic_write_text(output, projection.text)
     except (OSError, ValueError) as exc:
         raise WorkflowError("session_write_failed", str(exc)) from exc
     return output

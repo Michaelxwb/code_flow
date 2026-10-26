@@ -4,7 +4,7 @@ import json
 import os
 import sys
 
-from cf_core import _log, ensure_utf8_io
+from cf_core import ensure_utf8_io
 from cf_edit_service import after_edit, prepare_edits
 from cf_injection import injection_output, pre_tool_payload
 from cf_stop_hook import process_stop
@@ -72,7 +72,7 @@ def main() -> None:
     try:
         ensure_utf8_io()
         if sys.stdin.isatty():
-            _log("cf_codex_hook: missing stdin event")
+            cf_log.warn("cf_codex_hook: missing stdin event")
             return
         raw = sys.stdin.read()
         if raw.strip():
@@ -83,7 +83,7 @@ def main() -> None:
                 dispatch(data)
                 sys.stdout.flush()
     except Exception as exc:
-        _log(f"cf_codex_hook error: {exc}")
+        cf_log.warn(f"cf_codex_hook error: {exc}")
         message = f"code-flow Codex hook failed: {exc}. Run code-flow migrate --runtime --dry-run, then --apply."
         payload = ({"decision": "block", "reason": message} if isinstance(data, dict) and data.get("hook_event_name") == "Stop"
                    else {"systemMessage": message})

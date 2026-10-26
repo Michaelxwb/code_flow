@@ -10,7 +10,7 @@ cannot lose or conflict on execution history:
         _context/<verifier_ref>/<stage>.json   # compacted history sidecar
 
 Non-git projects fall back to ``<project>/.code-flow/evidence/``. All writes
-are ``tempfile`` + ``os.replace`` atomic; runs are deduplicated by ``run_id``
+are atomic via ``cf_fs``; runs are deduplicated by ``run_id``
 and ``latest.json`` only moves forward. ``compact_context`` keeps the latest
 evidence entry per rule/stage and archives older entries with an upper bound.
 """
@@ -20,13 +20,13 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime, timezone
 import json
-import os
 from pathlib import Path
 import re
 import shutil
-import subprocess
-import tempfile
 from typing import Iterable, Mapping, Optional, Sequence
+
+import cf_fs
+import cf_git
 from urllib.parse import urlparse
 
 SCHEMA_VERSION = 1
@@ -59,15 +59,11 @@ def _safe_component(value: object, field: str) -> str:
 
 
 def _run_git(root: Path, arguments: Sequence[str]) -> Optional[str]:
+    """Tolerant git read: non-git projects read as missing (None)."""
     try:
-        completed = subprocess.run(
-            ("git", *arguments), cwd=str(root), text=True, encoding="utf-8", capture_output=True, check=False
-        )
-    except (OSError, UnicodeError):
+        return cf_git.run_git(str(root), arguments)
+    except (cf_git.GitError, UnicodeError):
         return None
-    if completed.returncode != 0:
-        return None
-    return completed.stdout.strip()
 
 
 def discover_project_root(start: object) -> Path:
@@ -78,8 +74,8 @@ def discover_project_root(start: object) -> Path:
     if path.is_file():
         path = path.parent
     top = _run_git(path, ("rev-parse", "--show-toplevel"))
-    if top:
-        return Path(top).resolve()
+    if top and top.strip():
+        return Path(top.strip()).resolve()
     for candidate in (path, *path.parents):
         if (candidate / ".code-flow").is_dir():
             return candidate
@@ -88,9 +84,9 @@ def discover_project_root(start: object) -> Path:
 
 def _git_common_dir(project_root: Path) -> Optional[Path]:
     common = _run_git(project_root, ("rev-parse", "--git-common-dir"))
-    if not common:
+    if not common or not common.strip():
         return None
-    resolved = Path(common)
+    resolved = Path(common.strip())
     if not resolved.is_absolute():
         resolved = project_root / resolved
     return resolved.resolve()
@@ -98,7 +94,7 @@ def _git_common_dir(project_root: Path) -> Optional[Path]:
 
 def git_commit(start: object) -> str:
     root = discover_project_root(start)
-    return _run_git(root, ("rev-parse", "HEAD")) or ""
+    return (_run_git(root, ("rev-parse", "HEAD")) or "").strip()
 
 
 def _active_requirement(root: Path) -> str:
@@ -131,18 +127,9 @@ def evidence_root(root: object, requirement: str = "") -> Path:
 
 def _atomic_text(target: Path, text: str) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary = tempfile.mkstemp(prefix=f".{target.name}.", suffix=".tmp", dir=str(target.parent))
     try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(text)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, target)
+        cf_fs.atomic_write_text(target, text)
     except OSError as exc:
-        try:
-            os.unlink(temporary)
-        except OSError:
-            pass
         raise EvidenceStoreError("atomic_write_error", "file", str(exc), str(target)) from exc
 
 

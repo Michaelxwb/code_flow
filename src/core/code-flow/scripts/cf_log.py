@@ -38,7 +38,8 @@ KNOWN_EVENTS = (
 )
 
 
-def _log(msg: str) -> None:
+def warn(msg: str) -> None:
+    """Write one diagnostic line to stderr; stdout stays reserved for protocol JSON."""
     sys.stderr.write(f"[cf-log] {msg}\n")
 
 
@@ -90,7 +91,7 @@ def append_event(project_root: str, event: str, data: dict, sid: str) -> bool:
             f.write(line + "\n")
         return True
     except Exception as exc:
-        _log(f"append_event failed: {exc}")
+        warn(f"append_event failed: {exc}")
         return False
 
 
@@ -154,6 +155,6 @@ def read_events(project_root: str, days: int = 30, events: tuple = ()) -> list:
                         continue
                     out.append(item)
         except Exception as exc:
-            _log(f"read_events skipped {path}: {exc}")
+            warn(f"read_events skipped {path}: {exc}")
             continue
     return out

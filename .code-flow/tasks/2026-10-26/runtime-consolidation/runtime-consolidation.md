@@ -35,8 +35,8 @@
 | B-02 | runtime-consolidation.design.md#2.5 验收条件 | unit | CRLF/空文档 | TASK-004 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_doc_boundaries"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-09 | runtime-consolidation.design.md#2.5 验收条件 | system | start → finish → spec gate | TASK-005 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_flow_consistency"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | E-03 | runtime-consolidation.design.md#2.5 验收条件 | integration | 任务文件 → plan gate | TASK-005 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_plan_gate_duplicate"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-10 | runtime-consolidation.design.md#2.5 验收条件 | integration | 真实 git 仓库 → cf_git | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_git_primitive_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-11 | runtime-consolidation.design.md#2.5 验收条件 | integration | 文件系统 → atomic_write_text | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_atomic_write"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-10 | runtime-consolidation.design.md#2.5 验收条件 | integration | 真实 git 仓库 → cf_git | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_git_primitive_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
+| S-11 | runtime-consolidation.design.md#2.5 验收条件 | integration | 文件系统 → atomic_write_text | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_atomic_write"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
 | S-12 | runtime-consolidation.design.md#2.5 验收条件 | unit | parse_frontmatter / table_columns | TASK-007 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_markdown_primitives"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
 | S-13 | runtime-consolidation.design.md#2.5 验收条件 | system | 公开 CLI/Hook 输出 | TASK-008 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_legacy_removal"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-14 | runtime-consolidation.design.md#2.5 验收条件 | integration | verify_plan → 读取计数 | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_verify_plan_reads"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
@@ -335,11 +335,11 @@
 
 ## TASK-006: Git 与原子文件原语
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-001
 - **Source**: runtime-consolidation.design.md#3.4 接口设计
-- **Spec-Refs**: 无
+- **Spec-Refs**: N/A
 - **Acceptance-Refs**: S-10, S-11
 - **Estimate**: 2d
 - **Capability**: `cf_git.py` 与 `cf_fs.py` 成为唯一 Git/原子写实现，三个消费者行为一致。
@@ -350,26 +350,37 @@
 
 ### Checklist
 
-- [ ] 交付 `Git/原子写单一实现`，并提供三个消费者的对照测试
-- [ ] [S-10][integration] `cf_spec_context`、`cf_evidence_store`、`cf_task_parallel` 返回相同变更集合
-- [ ] [S-11][integration] 原子写在注入异常后保留原内容并清理临时文件
-- [ ] 新增 `cf_git.py`、`cf_fs.py`；将 `_log` 统一为 `cf_log` 公开函数
-- [ ] 更新私有导入 allowlist，移除已清零的条目
-- [ ] 运行守卫测试与相关模块测试
+- [x] 交付 `Git/原子写单一实现`，并提供三个消费者的对照测试
+- [x] [S-10][integration] `cf_spec_context`、`cf_evidence_store`、`cf_task_parallel` 返回相同变更集合
+- [x] [S-11][integration] 原子写在注入异常后保留原内容并清理临时文件
+- [x] 新增 `cf_git.py`、`cf_fs.py`；将 `_log` 统一为 `cf_log` 公开函数
+- [x] 更新私有导入 allowlist，移除已清零的条目
+- [x] 运行守卫测试与相关模块测试
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-10 | integration | 真实 git 仓库 | 三消费者一致 | tests/test_runtime_consolidation.py::test_git_primitive_parity | planned | planned |
-| S-11 | integration | 真实文件系统 | 原内容保留、临时文件清理 | tests/test_runtime_consolidation.py::test_atomic_write | planned | planned |
+| S-10 | integration | 真实 git 仓库 | 三消费者一致 | tests/test_runtime_consolidation.py::test_git_primitive_parity | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_git_primitive_parity` | verified |
+| S-11 | integration | 真实文件系统 | 原内容保留、临时文件清理 | tests/test_runtime_consolidation.py::test_atomic_write | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_atomic_write` | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-10 | 先写 `test_git_primitive_parity` 后运行：`ModuleNotFoundError: No module named 'cf_git'` | PASS: 1 passed | `test_git_primitive_parity` 断言 `cf_spec_context._git_changes`、`cf_evidence_store._run_git`、`cf_task_parallel._status_paths` 对真实仓库返回同一相对路径集合 `{tracked.txt, untracked.txt}`，并核对 modified/untracked 状态与 `cf_git.run_git` 仓库根输出 | 真实 `git init` + commit + 工作区修改 + 未跟踪文件，无 mock | verified |
+| S-11 | 先写 `test_atomic_write` 后运行：`ModuleNotFoundError: No module named 'cf_fs'` | PASS: 1 passed | `test_atomic_write` 断言 `os.replace` 注入 `OSError` 后目标文件字节不变、`.*.tmp` 无残留；移除注入后原子写成功 | 真实文件系统写入与 fsync；仅替换 `cf_fs.os.replace` 制造故障 | verified |
+
+全量回归：`python3 -m pytest -q` = 917 passed, 16 skipped。
+- S-10: verified — automated command passed; run_id=c198c8e430724f7f8dbd88da411232d1 (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=c198c8e430724f7f8dbd88da411232d1 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
+- [2026-10-26] started
+- [2026-10-26] `Spec-Refs: 无` → `N/A`（`cf_spec_session` 的空引用标记不含“无”，与已完成的 TASK-007 对齐）
+- [2026-10-26] verified: cf_git/cf_fs 单一实现；`_log` 统一到 `cf_log.warn`；双副本同步
+- [2026-10-26] completed (done)
 
 ---
 

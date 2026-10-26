@@ -26,7 +26,6 @@ from cf_acceptance_evidence import line_status, scenario_line
 from cf_validators import PARSE_ERROR, VALID, is_heavy, load_validators, run_validators
 from cf_acceptance_manifest import coverage_execution
 from cf_core import (
-    _log,
     ensure_utf8_io,
     load_config,
     normalize_path,
@@ -141,7 +140,7 @@ def task_acceptance_failures(project_root: str, files: list) -> list:
             with open(path, "r", encoding="utf-8") as f:
                 text = f.read()
         except OSError as exc:
-            _log(f"cf_stop_hook task read failed: {exc}")
+            cf_log.warn(f"cf_stop_hook task read failed: {exc}")
             continue
         if "## Acceptance Coverage" not in text:
             continue
@@ -237,7 +236,7 @@ def build_stop_result(project_root: str, sid: str) -> dict[str, str]:
     except StopAlreadyRunning as exc:
         return {"decision": "block", "reason": str(exc)}
     except Exception as exc:
-        _log(f"cf_stop_hook error: {exc}")
+        cf_log.warn(f"cf_stop_hook error: {exc}")
         return {"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: {exc}"} if enforcement == "required" else {}
 
 
@@ -259,7 +258,7 @@ def process_stop(data: dict[str, object], project_root: str) -> None:
         if payload:
             sys.stdout.write(json.dumps(payload, ensure_ascii=False))
     except Exception as exc:
-        _log(f"cf_stop_hook error: {exc}")
+        cf_log.warn(f"cf_stop_hook error: {exc}")
         sys.stdout.write(json.dumps({"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: {exc}"}, ensure_ascii=False))
 
 
@@ -267,13 +266,13 @@ def _main() -> None:
     try:
         ensure_utf8_io()
         if sys.stdin.isatty():
-            _log("cf_stop_hook.py: missing stdin event")
+            cf_log.warn("cf_stop_hook.py: missing stdin event")
             return
         raw = sys.stdin.read()
         if raw.strip():
             process_stop(json.loads(raw), os.getcwd())
     except (json.JSONDecodeError, OSError, ValueError) as exc:
-        _log(f"cf_stop_hook.py bad_stdin_json: {exc}")
+        cf_log.warn(f"cf_stop_hook.py bad_stdin_json: {exc}")
 
 
 def main() -> None:

@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from pathlib import Path
 from typing import Protocol
 
-from cf_core import _log
+import cf_fs
+from cf_log import warn
 import cf_spec_context
 from cf_spec_context import (ContextError, SpecContext, context_from_data,
                              context_sha256, context_to_data)
@@ -23,33 +23,27 @@ def _digest(value: dict[str, object]) -> str:
 
 
 def _read(path: Path, key: str) -> dict[str, object]:
-    if not path.exists():
-        return {}
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        text = cf_fs.read_text(path)
+        if text is None:
+            return {}
+        payload = json.loads(text)
         if not isinstance(payload, dict):
             return {}
         checksum = payload.pop("checksum", None)
         if payload.get("version") == 1 and payload.get("key") == key and checksum == _digest(payload):
             return payload
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        _log(f"Context parse cache unavailable; reloading source: {exc}")
+        warn(f"Context parse cache unavailable; reloading source: {exc}")
     return {}
 
 
 def _write(path: Path, payload: dict[str, object]) -> None:
-    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     try:
         payload = dict(payload, checksum=_digest(payload))
-        temporary.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-        os.replace(temporary, path)
+        cf_fs.atomic_write_text(path, json.dumps(payload, ensure_ascii=False))
     except (OSError, UnicodeError, TypeError) as exc:
-        _log(f"Context parse cache cannot be saved: {exc}")
-    finally:
-        try:
-            temporary.unlink(missing_ok=True)
-        except OSError as exc:
-            _log(f"Context parse cache cleanup failed: {exc}")
+        warn(f"Context parse cache cannot be saved: {exc}")
 
 
 def load_snapshot(root: str, path: str, loader: ContextLoader) -> tuple[SpecContext, str]:
@@ -66,7 +60,7 @@ def load_snapshot(root: str, path: str, loader: ContextLoader) -> tuple[SpecCont
             if isinstance(identity, str) and len(identity) == 64:
                 return context, identity
         except ContextError as exc:
-            _log(f"Context parse cache invalid; reloading source: {exc}")
+            warn(f"Context parse cache invalid; reloading source: {exc}")
     context = loader(path, source=source)
     identity = context_sha256(context)
     _write(cache, {"version": 1, "key": key, "context": context_to_data(context), "identity": identity})

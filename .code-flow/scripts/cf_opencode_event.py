@@ -4,7 +4,7 @@ import os
 import sys
 
 import cf_log
-from cf_core import _log, ensure_utf8_io
+from cf_core import ensure_utf8_io
 from cf_edit_service import after_edit, prepare_edits
 from cf_injection import injection_output
 from cf_exec_base import execution_session
@@ -93,7 +93,7 @@ def main() -> None:
             sys.stdout.flush()
         return
     except Exception as exc:
-        _log(f"cf_opencode_event error: {exc}")
+        cf_log.warn(f"cf_opencode_event error: {exc}")
         result = {"error": f"code-flow OpenCode runtime failed: {exc}. Run code-flow migrate --runtime --dry-run, then --apply."}
     sys.stdout.write(json.dumps(result, ensure_ascii=False))
 
