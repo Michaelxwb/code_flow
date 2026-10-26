@@ -1,0 +1,709 @@
+{
+  "schema": 3,
+  "task_file": "audit-followup.md",
+  "task_sha256": "fc9182d536293815ad73e469e768c6f30390310107cd4ac8204522311efbef39",
+  "checks": [
+    {
+      "id": "CHK-5bed1a0744d5",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_injection_version.py",
+        "tests/test_runtime_consolidation.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": false,
+      "profile": "changed",
+      "inputs": [
+        "tests/**"
+      ],
+      "preflight": [],
+      "paths": []
+    },
+    {
+      "id": "CHK-b3051cc489a2",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_runtime_consolidation.py::test_dependency_direction",
+        "tests/test_runtime_consolidation.py::test_private_symbol_guard",
+        "tests/test_runtime_consolidation.py::test_allowlist_ratchet"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": false,
+      "profile": "changed",
+      "inputs": [
+        "tests/**"
+      ],
+      "preflight": [],
+      "paths": []
+    },
+    {
+      "id": "CHK-72d2e9821fbe",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_runtime_consolidation.py::test_dependency_direction",
+        "tests/test_cf_acceptance_manifest.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": false,
+      "profile": "changed",
+      "inputs": [
+        "tests/**"
+      ],
+      "preflight": [],
+      "paths": []
+    },
+    {
+      "id": "CHK-1078c53d3738",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_acceptance_manifest.py",
+        "tests/test_acceptance_contract_hardening.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": false,
+      "profile": "changed",
+      "inputs": [
+        "tests/**"
+      ],
+      "preflight": [],
+      "paths": []
+    },
+    {
+      "id": "CHK-c1b4098c9633",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_runtime_consolidation.py::test_dependency_direction",
+        "tests/test_cf_spec_context.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": false,
+      "profile": "changed",
+      "inputs": [
+        "tests/**"
+      ],
+      "preflight": [],
+      "paths": []
+    },
+    {
+      "id": "CHK-27ddb78b4ad6",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_workflow_service.py",
+        "tests/test_cf_spec_context.py",
+        "tests/test_cf_user_prompt_hook.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": false,
+      "profile": "changed",
+      "inputs": [
+        "tests/**"
+      ],
+      "preflight": [],
+      "paths": []
+    },
+    {
+      "id": "CHK-c5f94428050a",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_runtime_consolidation.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": false,
+      "profile": "changed",
+      "inputs": [
+        "tests/**"
+      ],
+      "preflight": [],
+      "paths": []
+    },
+    {
+      "id": "CHK-f6ae7934bfda",
+      "command": [
+        "bash",
+        "-lc",
+        "python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": false,
+      "profile": "changed",
+      "inputs": [
+        "tests/**"
+      ],
+      "preflight": [],
+      "paths": []
+    },
+    {
+      "id": "CHK-1592ed61c3ae",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_adapter_parity.py",
+        "tests/test_spec_workflow_templates.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": false,
+      "profile": "changed",
+      "inputs": [
+        "tests/**"
+      ],
+      "preflight": [],
+      "paths": []
+    },
+    {
+      "id": "CHK-06e561265170",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cli_spec_workflow.py",
+        "tests/test_cf_acceptance_runner.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": false,
+      "profile": "changed",
+      "inputs": [
+        "tests/**"
+      ],
+      "preflight": [],
+      "paths": []
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "S-01",
+      "source": "docs/codebase-consolidation-audit.md#A2",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "真实 `cf_task_doc` 解析器 + 临时 TASK 文档",
+      "owner": "TASK-001",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_injection_version.py",
+        "tests/test_runtime_consolidation.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "priority": "P1",
+      "exec": "auto",
+      "env": "none",
+      "inputs": [
+        "tests/**"
+      ],
+      "smoke": false,
+      "check": "CHK-5bed1a0744d5",
+      "revision": 1,
+      "evidence": {
+        "id": "S-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "check_id": "CHK-5bed1a0744d5",
+        "input_hash": "4b34b91ea0fa5b2b66440877d43f83e8f12b36695a6d3c38f363ba5db93af762",
+        "check_config": {
+          "id": "CHK-5bed1a0744d5",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_injection_version.py",
+            "tests/test_runtime_consolidation.py"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/**"
+          ],
+          "preflight": [],
+          "paths": []
+        },
+        "revision": 1,
+        "run_id": "83eea59b5ab1453894ec453f9f12fbae",
+        "executed_at": "2026-10-26T17:26:53.395341+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_injection_version.py",
+          "tests/test_runtime_consolidation.py"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "4b34b91ea0fa5b2b66440877d43f83e8f12b36695a6d3c38f363ba5db93af762"
+      },
+      "runs": [
+        {
+          "id": "S-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "check_id": "CHK-5bed1a0744d5",
+          "input_hash": "4b34b91ea0fa5b2b66440877d43f83e8f12b36695a6d3c38f363ba5db93af762",
+          "check_config": {
+            "id": "CHK-5bed1a0744d5",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_cf_injection_version.py",
+              "tests/test_runtime_consolidation.py"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/**"
+            ],
+            "preflight": [],
+            "paths": []
+          },
+          "revision": 1,
+          "run_id": "83eea59b5ab1453894ec453f9f12fbae",
+          "executed_at": "2026-10-26T17:26:53.395341+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_injection_version.py",
+            "tests/test_runtime_consolidation.py"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4b34b91ea0fa5b2b66440877d43f83e8f12b36695a6d3c38f363ba5db93af762"
+        }
+      ]
+    },
+    {
+      "id": "S-02",
+      "source": "docs/codebase-consolidation-audit.md#A2",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "真实 AST 导入图 + 双副本",
+      "owner": "TASK-001",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_runtime_consolidation.py::test_dependency_direction",
+        "tests/test_runtime_consolidation.py::test_private_symbol_guard",
+        "tests/test_runtime_consolidation.py::test_allowlist_ratchet"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "priority": "P1",
+      "exec": "auto",
+      "env": "none",
+      "inputs": [
+        "tests/**"
+      ],
+      "smoke": false,
+      "check": "CHK-b3051cc489a2",
+      "revision": 1,
+      "evidence": {
+        "id": "S-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "check_id": "CHK-b3051cc489a2",
+        "input_hash": "c406ad04919bc074606e19027a971b5f762d0a75fe1807691f926717b936c711",
+        "check_config": {
+          "id": "CHK-b3051cc489a2",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_dependency_direction",
+            "tests/test_runtime_consolidation.py::test_private_symbol_guard",
+            "tests/test_runtime_consolidation.py::test_allowlist_ratchet"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/**"
+          ],
+          "preflight": [],
+          "paths": []
+        },
+        "revision": 1,
+        "run_id": "83eea59b5ab1453894ec453f9f12fbae",
+        "executed_at": "2026-10-26T17:26:53.395341+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_runtime_consolidation.py::test_dependency_direction",
+          "tests/test_runtime_consolidation.py::test_private_symbol_guard",
+          "tests/test_runtime_consolidation.py::test_allowlist_ratchet"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "c406ad04919bc074606e19027a971b5f762d0a75fe1807691f926717b936c711"
+      },
+      "runs": [
+        {
+          "id": "S-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "check_id": "CHK-b3051cc489a2",
+          "input_hash": "c406ad04919bc074606e19027a971b5f762d0a75fe1807691f926717b936c711",
+          "check_config": {
+            "id": "CHK-b3051cc489a2",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_runtime_consolidation.py::test_dependency_direction",
+              "tests/test_runtime_consolidation.py::test_private_symbol_guard",
+              "tests/test_runtime_consolidation.py::test_allowlist_ratchet"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/**"
+            ],
+            "preflight": [],
+            "paths": []
+          },
+          "revision": 1,
+          "run_id": "83eea59b5ab1453894ec453f9f12fbae",
+          "executed_at": "2026-10-26T17:26:53.395341+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_dependency_direction",
+            "tests/test_runtime_consolidation.py::test_private_symbol_guard",
+            "tests/test_runtime_consolidation.py::test_allowlist_ratchet"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "c406ad04919bc074606e19027a971b5f762d0a75fe1807691f926717b936c711"
+        }
+      ]
+    },
+    {
+      "id": "S-03",
+      "source": "docs/codebase-consolidation-audit.md#A4",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "真实 AST 导入图 + manifest 提取",
+      "owner": "TASK-002",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_runtime_consolidation.py::test_dependency_direction",
+        "tests/test_cf_acceptance_manifest.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "priority": "P2",
+      "exec": "auto",
+      "env": "none",
+      "inputs": [
+        "tests/**"
+      ],
+      "smoke": false,
+      "check": "CHK-72d2e9821fbe"
+    },
+    {
+      "id": "S-04",
+      "source": "docs/codebase-consolidation-audit.md#A4",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 manifest 锁定/校验 + 临时需求目录",
+      "owner": "TASK-002",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_acceptance_manifest.py",
+        "tests/test_acceptance_contract_hardening.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "priority": "P2",
+      "exec": "auto",
+      "env": "none",
+      "inputs": [
+        "tests/**"
+      ],
+      "smoke": false,
+      "check": "CHK-1078c53d3738"
+    },
+    {
+      "id": "S-05",
+      "source": "docs/codebase-consolidation-audit.md#A4",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "真实 AST 导入图 + Context 文件",
+      "owner": "TASK-003",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_runtime_consolidation.py::test_dependency_direction",
+        "tests/test_cf_spec_context.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "priority": "P2",
+      "exec": "auto",
+      "env": "none",
+      "inputs": [
+        "tests/**"
+      ],
+      "smoke": false,
+      "check": "CHK-c1b4098c9633"
+    },
+    {
+      "id": "S-06",
+      "source": "docs/codebase-consolidation-audit.md#A8",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 active marker + spec-context.yml + hook 子进程",
+      "owner": "TASK-003",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cf_workflow_service.py",
+        "tests/test_cf_spec_context.py",
+        "tests/test_cf_user_prompt_hook.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "priority": "P2",
+      "exec": "auto",
+      "env": "none",
+      "inputs": [
+        "tests/**"
+      ],
+      "smoke": false,
+      "check": "CHK-27ddb78b4ad6"
+    },
+    {
+      "id": "S-07",
+      "source": "docs/codebase-consolidation-audit.md#A4",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "真实 AST 导入图 + SCC 计算",
+      "owner": "TASK-004",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_runtime_consolidation.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "priority": "P2",
+      "exec": "auto",
+      "env": "none",
+      "inputs": [
+        "tests/**"
+      ],
+      "smoke": false,
+      "check": "CHK-c5f94428050a"
+    },
+    {
+      "id": "S-08",
+      "source": "docs/codebase-consolidation-audit.md#A3",
+      "level": "system",
+      "kind": "functional",
+      "boundary": "真实 npm pack + node CLI/init/migrate",
+      "owner": "TASK-005",
+      "status": "planned",
+      "command": [
+        "bash",
+        "-lc",
+        "python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "priority": "P2",
+      "exec": "auto",
+      "env": "none",
+      "inputs": [
+        "tests/**"
+      ],
+      "smoke": false,
+      "check": "CHK-f6ae7934bfda"
+    },
+    {
+      "id": "S-09",
+      "source": "docs/codebase-consolidation-audit.md#A7",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 adapters 文件 + 归一化 parity",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_adapter_parity.py",
+        "tests/test_spec_workflow_templates.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "priority": "P2",
+      "exec": "auto",
+      "env": "none",
+      "inputs": [
+        "tests/**"
+      ],
+      "smoke": false,
+      "check": "CHK-1592ed61c3ae"
+    },
+    {
+      "id": "S-10",
+      "source": "docs/codebase-consolidation-audit.md#A8",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 CLI 安装 + runner fixture 矩阵",
+      "owner": "TASK-007",
+      "status": "planned",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cli_spec_workflow.py",
+        "tests/test_cf_acceptance_runner.py"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "priority": "P2",
+      "exec": "auto",
+      "env": "none",
+      "inputs": [
+        "tests/**"
+      ],
+      "smoke": false,
+      "check": "CHK-06e561265170"
+    }
+  ],
+  "e2e_gate": 1,
+  "quality_schema": 2,
+  "relock": {
+    "preserved": [
+      "S-01",
+      "S-02",
+      "S-03",
+      "S-04",
+      "S-05",
+      "S-06",
+      "S-07",
+      "S-08",
+      "S-09",
+      "S-10"
+    ],
+    "stale": [],
+    "removed": []
+  }
+}

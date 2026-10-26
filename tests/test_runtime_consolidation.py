@@ -33,7 +33,7 @@ RUNTIME_IGNORE_END = "# <<< code-flow:runtime schema=1"
 RUNTIME_IGNORE_ENTRIES = 20
 sys.path.insert(0, str(SCRIPTS))
 
-CURRENT_BATCH = 1
+CURRENT_BATCH = 3
 
 LAYERS: dict[str, int] = {
     "cf_acceptance_evidence": 1,
@@ -123,8 +123,6 @@ PRIVATE_SYMBOL_ALLOWLIST = frozenset({
     ("cf_acceptance_registration", "cf_check_registration", "_requirements", 6),
     ("cf_task_parallel", "cf_task_merge", "_check_conflicts", 6),
     ("cf_task_parallel", "cf_task_runtime", "_task_scope_specs", 6),
-    ("cf_task_runtime", "cf_spec_session", "_refs", 3),
-    ("cf_task_runtime", "cf_spec_session", "_task_section", 3),
     ("cf_task_workflow", "cf_acceptance_runner", "_accepted_risk", 6),
     ("cf_task_workflow", "cf_acceptance_runner", "_owned", 6),
     ("cf_task_workflow", "cf_acceptance_runner", "_select_profile", 6),
@@ -631,6 +629,46 @@ def test_task_heading_edges() -> None:
 
     assert [task.id for task in document.tasks] == ["TASK-001", "TASK-004"]
     assert [task.title for task in document.tasks] == ["first real", "second real"]
+
+
+def test_task_contract_digest_uses_canonical_sections(tmp_path: Path) -> None:
+    """[S-01] 摘要只读真实段落：行内示例与重复 ID 不改变注入版本。"""
+    from codeflow.cli.cf_spec_context import task_contract_digest
+
+    root = tmp_path / "project"
+    task_dir = root / ".code-flow/tasks/demo"
+    task_dir.mkdir(parents=True)
+    task_file = task_dir / "demo.md"
+
+    def write(contract: str) -> None:
+        task_file.write_text(
+            "# Tasks\n\n"
+            "Example: `## TASK-001: Sample`\n\n"
+            "## TASK-001: Actual\n"
+            "- **Status**: done\n"
+            "- **Spec-Refs**: app#RULE-1\n"
+            "### Acceptance Contract\n"
+            f"- S-01: {contract}\n"
+            "### Acceptance Evidence\nnone\n",
+            encoding="utf-8",
+        )
+
+    write("old")
+    first = task_contract_digest(str(root), ".code-flow/tasks/demo", "TASK-001")
+    write("new")
+    second = task_contract_digest(str(root), ".code-flow/tasks/demo", "TASK-001")
+
+    assert first and second and first != second
+
+    (task_dir / "a.scenarios.md").write_text("---\nschema: 1\n---\n", encoding="utf-8")
+    assert task_contract_digest(str(root), ".code-flow/tasks/demo", "TASK-001") == second
+
+    task_file.write_text(
+        "## TASK-001: first\n- **Status**: draft\n\n"
+        "## TASK-001: second\n- **Status**: done\n",
+        encoding="utf-8",
+    )
+    assert task_contract_digest(str(root), ".code-flow/tasks/demo", "TASK-001") == ""
 
 
 def test_duplicate_task_id(tmp_path: Path) -> None:

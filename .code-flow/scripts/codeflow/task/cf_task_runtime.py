@@ -249,10 +249,10 @@ def _task_scope_specs(root: str, task_dir: str, owner: str, files: tuple[str, ..
     task = locate_task_file(task_dir, owner)
     if task is None:
         return scope
-    from codeflow.cli.cf_spec_session import _refs, _task_section
+    from codeflow.task.cf_task_doc import task_section, task_spec_refs
 
     try:
-        refs = _refs(_task_section(task.read_text(encoding="utf-8"), owner))
+        refs = task_spec_refs(task_section(task.read_text(encoding="utf-8"), owner))
     except ValueError:
         refs = ()
     for ref in refs:

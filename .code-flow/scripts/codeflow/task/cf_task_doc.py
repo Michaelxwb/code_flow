@@ -10,13 +10,16 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Iterator, Mapping
+from typing import Iterator, Mapping, Union
 
 _HEADING_RE = re.compile(r"^## (TASK-\d+):[ \t]*(.*)$")
 _FIELD_RE = re.compile(r"^- \*\*([^*]+)\*\*:[ \t]*(.*)$")
 _FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 _TASK_ID_RE = re.compile(r"TASK-\d+")
 _DEPENDS_SPLIT_RE = re.compile(r"[,，\s]+")
+_SPEC_REFS_RE = re.compile(r"(?m)^- \*\*Spec-Refs\*\*:[ \t]*(.*)$")
+_EMPTY_REF_MARKERS = frozenset(("n/a", "na", "none", "null", "-", "—", "无"))
+_UNRESOLVED_REF_MARKERS = frozenset(("todo", "tbd", "待定", "待同步", "待确认"))
 
 
 class TaskDocumentError(ValueError):
@@ -128,3 +131,31 @@ def parse_task_document(text: str, *, source: str = "") -> TaskDocument:
         end = spans[index + 1][0] if index + 1 < len(spans) else len(normalized)
         tasks.append(_section(normalized, start, end, task_id, title))
     return TaskDocument(tuple(tasks), source)
+
+
+def task_section(text: str, task_id: str, *, source: str = "") -> TaskSection:
+    """Return one parsed TASK section; missing IDs fail with a stable code."""
+    document = parse_task_document(text, source=source)
+    section = next((task for task in document.tasks if task.id == task_id), None)
+    if section is None:
+        details = (task_id, source) if source else (task_id,)
+        raise TaskDocumentError("task_not_found", f"{task_id} not found", details)
+    return section
+
+
+def task_spec_refs(section: Union[TaskSection, str]) -> tuple[str, ...]:
+    """Interpret Spec-Refs with the shared empty/unresolved marker contract."""
+    if isinstance(section, TaskSection):
+        raw = section.fields.get("Spec-Refs")
+        if raw is None:
+            raise ValueError("spec_refs_missing")
+    else:
+        match = _SPEC_REFS_RE.search(section)
+        if match is None:
+            raise ValueError("spec_refs_missing")
+        raw = match.group(1)
+    items = tuple(item.strip() for item in raw.split(",") if item.strip())
+    unresolved = tuple(item for item in items if item.lower() in _UNRESOLVED_REF_MARKERS)
+    if unresolved:
+        raise ValueError("spec_refs_unresolved: " + ", ".join(unresolved))
+    return tuple(item for item in items if item.lower() not in _EMPTY_REF_MARKERS)

@@ -13,7 +13,7 @@ import sys
 from typing import IO, Mapping, Optional, Sequence
 
 from codeflow.cli.cf_spec_context import RuleBinding, SpecContext, context_sha256, load_context
-from codeflow.task.cf_task_doc import parse_task_document
+from codeflow.task.cf_task_doc import task_section, task_spec_refs
 
 
 @dataclass(frozen=True)
@@ -29,26 +29,11 @@ class SessionProjection:
 
 
 def _task_section(text: str, task_id: str) -> str:
-    for task in parse_task_document(text).tasks:
-        if task.id == task_id:
-            return task.body
-    raise ValueError(f"task_not_found: {task_id}")
-
-
-_EMPTY_REF_MARKERS = frozenset(("n/a", "na", "none", "null", "-", "—", "无"))
-_UNRESOLVED_REF_MARKERS = frozenset(("todo", "tbd", "待定", "待同步", "待确认"))
+    return task_section(text, task_id).body
 
 
 def _refs(section: str) -> tuple[str, ...]:
-    # [ \t]* 而非 \s*：空 Spec-Refs 不得跨行吞掉下一字段（Acceptance-Refs 等）
-    match = re.search(r"(?m)^- \*\*Spec-Refs\*\*:[ \t]*(.*)$", section)
-    if match is None:
-        raise ValueError("spec_refs_missing")
-    items = tuple(item.strip() for item in match.group(1).split(",") if item.strip())
-    unresolved = tuple(item for item in items if item.lower() in _UNRESOLVED_REF_MARKERS)
-    if unresolved:
-        raise ValueError("spec_refs_unresolved: " + ", ".join(unresolved))
-    return tuple(item for item in items if item.lower() not in _EMPTY_REF_MARKERS)
+    return task_spec_refs(section)
 
 
 def _rule_index(context: SpecContext) -> Mapping[str, RuleBinding]:

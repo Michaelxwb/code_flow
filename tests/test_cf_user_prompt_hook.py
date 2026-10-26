@@ -249,6 +249,23 @@ def test_task_projection_reinjected_after_context_change(tmp_path: Path) -> None
     assert "TASK-001 Spec Context" in third, "context change must re-inject"
 
 
+def test_task_projection_reinjected_after_contract_edit(tmp_path: Path) -> None:
+    """[S-01] 行内示例存在时，真实 Acceptance Contract 修改仍触发重新注入。"""
+    root = _task_repo(tmp_path)
+    task_file = root / ".code-flow/tasks/demo/demo.md"
+    text = task_file.read_text(encoding="utf-8")
+    task_file.write_text(
+        text.replace("# Tasks\n\n", "# Tasks\n\nExample: `## TASK-001: Sample`\n\n", 1),
+        encoding="utf-8",
+    )
+
+    assert "TASK-001 Spec Context" in _run_raw(root, "继续 TASK-001")
+
+    edited = task_file.read_text(encoding="utf-8").replace("| S-01 | unit |", "| S-01 | integration |")
+    task_file.write_text(edited, encoding="utf-8")
+    assert "TASK-001 Spec Context" in _run_raw(root, "继续 TASK-001")
+
+
 def test_inject_enforcement_cannot_hide_invalid_routing(tmp_path: Path) -> None:
     spec = tmp_path / ".code-flow/specs/app/rules.md"
     spec.parent.mkdir(parents=True)

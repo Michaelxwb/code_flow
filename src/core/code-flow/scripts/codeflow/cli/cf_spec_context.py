@@ -19,6 +19,7 @@ from codeflow.core import cf_fs
 from codeflow.core import cf_git
 from codeflow.spec.cf_spec_metadata import SpecHashes, SpecMetadata, SpecRule, load_spec_metadata
 from codeflow.spec.cf_spec_resolver import SpecCandidate, resolve_candidates
+from codeflow.task.cf_task_doc import TaskDocumentError, task_section
 from codeflow.core.cf_core import phase_timing
 
 
@@ -346,19 +347,21 @@ def task_contract_digest(root: str, task_dir: str, task_id: str) -> str:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeError):
             continue
-        start = text.find(f"## {task_id}:")
-        if start == -1:
-            continue
-        end = text.find("\n## TASK-", start)
-        section = text[start:] if end == -1 else text[start:end]
+        try:
+            section = task_section(text, task_id, source=str(path))
+        except TaskDocumentError as exc:
+            if exc.code in ("task_document_empty", "task_not_found"):
+                continue
+            return ""
+        body = section.body
         chunks: list[str] = []
         for heading in ("Spec-Refs", "Source", "Design-Refs", "Acceptance-Refs", "Acceptance Contract", "Acceptance Evidence"):
-            index = section.find(heading)
+            index = body.find(heading)
             if index == -1:
                 chunks.append(f"{heading}:missing")
                 continue
-            end = section.find("\n### ", index)
-            chunks.append(section[index:] if end == -1 else section[index:end])
+            end = body.find("\n### ", index)
+            chunks.append(body[index:] if end == -1 else body[index:end])
         return hashlib.sha256("\n".join(chunks).encode("utf-8")).hexdigest()
     return ""
 
