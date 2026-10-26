@@ -84,9 +84,9 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-15 | contract | 真实 AST 导入图 | 注入 L0→L2 边时测试失败并指出边 | tests/test_runtime_consolidation.py::test_dependency_direction | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_dependency_direction` | stale |
-| S-16 | contract | 真实 AST 导入图 | 新增私有导入失败；移除代码后 allowlist 条目失败 | tests/test_runtime_consolidation.py::test_private_symbol_guard | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_private_symbol_guard` | stale |
-| B-03 | contract | allowlist 元数据 | 超期条目导致失败 | tests/test_runtime_consolidation.py::test_allowlist_ratchet | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_allowlist_ratchet` | stale |
+| S-15 | contract | 真实 AST 导入图 | 注入 L0→L2 边时测试失败并指出边 | tests/test_runtime_consolidation.py::test_dependency_direction | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_dependency_direction` | verified |
+| S-16 | contract | 真实 AST 导入图 | 新增私有导入失败；移除代码后 allowlist 条目失败 | tests/test_runtime_consolidation.py::test_private_symbol_guard | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_private_symbol_guard` | verified |
+| B-03 | contract | allowlist 元数据 | 超期条目导致失败 | tests/test_runtime_consolidation.py::test_allowlist_ratchet | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_allowlist_ratchet` | verified |
 
 ### Acceptance Evidence
 
@@ -103,6 +103,9 @@
 - S-15: stale — input changed: CHK-c387fd3e4838 (confirmed_by: runtime)
 - S-16: stale — input changed: CHK-91f1a8ad8a34 (confirmed_by: runtime)
 - B-03: stale — input changed: CHK-52a009106cde (confirmed_by: runtime)
+- S-15: verified — automated command passed; run_id=bf4d3334f00e47e7849edafb9b3e97d8 (confirmed_by: runner)
+- S-16: verified — automated command passed; run_id=bf4d3334f00e47e7849edafb9b3e97d8 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=bf4d3334f00e47e7849edafb9b3e97d8 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -158,6 +161,10 @@
 - S-02: verified — automated command passed; run_id=e98c58a3f94746d3bbc70a1397184048 (confirmed_by: runner)
 - B-01: verified — automated command passed; run_id=e98c58a3f94746d3bbc70a1397184048 (confirmed_by: runner)
 - E-01: verified — automated command passed; run_id=e98c58a3f94746d3bbc70a1397184048 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=c9e7c4743b7f4703b866a3856fb2f779 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=c9e7c4743b7f4703b866a3856fb2f779 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=c9e7c4743b7f4703b866a3856fb2f779 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=c9e7c4743b7f4703b866a3856fb2f779 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -214,6 +221,10 @@
 - S-04: verified — automated command passed; run_id=8e2aa25cdbdf48689525a6004e06b852 (confirmed_by: runner)
 - S-05: verified — automated command passed; run_id=8e2aa25cdbdf48689525a6004e06b852 (confirmed_by: runner)
 - E-02: verified — automated command passed; run_id=8e2aa25cdbdf48689525a6004e06b852 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=110baf43143246afb1aa3ce3ea0cdac8 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=110baf43143246afb1aa3ce3ea0cdac8 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=110baf43143246afb1aa3ce3ea0cdac8 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=110baf43143246afb1aa3ce3ea0cdac8 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -384,6 +395,7 @@
 
 > 收敛明细：`cf_core`（删除 `_FRONTMATTER_RE`，委托 `parse_frontmatter`）、`cf_scenarios`（删除 `_frontmatter`）、`cf_audit`/`cf_traceability`（删除 `_column` 与本地分隔行正则）、`cf_acceptance_manifest`（`_column_indexes` 复用 `column_index`，覆盖表解析复用 `table_cells`），`cf_checks`/`cf_stop_hook` 改为公开函数消费；私有 allowlist 删除 6 条已消失条目。
 - S-12: verified — automated command passed; run_id=dc17a8ad105a4c6bbd0d4b8559aef161 (confirmed_by: runner)
+- S-12: verified — automated command passed; run_id=c7f638bc2046483692b5e90f101481c9 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
