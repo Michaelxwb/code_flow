@@ -121,18 +121,27 @@ except:
 - 本项目使用 required；历史 warn/inject 模式由 doctor 提示迁移。配置、绑定源、Context 与投影的完整性错误始终 fail-closed，不受验证降级模式影响。
 - 批量编辑按项目一次加载 Context、校验绑定源并检查全部路径；注入去重在成功输出后提交，投影版本必须包含实际输出的全部依赖。
 - 事件先后判断禁止依赖秒级时间戳（同秒事件无法排序），用日志追加顺序
+- Hook 输入分三类：用户内容 / harness 元数据 / 项目事实。先剥离 `<task-notification>`、`<output-file>` 块；项目外路径忽略而不是升级为 `SPEC_WORKFLOW_BLOCKED`；只有 Context 损坏/漂移/required scope 才阻断。
+- Stop 只能消费 `ValidatorConfig.without_heavy()`；禁止把完整 config 传给 `run_validators`。heavy 只在 validate / archive / `heavy_at_finish` 执行；mixed heavy+light 必须有回归测试。
+- 并行 worktree 必须由 `task parallel prepare` 登记在 `run.json`；`task start` 校验 `version/task_file/base_head` 及 entry 的绝对 path。禁止自行 `git worktree add` 或从未登记的路径启动。
+- `merge` 开始写 `status=running`，结束写 `passed/blocked` + `full_batch/merged/all_tasks`；`cleanup` 仅允许 `full_batch` 且全部任务已合并；子集 merge 返回 `partial_merge`；`--force` 才放弃现场；非 force 删除分支只用 `git branch -d`。
+- 更新 Coverage/Contract 状态必须按表头定位“状态”列原位替换，禁止追加列；`designed` 是合法 Coverage 状态；merge 优先级必须包含 `designed`。
+- `Spec-Refs` 的显式空只允许 `N/A / none / null / - / — / 无`；`TODO / TBD / 待定 / 待同步 / 待确认` 是未完成，必须抛 `spec_refs_unresolved` 并 fail-closed。
+- 依赖方向/私有导入守卫使用 stem-keyed layer map + allowlist 棘轮：新模块必须登记层；allowlist 条目消失也要失败；批次推进时清理条目并 bump `CURRENT_BATCH`。
 
 ## Patterns
-- 单一功能的 schema、resolver、gate、migration 可放在 `cf_<feature>.py` **feature-scoped core module**；跨功能稳定原语才进入 `cf_core.py`
+- 顶层 `cf_*.py` 只做 ≤15 行 shim（import + `main()`）；单一功能实现放 `codeflow/<domain>/cf_<feature>.py` 的 **feature-scoped core module**；跨功能稳定原语放 `codeflow/core/` 的专用模块（`cf_fs`/`cf_git`/`cf_markdown`/`cf_validators`），不要继续堆进 `cf_core.py`
 - 新增 Context/router 能力 → 保持 feature module 单一职责，公开数据结构完整 type hints，函数 ≤50 行
-- 新增 Claude Hook → 在 settings.local.json 模板中注册，脚本放在 scripts/ 目录
-- 新增 Codex Hook → 在 hooks.json 模板中注册（3 层结构：event → [{hooks:[{type,command}]}]），脚本放在 scripts/ 目录
+- 新增 Claude Hook → 在 settings.local.json 模板中注册，入口 shim 放 scripts/，实现放 `codeflow/hooks/`
+- 新增 Codex Hook → 在 hooks.json 模板中注册（3 层结构：event → [{hooks:[{type,command}]}]），入口 shim 放 scripts/，实现放 `codeflow/hooks/`
 - Codex prompt 路径提取同时支持裸路径、`@path`、反引号路径，并在注入前做去重与噪音过滤（需至少一个斜杠或有效代码扩展名）
 - 测试 → tests/ 目录，使用 pytest，覆盖 happy path / fail-closed / 空输入
 - Claude/Costrict 编辑入口接受原生 `Edit/Write/MultiEdit`；Codex 原生入口严格接受 `apply_patch` 与 `tool_input.command`，按补丁中的每个文件操作调用共享服务；工具协议不得互相伪装。
 - 路径提取正则 `_PATH_RE` 支持裸路径/`@path`/反引号路径，需至少一个斜杠或代码扩展名（`cf_user_prompt_hook.py`）
 - 测试 fixture 模式：`_make_project() + tempfile.TemporaryDirectory() + mock stdin/stdout`（tests/test_cf_*.py）
 - 测试取 fixture 数据按名称选择而非列表索引，结构扩展不连带断（test_hook_command_robustness::_command_for）
+- TASK 段落解析唯一权威是 `cf_task_doc.parse_task_document`；其他模块不得自写 `^## TASK-` 正则。Checklist 中的场景 ID 必须属于该 TASK 的 `Acceptance-Refs`；`S-01~04` 区间要先展开；plan quality 报 checklist mismatch。
+- 新增 `tests/*.py` 必须自带 `SCRIPTS = .../src/core/code-flow/scripts; sys.path.insert(0, str(SCRIPTS))`，不得依赖其他测试模块的 `sys.path` 副作用。
 
 ## Avoid
 - 禁止在 Hook stdout 输出非 JSON 内容（会破坏 Claude Code / Codex 协议）

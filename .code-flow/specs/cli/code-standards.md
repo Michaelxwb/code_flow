@@ -105,7 +105,7 @@ await fs.promises.readFile(srcPath);     // CLI 不需要
 - 合并策略（merge 类文件）必须保证用户自定义内容不被覆盖
 - 平台参数解析必须通过 parsePlatform() 集中处理，禁止在 runInit 内部重复解析
 - 初始化阶段的可选操作（如 legacy 清理、pyyaml 安装）失败时必须降级为 warning，不能阻塞 init 主流程
-- 0.6.0 的 Spec Workflow 是经 dry-run/prepare/apply/journal/rollback 保护的**事务 breaking migration**；只有该显式迁移入口可删除旧 runtime 与 managed files，普通 init/merge 仍不得覆盖用户内容
+- 0.6.0 的 Spec Workflow 是经 dry-run/prepare/apply/journal/rollback 保护的**事务 breaking migration**；运行时布局迁移（旧平铺 → `codeflow/` 包）必须由 `src/migrate/runtime.js` 的 `staleScripts()` 清理旧平铺内部模块，保留 22 个入口 shim 一个版本窗口；沿用 backup/staging/journal/rollback 与 `runtime-install.json` 校验；只有该显式迁移入口可删除旧 runtime 与 managed files，普通 init/merge 仍不得覆盖用户内容。
 
 ## Patterns
 - 新增模板文件：放在 src/core/ 或 src/adapters/ 下，fileCategory() 自动分类
@@ -114,6 +114,7 @@ await fs.promises.readFile(srcPath);     // CLI 不需要
 - 输出摘要按 Updated/Merged/Created/Skipped/Removed 分组
 - 清理 deprecated 目录时使用独立函数封装删除逻辑，配置 `recursive + force + retry` 以兼容 Windows 文件锁场景
 - breaking 变更必须由 `src/migrate/` feature module 持有 backup/staging/journal，`.version` 永远最后写；`src/cli.js` 只做参数解析与委托
+- 安装器递归拷贝 `scripts/**`（含 `codeflow/` 包树），`runtime-install.json` 逐文件 sha256；22 个入口路径冻结；npm tarball 必须包含 `codeflow/` 包。
 
 ## Avoid
 - 禁止在 CLI 中引入 npm 外部依赖

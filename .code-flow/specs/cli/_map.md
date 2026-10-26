@@ -49,4 +49,4 @@ Node.js CLI，负责四个 AI 平台适配器的初始化与版本升级。`code
 - 新增 CLI 参数 → 文件末尾 args 解析区
 
 - 公开运行时命令：`src/runtime.js` + `src/core/code-flow/runtime-commands.json`；技能示例生成：`src/render-runtime-contract.js`
-- 原生运行时事务迁移：`src/migrate/runtime.js`（四平台暂存、安装校验、回滚、中断恢复）
+- 原生运行时事务迁移：`src/migrate/runtime.js`（四平台暂存、安装校验、回滚、中断恢复）；旧平铺 → `codeflow/` 包布局时由 `staleScripts()` 清理旧内部模块，保留 22 个入口 shim 窗口
