@@ -13,7 +13,7 @@ import yaml
 SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from cf_user_prompt_hook import _session_reminder, extract_paths_from_prompt, main
+from cf_user_prompt_hook import _session_reminder, build_prompt_context, extract_paths_from_prompt, main
 
 
 def test_extracts_supported_path_forms_and_normalizes_windows() -> None:
@@ -27,6 +27,22 @@ def test_extracts_path_followed_by_chinese_and_deduplicates() -> None:
 
 def test_ignores_versions_and_plain_words() -> None:
     assert extract_paths_from_prompt("use version 1.2.3 and README") == []
+
+
+def test_ignores_outside_project_paths(tmp_path: Path) -> None:
+    prompt = "<output-file>/private/tmp/claude-501/tasks/a1.output</output-file>"
+    assert extract_paths_from_prompt(prompt, str(tmp_path)) == []
+
+
+def test_mixed_paths_keep_only_project_paths(tmp_path: Path) -> None:
+    prompt = "read /tmp/build/app.log and src/a.py"
+    assert extract_paths_from_prompt(prompt, str(tmp_path)) == ["src/a.py"]
+
+
+def test_outside_project_path_does_not_block_prompt(tmp_path: Path) -> None:
+    text, mode = build_prompt_context("see /tmp/build/app.log for details", "session-1", str(tmp_path))
+    assert mode != "blocked"
+    assert "SPEC_WORKFLOW_BLOCKED" not in text
 
 
 def _run(root: Path, prompt: str) -> dict:

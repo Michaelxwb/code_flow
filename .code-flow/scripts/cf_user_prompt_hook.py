@@ -36,7 +36,13 @@ _REMINDER_TEXT = (
 
 
 def extract_paths_from_prompt(prompt: str, root: str | None = None) -> list[str]:
-    """Extract explicit file paths without semantic keyword inference."""
+    """Extract explicit file paths without semantic keyword inference.
+
+    Paths outside the project are ignored: harness metadata (for example the
+    `<output-file>` in a background-agent notification) and pasted logs often
+    contain absolute paths that are not routable project files. Only in-project
+    paths participate in spec routing.
+    """
     paths = []
     seen = set()
     for match in _PATH_RE.finditer(_URL_RE.sub("", prompt)):
@@ -47,8 +53,8 @@ def extract_paths_from_prompt(prompt: str, root: str | None = None) -> list[str]
             try:
                 target = Path(candidate) if Path(candidate).is_absolute() else Path(root) / candidate
                 candidate = target.resolve().relative_to(Path(root).resolve()).as_posix()
-            except ValueError as exc:
-                raise RouterError("path_outside_project", f"{candidate} is outside the project") from exc
+            except ValueError:
+                continue
         if candidate not in seen and ('/' in candidate or _EXT_RE.search(candidate)):
             paths.append(candidate)
             seen.add(candidate)
