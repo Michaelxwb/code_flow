@@ -106,6 +106,9 @@
 - S-15: verified — automated command passed; run_id=bf4d3334f00e47e7849edafb9b3e97d8 (confirmed_by: runner)
 - S-16: verified — automated command passed; run_id=bf4d3334f00e47e7849edafb9b3e97d8 (confirmed_by: runner)
 - B-03: verified — automated command passed; run_id=bf4d3334f00e47e7849edafb9b3e97d8 (confirmed_by: runner)
+- S-15: verified — automated command passed; run_id=220296de5c624103bfec88900480a2be (confirmed_by: runner)
+- S-16: verified — automated command passed; run_id=220296de5c624103bfec88900480a2be (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=220296de5c624103bfec88900480a2be (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -165,6 +168,14 @@
 - S-02: verified — automated command passed; run_id=c9e7c4743b7f4703b866a3856fb2f779 (confirmed_by: runner)
 - B-01: verified — automated command passed; run_id=c9e7c4743b7f4703b866a3856fb2f779 (confirmed_by: runner)
 - E-01: verified — automated command passed; run_id=c9e7c4743b7f4703b866a3856fb2f779 (confirmed_by: runner)
+- S-01: stale — input changed: CHK-f0ae89e07889 (confirmed_by: runtime)
+- S-02: stale — input changed: CHK-434b95226fe7 (confirmed_by: runtime)
+- B-01: stale — input changed: CHK-4bba5f76c6a3 (confirmed_by: runtime)
+- E-01: stale — input changed: CHK-dc4d37168cde (confirmed_by: runtime)
+- S-01: verified — automated command passed; run_id=eaeb359d9fb54ffe9fcd0b33aa5fb877 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=eaeb359d9fb54ffe9fcd0b33aa5fb877 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=eaeb359d9fb54ffe9fcd0b33aa5fb877 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=eaeb359d9fb54ffe9fcd0b33aa5fb877 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -225,6 +236,14 @@
 - S-04: verified — automated command passed; run_id=110baf43143246afb1aa3ce3ea0cdac8 (confirmed_by: runner)
 - S-05: verified — automated command passed; run_id=110baf43143246afb1aa3ce3ea0cdac8 (confirmed_by: runner)
 - E-02: verified — automated command passed; run_id=110baf43143246afb1aa3ce3ea0cdac8 (confirmed_by: runner)
+- S-03: stale — input changed: CHK-4e81eecf0c18 (confirmed_by: runtime)
+- S-04: stale — input changed: CHK-347ab7a13ac3 (confirmed_by: runtime)
+- S-05: stale — input changed: CHK-b8117b2a837f (confirmed_by: runtime)
+- E-02: stale — input changed: CHK-b3fb0ce5f74c (confirmed_by: runtime)
+- S-03: verified — automated command passed; run_id=297ffceead3e4fd5931edbb5cbbcfabb (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=297ffceead3e4fd5931edbb5cbbcfabb (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=297ffceead3e4fd5931edbb5cbbcfabb (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=297ffceead3e4fd5931edbb5cbbcfabb (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -283,6 +302,14 @@
 - S-07: verified — automated command passed; run_id=9afa4746a6dc4e099488df183017e0b8 (confirmed_by: runner)
 - S-08: verified — automated command passed; run_id=9afa4746a6dc4e099488df183017e0b8 (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=9afa4746a6dc4e099488df183017e0b8 (confirmed_by: runner)
+- S-06: stale — input changed: CHK-807da8f84a53 (confirmed_by: runtime)
+- S-07: stale — input changed: CHK-e8b4d99c83ec (confirmed_by: runtime)
+- S-08: stale — input changed: CHK-8765c9928c83 (confirmed_by: runtime)
+- B-02: stale — input changed: CHK-dcf1a100f72f (confirmed_by: runtime)
+- S-06: verified — automated command passed; run_id=326a61cec0d847cf905bff14b73df019 (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=326a61cec0d847cf905bff14b73df019 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=326a61cec0d847cf905bff14b73df019 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=326a61cec0d847cf905bff14b73df019 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -374,6 +401,10 @@
 全量回归：`python3 -m pytest -q` = 917 passed, 16 skipped。
 - S-10: verified — automated command passed; run_id=c198c8e430724f7f8dbd88da411232d1 (confirmed_by: runner)
 - S-11: verified — automated command passed; run_id=c198c8e430724f7f8dbd88da411232d1 (confirmed_by: runner)
+- S-10: stale — input changed: CHK-9540efa5ec9c (confirmed_by: runtime)
+- S-11: stale — input changed: CHK-8d218d1ef961 (confirmed_by: runtime)
+- S-10: verified — automated command passed; run_id=7e3668da68e04f4894f138c8085ba8f6 (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=7e3668da68e04f4894f138c8085ba8f6 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -422,6 +453,8 @@
 > 收敛明细：`cf_core`（删除 `_FRONTMATTER_RE`，委托 `parse_frontmatter`）、`cf_scenarios`（删除 `_frontmatter`）、`cf_audit`/`cf_traceability`（删除 `_column` 与本地分隔行正则）、`cf_acceptance_manifest`（`_column_indexes` 复用 `column_index`，覆盖表解析复用 `table_cells`），`cf_checks`/`cf_stop_hook` 改为公开函数消费；私有 allowlist 删除 6 条已消失条目。
 - S-12: verified — automated command passed; run_id=dc17a8ad105a4c6bbd0d4b8559aef161 (confirmed_by: runner)
 - S-12: verified — automated command passed; run_id=c7f638bc2046483692b5e90f101481c9 (confirmed_by: runner)
+- S-12: stale — input changed: CHK-71e953005848 (confirmed_by: runtime)
+- S-12: verified — automated command passed; run_id=110ed15d46d348c4aa5a4a48a324cb2a (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
