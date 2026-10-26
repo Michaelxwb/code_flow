@@ -143,7 +143,7 @@ def _checklist_issues(text: str) -> list[dict[str, str]]:
 
 def verify_plan(directory: str, task_file: str, require_scenarios: bool = False,
                 *, snapshot: Optional[PlanSnapshot] = None) -> dict[str, object]:
-    from codeflow.cli.cf_acceptance_manifest import validate_manifest
+    from codeflow.acceptance.cf_acceptance_manifest_core import validate_manifest
     from codeflow.acceptance.cf_acceptance_schema import load_manifest
     from codeflow.acceptance.cf_check_registration import validate_registration
     from codeflow.cli.cf_design_lint import lint_requirement

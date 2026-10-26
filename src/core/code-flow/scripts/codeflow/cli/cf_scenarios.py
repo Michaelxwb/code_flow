@@ -222,7 +222,7 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     args = parser.parse_args(argv)
     try:
         if args.action == "migrate":
-            from codeflow.cli.cf_acceptance_manifest import extract_manifest
+            from codeflow.acceptance.cf_acceptance_manifest_core import extract_manifest
             coverage = extract_manifest(args.task_file)["scenarios"]
             result = migrate_from_coverage(coverage)
             if args.output:

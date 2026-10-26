@@ -473,7 +473,7 @@
       "kind": "functional",
       "boundary": "真实 AST 导入图 + manifest 提取",
       "owner": "TASK-002",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -492,7 +492,98 @@
         "tests/**"
       ],
       "smoke": false,
-      "check": "CHK-72d2e9821fbe"
+      "check": "CHK-72d2e9821fbe",
+      "revision": 1,
+      "evidence": {
+        "id": "S-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "check_id": "CHK-72d2e9821fbe",
+        "input_hash": "a8d5b788a0af06c12462d83d4d73e656e448fa40384edd55a2367d212f989839",
+        "check_config": {
+          "id": "CHK-72d2e9821fbe",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_dependency_direction",
+            "tests/test_cf_acceptance_manifest.py"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/**"
+          ],
+          "preflight": [],
+          "paths": []
+        },
+        "revision": 1,
+        "run_id": "23ff1f5fd0814770833e9f7bf128dfae",
+        "executed_at": "2026-10-26T17:38:11.520430+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_runtime_consolidation.py::test_dependency_direction",
+          "tests/test_cf_acceptance_manifest.py"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a8d5b788a0af06c12462d83d4d73e656e448fa40384edd55a2367d212f989839"
+      },
+      "runs": [
+        {
+          "id": "S-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "check_id": "CHK-72d2e9821fbe",
+          "input_hash": "a8d5b788a0af06c12462d83d4d73e656e448fa40384edd55a2367d212f989839",
+          "check_config": {
+            "id": "CHK-72d2e9821fbe",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_runtime_consolidation.py::test_dependency_direction",
+              "tests/test_cf_acceptance_manifest.py"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/**"
+            ],
+            "preflight": [],
+            "paths": []
+          },
+          "revision": 1,
+          "run_id": "23ff1f5fd0814770833e9f7bf128dfae",
+          "executed_at": "2026-10-26T17:38:11.520430+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_runtime_consolidation.py::test_dependency_direction",
+            "tests/test_cf_acceptance_manifest.py"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a8d5b788a0af06c12462d83d4d73e656e448fa40384edd55a2367d212f989839"
+        }
+      ]
     },
     {
       "id": "S-04",
@@ -501,7 +592,7 @@
       "kind": "functional",
       "boundary": "真实 manifest 锁定/校验 + 临时需求目录",
       "owner": "TASK-002",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -520,7 +611,98 @@
         "tests/**"
       ],
       "smoke": false,
-      "check": "CHK-1078c53d3738"
+      "check": "CHK-1078c53d3738",
+      "revision": 1,
+      "evidence": {
+        "id": "S-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "check_id": "CHK-1078c53d3738",
+        "input_hash": "2d29d85b97f92ada7900eb46823a1ac6f16bf55a89b66af369a766e8d0f31f29",
+        "check_config": {
+          "id": "CHK-1078c53d3738",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_acceptance_manifest.py",
+            "tests/test_acceptance_contract_hardening.py"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/**"
+          ],
+          "preflight": [],
+          "paths": []
+        },
+        "revision": 1,
+        "run_id": "23ff1f5fd0814770833e9f7bf128dfae",
+        "executed_at": "2026-10-26T17:38:11.520430+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_cf_acceptance_manifest.py",
+          "tests/test_acceptance_contract_hardening.py"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "2d29d85b97f92ada7900eb46823a1ac6f16bf55a89b66af369a766e8d0f31f29"
+      },
+      "runs": [
+        {
+          "id": "S-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "check_id": "CHK-1078c53d3738",
+          "input_hash": "2d29d85b97f92ada7900eb46823a1ac6f16bf55a89b66af369a766e8d0f31f29",
+          "check_config": {
+            "id": "CHK-1078c53d3738",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "tests/test_cf_acceptance_manifest.py",
+              "tests/test_acceptance_contract_hardening.py"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/**"
+            ],
+            "preflight": [],
+            "paths": []
+          },
+          "revision": 1,
+          "run_id": "23ff1f5fd0814770833e9f7bf128dfae",
+          "executed_at": "2026-10-26T17:38:11.520430+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_cf_acceptance_manifest.py",
+            "tests/test_acceptance_contract_hardening.py"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "2d29d85b97f92ada7900eb46823a1ac6f16bf55a89b66af369a766e8d0f31f29"
+        }
+      ]
     },
     {
       "id": "S-05",

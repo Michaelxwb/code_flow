@@ -29,8 +29,8 @@
 |--------|---------|---------|-------------|---------|------|---------|--------|---------|------|------|--------|---------|------|
 | S-01 | docs/codebase-consolidation-audit.md#A2 | unit | 真实 `cf_task_doc` 解析器 + 临时 TASK 文档 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_cf_injection_version.py","tests/test_runtime_consolidation.py"] | P1 | auto | none | tests/** | - | - | no |
 | S-02 | docs/codebase-consolidation-audit.md#A2 | unit | 真实 AST 导入图 + 双副本 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_runtime_consolidation.py::test_private_symbol_guard","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/** | - | - | no |
-| S-03 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + manifest 提取 | TASK-002 | planned | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_acceptance_manifest.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-04 | docs/codebase-consolidation-audit.md#A4 | integration | 真实 manifest 锁定/校验 + 临时需求目录 | TASK-002 | planned | ["python3","-m","pytest","-q","tests/test_cf_acceptance_manifest.py","tests/test_acceptance_contract_hardening.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-03 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + manifest 提取 | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_acceptance_manifest.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-04 | docs/codebase-consolidation-audit.md#A4 | integration | 真实 manifest 锁定/校验 + 临时需求目录 | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_cf_acceptance_manifest.py","tests/test_acceptance_contract_hardening.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-05 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + Context 文件 | TASK-003 | planned | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_spec_context.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-06 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 active marker + spec-context.yml + hook 子进程 | TASK-003 | planned | ["python3","-m","pytest","-q","tests/test_cf_workflow_service.py","tests/test_cf_spec_context.py","tests/test_cf_user_prompt_hook.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-07 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + SCC 计算 | TASK-004 | planned | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"] | P2 | auto | none | tests/** | - | - | no |
@@ -94,7 +94,7 @@
 
 ## TASK-002: 验收域 manifest 归属收口
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P2
 - **Depends**:
 - **Source**: docs/codebase-consolidation-audit.md#A4
@@ -109,31 +109,35 @@
 
 ### Checklist
 
-- [ ] 将 manifest 提取/校验的纯逻辑放到 `codeflow/acceptance/` 低层模块，`cli/cf_acceptance_manifest.py` 委托调用
-- [ ] `cf_acceptance_schema`、`cf_plan_quality`、`cf_scenarios` 不再导入 `cli.cf_acceptance_manifest`
-- [ ] 删除 `DEPENDENCY_EDGE_ALLOWLIST` 中 `cf_acceptance_schema -> cf_acceptance_manifest`、`cf_plan_quality -> cf_acceptance_manifest`、`cf_scenarios -> cf_acceptance_manifest` 三条
-- [ ] [S-03][unit] 依赖守卫通过；manifest 提取结果与旧入口逐字段一致
-- [ ] [S-04][integration] `acceptance project/manifest/verify-plan` 的锁定、漂移、checks 投影行为不变
-- [ ] [S-04][integration] 真实需求目录下 `verify_plan` 读取次数仍为 TASK/场景/manifest 各 1 次
-- [ ] RULE-scripts-no-bare-except-001 verifier: code-flow validate --json (regex check bare-except)
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 将 manifest 提取/校验的纯逻辑放到 `codeflow/acceptance/` 低层模块，`cli/cf_acceptance_manifest.py` 委托调用
+- [x] `cf_acceptance_schema`、`cf_plan_quality`、`cf_scenarios` 不再导入 `cli.cf_acceptance_manifest`
+- [x] 删除 `DEPENDENCY_EDGE_ALLOWLIST` 中 `cf_acceptance_schema -> cf_acceptance_manifest`、`cf_plan_quality -> cf_acceptance_manifest`、`cf_scenarios -> cf_acceptance_manifest` 三条
+- [x] [S-03][unit] 依赖守卫通过；manifest 提取结果与旧入口逐字段一致
+- [x] [S-04][integration] `acceptance project/manifest/verify-plan` 的锁定、漂移、checks 投影行为不变
+- [x] [S-04][integration] 真实需求目录下 `verify_plan` 读取次数仍为 TASK/场景/manifest 各 1 次
+- [x] RULE-scripts-no-bare-except-001 verifier: code-flow validate --json (regex check bare-except)
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-03 | unit | 真实 AST 导入图、真实 manifest 提取 | 3 条反向边消失；提取字段一致 | `tests/test_runtime_consolidation.py::test_dependency_direction` | `["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_acceptance_manifest.py"]` | planned |
-| S-04 | integration | 真实 manifest 文件、临时需求目录 | 锁定/漂移/投影/单次读取行为不变 | `tests/test_cf_acceptance_manifest.py`、`tests/test_acceptance_contract_hardening.py` | `["python3","-m","pytest","-q","tests/test_cf_acceptance_manifest.py","tests/test_acceptance_contract_hardening.py"]` | planned |
+| S-03 | unit | 真实 AST 导入图、真实 manifest 提取 | 3 条反向边消失；提取字段一致 | `tests/test_runtime_consolidation.py::test_dependency_direction` | `["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_acceptance_manifest.py"]` | verified |
+| S-04 | integration | 真实 manifest 文件、临时需求目录 | 锁定/漂移/投影/单次读取行为不变 | `tests/test_cf_acceptance_manifest.py`、`tests/test_acceptance_contract_hardening.py` | `["python3","-m","pytest","-q","tests/test_cf_acceptance_manifest.py","tests/test_acceptance_contract_hardening.py"]` | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-03 | planned | planned | planned | planned | planned |
-| S-04 | planned | planned | planned | planned | planned |
+| S-03 | FAIL: test_dependency_direction 报 3 条反向边；consumers 仍导入 cli.cf_acceptance_manifest；cf_acceptance_manifest_core 不存在 | PASS: 15 passed（test_dependency_direction + test_cf_acceptance_manifest.py） | tests/test_runtime_consolidation.py::test_dependency_direction; ::test_acceptance_manifest_consumers_use_low_level_owner; tests/test_cf_acceptance_manifest.py::test_low_level_manifest_owner_matches_cli_entry | 真实 AST 导入图（canonical/deployed 双副本）+ 真实临时 TASK 文件提取逐字段比对 | verified |
+| S-04 | N/A: 行为保持型重构；改动前基线 29 passed | PASS: 30 passed（test_cf_acceptance_manifest.py + test_acceptance_contract_hardening.py）；test_verify_plan_reads 断言 TASK/场景/manifest 各读 1 次 | tests/test_acceptance_contract_hardening.py::test_verify_plan_rejects_manifest_drift_without_an_optional_flag; tests/test_runtime_consolidation.py::test_verify_plan_reads | 真实 manifest 文件 + 临时需求目录；锁定/漂移/checks 投影与快照单次读取行为不变 | verified |
+- S-03: verified — automated command passed; run_id=23ff1f5fd0814770833e9f7bf128dfae (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=23ff1f5fd0814770833e9f7bf128dfae (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-27] started
+- [2026-10-27] completed (done)
 
 ---
 
