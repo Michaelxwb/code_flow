@@ -11,9 +11,11 @@ from __future__ import annotations
 
 import hashlib
 import os
+import signal
 import shlex
 import json
 import subprocess
+import sys
 import time
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -101,10 +103,14 @@ def hash_worktree_paths(project_root: str, paths: Sequence[str]) -> Optional[lis
     """Batch-hash worktree file contents (single `git hash-object` process)."""
     if not paths:
         return []
-    completed = subprocess.run(
-        ("git", "-C", project_root, "hash-object", "--stdin-paths"),
-        input="\n".join(paths) + "\n", text=True, capture_output=True,
-    )
+    try:
+        completed = subprocess.run(
+            ("git", "-C", project_root, "hash-object", "--stdin-paths"),
+            input="\n".join(paths) + "\n", text=True, capture_output=True, timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        sys.stderr.write(f"worktree hashing failed: {exc}\n")
+        return None
     if completed.returncode != 0:
         return None
     hashes = completed.stdout.splitlines()
@@ -113,52 +119,63 @@ def hash_worktree_paths(project_root: str, paths: Sequence[str]) -> Optional[lis
     return [(path, sha.strip()) for path, sha in zip(paths, hashes)]
 
 
-def worktree_fingerprint(project_root: str, untracked_filter: Optional[Callable[[str], bool]] = None,
-                         include_untracked: bool = True) -> str:
-    """Content-addressed fingerprint of the working tree, ignoring `.code-flow`.
-
-    Committed content uses blob SHAs; modified/untracked files are hashed from
-    the worktree. Git-ignored files never participate, so build artifacts do
-    not invalidate caches. `untracked_filter` optionally narrows which
-    untracked paths count (validators filter by trigger; acceptance scenarios
-    pass `include_untracked=False` because the workflow commits before gates
-    run and test artifacts must not invalidate evidence).
-    Returns "" when identity cannot be proven (callers must disable reuse).
-    """
-    def _git(*arguments: str) -> subprocess.CompletedProcess:
+def _fingerprint_git(root: str, *arguments: str) -> Optional[subprocess.CompletedProcess]:
+    try:
         return subprocess.run(
-            ("git", "-C", project_root, *arguments),
-            text=True, encoding="utf-8", capture_output=True, check=False,
+            ("git", "-C", root, *arguments), text=True, encoding="utf-8",
+            capture_output=True, check=False, timeout=5,
         )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        sys.stderr.write(f"worktree fingerprint failed: {exc}\n")
+        return None
 
-    tree = _git("ls-tree", "-r", "HEAD")
-    status = _git("status", "--porcelain", "--untracked-files=all")
-    if tree.returncode != 0 or status.returncode != 0:
-        return ""
-    contents: dict[str, str] = {}
-    for line in tree.stdout.splitlines():
-        meta, _, path = line.partition("\t")
-        fields = meta.split()
-        if path and len(fields) >= 3 and not path.startswith(".code-flow/"):
-            contents[path] = fields[2]
+
+def _runtime_path(path: str) -> bool:
+    return path.startswith(".code-flow/") or Path(path).name == ".acceptance-manifest.json"
+
+
+def _fingerprint_changes(status: str, contents: dict[str, str], include_untracked: bool,
+                         untracked_filter: Optional[Callable[[str], bool]]) -> Optional[list[str]]:
     changed: list[str] = []
-    deleted: list[str] = []
-    for line in status.stdout.splitlines():
+    for line in status.splitlines():
         code, path = line[:2], line[3:].strip()
         if " -> " in path:
             path = path.split(" -> ", 1)[1].strip()
-        if not path or path.startswith(".code-flow/"):
+        if not path or _runtime_path(path):
             continue
         if path.startswith('"'):
-            return ""  # quoted/escaped path: fail closed instead of mis-hashing
+            return None  # Quoted/escaped paths cannot be identified reliably.
         if code.strip() == "??":
             if include_untracked and (untracked_filter is None or untracked_filter(path)):
                 changed.append(path)
         elif "D" in code:
             contents.pop(path, None)
-            deleted.append(path)
         else:
             changed.append(path)
+    return changed
+
+
+def worktree_fingerprint(project_root: str, untracked_filter: Optional[Callable[[str], bool]] = None,
+                         include_untracked: bool = True) -> str:
+    """Hash real content including new files, excluding workflow runtime state.
+
+    Staging/committing unchanged bytes does not change identity. Ignored files
+    never participate; test outputs must be Git-ignored. Explicit check inputs
+    are hashed separately. Return an empty identity when it cannot be proven.
+    """
+    tree = _fingerprint_git(project_root, "ls-tree", "-r", "HEAD")
+    status = _fingerprint_git(project_root, "status", "--porcelain", "--untracked-files=all")
+    if tree is None or status is None or tree.returncode != 0 or status.returncode != 0:
+        return ""
+    contents: dict[str, str] = {}
+    for line in tree.stdout.splitlines():
+        meta, _, path = line.partition("\t")
+        fields = meta.split()
+        if path and len(fields) >= 3 and not _runtime_path(path):
+            contents[path] = fields[2]
+    changed = _fingerprint_changes(status.stdout, contents, include_untracked, untracked_filter)
+    if changed is None:
+        return ""
     hashed = hash_worktree_paths(project_root, changed)
     if hashed is None:
         return ""
@@ -169,9 +186,6 @@ def worktree_fingerprint(project_root: str, untracked_filter: Optional[Callable[
         digest.update(path.encode())
         digest.update(b"\0")
         digest.update(contents[path].encode())
-        digest.update(b"\n")
-    for path in sorted(deleted):
-        digest.update(f"deleted:{path}".encode())
         digest.update(b"\n")
     return digest.hexdigest()
 
@@ -189,18 +203,37 @@ def _execute(argv: Sequence[str], cwd: str, timeout: float, deadline: Optional[f
     if env:
         child_env = {**os.environ, **{str(key): str(value) for key, value in env.items()}}
     try:
-        proc = subprocess.run(
-            list(argv), cwd=cwd, capture_output=True, text=True, timeout=max(effective, 0.01),
-            env=child_env,
+        proc = subprocess.Popen(
+            list(argv), cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            env=child_env, start_new_session=os.name != "nt",
         )
+        out, err = proc.communicate(timeout=max(effective, 0.01))
     except subprocess.TimeoutExpired as exc:
-        out = exc.stdout
-        return {
-            "status": "deadline_exceeded" if deadline_bounded else "timeout",
-            "returncode": None,
-            "stdout": (out.decode() if isinstance(out, bytes) else (out or ""))[-4000:],
-            "stderr": "",
-        }
+        return _timeout_result(proc, exc, deadline_bounded)
     except OSError as exc:
         return {"status": "spawn_error", "returncode": None, "stdout": "", "stderr": str(exc)}
-    return {"status": "ok", "returncode": proc.returncode, "stdout": proc.stdout or "", "stderr": proc.stderr or ""}
+    return {"status": "ok", "returncode": proc.returncode, "stdout": out or "", "stderr": err or ""}
+
+
+def _timeout_result(proc: subprocess.Popen, expired: subprocess.TimeoutExpired,
+                    deadline_bounded: bool) -> dict[str, object]:
+    if os.name != "nt":
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass  # The process group already exited between timeout and kill.
+    else:
+        subprocess.run(("taskkill", "/F", "/T", "/PID", str(proc.pid)),
+                       capture_output=True, timeout=2, check=False)
+        proc.kill()
+    try:
+        out, err = proc.communicate(timeout=1)
+    except subprocess.TimeoutExpired:
+        out, err = expired.stdout, expired.stderr
+        for pipe in (proc.stdout, proc.stderr):
+            if pipe is not None:
+                pipe.close()
+    def tail(value: object) -> str:
+        return (value.decode(errors="replace") if isinstance(value, bytes) else str(value or ""))[-4000:]
+    return {"status": "deadline_exceeded" if deadline_bounded else "timeout", "returncode": None,
+            "stdout": tail(out), "stderr": tail(err)}

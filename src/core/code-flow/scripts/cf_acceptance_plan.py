@@ -123,14 +123,20 @@ def _group_scenarios(data: Mapping[str, object], owned_ids: set[str], task_id: s
 def _scoped_quality(data: Mapping[str, object], scheduled: list[dict[str, object]], root: Path
                     ) -> tuple[list[dict[str, object]], list[dict[str, object]], bool]:
     errors = _quality_errors(scheduled)
+    warnings: list[dict[str, object]] = []
     if data.get("scenarios_file"):
         from cf_scenario_quality import quality_report
         strict = [{**item, "level": "e2e", "owner": item.get("defer_owner") or item.get("owner", "")}
                   for item in scheduled]
-        errors = quality_report(strict)["errors"]
-        from cf_check_registration import validate_registration
-        errors.extend(validate_registration(str(root), scheduled, data.get("checks", []))["errors"])
-    warnings: list[dict[str, object]] = []
+        quality_errors = quality_report(strict)["errors"]
+        if data.get("quality_schema", 1) >= 2:
+            from cf_check_registration import validate_registration
+            errors = quality_errors + validate_registration(str(root), scheduled, data.get("checks", []))["errors"]
+        elif scheduled:
+            warnings.extend({**item, "code": f"legacy_{item['code']}"} for item in quality_errors)
+            warnings.append({"code": "legacy_quality_schema", "message":
+                "旧计划保留原 E2E 门禁；补齐 expected_refs/延期信息，运行 acceptance manifest --register-checks 重锁，"
+                "再用 --verify-plan 检查质量和测试登记。新质量检查尚未通过。"})
     gate_required = data.get("e2e_gate") in (1, True, "required")
     if errors and not gate_required:
         # Existing projects upgraded mid-flight remain startable, but every
@@ -168,10 +174,12 @@ def build_e2e_plan(
     if validate_baseline:
         validate_execution_baseline(path, data)
     owned, smoke, deferred = _group_scenarios(data, owned_ids, task_id)
-    scheduled = [*owned, *[item for item in smoke if item["id"] not in owned_ids]]
+    # 延后场景不在编码阶段调度：由需求级 verify-e2e/人工门禁执行。
+    scheduled = [item for item in [*owned, *smoke] if item.get("exec") != "deferred"]
+    deferred.extend(item for item in [*owned, *smoke] if item.get("exec") == "deferred")
     root = next((parent.parent for parent in path.parents if parent.name == ".code-flow"), path.parent)
     errors, warnings, gate_required = _scoped_quality(data, scheduled, root)
-    if not owned and not smoke:
+    if not scheduled:
         warnings.append({
             "code": "no_scheduled_e2e",
             "message": "本 TASK 没有需要编写或执行的 E2E；不要把其他场景补进来。",

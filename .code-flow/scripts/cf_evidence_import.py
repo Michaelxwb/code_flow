@@ -535,7 +535,7 @@ def import_report(
             "exit_code_mismatch", "exit_code", f"CI exit code {exit_code} != report exit code {derived_exit}"
         )
     _require_clean(project)
-    fingerprint = worktree_fingerprint(str(project), include_untracked=False)
+    fingerprint = worktree_fingerprint(str(project))
     if not fingerprint:
         raise EvidenceImportError("input_hash_unavailable", "input_hash", "cannot fingerprint the worktree")
     check_hashes = check_input_hashes(str(project), checks, fingerprint)

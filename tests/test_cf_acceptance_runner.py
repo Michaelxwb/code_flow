@@ -592,6 +592,7 @@ def test_max_failures_stops_after_limit_and_keeps_completed_evidence(tmp_path: P
 
 def _per_check_repo(tmp_path: Path) -> tuple[Path, Path, Path]:
     _git_repo(tmp_path)
+    (tmp_path / "src/a.py").write_text("VALUE = 1\n", encoding="utf-8")
     (tmp_path / "src/b.py").write_text("OTHER = 1\n", encoding="utf-8")
     _git(tmp_path, "add", "-A")
     _git(tmp_path, "commit", "-qm", "checks")
@@ -723,6 +724,7 @@ def test_expired_accepted_risk_blocks(tmp_path: Path) -> None:
 
 def test_multi_check_reuses_each_check_and_writes_central_evidence(tmp_path: Path) -> None:
     _git_repo(tmp_path)
+    (tmp_path / "src/a.py").write_text("A = 1\n", encoding="utf-8")
     (tmp_path / "src/b.py").write_text("B = 1\n", encoding="utf-8")
     _git(tmp_path, "add", "-A")
     _git(tmp_path, "commit", "-qm", "b")

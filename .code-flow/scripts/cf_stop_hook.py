@@ -27,6 +27,7 @@ import cf_log
 from cf_exec_base import build_argv, hash_worktree_paths, remaining_seconds, run_command, execution_session, worktree_fingerprint
 from cf_spec_context import load_active_task
 from cf_task_runtime import run_done_gate
+from cf_stop_guard import StopAlreadyRunning, stop_guard
 from cf_acceptance_evidence import line_status, scenario_line
 from cf_core import (
     _log,
@@ -146,8 +147,24 @@ def _subsection(section: str, heading: str) -> str:
     return match.group(1) if match else ""
 
 
+def _coverage_execution(coverage: str, scenario: str) -> tuple[str, str]:
+    from cf_acceptance_manifest import _column_indexes, _column_value, _kind, _parse_exec
+    columns: dict[str, int] = {}
+    for line in coverage.splitlines():
+        if not line.strip().startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        header = _column_indexes(cells)
+        if "level" in header:
+            columns = header
+        if cells and cells[0] == scenario:
+            fields = cells[1:]
+            return (_kind(_column_value(fields, columns, "level", 1)),
+                    _parse_exec(_column_value(fields, columns, "exec", 9)))
+    return "", ""
+
+
 def _acceptance_gap(task_id: str, section: str, coverage: str) -> str:
-    from cf_acceptance_manifest import _kind
 
     status = re.search(r"(?m)^- \*\*Status\*\*: ([^\n]+)", section)
     # done = implementation finished; verified = E2E/final acceptance closed.
@@ -168,13 +185,9 @@ def _acceptance_gap(task_id: str, section: str, coverage: str) -> str:
     if not contract or not evidence:
         return f"{task_id} 缺少 Acceptance Contract 或 Acceptance Evidence"
     for scenario in scenarios:
-        coverage_rows = [line for line in coverage.splitlines() if scenario_line(line, scenario)]
-        cells = coverage_rows[0].strip().strip("|").split("|") if coverage_rows else []
         task_status = status.group(1).strip()
-        # Reuse the manifest's level parser so annotated levels (`E2E（Playwright）`,
-        # `manual(chrome)`) behave the same in both gates.
-        row_kind = _kind(cells[2]) if len(cells) >= 3 else ""
-        if task_status == "done" and row_kind == "e2e":
+        row_kind, row_exec = _coverage_execution(coverage, scenario)
+        if task_status == "done" and (row_kind == "e2e" or row_exec == "deferred"):
             allowed = {"verified", "e2e_deferred"}
         elif task_status == "done" and row_kind == "manual":
             # manual 人工验收延后到需求级 verify-e2e 由用户一次性确认（confirm-manual 写回 verified）
@@ -186,7 +199,7 @@ def _acceptance_gap(task_id: str, section: str, coverage: str) -> str:
             found = [line_status(line, scenario) for line in body.splitlines() if scenario_line(line, scenario)]
             states.append(found[-1] if found else "")
         if not all(state in allowed for state in states):
-            return f"{task_id} 的 {scenario} 状态未闭环（planned/pending/TBD/failed 或缺少 verified；仅实现阶段 E2E 可 e2e_deferred、manual 可 manual_pending）"
+            return f"{task_id} 的 {scenario} 状态未闭环（planned/pending/TBD/failed 或缺少 verified；仅实现阶段 E2E/显式 deferred 可 e2e_deferred、manual 可 manual_pending）"
     return ""
 
 
@@ -447,17 +460,27 @@ def build_stop_result(project_root: str, sid: str) -> dict[str, str]:
         enforcement = resolve_enforcement(config)
         if enforcement == "inject":
             return {}
-        deadline = time.monotonic() + TOTAL_BUDGET_SECONDS
         active = os.path.exists(os.path.join(project_root, ".code-flow/.active-task.json"))
-        files, payload = _active_stop_scope(project_root, sid, enforcement, deadline) if active else ([], {})
-        if not payload and resolve_quality_loop(config)["stop_check"]:
-            if not active:
-                files = _root_scoped_files(project_root, session_edited_files(project_root, sid))
-            payload = _stop_feedback(project_root, sid, files, enforcement, deadline)
-        return payload
+        enabled = resolve_quality_loop(config)["stop_check"]
+        if not active and not enabled:
+            return {}
+        with stop_guard(project_root, sid):
+            return _guarded_stop_result(project_root, sid, enforcement, active, enabled)
+    except StopAlreadyRunning as exc:
+        return {"decision": "block", "reason": str(exc)}
     except Exception as exc:
         _log(f"cf_stop_hook error: {exc}")
         return {"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: {exc}"} if enforcement == "required" else {}
+
+
+def _guarded_stop_result(root: str, sid: str, enforcement: str, active: bool, enabled: bool) -> dict[str, str]:
+    deadline = time.monotonic() + TOTAL_BUDGET_SECONDS
+    files, payload = _active_stop_scope(root, sid, enforcement, deadline) if active else ([], {})
+    if not payload and enabled:
+        if not active:
+            files = _root_scoped_files(root, session_edited_files(root, sid))
+        payload = _stop_feedback(root, sid, files, enforcement, deadline)
+    return payload
 
 
 def process_stop(data: dict[str, object], project_root: str) -> None:

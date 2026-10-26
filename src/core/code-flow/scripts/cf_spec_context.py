@@ -42,6 +42,7 @@ DEFAULT_ACTIVE_EXCLUDES = (
     ".code-flow/.session-log.jsonl",
     ".code-flow/.active-task.json",
     ".code-flow/.active-task.lock",
+    ".code-flow/.stop.lock",
     ".code-flow/worktrees/*",
     ".code-flow/sessions/*",
 )
@@ -1423,14 +1424,20 @@ def _application_ref(task_dir: str, value: Mapping[str, object]) -> ArtifactRef:
     target = (base / artifact).resolve()
     if base != target and base not in target.parents:
         raise ContextError("artifact_outside_task", "applications[].artifact", artifact, task_dir)
+    from cf_rule_readiness import artifact_problem
+    section = _string(value.get("section_id"), "applications[].section_id", "")
+    item = _string(value.get("item_id"), "applications[].item_id", "")
+    problem = artifact_problem(str(base), artifact, section, item)
+    if problem:
+        raise ContextError(problem, "applications[]", f"{artifact}#{section}/{item}", task_dir)
     try:
         artifact_hash = hashlib.sha256(target.read_bytes()).hexdigest()
     except OSError as exc:
         raise ContextError("artifact_read_error", "applications[].artifact", str(exc), str(target)) from exc
     return ArtifactRef(
         artifact,
-        _string(value.get("section_id"), "applications[].section_id", ""),
-        _string(value.get("item_id"), "applications[].item_id", ""),
+        section,
+        item,
         artifact_hash,
     )
 
@@ -1949,10 +1956,10 @@ def _doctor_command(args: argparse.Namespace) -> dict[str, object]:
     findings.extend(_doctor_legacy(root))
     from cf_rule_readiness import applied_findings, convention_findings
     from cf_spec_gate import result_to_data, validate_stage
-    findings.extend(applied_findings(context, str(root)))
+    findings.extend(applied_findings(context, str(root), task_dir=str(task_dir)))
     findings.extend(convention_findings(str(root), [binding.path for binding in context.bindings]))
     report = _doctor_report(context.task, sha, marker, runtime, findings)
-    report["readiness"] = {stage: result_to_data(validate_stage(context, stage))
+    report["readiness"] = {stage: result_to_data(validate_stage(context, stage, root=str(root), task_dir=str(task_dir)))
                            for stage in ("plan", "code", "review")}
     return report
 

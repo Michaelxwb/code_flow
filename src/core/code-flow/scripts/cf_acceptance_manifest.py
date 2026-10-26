@@ -486,23 +486,23 @@ def extract_manifest(task_file: str, kind_fn: Callable[[str], str] = _kind,
     return _extract_rows(task_file, kind_fn, contract_fallback, scenarios_file, merge_source)
 
 
-def write_manifest(task_file: str, output: str, scenarios_file: str = "") -> dict[str, object]:
-    if not scenarios_file and Path(output).is_file():
-        # A re-lock without an explicit source must reuse the path recorded by
-        # the previous lock; task stem inference is not enough when the task
-        # file and requirement source names differ.
+def _manifest_source(task_file: str, output: str, scenarios_file: str) -> str:
+    if scenarios_file:
+        return scenarios_file
+    if Path(output).is_file():
         try:
             stored = json.loads(Path(output).read_text(encoding="utf-8"))
             recorded = stored.get("scenarios_file") if isinstance(stored, Mapping) else None
-        except (OSError, ValueError, TypeError):
+        except (OSError, ValueError, TypeError) as exc:
+            sys.stderr.write(f"acceptance relock source unavailable: {exc}\n")
             recorded = None
         if isinstance(recorded, str) and recorded.strip():
-            scenarios_file = str((Path(output).parent / recorded).resolve())
-    if not scenarios_file:
-        candidate = Path(task_file).with_suffix(".scenarios.md")
-        if candidate.is_file():
-            scenarios_file = str(candidate)
-    manifest = extract_manifest(task_file, scenarios_file=scenarios_file)
+            return str((Path(output).parent / recorded).resolve())
+    candidate = Path(task_file).with_suffix(".scenarios.md")
+    return str(candidate) if candidate.is_file() else ""
+
+
+def _project_source_checks(manifest: dict[str, object], scenarios_file: str) -> None:
     if scenarios_file:
         from cf_scenarios import parse_scenarios
         source = parse_scenarios(scenarios_file)
@@ -519,6 +519,13 @@ def write_manifest(task_file: str, output: str, scenarios_file: str = "") -> dic
                 raise ValueError(f"unknown_check:{scenario_id}:{','.join(unknown)}")
             if checks:
                 row["checks"] = checks
+
+
+def write_manifest(task_file: str, output: str, scenarios_file: str = "", *,
+                   register_checks: bool = False, registration_file: str = "") -> dict[str, object]:
+    scenarios_file = _manifest_source(task_file, output, scenarios_file)
+    manifest = extract_manifest(task_file, scenarios_file=scenarios_file)
+    _project_source_checks(manifest, scenarios_file)
     target = Path(output)
     if scenarios_file:
         source_path = Path(scenarios_file).resolve()
@@ -526,15 +533,19 @@ def write_manifest(task_file: str, output: str, scenarios_file: str = "") -> dic
             manifest["scenarios_file"] = str(source_path.relative_to(target.parent.resolve()))
         except ValueError:
             manifest["scenarios_file"] = str(source_path)
-    # Every manifest written by this version opts into the E2E precision gate.
-    # Old manifests are only read; they keep the legacy warning path until a
-    # plan re-lock migrates them.
+    # Re-lock explicitly opts into current quality; reading old plans does not.
     manifest["e2e_gate"] = 1
+    manifest["quality_schema"] = 2
+    _preserve_check_config(target, manifest)
+    if register_checks or registration_file:
+        from cf_acceptance_registration import register_checks as configure
+        from cf_evidence_store import discover_project_root
+        root = discover_project_root(task_file)
+        manifest["registration"] = configure(manifest, str(root), registration_file)
     _preserve_runtime_state(task_file, target, manifest)
     for scenario in manifest.get("scenarios", []):
         if isinstance(scenario, dict) and scenario.get("status") in ("verified", "failed") and not scenario.get("evidence"):
             scenario["status"] = "planned"
-    _preserve_check_config(target, manifest)
     try:
         manifest["task_file"] = str(Path(task_file).resolve().relative_to(target.parent.resolve()))
     except ValueError:
@@ -642,37 +653,43 @@ def _preserve_check_config(target: Path, manifest: dict[str, object]) -> None:
 
 
 def _preserve_runtime_state(task_file: str, target: Path, manifest: dict[str, object]) -> None:
-    """Re-locking an unchanged plan keeps execution history.
-
-    A plain re-extraction dropped status/revision/evidence/runs, so archive's
-    documented re-lock silently un-verified terminal scenarios. Preserve those
-    fields only when the existing manifest still validates against the task;
-    drift starts clean (stale evidence must not be trusted).
-    """
+    """Keep history per scenario; changed contracts become visibly stale."""
     if not target.is_file():
         return
     try:
-        valid, _ = validate_manifest(
-            task_file, str(target), allow_missing_e2e_gate=True
-        )
-    except (OSError, ValueError, json.JSONDecodeError):
+        previous = load_manifest(target)
+    except (OSError, ValueError) as exc:
+        manifest["relock"] = {"warnings": [f"previous_manifest_invalid: {exc}"]}
         return
-    if not valid:
+    previous_task = previous.get("task_file")
+    if previous_task and (target.parent / str(previous_task)).resolve() != Path(task_file).resolve():
+        manifest["relock"] = {"warnings": ["previous_manifest_task_mismatch"]}
         return
-    stored = {
-        item.get("id"): item
-        for item in load_manifest(target).get("scenarios", [])
-        if isinstance(item, dict) and isinstance(item.get("id"), str)
-    }
+    stored = {item["id"]: item for item in previous["scenarios"]}
+    current_ids = {item["id"] for item in manifest["scenarios"]}
+    report: dict[str, object] = {"preserved": [], "stale": [], "removed": sorted(set(stored) - current_ids)}
     for item in manifest.get("scenarios", []):
-        if not isinstance(item, dict):
-            continue
         old = stored.get(item.get("id"))
         if not isinstance(old, dict):
             continue
         for key in _RUNTIME_SCENARIO_FIELDS:
             if key in old:
                 item[key] = old[key]
+        changed = _scenario_contract(old, previous) != _scenario_contract(item, manifest)
+        if changed and any(key in old for key in ("evidence", "runs")):
+            item["status"] = "stale"
+            item["stale_checks"] = scenario_check_ids(item)
+            report["stale"].append(item["id"])
+        else:
+            report["preserved"].append(item["id"])
+    manifest["relock"] = report
+
+
+def _scenario_contract(row: Mapping[str, object], manifest: Mapping[str, object]) -> dict[str, object]:
+    ids = scenario_check_ids(row)
+    checks = {item["id"]: item for item in manifest.get("checks", [])}
+    return {"scenario": {key: row.get(key) for key in _IMMUTABLE_SCENARIO_FIELDS},
+            "checks": {key: checks.get(key) for key in ids}}
 
 
 _IMMUTABLE_SCENARIO_FIELDS = (
@@ -829,6 +846,10 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--task-file", default="")
     parser.add_argument("--output", default="")
     parser.add_argument("--scenarios-file", default="")
+    parser.add_argument("--register-checks", action="store_true",
+                        help="collect pytest/Playwright tests and register checks before writing")
+    parser.add_argument("--registration-file", default="",
+                        help="JSON check registration overrides for custom collectors")
     parser.add_argument("--verify-plan", action="store_true")
     parser.add_argument("--require-scenarios", action="store_true")
     parser.add_argument("--task-dir", default="")
@@ -852,20 +873,12 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
     try:
         if (args.project or args.verify_plan) and not args.task_file:
             raise ValueError(f"{'--project' if args.project else '--verify-plan'} requires --task-file")
+        if args.verify_plan and (args.register_checks or args.registration_file):
+            raise ValueError("--verify-plan is read-only; register checks while writing the manifest")
+        if (args.accept_risk or args.record_manual) and (args.register_checks or args.registration_file):
+            raise ValueError("check registration requires writing the manifest")
         if args.project:
-            output = args.output or str(Path(args.task_file).with_name(".acceptance-manifest.json"))
-            manifest = write_manifest(args.task_file, output, args.scenarios_file)
-            projected = sum(
-                1 for item in manifest.get("scenarios", [])
-                if isinstance(item, dict) and item.get("checks")
-            )
-            stdout.write(json.dumps({
-                "ok": True,
-                "manifest": output,
-                "scenarios": len(manifest.get("scenarios", [])),
-                "checks": len(manifest.get("checks", [])),
-                "projected_scenarios": projected,
-            }, ensure_ascii=False))
+            stdout.write(json.dumps(_write_manifest_action(args), ensure_ascii=False))
             return 0
         if args.accept_risk:
             result = record_accepted_risk(
@@ -887,16 +900,26 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
             result = verify_plan(args.task_dir, args.task_file, args.require_scenarios)
             stdout.write(json.dumps(result, ensure_ascii=False))
             return 0 if result["decision"] == "pass" else 3
-        if not args.output:
-            raise ValueError("--output is required unless --verify-plan is used")
-        if not args.task_file:
-            raise ValueError("--task-file is required")
-        manifest = write_manifest(args.task_file, args.output, args.scenarios_file)
-        stdout.write(json.dumps({"ok": True, "scenarios": len(manifest["scenarios"])}, ensure_ascii=False))
+        stdout.write(json.dumps(_write_manifest_action(args), ensure_ascii=False))
         return 0
     except (OSError, ValueError) as exc:
-        stdout.write(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
+        stdout.write(json.dumps({"ok": False, "error": str(exc),
+            **({"registration": exc.report} if hasattr(exc, "report") else {})}, ensure_ascii=False))
         return 2
+
+
+def _write_manifest_action(args: argparse.Namespace) -> dict[str, object]:
+    output = args.output or (str(Path(args.task_file).with_name(".acceptance-manifest.json")) if args.project else "")
+    if not output:
+        raise ValueError("--output is required unless --verify-plan is used")
+    if not args.task_file:
+        raise ValueError("--task-file is required")
+    manifest = write_manifest(args.task_file, output, args.scenarios_file,
+        register_checks=args.register_checks, registration_file=args.registration_file)
+    return {"ok": True, "manifest": output, "scenarios": len(manifest["scenarios"]),
+            "checks": len(manifest["checks"]),
+            "projected_scenarios": sum(1 for row in manifest["scenarios"] if row.get("checks")),
+            "relock": manifest.get("relock", {}), "registration": manifest.get("registration", {})}
 
 
 if __name__ == "__main__":

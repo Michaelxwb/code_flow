@@ -789,8 +789,10 @@ def _e2e_preflight(manifest: Path, tasks: Sequence[tuple[Path, str, str]],
     bound_task = (manifest.parent / str(data.get("task_file", ""))).resolve()
     if {task.resolve() for task, _, _ in tasks} != {bound_task}:
         return None, _layer_result("block", reason="acceptance_manifest_task_mismatch")
+    from cf_acceptance_runner import _owned
+    data = {**data, "scenarios": _owned(data["scenarios"], ",".join(task for _, task, _ in tasks))}
     if not requirement_gate:
-        if not any(row.get("kind") == "e2e" for row in data["scenarios"]):
+        if not any(row.get("kind") == "e2e" or row.get("exec") == "deferred" for row in data["scenarios"]):
             return None, _nothing_to_verify()
         return data, None
     selected_ids: Optional[set[str]] = None
@@ -800,6 +802,20 @@ def _e2e_preflight(manifest: Path, tasks: Sequence[tuple[Path, str, str]],
             str(item.get("id")) for item in _select_profile(data, root, profile)["scenarios"]
             if isinstance(item, Mapping)
         }
+    functional_required, manual_scenarios = _pending_scenario_rows(data, selected_ids)
+    if functional_required:
+        return None, _layer_result("block", reason="functional_or_manual_evidence_missing",
+                                   scenarios=functional_required)
+    if manual_scenarios:
+        return None, _layer_result(
+            "block", reason="manual_confirmation_required", manual_scenarios=manual_scenarios,
+            next=("向用户展示待确认清单并取得明确回复后，运行 confirm-manual 批量写入确认，再重跑 verify；"
+                  "Agent 不得代确认。"))
+    return data, None
+
+
+def _pending_scenario_rows(data: Mapping[str, object], selected_ids: Optional[set[str]]
+                           ) -> tuple[list[object], list[dict[str, object]]]:
     functional_required: list[object] = []
     manual_scenarios: list[dict[str, object]] = []
     checks = {
@@ -830,24 +846,13 @@ def _e2e_preflight(manifest: Path, tasks: Sequence[tuple[Path, str, str]],
             })
         elif row.get("kind", "functional") != "e2e" and row.get("exec") != "deferred":
             functional_required.append(row["id"])
-    if functional_required:
-        return None, _layer_result("block", reason="functional_or_manual_evidence_missing",
-                                   scenarios=functional_required)
-    if manual_scenarios:
-        return None, _layer_result(
-            "block",
-            reason="manual_confirmation_required",
-            manual_scenarios=manual_scenarios,
-            next=("向用户展示待确认清单并取得明确回复后，运行 confirm-manual 批量写入确认，再重跑 verify；"
-                  "Agent 不得代确认。"),
-        )
-    return data, None
+    return functional_required, manual_scenarios
 
 
 def _stale_functional_rows(data: Mapping[str, object], root: str) -> list[str]:
     """Functional rows claiming verified but recorded against different content."""
     from cf_acceptance_evidence import stale_scenario_checks
-    fingerprint = worktree_fingerprint(root, include_untracked=False)
+    fingerprint = worktree_fingerprint(root)
     checks = {
         str(item.get("id")): item for item in data.get("checks", [])
         if isinstance(item, Mapping) and item.get("id")
@@ -926,6 +931,7 @@ def _e2e_layer(root: str, directory: str, tasks: Sequence[tuple[Path, str, str]]
     try:
         acceptance = run_manifest(
             str(manifest), root, write_evidence=True,
+            owner=",".join(str(item[1]) for item in tasks),
             include_e2e=bool(stale or unverified) or profile in ("full", "smoke"),
             only_e2e=not (stale or unverified) and profile not in ("full", "smoke"),
             profile=profile, resume=resume, deadline=deadline,

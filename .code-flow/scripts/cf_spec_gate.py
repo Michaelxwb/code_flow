@@ -192,6 +192,7 @@ def validate_stage(
     allow_cheap_skips: bool = False,
     allow_deferred_skips: bool = False,
     root: str = "",
+    task_dir: str = "",
 ) -> GateResult:
     del artifact, task_id
     current = now or datetime.now(timezone.utc)
@@ -206,7 +207,7 @@ def validate_stage(
     if root:
         from cf_rule_readiness import applied_findings
         errors.extend(GateIssue(str(item["code"]), "", "", stage, str(item["message"]))
-                      for item in applied_findings(context, root, stage))
+                      for item in applied_findings(context, root, stage, task_dir=task_dir))
     refs = tuple(sorted({f"{item.spec_id}#{item.rule_ref}" for item in (*errors, *warnings)}))
     return GateResult("block" if errors else "pass", tuple(errors), tuple(warnings), refs)
 
@@ -311,7 +312,7 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
         directory = Path(args.task_dir).resolve()
         root = next((parent.parent for parent in (directory, *directory.parents)
                      if parent.name == ".code-flow"), directory)
-        result = validate_stage(context, args.stage, task_id=args.task, root=str(root))
+        result = validate_stage(context, args.stage, task_id=args.task, root=str(root), task_dir=args.task_dir)
         phase_timing("gate.validate_stage", phase_started)
         if args.stage == "plan" and args.artifact:
             phase_started = time.monotonic()

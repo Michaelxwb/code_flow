@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from shlex import quote
 from typing import Mapping
 
 
@@ -62,10 +63,13 @@ def verify_plan(directory: str, task_file: str, require_scenarios: bool = False)
                     "registration_status": "passed" if registration["ok"] else "failed"})
     design = lint_requirement(task_file, source_file)
     context = load_context(str(Path(directory) / "spec-context.yml"))
-    gate = validate_stage(context, "plan", root=str(_root(Path(directory))))
+    gate = validate_stage(context, "plan", root=str(_root(Path(directory))), task_dir=directory)
     coverage = validate_plan_coverage(context, task_file)
     blocked = (not quality["ok"] or projection or not registration["ok"] or
                design["decision"] != "pass" or gate.decision != "pass" or coverage.decision != "pass")
-    return {"decision": "block" if blocked else "pass", "gate": result_to_data(gate),
+    recovery = (["code-flow spec refresh --task-dir " + quote(str(Path(directory))) +
+                 " --root " + quote(str(_root(Path(directory)))) + " --json"]
+                if any(issue.code == "rule_artifact_stale" for issue in gate.errors) else [])
+    return {"decision": "block" if blocked else "pass", "gate": result_to_data(gate), "next": recovery,
             "coverage": result_to_data(coverage), "e2e_quality": quality,
             "registration": registration, "design_lint": design, "projection": projection}

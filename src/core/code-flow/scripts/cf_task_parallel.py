@@ -474,7 +474,7 @@ def _missing_evidence(
     required = _required_check_map(manifest, task)
     if not required:
         return [], []
-    expected = worktree_fingerprint(str(worktree), include_untracked=False)
+    expected = worktree_fingerprint(str(worktree))
     if not expected:
         raise ParallelError(
             "evidence_hash_unavailable",
@@ -543,12 +543,20 @@ def _reject_unfinished(task: str, status: str, path: Path, task_file: str) -> No
     )
 
 
-def _require_evidence(task: str, path: Path, task_file: str) -> list[str]:
+def _require_evidence(task: str, path: Path, task_file: str, files: Sequence[str] = ()) -> list[str]:
     context_path = path / Path(task_file).parent / "spec-context.yml"
     if context_path.is_file():
         from cf_spec_context import load_context
         from cf_workflow_service import task_truth_issues
-        issues = task_truth_issues(str(path / task_file), task, load_context(str(context_path)))
+        from cf_task_runtime import _task_scope_specs
+        context = load_context(str(context_path))
+        issues = task_truth_issues(str(path / task_file), task, context)
+        if issues:
+            try:
+                scope = _task_scope_specs(str(path), str(context_path.parent), task, tuple(files))
+            except ValueError as exc:
+                raise ParallelError("task_scope_invalid", f"{task}: {exc}") from exc
+            issues = task_truth_issues(str(path / task_file), task, context, spec_ids=scope)
         if issues:
             raise ParallelEvidenceError(
                 "task_status_truth_mismatch",
@@ -605,8 +613,8 @@ def _collect_one(root: Path, entry: dict[str, object], base_head: str, task_file
     head = _run_git(path, ("rev-parse", "HEAD")).strip()
     if head == base_head:
         raise ParallelError("no_commits", f"{task}: worktree 无新提交")
-    required = _require_evidence(task, path, task_file)
     files = _run_git(root, ("diff", "--name-only", f"{base_head}..{branch}")).splitlines()
+    required = _require_evidence(task, path, task_file, files)
     return {"task": task, "branch": branch, "path": str(path), "head": head,
             "status": status, "files": sorted(item for item in files if item),
             "evidence": {"required_checks": required, "verified_checks": required}}
@@ -796,7 +804,8 @@ def _merge_one(root: Path, main_branch: str, entry: dict, task_file: str) -> dic
             detail = ", ".join(f"{item['check_id']}({','.join(item['fields'])})" for item in conflicts)
             raise ParallelError("check_conflict", f"{task}: check 配置冲突: {detail}",
                                 {"conflicts": conflicts})
-    _require_evidence(task, path, task_file)
+    changed = _run_git(path, ("diff", "--name-only", f"{main_branch}...HEAD")).splitlines()
+    _require_evidence(task, path, task_file, changed)
     if _status_paths(path):
         raise ParallelError("worktree_dirty", f"{task}: worktree 有未提交改动，先运行 collect")
     if _branch_is_ancestor(root, branch):
@@ -961,14 +970,14 @@ def merge(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, 
         entries = [item for item in entries if item.get("task") in wanted]
     entries.sort(key=lambda item: str(item.get("task", "")))
     task_file = str(meta["task_file"])
-    before_hash = worktree_fingerprint(str(root), include_untracked=False)
+    before_hash = worktree_fingerprint(str(root))
     results = _merge_entries(root, main_branch, entries, task_file)
     ok = bool(results) and all(item.get("ok") for item in results)
     payload: dict[str, object] = {
         "ok": ok, "action": "merge", "run_id": run_id,
         "main_branch": main_branch, "results": results,
     }
-    after_hash = worktree_fingerprint(str(root), include_untracked=False)
+    after_hash = worktree_fingerprint(str(root))
     if after_hash and (before_hash != after_hash or any(row.get("status") == "merged" for row in results)):
         payload["input_hash"] = after_hash
         payload["stale"] = _stale_after_merge(root, task_file, after_hash)

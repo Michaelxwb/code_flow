@@ -435,6 +435,7 @@ def _write_target_ignore(staging: Path) -> None:
         "# >>> code-flow:runtime schema=1\n"
         ".active-task.json\n"
         ".active-task.lock\n"
+        ".stop.lock\n"
         ".catalog-state.json\n"
         ".session-state.json\n"
         ".context-state.json\n"

@@ -148,8 +148,8 @@ def test_relock_preserves_runtime_state(tmp_path: Path) -> None:
     assert validate_manifest(str(task), str(target)) == (True, "")
 
 
-def test_relock_after_task_edit_drops_stale_evidence(tmp_path: Path) -> None:
-    """任务事实变化（作用域漂移）时重锁必须丢弃旧证据。"""
+def test_relock_after_task_edit_preserves_history_as_stale(tmp_path: Path) -> None:
+    """任务事实变化时保留历史，stale 状态阻止旧证据继续算通过。"""
     task = _task_file(
         tmp_path,
         "| S-01 | d.md#x | integration | real | TASK-001 | planned |",
@@ -169,8 +169,8 @@ def test_relock_after_task_edit_drops_stale_evidence(tmp_path: Path) -> None:
 
     write_manifest(str(task), str(target))
     again = json.loads(target.read_text(encoding="utf-8"))["scenarios"][0]
-    assert again.get("evidence") is None
-    assert again["status"] == "planned"
+    assert again["evidence"]["exit_code"] == 0
+    assert again["status"] == "stale"
 
 
 # --- 3. 无自有场景 TASK ---

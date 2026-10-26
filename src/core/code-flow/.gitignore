@@ -1,6 +1,7 @@
 # >>> code-flow:runtime schema=1
 .active-task.json
 .active-task.lock
+.stop.lock
 .catalog-state.json
 .session-state.json
 .context-state.json

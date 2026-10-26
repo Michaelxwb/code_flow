@@ -32,7 +32,7 @@ def _repo(tmp_path: Path) -> Path:
     _git(root, "config", "user.name", "review")
     (root / "src").mkdir()
     (root / "src/app.py").write_text("VALUE = 1\n", encoding="utf-8")
-    (root / ".gitignore").write_text("report.tmp\n", encoding="utf-8")
+    (root / ".gitignore").write_text("report.tmp\nruns.txt\n", encoding="utf-8")
     _git(root, "add", "-A")
     _git(root, "commit", "-qm", "init")
     return root

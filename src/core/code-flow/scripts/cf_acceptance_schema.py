@@ -230,6 +230,9 @@ def load_manifest(path: Path) -> dict[str, object]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError("invalid acceptance manifest: expected object")
+    quality_schema = data.get("quality_schema", 1)
+    if type(quality_schema) is not int or quality_schema not in (1, 2):
+        raise ValueError(f"unsupported acceptance quality_schema: {quality_schema!r}")
     validate_scenarios(data.get("scenarios"))
     if "checks" in data:
         validate_checks(data.get("checks"))

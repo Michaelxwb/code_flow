@@ -303,9 +303,11 @@ def _owned(items: list[Mapping[str, object]], owner: str) -> list[Mapping[str, o
     the final (archive/E2E) gate."""
     if not owner:
         return items
+    # 逗号分隔时按多个 owner 过滤：批次 smoke 只跑本批已并入 TASK 的场景。
+    owners = {value.strip() for value in owner.split(",") if value.strip()}
     kept = [
         item for item in items
-        if not isinstance(item.get("owner"), str) or not item.get("owner") or item.get("owner") == owner
+        if not isinstance(item.get("owner"), str) or not item.get("owner") or item.get("owner") in owners
     ]
     kept_ids = {str(item.get("id")) for item in kept}
     pruned: list[Mapping[str, object]] = []
@@ -1374,55 +1376,45 @@ def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
     return collapsed
 
 
-def run_manifest(
-    manifest_file: str,
-    root: str,
-    write_evidence: bool = False,
-    include_e2e: bool = False,
-    owner: str = "",
-    deadline: Optional[float] = None,
-    only_e2e: bool = False,
-    use_cache: bool = True,
-    run_id: str = "",
-    resume: bool = False,
-    max_failures: int = 0,
-    fail_fast: bool = False,
-    jobs: int = 0,
-    profile: str = "full",
-    force_ids: Sequence[str] = (),
-) -> dict[str, object]:
+def _prepare_manifest(manifest_file: str, root: str, profile: str, force_ids: Sequence[str], owner: str
+                      ) -> tuple[dict[str, object], dict[str, object], list[Mapping[str, object]], Optional[dict[str, object]]]:
     if profile not in ("smoke", "changed", "full"):
         raise ValueError(f"invalid verify profile: {profile}")
     full_data = load_manifest(Path(manifest_file))
     data = _select_profile(full_data, root, profile, force_ids)
     validate_execution_baseline(Path(manifest_file), full_data)
-    scenarios = data["scenarios"]
-    _ordered(scenarios)  # Validate the complete DAG before owner filtering.
-    items = _owned(scenarios, owner)
+    _ordered(data["scenarios"])  # Validate the complete DAG before owner filtering.
+    items = _owned(data["scenarios"], owner)
+    noop = None
     if not items:
         if owner:
-            # TASK 无自有场景（Acceptance-Refs: N/A / 场景全归他人）：本任务执行验收
-            # 视为空集通过；"零可执行场景"阻断只针对整体无场景的 manifest。
-            return {"decision": "pass", "results": [], "reason": "no_owned_scenarios"}
-        if profile != "full" and full_data.get("scenarios"):
-            # The plan has executable scenarios, but this diff matches none of
-            # them. That is a clean no-op, not a malformed plan.
-            return {"decision": "pass", "results": [], "reason": "no_affected_scenarios",
+            noop = {"decision": "pass", "results": [], "reason": "no_owned_scenarios"}
+        elif profile != "full" and full_data.get("scenarios"):
+            noop = {"decision": "pass", "results": [], "reason": "no_affected_scenarios",
                     "profile": profile}
+    return full_data, data, items, noop
+
+
+def run_manifest(manifest_file: str, root: str, write_evidence: bool = False,
+                 include_e2e: bool = False, owner: str = "", deadline: Optional[float] = None,
+                 only_e2e: bool = False, use_cache: bool = True, run_id: str = "", resume: bool = False,
+                 max_failures: int = 0, fail_fast: bool = False, jobs: int = 0,
+                 profile: str = "full", force_ids: Sequence[str] = ()) -> dict[str, object]:
+    full_data, data, items, noop = _prepare_manifest(manifest_file, root, profile, force_ids, owner)
+    if noop is not None:
+        return noop
     ordered = _ordered(items)
     expanded, aggregates = _expand_multi_checks(ordered)
-    rows = _scenario_rows(scenarios)
+    rows = _scenario_rows(data["scenarios"])
     check_list, check_map = _check_plan(data)
     for item in items:
         if isinstance(item, dict):
             item["check_config"] = check_map.get(str(item.get("check", "")), {})
     run_key = resolve_run_id(run_id)
     namespace = _run_namespace(str(root), check_map, owner, items, run_key)
-    fingerprint = worktree_fingerprint(str(root), include_untracked=False) if use_cache else ""
+    fingerprint = worktree_fingerprint(str(root)) if use_cache else ""
     check_fingerprints = _check_input_fingerprints(str(root), check_map, fingerprint) if use_cache else {}
-    fingerprints = {
-        check_id: value["input_hash"] for check_id, value in check_fingerprints.items()
-    }
+    fingerprints = {check_id: value["input_hash"] for check_id, value in check_fingerprints.items()}
     scenario_fingerprints = _scenario_fingerprints(data, fingerprints, fingerprint)
     engine_fingerprints = {**fingerprints, **scenario_fingerprints}
     limit = 1 if fail_fast else max(0, int(max_failures))
@@ -1437,8 +1429,7 @@ def run_manifest(
     for result, item in zip(results, ordered):
         if isinstance(result, dict) and isinstance(item, dict) and item.get("check_config"):
             result["check_config"] = item.get("check_config")
-    # An interruption keeps the manifest untouched: the checkpoint sidecar is
-    # the only progress record, so rows are never partially verified.
+    # Only the checkpoint sidecar records progress during an interruption.
     if not state.get("interrupted") and (write_evidence or resume):
         persist_results(Path(manifest_file), full_data, results, fingerprint=fingerprint, run_id=run_key)
     outcome = _payload(items, check_list, check_map, results, state)

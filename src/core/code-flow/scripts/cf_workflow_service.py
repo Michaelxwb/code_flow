@@ -67,7 +67,8 @@ def section_status(section: str) -> str:
     return match.group(1).strip() if match else "draft"
 
 
-def task_truth_issues(task_file: str, task_id: str, context: SpecContext) -> tuple[str, ...]:
+def task_truth_issues(task_file: str, task_id: str, context: SpecContext,
+                      spec_ids: Optional[set[str]] = None) -> tuple[str, ...]:
     """Return required Rule refs whose status contradicts the Markdown claim.
 
     The Markdown is a view. A TASK claiming done/verified while its required
@@ -86,6 +87,12 @@ def task_truth_issues(task_file: str, task_id: str, context: SpecContext) -> tup
                 continue
             stage_status = rule.stage_status.get(rule.verifier_stage)
             actual = stage_status.status if stage_status is not None else "missing"
+            if status == "done" and spec_ids is not None and actual == "unverified":
+                from cf_spec_gate import evidence_deferral_kind
+                latest = stage_status.evidence[-1] if stage_status.evidence else None
+                deferred = evidence_deferral_kind(latest)
+                if deferred == "heavy" or (deferred == "review_stage" and binding.spec_id not in spec_ids):
+                    continue
             if actual != "verified":
                 issues.append(f"{binding.spec_id}#{rule.ref}: {actual}")
     return tuple(sorted(set(issues)))

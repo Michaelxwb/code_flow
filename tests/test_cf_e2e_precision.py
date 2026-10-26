@@ -337,8 +337,8 @@ def test_start_plan_keeps_owned_and_smoke_but_defers_the_rest(tmp_path: Path) ->
         encoding="utf-8",
     )
     rows = [
-        _scenario(id="S-01", owner="TASK-001"),
-        _scenario(id="S-02", owner="TASK-002", smoke=True, trigger_paths=[]),
+        _scenario(id="S-01", owner="TASK-001", exec="auto"),
+        _scenario(id="S-02", owner="TASK-002", smoke=True, trigger_paths=[], exec="auto"),
         _scenario(id="S-03", owner="TASK-002", trigger_paths=["src/other/**"]),
     ]
     manifest = tmp_path / ".acceptance-manifest.json"
@@ -382,7 +382,7 @@ def test_start_plan_blocks_owned_e2e_without_trigger_scope(tmp_path: Path) -> No
     manifest = tmp_path / ".acceptance-manifest.json"
     manifest.write_text(
         json.dumps({"schema": 3, "e2e_gate": 1, "checks": [], "scenarios": [
-            _scenario(id="S-01", owner="TASK-001", trigger_paths=[], why_e2e="-")
+            _scenario(id="S-01", owner="TASK-001", trigger_paths=[], why_e2e="-", exec="auto")
         ]}),
         encoding="utf-8",
     )
@@ -489,7 +489,7 @@ def test_legacy_manifest_warns_instead_of_blocking_start(tmp_path: Path) -> None
     manifest = tmp_path / ".acceptance-manifest.json"
     manifest.write_text(
         json.dumps({"schema": 3, "checks": [], "scenarios": [
-            _scenario(id="S-01", owner="TASK-001", trigger_paths=[], why_e2e="")
+            _scenario(id="S-01", owner="TASK-001", trigger_paths=[], why_e2e="", exec="auto")
         ]}),
         encoding="utf-8",
     )

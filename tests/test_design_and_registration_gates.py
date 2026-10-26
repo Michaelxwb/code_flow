@@ -211,7 +211,7 @@ def test_suite_and_markers_cannot_be_claimed_without_collection(tmp_path: Path, 
 
 def test_doctor_reports_unresolved_application_and_unenforced_conventions(tmp_path: Path) -> None:
     root, demand = _repo(tmp_path)
-    artifact = root / "design.md"
+    artifact = demand / "design.md"
     artifact.write_text("## 3.5\nRULE-app-001: 待确认，需同步 spec 文本\n")
     context = load_context(str(demand / "spec-context.yml"))
     context = apply_artifact_ref(context, "app-runtime", "RULE-app-001", "code",
