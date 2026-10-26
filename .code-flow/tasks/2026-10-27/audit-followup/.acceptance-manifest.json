@@ -230,7 +230,7 @@
       "kind": "functional",
       "boundary": "真实 `cf_task_doc` 解析器 + 临时 TASK 文档",
       "owner": "TASK-001",
-      "status": "verified",
+      "status": "stale",
       "command": [
         "python3",
         "-m",
@@ -340,6 +340,9 @@
           "timeout": 60.0,
           "fingerprint": "4b34b91ea0fa5b2b66440877d43f83e8f12b36695a6d3c38f363ba5db93af762"
         }
+      ],
+      "stale_checks": [
+        "CHK-5bed1a0744d5"
       ]
     },
     {
@@ -349,7 +352,7 @@
       "kind": "functional",
       "boundary": "真实 AST 导入图 + 双副本",
       "owner": "TASK-001",
-      "status": "verified",
+      "status": "stale",
       "command": [
         "python3",
         "-m",
@@ -464,6 +467,9 @@
           "timeout": 60.0,
           "fingerprint": "c406ad04919bc074606e19027a971b5f762d0a75fe1807691f926717b936c711"
         }
+      ],
+      "stale_checks": [
+        "CHK-b3051cc489a2"
       ]
     },
     {
@@ -473,7 +479,7 @@
       "kind": "functional",
       "boundary": "真实 AST 导入图 + manifest 提取",
       "owner": "TASK-002",
-      "status": "verified",
+      "status": "stale",
       "command": [
         "python3",
         "-m",
@@ -583,6 +589,9 @@
           "timeout": 60.0,
           "fingerprint": "a8d5b788a0af06c12462d83d4d73e656e448fa40384edd55a2367d212f989839"
         }
+      ],
+      "stale_checks": [
+        "CHK-72d2e9821fbe"
       ]
     },
     {
@@ -592,7 +601,7 @@
       "kind": "functional",
       "boundary": "真实 manifest 锁定/校验 + 临时需求目录",
       "owner": "TASK-002",
-      "status": "verified",
+      "status": "stale",
       "command": [
         "python3",
         "-m",
@@ -702,6 +711,9 @@
           "timeout": 60.0,
           "fingerprint": "2d29d85b97f92ada7900eb46823a1ac6f16bf55a89b66af369a766e8d0f31f29"
         }
+      ],
+      "stale_checks": [
+        "CHK-1078c53d3738"
       ]
     },
     {
@@ -795,7 +807,7 @@
       "kind": "functional",
       "boundary": "真实 npm pack + node CLI/init/migrate",
       "owner": "TASK-005",
-      "status": "verified",
+      "status": "stale",
       "command": [
         "bash",
         "-lc",
@@ -890,6 +902,9 @@
           "timeout": 60.0,
           "fingerprint": "7fb6c7021b51139b0f74c2b380887a638b344cffde808fdacf98b8d9669a4b9b"
         }
+      ],
+      "stale_checks": [
+        "CHK-f6ae7934bfda"
       ]
     },
     {
@@ -899,7 +914,7 @@
       "kind": "functional",
       "boundary": "真实 adapters 文件 + 归一化 parity",
       "owner": "TASK-006",
-      "status": "verified",
+      "status": "stale",
       "command": [
         "python3",
         "-m",
@@ -1009,6 +1024,9 @@
           "timeout": 60.0,
           "fingerprint": "c1d633ebb967215ec74650a1a7261d97f28c8f9eac1b7adf680dd10beca498f6"
         }
+      ],
+      "stale_checks": [
+        "CHK-1592ed61c3ae"
       ]
     },
     {
