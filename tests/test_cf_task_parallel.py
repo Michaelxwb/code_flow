@@ -28,10 +28,25 @@ from cf_task_parallel import ParallelError, _cleanup_block_reason, cleanup, coll
 
 def test_cleanup_requires_passed_merge() -> None:
     assert _cleanup_block_reason({"merge": {"status": "blocked"}}, False)[0] == "merge_not_passed"
+    assert _cleanup_block_reason({"merge": {"status": "running"}}, False)[0] == "merge_not_passed"
     assert _cleanup_block_reason({"merge": {"status": "blocked", "code": "batch_smoke_failed"}}, False)[0] == "batch_smoke_failed"
     assert _cleanup_block_reason({"merge": {"status": "passed"}}, False)[0] == ""
     assert _cleanup_block_reason({"merge": {"status": "blocked"}}, True)[0] == ""
     assert _cleanup_block_reason({"batch_smoke": {"status": "failed"}}, False)[0] == "batch_smoke_failed"
+    partial = {
+        "merge": {
+            "status": "passed", "full_batch": False,
+            "merged": ["TASK-001"], "all_tasks": ["TASK-001", "TASK-002"],
+        },
+    }
+    assert _cleanup_block_reason(partial, False)[0] == "partial_merge"
+    complete = {
+        "merge": {
+            "status": "passed", "full_batch": True,
+            "merged": ["TASK-001", "TASK-002"], "all_tasks": ["TASK-001", "TASK-002"],
+        },
+    }
+    assert _cleanup_block_reason(complete, False)[0] == ""
 
 
 TASK_FILE = ".code-flow/tasks/2026-09-29/demo/demo.md"
@@ -781,6 +796,9 @@ def test_batch_smoke_failure_keeps_worktrees_and_blocks_cleanup(tmp_path: Path) 
     assert merged["code"] == "batch_smoke_failed"
     assert merged["batch_smoke"]["status"] == "failed"
     assert merged["batch_smoke"]["decision"] == "block"
+    run_meta = json.loads((root / ".code-flow/worktrees/run-batch-fail/run.json").read_text(encoding="utf-8"))
+    assert run_meta["merge"]["status"] == "blocked"
+    assert run_meta["merge"]["code"] == "batch_smoke_failed"
     text = (root / BATCH_TASK_FILE).read_text(encoding="utf-8")
     task_sections = re.split(r"(?m)^## TASK-\d+:", text)
     for section in task_sections[1:]:

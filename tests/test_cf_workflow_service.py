@@ -25,11 +25,27 @@ def test_worktree_registration_requires_run_ledger(tmp_path: Path) -> None:
     root.mkdir(parents=True)
     assert "not registered" in _worktree_registration_issue(str(root), "TASK-001")
     ledger = root.parent / "run.json"
-    ledger.write_text(json.dumps({"worktrees": [{"task": "TASK-001", "path": str(root)}]}), encoding="utf-8")
+    base = {"version": 1, "task_file": "demand/work.md", "base_head": "a" * 40}
+    ledger.write_text(json.dumps({**base, "worktrees": [{"task": "TASK-001", "path": str(root)}]}), encoding="utf-8")
     assert _worktree_registration_issue(str(root), "TASK-001") == ""
-    ledger.write_text(json.dumps({"worktrees": [{"task": "TASK-002", "path": str(root)}]}), encoding="utf-8")
+    ledger.write_text(json.dumps({**base, "worktrees": [{"task": "TASK-002", "path": str(root)}]}), encoding="utf-8")
     assert "not registered" in _worktree_registration_issue(str(root), "TASK-001")
     assert _worktree_registration_issue(str(tmp_path / "plain"), "TASK-001") == ""
+
+
+def test_worktree_registration_rejects_incomplete_or_malformed_ledger(tmp_path: Path) -> None:
+    root = tmp_path / ".code-flow/worktrees/run-2/TASK-001"
+    root.mkdir(parents=True)
+    ledger = root.parent / "run.json"
+    ledger.write_text(json.dumps({"worktrees": [{"task": "TASK-001", "path": str(root)}]}), encoding="utf-8")
+    assert "incomplete" in _worktree_registration_issue(str(root), "TASK-001")
+    base = {"version": 1, "task_file": "demand/work.md", "base_head": "a" * 40}
+    ledger.write_text(json.dumps({**base, "worktrees": [{"task": "TASK-001"}]}), encoding="utf-8")
+    assert "absolute path" in _worktree_registration_issue(str(root), "TASK-001")
+    ledger.write_text(json.dumps({**base, "worktrees": [{"task": "TASK-001", "path": "."}]}), encoding="utf-8")
+    assert "absolute path" in _worktree_registration_issue(str(root), "TASK-001")
+    ledger.write_text(json.dumps({**base, "worktrees": 5}), encoding="utf-8")
+    assert "must be a list" in _worktree_registration_issue(str(root), "TASK-001")
 
 
 def _git(root: Path, *args: str) -> None:

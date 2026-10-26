@@ -53,6 +53,19 @@ def test_harness_metadata_paths_are_ignored(tmp_path: Path) -> None:
     assert extract_paths_from_prompt(prompt, str(tmp_path)) == ["src/outside.py"]
 
 
+def test_harness_unpaired_tag_does_not_swallow_following_path(tmp_path: Path) -> None:
+    prompt = "<output-file>src/inside.py</task-notification>\n修改 src/real.py"
+    assert extract_paths_from_prompt(prompt, str(tmp_path)) == ["src/inside.py", "src/real.py"]
+
+
+def test_harness_notification_block_strips_result_paths(tmp_path: Path) -> None:
+    prompt = (
+        "<task-notification><output-file>/tmp/x.out</output-file>"
+        "<result>edited src/leaked.py</result></task-notification>\n改 src/real.py"
+    )
+    assert extract_paths_from_prompt(prompt, str(tmp_path)) == ["src/real.py"]
+
+
 def _run(root: Path, prompt: str) -> dict:
     output = io.StringIO()
     payload = json.dumps({"prompt": prompt, "session_id": "session-1"})

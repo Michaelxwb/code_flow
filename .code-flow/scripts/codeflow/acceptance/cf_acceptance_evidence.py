@@ -35,14 +35,25 @@ def line_status(line: str, scenario_id: str) -> str:
         cells = [cell.strip().lower() for cell in line.strip().strip("|").split("|")]
         return next((cell for cell in reversed(cells) if cell in _COVERAGE_STATES), "")
     match = re.match(r"^\s*[-*]\s+[^:]+:\s*([a-z0-9_]+)\b", line, re.I)
-    return match.group(1).lower() if match and match.group(1).lower() in STATES else ""
+    return match.group(1).lower() if match and match.group(1).lower() in _COVERAGE_STATES else ""
 
 
-def _status_line(line: str, scenario_id: str, status: str) -> str:
+def _status_index(header: str) -> int:
+    cells = [cell.strip().lower() for cell in header.strip().strip("|").split("|")]
+    for index, cell in enumerate(cells):
+        if cell in ("状态", "status"):
+            return index + 1
+    return -1
+
+
+def _status_line(line: str, scenario_id: str, status: str, status_index: int = -1) -> str:
     if not scenario_line(line, scenario_id):
         return line
     if line.lstrip().startswith("|"):
         cells = line.split("|")
+        if 0 < status_index < len(cells) - 1:
+            cells[status_index] = f" {status} "
+            return "|".join(cells)
         for index in range(len(cells) - 1, 0, -1):
             if cells[index].strip().lower() in _COVERAGE_STATES:
                 cells[index] = f" {status} "
@@ -50,14 +61,18 @@ def _status_line(line: str, scenario_id: str, status: str) -> str:
         return line.rstrip().rstrip("|") + f"| {status} |"
     prefix = r"(^\s*[-*]\s+[^:]+:\s*)"
     if line_status(line, scenario_id):
-        return re.sub(prefix + r"(?:" + "|".join(sorted(STATES)) + r")\b", rf"\g<1>{status}", line, count=1, flags=re.I)
+        return re.sub(prefix + r"(?:" + "|".join(sorted(_COVERAGE_STATES)) + r")\b", rf"\g<1>{status}", line, count=1, flags=re.I)
     return re.sub(prefix, rf"\g<1>{status} — ", line, count=1)
 
 
 def _patch_section(section: str, scenario_id: str, status: str, record: str) -> str:
     contract = re.search(r"(?ms)^### Acceptance Contract[^\n]*\n(.*?)(?=^### |^## |\Z)", section)
     if contract:
-        body = "\n".join(_status_line(line, scenario_id, status) for line in contract.group(1).splitlines()) + "\n"
+        lines = contract.group(1).splitlines()
+        header = next((line for line in lines if line.lstrip().startswith("|")
+                       and ("状态" in line or "status" in line.lower())), "")
+        index = _status_index(header)
+        body = "\n".join(_status_line(line, scenario_id, status, index) for line in lines) + "\n"
         section = section[:contract.start(1)] + body + section[contract.end(1):]
     evidence = re.search(r"(?ms)^### Acceptance Evidence[^\n]*\n(.*?)(?=^### |^## |\Z)", section)
     if evidence:
@@ -89,7 +104,11 @@ def sync_task_evidence(task: Path, scenario_id: str, confirmed_by: str, evidence
         text = text[:match.start()] + section + text[match.end():]
     coverage = re.search(r"(?ms)^## Acceptance Coverage[^\n]*\n(.*?)(?=^## |\Z)", text)
     if coverage:
-        body = "\n".join(_status_line(line, scenario_id, status) for line in coverage.group(1).splitlines()) + "\n"
+        lines = coverage.group(1).splitlines()
+        header = next((line for line in lines if line.lstrip().startswith("|")
+                       and ("状态" in line or "status" in line.lower())), "")
+        index = _status_index(header)
+        body = "\n".join(_status_line(line, scenario_id, status, index) for line in lines) + "\n"
         text = text[:coverage.start(1)] + body + text[coverage.end(1):]
     elif not owner:
         return "skipped_no_owner"

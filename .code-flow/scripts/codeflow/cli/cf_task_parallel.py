@@ -955,6 +955,12 @@ def merge(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, 
         entries = [item for item in entries if item.get("task") in wanted]
     entries.sort(key=lambda item: str(item.get("task", "")))
     task_file = str(meta["task_file"])
+    _update_run_meta(root, run_id, {
+        "merge": {
+            "status": "running",
+            "at": datetime.now(timezone.utc).isoformat(),
+        }
+    })
     before_hash = worktree_fingerprint(str(root))
     results = _merge_entries(root, main_branch, entries, task_file)
     ok = bool(results) and all(item.get("ok") for item in results)
@@ -984,10 +990,20 @@ def merge(root: Path, run_id: str, tasks: Optional[Sequence[str]]) -> dict[str, 
                 )
         elif isinstance(previous, Mapping) and previous_status == "passed":
             payload["batch_smoke"] = dict(previous)
+    merged_tasks = sorted({
+        str(item.get("task")) for item in results
+        if item.get("ok") and item.get("status") in ("merged", "already_merged")
+    })
+    merge_code = str(payload.get("code", "")) or next(
+        (str(item.get("code", "")) for item in results if not item.get("ok") and item.get("code")), ""
+    )
     _update_run_meta(root, run_id, {
         "merge": {
             "status": "passed" if payload.get("ok") else "blocked",
-            "code": str(payload.get("code", "")),
+            "code": merge_code,
+            "full_batch": full_batch,
+            "merged": merged_tasks,
+            "all_tasks": sorted(all_task_ids),
             "at": datetime.now(timezone.utc).isoformat(),
         }
     })
@@ -1011,6 +1027,22 @@ def _cleanup_block_reason(meta: Mapping[str, object], force: bool) -> tuple[str,
             f"最近一次 merge 状态为 {merge_state.get('status') or 'missing'}（{code or 'no code'}）；"
             "保留 worktree，修复后重新 merge，或 --force 明确放弃现场",
         )
+    if isinstance(merge_state, Mapping) and "full_batch" in merge_state:
+        merged = {str(item) for item in (merge_state.get("merged") or [])}
+        all_tasks = {str(item) for item in (merge_state.get("all_tasks") or [])}
+        if all_tasks:
+            missing = sorted(all_tasks - merged)
+        else:
+            missing = [
+                str(item.get("task")) for item in meta.get("worktrees", [])
+                if isinstance(item, Mapping)
+            ]
+        if merge_state.get("full_batch") is False or missing:
+            return (
+                "partial_merge",
+                f"仍有未合并任务: {', '.join(missing) or 'subset merge'}；"
+                "保留 worktree，完成全批次 merge 后再 cleanup，或 --force 明确放弃现场",
+            )
     smoke = meta.get("batch_smoke")
     if isinstance(smoke, Mapping) and smoke.get("status") in _BATCH_SMOKE_BLOCKING:
         return (

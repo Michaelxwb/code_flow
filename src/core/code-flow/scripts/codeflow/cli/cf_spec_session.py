@@ -35,7 +35,8 @@ def _task_section(text: str, task_id: str) -> str:
     raise ValueError(f"task_not_found: {task_id}")
 
 
-_EMPTY_REF_MARKERS = frozenset(("n/a", "na", "none", "null", "-", "—", "无", "todo", "tbd", "待定"))
+_EMPTY_REF_MARKERS = frozenset(("n/a", "na", "none", "null", "-", "—", "无"))
+_UNRESOLVED_REF_MARKERS = frozenset(("todo", "tbd", "待定", "待同步", "待确认"))
 
 
 def _refs(section: str) -> tuple[str, ...]:
@@ -43,8 +44,11 @@ def _refs(section: str) -> tuple[str, ...]:
     match = re.search(r"(?m)^- \*\*Spec-Refs\*\*:[ \t]*(.*)$", section)
     if match is None:
         raise ValueError("spec_refs_missing")
-    cleaned = (item.strip() for item in match.group(1).split(","))
-    return tuple(item for item in cleaned if item and item.lower() not in _EMPTY_REF_MARKERS)
+    items = tuple(item.strip() for item in match.group(1).split(",") if item.strip())
+    unresolved = tuple(item for item in items if item.lower() in _UNRESOLVED_REF_MARKERS)
+    if unresolved:
+        raise ValueError("spec_refs_unresolved: " + ", ".join(unresolved))
+    return tuple(item for item in items if item.lower() not in _EMPTY_REF_MARKERS)
 
 
 def _rule_index(context: SpecContext) -> Mapping[str, RuleBinding]:

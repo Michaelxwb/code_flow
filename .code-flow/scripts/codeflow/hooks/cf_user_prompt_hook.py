@@ -29,7 +29,7 @@ _PATH_RE = re.compile(r'`([^`\n]+)`|@?((?:[a-zA-Z]:[\\/]|/)?[a-zA-Z0-9_.][a-zA-Z
 _EXT_RE = re.compile(r'\.(py|js|jsx|ts|tsx|vue|svelte|go|rs|java|rb|cs|cpp|c|h)$')
 _URL_RE = re.compile(r'\b[a-zA-Z][a-zA-Z0-9+.-]*://[^\s`<>]+')
 _HARNESS_RE = re.compile(
-    r"<(?:task-notification|output-file)\b[^>]*>.*?</(?:task-notification|output-file)>",
+    r"<(?P<tag>task-notification|output-file)\b[^>]*>.*?</(?P=tag)>",
     re.IGNORECASE | re.DOTALL,
 )
 
