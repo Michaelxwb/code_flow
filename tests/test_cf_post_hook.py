@@ -19,8 +19,8 @@ import unittest.mock as mock
 import yaml
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", "code-flow", "scripts"))
-import cf_checks
-import cf_log
+from codeflow.acceptance import cf_checks
+from codeflow.core import cf_log
 import cf_post_hook
 
 SPEC_WITH_CHECKS = """---

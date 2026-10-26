@@ -4,16 +4,16 @@ import json
 import os
 import sys
 
-from cf_core import ensure_utf8_io
-from cf_edit_service import after_edit, prepare_edits
-from cf_injection import injection_output, pre_tool_payload
+from codeflow.core.cf_core import ensure_utf8_io
+from codeflow.spec.cf_edit_service import after_edit, prepare_edits
+from codeflow.spec.cf_injection import injection_output, pre_tool_payload
 from cf_stop_hook import process_stop
 from cf_user_prompt_hook import process_prompt
-from cf_runtime_install import verify_install
-from cf_exec_base import execution_session
-import cf_log
-from cf_patch import parse_patch
-from cf_native_paths import project_root, validated_paths
+from codeflow.core.cf_runtime_install import verify_install
+from codeflow.core.cf_exec_base import execution_session
+from codeflow.core import cf_log
+from codeflow.core.cf_patch import parse_patch
+from codeflow.core.cf_native_paths import project_root, validated_paths
 
 
 

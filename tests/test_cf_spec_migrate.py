@@ -14,7 +14,7 @@ import yaml
 SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from cf_spec_migrate import preflight, stage_plan
+from codeflow.spec.cf_spec_migrate import preflight, stage_plan
 
 
 SPEC = """---
@@ -98,7 +98,7 @@ def test_preflight_cli_stdout_is_one_json_and_zero_write(tmp_path: Path) -> None
     root = _project(tmp_path, "0.4.2")
     before = _tree_hash(root)
     result = subprocess.run(
-        [sys.executable, str(SCRIPTS / "cf_spec_migrate.py"), "preflight", "--root", str(root), "--json"],
+        [sys.executable, str(SCRIPTS / "codeflow/spec/cf_spec_migrate.py"), "preflight", "--root", str(root), "--json"],
         text=True, capture_output=True, check=False,
     )
     assert result.returncode == 0

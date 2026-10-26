@@ -34,17 +34,17 @@ from typing import IO, Mapping, Optional, Sequence
 
 from cf_task_index import parse_task_file
 from cf_task_index import task_batches
-from cf_task_merge import MergeConflictError
-from cf_task_merge import merge_context_text
-from cf_task_merge import merge_manifest_text
-from cf_task_merge import merge_task_markdown
-from cf_task_merge import stale_context_text
-from cf_task_state import FINISHED_STATUSES
-from cf_acceptance_schema import load_manifest, scenario_check_ids
-from cf_evidence_store import EvidenceStore
-from cf_exec_base import worktree_fingerprint
-import cf_git
-from cf_runtime_install import verify_install
+from codeflow.task.cf_task_merge import MergeConflictError
+from codeflow.task.cf_task_merge import merge_context_text
+from codeflow.task.cf_task_merge import merge_manifest_text
+from codeflow.task.cf_task_merge import merge_task_markdown
+from codeflow.task.cf_task_merge import stale_context_text
+from codeflow.core.cf_task_state import FINISHED_STATUSES
+from codeflow.acceptance.cf_acceptance_schema import load_manifest, scenario_check_ids
+from codeflow.evidence.cf_evidence_store import EvidenceStore
+from codeflow.core.cf_exec_base import worktree_fingerprint
+from codeflow.core import cf_git
+from codeflow.core.cf_runtime_install import verify_install
 
 
 WORKTREES_DIR = ".code-flow/worktrees"
@@ -434,7 +434,7 @@ def _run_matches(run: Mapping[str, object], expected_hash: str,
 
 def _live_accepted_risk(check: Optional[Mapping[str, object]],
                         scenarios: Sequence[Mapping[str, object]]) -> bool:
-    from cf_acceptance_risk import accepted_risk
+    from codeflow.acceptance.cf_acceptance_risk import accepted_risk
     return bool(scenarios) and all(accepted_risk(check, row) is not None for row in scenarios)
 
 
@@ -465,13 +465,13 @@ def _missing_evidence(
             "evidence_hash_unavailable",
             f"{task}: 无法计算 worktree input_hash，拒绝用无法校验的旧证据放行",
         )
-    from cf_check_inputs import check_input_hash
+    from codeflow.acceptance.cf_check_inputs import check_input_hash
     checks = {
         str(item.get("id")): item
         for item in (manifest.get("checks") if isinstance(manifest.get("checks"), list) else [])
         if isinstance(item, Mapping) and item.get("id")
     }
-    from cf_evidence_store import requirement_key
+    from codeflow.evidence.cf_evidence_store import requirement_key
     store = EvidenceStore(worktree, requirement=requirement_key(Path(task_file).parent))
     missing: list[dict[str, object]] = []
     for check_id in sorted(required):
@@ -532,8 +532,8 @@ def _require_evidence(task: str, path: Path, task_file: str, files: Sequence[str
     context_path = path / Path(task_file).parent / "spec-context.yml"
     if context_path.is_file():
         from cf_spec_context import load_context
-        from cf_workflow_service import task_truth_issues
-        from cf_task_runtime import _task_scope_specs
+        from codeflow.spec.cf_workflow_service import task_truth_issues
+        from codeflow.task.cf_task_runtime import _task_scope_specs
         context = load_context(str(context_path))
         issues = task_truth_issues(str(path / task_file), task, context)
         if issues:
@@ -783,7 +783,7 @@ def _merge_one(root: Path, main_branch: str, entry: dict, task_file: str) -> dic
     main_manifest = _task_manifest(root, task_file)
     worktree_manifest = _task_manifest(path, task_file)
     if main_manifest is not None and worktree_manifest is not None:
-        from cf_task_merge import _check_conflicts
+        from codeflow.task.cf_task_merge import _check_conflicts
         conflicts = _check_conflicts(main_manifest.get("checks"), worktree_manifest.get("checks"))
         if conflicts:
             detail = ", ".join(f"{item['check_id']}({','.join(item['fields'])})" for item in conflicts)
@@ -835,7 +835,7 @@ def _stale_after_merge(root: Path, task_file: str, input_hash: str) -> list[dict
         changed.append({"path": path.relative_to(root).as_posix(), "rules": stale})
     manifest = root / Path(task_file).parent / ".acceptance-manifest.json"
     if manifest.is_file():
-        from cf_acceptance_evidence import invalidate_manifest_evidence
+        from codeflow.acceptance.cf_acceptance_evidence import invalidate_manifest_evidence
         try:
             stale_rows = invalidate_manifest_evidence(root, manifest, input_hash)
         except (OSError, ValueError) as exc:

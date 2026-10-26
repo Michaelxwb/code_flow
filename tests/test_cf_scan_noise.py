@@ -14,8 +14,8 @@ import unittest.mock as mock
 import yaml
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", "code-flow", "scripts"))
-import cf_scan
-from cf_scan import find_missing_paths
+from codeflow.spec import cf_scan
+from codeflow.spec.cf_scan import find_missing_paths
 
 SHARED_HEADER = "> **文档版本**: v1.0\n> **创建日期**: YYYY-MM-DD\n"
 

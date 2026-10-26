@@ -155,6 +155,22 @@ def _type_checking_lines(tree: ast.Module) -> frozenset[int]:
     return frozenset(lines)
 
 
+def _script_files(scripts: Path) -> list[Path]:
+    return sorted(path for path in scripts.rglob("*.py") if path.name != "__init__.py")
+
+
+def _script_modules(scripts: Path) -> frozenset[str]:
+    return frozenset(path.stem for path in _script_files(scripts))
+
+
+def _import_target(name: str, modules: frozenset[str]) -> Optional[str]:
+    if name in modules:
+        return name
+    if name.startswith("codeflow.") and name.rsplit(".", 1)[-1] in modules:
+        return name.rsplit(".", 1)[-1]
+    return None
+
+
 def _import_edges(path: Path, modules: frozenset[str]) -> set[tuple[str, str]]:
     tree = ast.parse(path.read_text(encoding="utf-8"))
     skip = _type_checking_lines(tree)
@@ -165,10 +181,20 @@ def _import_edges(path: Path, modules: frozenset[str]) -> set[tuple[str, str]]:
             continue
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name in modules and alias.name != source:
-                    edges.add((source, alias.name))
-        elif isinstance(node, ast.ImportFrom) and node.module in modules and node.module != source:
-            edges.add((source, node.module))
+                target = _import_target(alias.name, modules)
+                if target and target != source:
+                    edges.add((source, target))
+        elif isinstance(node, ast.ImportFrom):
+            targets: set[str] = set()
+            target = _import_target(node.module or "", modules)
+            if target:
+                targets.add(target)
+            elif (node.module or "").startswith("codeflow."):
+                for alias in node.names:
+                    alias_target = _import_target(alias.name, modules)
+                    if alias_target:
+                        targets.add(alias_target)
+            edges |= {(source, target) for target in targets if target != source}
     return edges
 
 
@@ -177,11 +203,21 @@ def _private_imports(path: Path, modules: frozenset[str]) -> set[tuple[str, str,
     source = path.stem
     found: set[tuple[str, str, str]] = set()
     for node in ast.walk(tree):
-        if not isinstance(node, ast.ImportFrom) or node.module not in modules or node.module == source:
+        if not isinstance(node, ast.ImportFrom):
             continue
-        for alias in node.names:
-            if alias.name.startswith("_") and not alias.name.startswith("__"):
-                found.add((source, node.module, alias.name))
+        targets: set[str] = set()
+        target = _import_target(node.module or "", modules)
+        if target:
+            targets.add(target)
+        elif (node.module or "").startswith("codeflow."):
+            for alias in node.names:
+                alias_target = _import_target(alias.name, modules)
+                if alias_target:
+                    targets.add(alias_target)
+        for target in targets - {source}:
+            for alias in node.names:
+                if alias.name.startswith("_") and not alias.name.startswith("__"):
+                    found.add((source, target, alias.name))
     return found
 
 
@@ -226,11 +262,11 @@ def _task_heading_regexes(path: Path) -> list[tuple[int, str]]:
 
 
 def test_dependency_direction() -> None:
-    modules = frozenset(path.stem for path in SCRIPTS.glob("*.py"))
+    modules = _script_modules(SCRIPTS)
     missing = sorted(modules - LAYERS.keys())
     assert not missing, f"add layer mapping for: {missing}"
     edges: set[tuple[str, str]] = set()
-    for path in sorted(SCRIPTS.glob("*.py")):
+    for path in _script_files(SCRIPTS):
         edges |= _import_edges(path, modules)
     violations = _layer_violations(edges)
     allowed = {(source, target) for source, target, _ in DEPENDENCY_EDGE_ALLOWLIST}
@@ -243,9 +279,9 @@ def test_dependency_direction() -> None:
 
 
 def test_private_symbol_guard() -> None:
-    modules = frozenset(path.stem for path in SCRIPTS.glob("*.py"))
+    modules = _script_modules(SCRIPTS)
     actual: set[tuple[str, str, str]] = set()
-    for path in sorted(SCRIPTS.glob("*.py")):
+    for path in _script_files(SCRIPTS):
         actual |= _private_imports(path, modules)
     allowed = {(importer, source, symbol) for importer, source, symbol, _ in PRIVATE_SYMBOL_ALLOWLIST}
     unexpected = sorted(actual - allowed)
@@ -265,18 +301,21 @@ def test_allowlist_ratchet() -> None:
 
 def test_task_parser_single_source() -> None:
     """[TASK-005] `^## TASK-` 正则只允许出现在 cf_task_doc.py（双副本）。"""
+    owners = {
+        scripts / "codeflow" / "task" / "cf_task_doc.py" for scripts in (SCRIPTS, DEPLOYED_SCRIPTS)
+    }
     offenders: list[str] = []
     for scripts in (SCRIPTS, DEPLOYED_SCRIPTS):
-        for path in sorted(scripts.glob("*.py")):
-            if path.name == "cf_task_doc.py":
+        for path in _script_files(scripts):
+            if path in owners:
                 continue
             for lineno, pattern in _task_heading_regexes(path):
                 offenders.append(f"{path.relative_to(ROOT)}:{lineno}: {pattern}")
     assert not offenders, (
         "TASK headings must be parsed only by cf_task_doc:\n" + "\n".join(offenders)
     )
-    assert _task_heading_regexes(SCRIPTS / "cf_task_doc.py"), "cf_task_doc must own the heading regex"
-    assert _task_heading_regexes(DEPLOYED_SCRIPTS / "cf_task_doc.py"), "deployed copy must match"
+    for owner in owners:
+        assert _task_heading_regexes(owner), f"{owner.relative_to(ROOT)} must own the heading regex"
 
 
 def _ignore_entries(text: str) -> list[str]:
@@ -464,7 +503,7 @@ def _validator_project(tmp_path: Path, validation: Optional[str]) -> Path:
 
 
 def _edit_event(root: Path, rel: str = "src/a.py", sid: str = "sid-1") -> None:
-    import cf_log
+    from codeflow.core import cf_log
 
     cf_log.append_event(str(root), "edit", {"file": rel, "tool": "Edit"}, sid)
 
@@ -485,7 +524,7 @@ def _heavy_validation(marker: Path) -> str:
 def test_validator_corrupt_consistent(tmp_path: Path) -> None:
     """[S-03] 同一份坏 YAML 在 validate / Stop / finish 三入口一致 block。"""
     from cf_stop_hook import build_stop_result
-    from cf_task_runtime import _run_finish_validation
+    from codeflow.task.cf_task_runtime import _run_finish_validation
     from cf_validation import validate_files
 
     root = _validator_project(tmp_path, "validators: [")
@@ -506,9 +545,9 @@ def test_validator_corrupt_consistent(tmp_path: Path) -> None:
 
 def test_validator_missing_policy(tmp_path: Path) -> None:
     """[S-04] 缺失/空配置保持既有策略：validate 阻断，finish 放行。"""
-    from cf_task_runtime import _run_finish_validation
+    from codeflow.task.cf_task_runtime import _run_finish_validation
     from cf_validation import validate_files
-    from cf_validators import load_validators
+    from codeflow.core.cf_validators import load_validators
 
     root = _validator_project(tmp_path, None)
     assert load_validators(str(root)).state == "missing"
@@ -531,7 +570,7 @@ def test_validator_missing_policy(tmp_path: Path) -> None:
 
 def test_heavy_deferral(tmp_path: Path) -> None:
     """[S-05] heavy validator 在 finish 默认延期且 deferred_heavy 计数为 1。"""
-    from cf_task_runtime import _run_finish_validation
+    from codeflow.task.cf_task_runtime import _run_finish_validation
 
     marker = tmp_path / "heavy-ran"
     root = _validator_project(tmp_path / "deferred", _heavy_validation(marker))
@@ -568,7 +607,7 @@ def test_stop_json_protocol(tmp_path: Path) -> None:
 
 def test_task_heading_edges() -> None:
     """[S-06] 行内示例、缩进/引用示例与围栏代码块中的标题都不参与解析。"""
-    from cf_task_doc import parse_task_document
+    from codeflow.task.cf_task_doc import parse_task_document
 
     text = (
         "# Tasks\n\n"
@@ -599,8 +638,8 @@ def test_duplicate_task_id(tmp_path: Path) -> None:
     from cf_spec_gate import validate_plan_coverage
     from cf_spec_session import _task_section
     from cf_task_index import parse_task_file
-    from cf_task_plan import parse_plan_tasks
-    from cf_workflow_service import WorkflowError, read_task_section
+    from codeflow.task.cf_task_plan import parse_plan_tasks
+    from codeflow.spec.cf_workflow_service import WorkflowError, read_task_section
 
     text = (
         "## TASK-001: first\n"
@@ -635,7 +674,7 @@ def test_duplicate_task_id(tmp_path: Path) -> None:
 
 def test_missing_status_draft() -> None:
     """[S-08] 缺 Status 行时投影为 draft，未知状态保留原文。"""
-    from cf_task_doc import parse_task_document
+    from codeflow.task.cf_task_doc import parse_task_document
 
     text = (
         "## TASK-001: no status\n"
@@ -652,7 +691,7 @@ def test_missing_status_draft() -> None:
 
 def test_task_doc_boundaries() -> None:
     """[B-02] CRLF 文档正常解析；无 TASK 段落抛 task_document_empty。"""
-    from cf_task_doc import TaskDocumentError, parse_task_document
+    from codeflow.task.cf_task_doc import TaskDocumentError, parse_task_document
 
     crlf = (
         "## TASK-001: crlf task\r\n"
@@ -699,7 +738,7 @@ def test_task_flow_consistency(tmp_path: Path) -> None:
     """[S-09] 真实任务目录：start → finish → spec gate 三命令读取同一 TASK 状态。"""
     from test_audit_mainline_e2e import _repo
 
-    from cf_task_doc import parse_task_document
+    from codeflow.task.cf_task_doc import parse_task_document
     from cf_task_index import parse_task_file
 
     root, task_dir = _repo(tmp_path)
@@ -816,8 +855,8 @@ def _git_repo_with_changes(root: Path) -> None:
 
 def test_git_primitive_parity(tmp_path: Path) -> None:
     """[S-10] 真实 git 仓库：spec_context / evidence_store / task_parallel 变更集合一致。"""
-    from cf_evidence_store import _run_git
-    from cf_git import changed_entries, changed_files, run_git
+    from codeflow.evidence.cf_evidence_store import _run_git
+    from codeflow.core.cf_git import changed_entries, changed_files, run_git
     from cf_spec_context import _git_changes
     from cf_task_parallel import _status_paths
 
@@ -847,7 +886,7 @@ def test_git_primitive_parity(tmp_path: Path) -> None:
 
 def test_atomic_write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """[S-11] 真实文件系统：注入异常后目标文件保留原内容，临时文件被清理。"""
-    import cf_fs
+    from codeflow.core import cf_fs
 
     target = tmp_path / "state.json"
     original = '{"ok": true}\n'
@@ -870,7 +909,7 @@ def test_atomic_write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_markdown_primitives(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.syspath_prepend(str(SCRIPTS))
-    from cf_markdown import parse_frontmatter, table_columns
+    from codeflow.core.cf_markdown import parse_frontmatter, table_columns
 
     # No frontmatter → empty metadata, body unchanged.
     meta, body = parse_frontmatter("# Title\n\nplain markdown\n")
@@ -902,12 +941,12 @@ def test_legacy_removal(tmp_path: Path) -> None:
     """
     import importlib.util
 
-    import cf_core
+    from codeflow.core import cf_core
 
     legacy = ("read_matched_specs", "read_specs", "extract_context_tags")
     for name in legacy:
         assert not hasattr(cf_core, name), f"canonical cf_core still exports {name}"
-    live_path = ROOT / ".code-flow/scripts/cf_core.py"
+    live_path = ROOT / ".code-flow/scripts/codeflow/core/cf_core.py"
     live_spec = importlib.util.spec_from_file_location("cf_core_live", live_path)
     assert live_spec is not None and live_spec.loader is not None
     live_core = importlib.util.module_from_spec(live_spec)
@@ -993,7 +1032,7 @@ def _plan_repo(tmp_path: Path) -> tuple[Path, Path, Path]:
 
 def test_verify_plan_reads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """[S-14] 单次 verify_plan 对 TASK/场景/manifest 各至多读取一次，结果不变。"""
-    from cf_plan_quality import verify_plan
+    from codeflow.acceptance.cf_plan_quality import verify_plan
 
     _root_dir, demand, source_file = _plan_repo(tmp_path)
     task_file = demand / "work.md"
@@ -1022,7 +1061,7 @@ def test_verify_plan_reads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
 
 def test_snapshot_drift(tmp_path: Path) -> None:
     """[E-04] 快照加载后 TASK 变化必须 drift 阻断，不能继续使用陈旧快照。"""
-    from cf_plan_quality import load_plan_snapshot, verify_plan
+    from codeflow.acceptance.cf_plan_quality import load_plan_snapshot, verify_plan
 
     _root_dir, demand, _source = _plan_repo(tmp_path)
     task_file = demand / "work.md"
@@ -1044,8 +1083,63 @@ def test_package_upgrade_cleanup() -> None:
     pytest.skip("plan skeleton: implemented in TASK-011")
 
 
+def _script_py_files(scripts: Path) -> set[str]:
+    return {path.relative_to(scripts).as_posix() for path in scripts.rglob("*.py")}
+
+
+def _flat_entry_modules() -> set[str]:
+    contract = json.loads((ROOT / "src/core/code-flow/runtime-commands.json").read_text())
+    return {entry["module"] for entry in contract["commands"].values()} | {
+        "cf_pre_tool_hook", "cf_post_hook", "cf_user_prompt_hook",
+        "cf_stop_hook", "cf_codex_hook", "cf_opencode_event",
+    }
+
+
+def _tarball_py_members(tarball: Path) -> set[str]:
+    prefix = "package/src/core/code-flow/scripts/"
+    with tarfile.open(tarball) as archive:
+        names = [member.name for member in archive.getmembers() if member.isfile()]
+    return {name[len(prefix):] for name in names
+            if name.startswith(prefix) and name.endswith(".py")}
+
+
 def test_canonical_parity() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-010")
+    """[S-19] canonical 模板、部署副本与 npm 产物共享同一脚本文件集。"""
+    canonical = _script_py_files(SCRIPTS)
+    deployed = _script_py_files(DEPLOYED_SCRIPTS)
+    assert canonical == deployed, (
+        "canonical and deployed script trees differ:\n"
+        f"only canonical: {sorted(canonical - deployed)}\n"
+        f"only deployed: {sorted(deployed - canonical)}"
+    )
+
+    flat = {relative for relative in canonical if "/" not in relative}
+    assert flat == {f"{module}.py" for module in _flat_entry_modules()}, (
+        "the 22 host entry modules must stay flat; internal modules live under codeflow/"
+    )
+    package = canonical - flat
+    for subpackage in ("core", "spec", "task", "acceptance", "evidence"):
+        assert f"codeflow/{subpackage}/__init__.py" in package, f"missing codeflow/{subpackage}__init__.py"
+        assert any(
+            relative.startswith(f"codeflow/{subpackage}/")
+            and relative != f"codeflow/{subpackage}/__init__.py"
+            for relative in package
+        ), f"codeflow/{subpackage}/ has no modules"
+
+    npm = shutil.which("npm")
+    assert npm is not None, "npm is required for the canonical parity probe"
+    with tempfile.TemporaryDirectory() as tmp:
+        pack_dir = Path(tmp)
+        packed = subprocess.run(
+            [npm, "pack", "--pack-destination", str(pack_dir), "--silent"],
+            cwd=ROOT, capture_output=True, text=True, timeout=180, check=False,
+        )
+        assert packed.returncode == 0, f"npm pack failed:\n{packed.stdout}{packed.stderr}"
+        tarballs = list(pack_dir.glob("*.tgz"))
+        assert len(tarballs) == 1, f"expected one tarball, got {tarballs}"
+        assert _tarball_py_members(tarballs[0]) == canonical, (
+            "npm tarball must ship the same package tree and flat entries as src/core"
+        )
 
 
 def test_migration_rollback() -> None:

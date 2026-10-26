@@ -13,7 +13,7 @@ import sys
 from typing import IO, Mapping, Optional, Sequence
 
 from cf_spec_context import RuleBinding, SpecContext, context_sha256, load_context
-from cf_task_doc import parse_task_document
+from codeflow.task.cf_task_doc import parse_task_document
 
 
 @dataclass(frozen=True)

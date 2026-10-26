@@ -14,14 +14,14 @@ import pytest
 import yaml
 
 from test_cf_user_prompt_hook import _run_raw, _task_repo
-import cf_log
-from cf_core import build_effective_mapping, build_spec_catalog, estimate_tokens, load_config
-from cf_edit_service import prepare_edit, prepare_edits
-from cf_injection import injection_output
+from codeflow.core import cf_log
+from codeflow.core.cf_core import build_effective_mapping, build_spec_catalog, estimate_tokens, load_config
+from codeflow.spec.cf_edit_service import prepare_edit, prepare_edits
+from codeflow.spec.cf_injection import injection_output
 from cf_spec_context import (BindingInput, bind_specs, context_sha256, load_context,
                              refresh_context, resync_active_hash, save_context)
-from cf_spec_resolver import resolve_candidates
-from cf_spec_router import route_prompt
+from codeflow.spec.cf_spec_resolver import resolve_candidates
+from codeflow.spec.cf_spec_router import route_prompt
 from cf_user_prompt_hook import build_prompt_context, extract_paths_from_prompt
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -256,9 +256,9 @@ def _large_context(root: Path, count: int = 200) -> None:
 
 
 def test_twenty_file_batch_reads_context_once(tmp_path: Path) -> None:
-    import cf_context_cache
-    import cf_spec_router
-    import cf_spec_resolver
+    from codeflow.core import cf_context_cache
+    from codeflow.spec import cf_spec_router
+    from codeflow.spec import cf_spec_resolver
     _large_context(tmp_path)
     paths = tuple(f"src/item-{index}.py" for index in range(20))
     with mock.patch.object(cf_spec_router, "load_context", wraps=load_context) as contexts, mock.patch.object(
@@ -272,7 +272,7 @@ def test_twenty_file_batch_reads_context_once(tmp_path: Path) -> None:
 
 
 def test_context_parse_cache_never_masks_source_changes(tmp_path: Path) -> None:
-    import cf_spec_router
+    from codeflow.spec import cf_spec_router
     root = _task_repo(tmp_path)
     assert "Must define VALUE" in _run_raw(root, "continue")
     with mock.patch.object(cf_spec_router, "load_context", side_effect=AssertionError("unneeded YAML parse")):

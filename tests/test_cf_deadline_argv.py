@@ -12,7 +12,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_runner import run_manifest  # noqa: E402
-from cf_validators import VALID, ValidatorConfig, run_validators  # noqa: E402
+from codeflow.core.cf_validators import VALID, ValidatorConfig, run_validators  # noqa: E402
 
 
 def _manifest(tmp_path: Path, command: list) -> str:

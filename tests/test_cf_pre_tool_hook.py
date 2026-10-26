@@ -11,9 +11,9 @@ import pytest
 SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "core" / "code-flow" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-import cf_edit_service
-import cf_spec_router
-from cf_spec_router import RouteResult
+from codeflow.spec import cf_edit_service
+from codeflow.spec import cf_spec_router
+from codeflow.spec.cf_spec_router import RouteResult
 
 
 def test_active_expansion_uses_frontmatter_candidates(

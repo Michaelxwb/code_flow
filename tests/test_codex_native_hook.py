@@ -63,7 +63,7 @@ PATCH = "*** Begin Patch\n*** Update File: src/a.py\n@@\n-old\n+new\n*** Add Fil
 
 
 def test_native_patch_routes_every_file_and_records_success(tmp_path: Path) -> None:
-    import cf_log
+    from codeflow.core import cf_log
     _project(tmp_path)
     (tmp_path / "src/b.py").write_text("SAFE\n")
     pre = json.loads(_invoke(tmp_path, "PreToolUse", PATCH))
@@ -75,7 +75,7 @@ def test_native_patch_routes_every_file_and_records_success(tmp_path: Path) -> N
 
 
 def test_failed_patch_never_records_completed_edits(tmp_path: Path) -> None:
-    import cf_log
+    from codeflow.core import cf_log
     _project(tmp_path)
     assert _invoke(tmp_path, "PostToolUse", PATCH, {"output": "Failed to find expected lines"}) == ""
     assert not cf_log.read_events(str(tmp_path), events=("edit",))
@@ -97,7 +97,7 @@ def test_invalid_patch_is_an_explicit_error(command: str) -> None:
 
 
 def test_subdirectory_paths_and_deleted_move_source_are_recorded(tmp_path: Path) -> None:
-    import cf_log
+    from codeflow.core import cf_log
     _project(tmp_path)
     moved = tmp_path / "src/new name.py"
     moved.write_text("SAFE\n")
@@ -109,7 +109,7 @@ def test_subdirectory_paths_and_deleted_move_source_are_recorded(tmp_path: Path)
 
 
 def test_worktree_owns_its_native_events(tmp_path: Path) -> None:
-    import cf_log
+    from codeflow.core import cf_log
     _project(tmp_path)
     worktree = tmp_path / ".code-flow/worktrees/run/task"
     _project(worktree)
@@ -119,7 +119,7 @@ def test_worktree_owns_its_native_events(tmp_path: Path) -> None:
 
 
 def test_outside_patch_is_reported_without_partial_evidence(tmp_path: Path) -> None:
-    import cf_log
+    from codeflow.core import cf_log
     _project(tmp_path)
     command = "*** Begin Patch\n*** Update File: src/a.py\n@@\n-old\n+new\n*** Delete File: ../foreign.py\n*** End Patch"
     result = json.loads(_invoke(tmp_path, "PreToolUse", command))
@@ -178,7 +178,7 @@ def test_native_stop_blocks_corrupt_active_task(tmp_path: Path) -> None:
 
 
 def test_managed_hook_drift_is_visible_and_never_records_edits(tmp_path: Path) -> None:
-    import cf_log
+    from codeflow.core import cf_log
     _project(tmp_path)
     manifest_path = tmp_path / ".code-flow/.runtime-install.json"
     manifest = json.loads(manifest_path.read_text())
@@ -193,7 +193,7 @@ def test_managed_hook_drift_is_visible_and_never_records_edits(tmp_path: Path) -
 
 @pytest.mark.parametrize("response", [None, "unknown success text", {"status": "completed"}])
 def test_unconfirmed_patch_result_leaves_diagnostic_evidence(tmp_path: Path, response: object) -> None:
-    import cf_log
+    from codeflow.core import cf_log
     _project(tmp_path)
     assert _invoke(tmp_path, "PostToolUse", PATCH, response) == ""
     assert not cf_log.read_events(str(tmp_path), events=("edit",))

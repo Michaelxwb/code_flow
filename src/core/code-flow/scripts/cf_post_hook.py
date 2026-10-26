@@ -4,9 +4,9 @@ import json
 import os
 import sys
 
-from cf_core import ensure_utf8_io, resolve_session_id, timing_log
-from cf_log import warn
-from cf_edit_service import after_edit
+from codeflow.core.cf_core import ensure_utf8_io, resolve_session_id, timing_log
+from codeflow.core.cf_log import warn
+from codeflow.spec.cf_edit_service import after_edit
 
 
 def main() -> None:

@@ -16,10 +16,10 @@ import tempfile
 import unittest.mock as mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", "code-flow", "scripts"))
-import cf_checks
+from codeflow.acceptance import cf_checks
 import cf_feedback
-import cf_log
-from cf_core import resolve_quality_loop
+from codeflow.core import cf_log
+from codeflow.core.cf_core import resolve_quality_loop
 
 
 # --- resolve_quality_loop (TASK-002) ---
@@ -214,7 +214,7 @@ def test_pre_tool_hook_is_required_even_when_quality_metrics_disabled():
 
 # --- 纠正句式检测 (TASK-011) ---
 def test_detect_correction_positive_cases():
-    from cf_checks import detect_correction
+    from codeflow.acceptance.cf_checks import detect_correction
     for prompt in (
         "不要用 print 调试，改回去",
         "这里写错了，不是这样实现的",
@@ -226,7 +226,7 @@ def test_detect_correction_positive_cases():
 
 
 def test_detect_correction_negative_cases_e06():
-    from cf_checks import detect_correction
+    from codeflow.acceptance.cf_checks import detect_correction
     for prompt in (
         "不要紧，继续",
         "这样做对不对？",

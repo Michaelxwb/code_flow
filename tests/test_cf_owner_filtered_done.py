@@ -14,7 +14,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_manifest import write_manifest  # noqa: E402
 from cf_spec_context import new_context, save_context, start_active_task  # noqa: E402
-from cf_task_runtime import run_done_gate  # noqa: E402
+from codeflow.task.cf_task_runtime import run_done_gate  # noqa: E402
 
 
 def _git(root: Path, *args: str) -> None:

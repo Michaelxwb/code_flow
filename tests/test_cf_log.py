@@ -15,7 +15,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", "code-flow", "scripts"))
-import cf_log
+from codeflow.core import cf_log
 
 
 def test_append_then_read_roundtrip():

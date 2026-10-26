@@ -10,10 +10,10 @@ from typing import IO, Optional, Sequence
 import sys
 import time
 
-import cf_git
-from cf_exec_base import execution_session
+from codeflow.core import cf_git
+from codeflow.core.cf_exec_base import execution_session
 from cf_spec_context import current_owned_paths, load_active_task
-from cf_validators import PARSE_ERROR, VALID, ValidatorConfig, is_heavy, resolve_validators, run_validators
+from codeflow.core.cf_validators import PARSE_ERROR, VALID, ValidatorConfig, is_heavy, resolve_validators, run_validators
 
 
 _MANAGED_PREFIXES = (".code-flow/", ".claude/", ".codex/", ".costrict/", ".opencode/", ".agents/")

@@ -10,7 +10,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_runner import run_manifest
-from cf_evidence_store import EvidenceStore
+from codeflow.evidence.cf_evidence_store import EvidenceStore
 import pytest
 
 RUNNER = SCRIPTS / "cf_acceptance_runner.py"
@@ -367,7 +367,7 @@ def test_isolated_check_injects_worktree_namespace(tmp_path: Path) -> None:
 
 
 def test_shared_env_scope_is_never_parallel_safe() -> None:
-    from cf_worktree_env import effective_parallel_safe
+    from codeflow.core.cf_worktree_env import effective_parallel_safe
 
     assert effective_parallel_safe({"env_scope": "shared", "parallel_safe": True}) is False
     assert effective_parallel_safe({"env_scope": "shared"}) is False
@@ -759,7 +759,7 @@ def test_multi_check_reuses_each_check_and_writes_central_evidence(tmp_path: Pat
     assert marker_a.read_text() == "xx"
     assert marker_b.read_text() == "x"
 
-    from cf_evidence_store import EvidenceStore, requirement_key
+    from codeflow.evidence.cf_evidence_store import EvidenceStore, requirement_key
     store = EvidenceStore(str(tmp_path), requirement_key(manifest.parent))
     assert len(store.list_runs("CHK-A")) == 2
     assert len(store.list_runs("CHK-B")) == 1

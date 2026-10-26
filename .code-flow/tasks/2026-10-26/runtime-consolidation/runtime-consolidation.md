@@ -46,7 +46,7 @@
 | B-03 | runtime-consolidation.design.md#2.5 验收条件 | contract | allowlist 到期批次 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-17 | runtime-consolidation.design.md#2.5 验收条件 | system | 四平台安装 → hook 调用 | TASK-011 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_four_platform_install"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-18 | runtime-consolidation.design.md#2.5 验收条件 | integration | 旧平铺 → migrate → 包布局 | TASK-011 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_package_upgrade_cleanup"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-19 | runtime-consolidation.design.md#2.5 验收条件 | system | src/core → .code-flow → npm tarball | TASK-010 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_canonical_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-19 | runtime-consolidation.design.md#2.5 验收条件 | system | src/core → .code-flow → npm tarball | TASK-010 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_canonical_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
 | E-05 | runtime-consolidation.design.md#2.5 验收条件 | integration | 迁移 staging → 失败 → rollback | TASK-011 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_migration_rollback"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 
 > 27 个场景全部有唯一 owner；无 E2E（CLI/运行时工具，跨入口用 integration/system/contract）。
@@ -608,7 +608,7 @@
 
 ## TASK-010: 内部模块包化
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-005, TASK-008, TASK-009
 - **Source**: runtime-consolidation.design.md#4.1 部署架构, runtime-consolidation.design.md#4.4 数据迁移
@@ -623,24 +623,34 @@
 
 ### Checklist
 
-- [ ] 交付 `内部模块包化`，并提供 parity 测试与 tarball 文件清单
-- [ ] [S-19][system] 双副本文件集一致，tarball 包含包树
-- [ ] 不新增 npm/Python 依赖
-- [ ] 更新测试导入为包导入
-- [ ] 运行 Spec verifier：`RULE-cli-dependency-allowlist-001`、`RULE-scripts-canonical-parity-001`
+- [x] 交付 `内部模块包化`，并提供 parity 测试与 tarball 文件清单
+- [x] [S-19][system] 双副本文件集一致，tarball 包含包树
+- [x] 不新增 npm/Python 依赖
+- [x] 更新测试导入为包导入
+- [x] 运行 Spec verifier：`RULE-cli-dependency-allowlist-001`、`RULE-scripts-canonical-parity-001`
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-19 | system | 双副本 + npm tarball | 文件集一致、包树存在 | tests/test_runtime_consolidation.py::test_canonical_parity | planned | planned |
+| S-19 | system | 双副本 + npm tarball | 文件集一致、包树存在 | tests/test_runtime_consolidation.py::test_canonical_parity | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_canonical_parity` | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-19 | `test_canonical_parity` 失败：平铺目录仍有 42 个内部模块，断言输出 `Extra items in the left set: 'cf_task_runtime.py', 'cf_task_plan.py', ...` | PASS: 1 passed | `test_canonical_parity` 的双副本文件集相等、22 个入口平铺、五个子包 `__init__.py` 与模块存在、`_tarball_py_members() == canonical` 断言 | 真实 `src/core/code-flow/scripts` 与 `.code-flow/scripts` 递归 `diff -rq` 一致（70 个 `.py`：22 平铺入口 + 48 包文件）；真实 `npm pack` tarball 的 `scripts/**.py` 集合与 canonical 完全相同（含 `codeflow/{core,spec,task,acceptance,evidence}/`） | verified |
+
+> 守卫更新：`test_dependency_direction` / `test_private_symbol_guard` 现同时扫描平铺入口与 `codeflow/**/*.py`，模块键仍取文件名 stem（`codeflow.core.cf_log` → `cf_log`）；真实导入图下 8 条依赖边 allowlist 与 21 条私有符号 allowlist 均无需放宽或删除。包化本身是机械重构，无生产 RED；`test_task_parser_single_source` 同步扫描包内文件，`cf_task_doc` owner 断言改为 `codeflow/task/cf_task_doc.py`。测试导入共改写 399 条语句（103 个文件），仍只使用 `sys.path.insert(scripts)`，未新增依赖。全量 `python3 -m pytest -q tests` = 933 passed, 6 skipped。
+- S-19: verified — automated command passed; run_id=ae3e6ed5745d466483530aabd75cda34 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
+- [2026-10-26] started
+- [2026-10-26] RED: `test_canonical_parity` 断言 22 个入口平铺失败（42 个内部模块仍在 scripts 根）
+- [2026-10-26] GREEN: 42 个内部模块 `git mv` 至 `codeflow/{core,spec,task,acceptance,evidence}/`（双副本）；22 个入口保持平铺；导入改写为 `codeflow.*`；守卫扫描包树；`_map.md` 更新包布局
+- [2026-10-26] verifier: 3 guards passed；S-19 passed；`pytest -q tests` 933 passed / 6 skipped；`migrate --runtime --apply` committed，`stats --help` 安装校验通过
+- [2026-10-26] completed (done)
 
 ---
 

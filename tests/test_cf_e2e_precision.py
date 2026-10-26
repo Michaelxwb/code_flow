@@ -17,9 +17,9 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"))
 
 from cf_acceptance_manifest import validate_manifest, write_manifest  # noqa: E402
-from cf_acceptance_plan import build_e2e_plan  # noqa: E402
+from codeflow.acceptance.cf_acceptance_plan import build_e2e_plan  # noqa: E402
 from cf_acceptance_runner import _select_profile, run_manifest  # noqa: E402
-from cf_acceptance_schema import validate_checks  # noqa: E402
+from codeflow.acceptance.cf_acceptance_schema import validate_checks  # noqa: E402
 from cf_scenarios import parse_scenarios, validate_e2e_quality  # noqa: E402
 
 

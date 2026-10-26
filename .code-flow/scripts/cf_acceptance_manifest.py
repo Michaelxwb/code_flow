@@ -14,11 +14,11 @@ import re
 import sys
 from typing import IO, Callable, Mapping, Optional, Sequence
 
-from cf_acceptance_schema import (
+from codeflow.acceptance.cf_acceptance_schema import (
     EXEC_MODES, load_manifest, scenario_check_ids, validate_checks, validate_scenarios,
 )
-from cf_markdown import column_index, frontmatter_block, table_cells
-from cf_task_doc import TaskDocumentError, parse_task_document
+from codeflow.core.cf_markdown import column_index, frontmatter_block, table_cells
+from codeflow.task.cf_task_doc import TaskDocumentError, parse_task_document
 
 
 _ROW_RE = re.compile(r"^\|\s*([SEB]-\d+)\s*\|(.+?)\|$")
@@ -570,8 +570,8 @@ def write_manifest(task_file: str, output: str, scenarios_file: str = "", *,
     manifest["quality_schema"] = 2
     _preserve_check_config(target, manifest)
     if register_checks or registration_file:
-        from cf_acceptance_registration import register_checks as configure
-        from cf_evidence_store import discover_project_root
+        from codeflow.acceptance.cf_acceptance_registration import register_checks as configure
+        from codeflow.evidence.cf_evidence_store import discover_project_root
         root = discover_project_root(task_file)
         manifest["registration"] = configure(manifest, str(root), registration_file)
     _preserve_runtime_state(task_file, target, manifest)
@@ -625,7 +625,7 @@ def record_accepted_risk(
         raise ValueError("accepted_risk requires a schema3 manifest with checks")
     for check in checks:
         if isinstance(check, dict) and check.get("id") == check_id:
-            from cf_acceptance_risk import risk_scenario_ids
+            from codeflow.acceptance.cf_acceptance_risk import risk_scenario_ids
             scenario_ids = risk_scenario_ids(data, check_id, owner.strip())
             if not scenario_ids:
                 raise ValueError(f"accepted_risk owner {owner!r} owns no scenario for {check_id}")
@@ -879,7 +879,7 @@ def record_manual_evidence(manifest_file: str, scenario_id: str, confirmed_by: s
 
 
 def _sync_task_evidence(task_file: Path, scenario_id: str, confirmed_by: str, evidence: str, owner: str = "") -> None:
-    from cf_acceptance_evidence import sync_task_evidence
+    from codeflow.acceptance.cf_acceptance_evidence import sync_task_evidence
     sync_task_evidence(task_file, scenario_id, confirmed_by, evidence, owner)
 
 
@@ -938,7 +938,7 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
         if args.verify_plan:
             if not args.task_dir:
                 raise ValueError("--verify-plan requires --task-dir")
-            from cf_plan_quality import verify_plan
+            from codeflow.acceptance.cf_plan_quality import verify_plan
             result = verify_plan(args.task_dir, args.task_file, args.require_scenarios)
             stdout.write(json.dumps(result, ensure_ascii=False))
             return 0 if result["decision"] == "pass" else 3

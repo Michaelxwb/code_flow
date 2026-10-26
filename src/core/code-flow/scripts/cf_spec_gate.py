@@ -15,8 +15,8 @@ import time
 from typing import IO, Mapping, Optional, Sequence
 
 from cf_spec_context import Decision, RuleBinding, RuleStageStatus, SpecBinding, SpecContext, load_context
-from cf_task_doc import TaskDocumentError, parse_task_document
-from cf_core import phase_timing
+from codeflow.task.cf_task_doc import TaskDocumentError, parse_task_document
+from codeflow.core.cf_core import phase_timing
 
 
 @dataclass(frozen=True)
@@ -206,7 +206,7 @@ def validate_stage(
         errors.extend(binding_errors)
         warnings.extend(binding_warnings)
     if root:
-        from cf_rule_readiness import applied_findings
+        from codeflow.spec.cf_rule_readiness import applied_findings
         errors.extend(GateIssue(str(item["code"]), "", "", stage, str(item["message"]))
                       for item in applied_findings(context, root, stage, task_dir=task_dir))
     refs = tuple(sorted({f"{item.spec_id}#{item.rule_ref}" for item in (*errors, *warnings)}))

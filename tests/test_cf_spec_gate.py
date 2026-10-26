@@ -19,7 +19,7 @@ from cf_spec_context import (
     SpecContext,
 )
 from cf_spec_gate import validate_stage
-from cf_spec_metadata import SpecHashes
+from codeflow.spec.cf_spec_metadata import SpecHashes
 
 
 def _context(

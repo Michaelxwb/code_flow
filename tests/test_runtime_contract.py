@@ -150,14 +150,14 @@ def test_usage_docs_only_expose_public_runtime_commands() -> None:
 
 def test_failed_transaction_restores_files_and_version(tmp_path: Path) -> None:
     old_install(tmp_path)
-    before = (tmp_path / ".code-flow/scripts/cf_core.py").read_bytes()
+    before = (tmp_path / ".code-flow/scripts/codeflow/core/cf_core.py").read_bytes()
     program = """
 const fs = require('fs');
 const original = fs.copyFileSync;
 let failed = false;
 const root = process.argv[1];
 fs.copyFileSync = function(source, target) {
-  if (!failed && target === root + '/.code-flow/scripts/cf_core.py') {
+  if (!failed && target === root + '/.code-flow/scripts/codeflow/core/cf_core.py') {
     failed = true;
     throw new Error('injected write failure');
   }
@@ -169,7 +169,7 @@ process.stdout.write(JSON.stringify(migration.run(root, ['--apply'])));
     result = subprocess.run(["node", "-e", program, str(tmp_path), str(ROOT / "src/migrate/runtime.js")],
                             capture_output=True, text=True, timeout=40)
     assert json.loads(result.stdout)["status"] == "rolled_back", result.stderr
-    assert (tmp_path / ".code-flow/scripts/cf_core.py").read_bytes() == before
+    assert (tmp_path / ".code-flow/scripts/codeflow/core/cf_core.py").read_bytes() == before
     assert (tmp_path / ".code-flow/.version").read_text().strip() == "0.6.11"
 
 
@@ -187,14 +187,14 @@ def test_user_hook_changes_do_not_invalidate_managed_contract(tmp_path: Path) ->
 
 def test_interrupted_apply_requires_explicit_rollback(tmp_path: Path) -> None:
     old_install(tmp_path)
-    before = (tmp_path / ".code-flow/scripts/cf_core.py").read_bytes()
+    before = (tmp_path / ".code-flow/scripts/codeflow/core/cf_core.py").read_bytes()
     program = """
 const fs = require('fs');
 const original = fs.copyFileSync;
 const root = process.argv[1];
 fs.copyFileSync = function(source, target) {
   const result = original(source, target);
-  if (target === root + '/.code-flow/scripts/cf_core.py') process.exit(76);
+  if (target === root + '/.code-flow/scripts/codeflow/core/cf_core.py') process.exit(76);
   return result;
 };
 require(process.argv[2]).run(root, ['--apply']);
@@ -206,7 +206,7 @@ require(process.argv[2]).run(root, ['--apply']);
     assert cli(tmp_path, "migrate", "--runtime", "--apply").returncode == 3
     rollback = cli(tmp_path, "migrate", "--runtime", "--rollback", owner["id"])
     assert rollback.returncode == 4, rollback.stdout
-    assert (tmp_path / ".code-flow/scripts/cf_core.py").read_bytes() == before
+    assert (tmp_path / ".code-flow/scripts/codeflow/core/cf_core.py").read_bytes() == before
     assert (tmp_path / ".code-flow/.version").read_text().strip() == "0.6.11"
 
 

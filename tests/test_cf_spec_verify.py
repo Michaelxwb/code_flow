@@ -14,8 +14,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = REPO_ROOT / "src" / "core" / "code-flow" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from cf_spec_metadata import load_spec_metadata
-from cf_spec_verify import VerificationScope, _matches_scope, evidence_is_fresh, run_all_verifiers
+from codeflow.spec.cf_spec_metadata import load_spec_metadata
+from codeflow.spec.cf_spec_verify import VerificationScope, _matches_scope, evidence_is_fresh, run_all_verifiers
 
 
 def test_verified_pure_result_is_persisted_and_reused(tmp_path: Path, monkeypatch) -> None:
@@ -25,7 +25,7 @@ def test_verified_pure_result_is_persisted_and_reused(tmp_path: Path, monkeypatc
         [("RULE-verify-001", "No print calls")],
     )
     scope = VerificationScope(str(tmp_path), (), "a" * 64)
-    import cf_spec_verify
+    from codeflow.spec import cf_spec_verify
 
     calls = 0
     original = cf_spec_verify._evidence

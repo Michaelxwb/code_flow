@@ -24,12 +24,12 @@ import re
 import sys
 from typing import IO, Mapping, Optional, Sequence
 
-from cf_acceptance_schema import (check_outcome, load_manifest, recorded_check_hash,
+from codeflow.acceptance.cf_acceptance_schema import (check_outcome, load_manifest, recorded_check_hash,
                                   scenario_check_ids, verified_evidence)
-from cf_acceptance_risk import risk_counts
-from cf_evidence_store import EvidenceStore
-from cf_markdown import column_index, is_separator_row, table_cells
-from cf_traceability import build_traceability, build_traceability_many, build_traceability_from_scenarios
+from codeflow.acceptance.cf_acceptance_risk import risk_counts
+from codeflow.evidence.cf_evidence_store import EvidenceStore
+from codeflow.core.cf_markdown import column_index, is_separator_row, table_cells
+from codeflow.acceptance.cf_traceability import build_traceability, build_traceability_many, build_traceability_from_scenarios
 
 _SCENARIO_RE = re.compile(r"\b[SEB]-\d+\b")
 _RULE_RE = re.compile(r"^RULE-\d+$")
@@ -286,7 +286,7 @@ def _dedupe(findings: Sequence[Mapping[str, object]]) -> list[dict[str, object]]
 def _scenario_source_findings(scenarios_file: str, manifest_path: Path,
                               design_paths: Sequence[Path], manifest: Mapping[str, object]) -> list[dict[str, str]]:
     from cf_scenarios import audit_scenario_source, parse_scenarios
-    from cf_traceability import parse_design_scenarios
+    from codeflow.acceptance.cf_traceability import parse_design_scenarios
     source = parse_scenarios(scenarios_file)
     coverage: list[dict[str, object]] = []
     task_name = manifest.get("task_file")
@@ -404,7 +404,7 @@ def build_audit(design_file: str, manifest_file: str, root: str,
         for item in manifest.get("scenarios") or ()
         if isinstance(item, Mapping) and isinstance(item.get("id"), str)
     }
-    from cf_evidence_store import requirement_key
+    from codeflow.evidence.cf_evidence_store import requirement_key
     store = EvidenceStore(str(root), requirement or requirement_key(manifest_path.parent))
     findings = [
         *_trace_findings(trace),

@@ -18,13 +18,13 @@ from pathlib import Path
 from typing import IO, Mapping, Optional, Sequence
 
 
-from cf_task_doc import TaskDocument, TaskDocumentError, parse_task_document
-from cf_task_plan import (
+from codeflow.task.cf_task_doc import TaskDocument, TaskDocumentError, parse_task_document
+from codeflow.task.cf_task_plan import (
     DEFAULT_MAX_TASKS,
     TASK_SIZES,
     evaluate_plan,
 )
-from cf_task_state import FINISHED_STATUSES as _DONE_STATUSES
+from codeflow.core.cf_task_state import FINISHED_STATUSES as _DONE_STATUSES
 
 
 @dataclass(frozen=True)

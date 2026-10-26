@@ -11,7 +11,7 @@ import yaml
 SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from cf_core import (
+from codeflow.core.cf_core import (
     compress_content,
     debug_log,
     effective_project_root,
@@ -140,7 +140,7 @@ def test_ensure_utf8_io_reconfigures_and_tolerates_unsupported_stream() -> None:
 
 
 def test_resolve_enforcement_modes_and_defaults() -> None:
-    from cf_core import resolve_enforcement
+    from codeflow.core.cf_core import resolve_enforcement
 
     assert resolve_enforcement({"spec_workflow": {"enforcement": "required"}}) == "required"
     assert resolve_enforcement({"spec_workflow": {"enforcement": "warn"}}) == "warn"
