@@ -8,7 +8,7 @@ import sys
 SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-import cf_log
+from codeflow.core import cf_log
 from cf_stats import spec_workflow_summary
 
 

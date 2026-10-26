@@ -16,7 +16,7 @@ SCRIPTS = ROOT / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_spec_context import BindingInput, bind_specs, new_context, save_context, start_active_task
-from cf_spec_resolver import resolve_candidates
+from codeflow.spec.cf_spec_resolver import resolve_candidates
 from cf_spec_session import context_sha256
 from cf_user_prompt_hook import main
 
@@ -136,7 +136,8 @@ def test_s_11_corrupt_active_marker_fails_closed(tmp_path: Path) -> None:
 
 
 def test_e_10_runtime_has_no_legacy_router_symbols() -> None:
-    files = ("cf_user_prompt_hook.py", "cf_post_hook.py", "cf_stop_hook.py", "cf_core.py")
+    files = ("cf_user_prompt_hook.py", "cf_post_hook.py", "cf_stop_hook.py",
+             "codeflow/core/cf_core.py")
     forbidden = ("fallback_domains_for_context", "extract_prompt_tags", "resolve_inject_mode", "injected_specs", "load_inject_state", "save_inject_state")
     found = []
     for name in files:

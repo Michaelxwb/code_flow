@@ -184,7 +184,7 @@ def _task_repo(tmp_path: Path) -> Path:
     )
     sys.path.insert(0, str(SCRIPTS))
     from cf_spec_context import BindingInput, bind_specs, context_sha256, load_context, new_context, save_context, start_active_task
-    from cf_spec_resolver import resolve_candidates
+    from codeflow.spec.cf_spec_resolver import resolve_candidates
 
     candidate = resolve_candidates(str(tmp_path), "code", ["src/app.py"])[0]
     context = bind_specs(new_context("demo", (("test", "dedup"),)), (BindingInput(candidate, "plan", "app"),))
@@ -217,7 +217,7 @@ def test_task_projection_reinjected_after_context_change(tmp_path: Path) -> None
     _run_raw(root, "继续 TASK-001")
     task_dir = root / ".code-flow/tasks/demo"
     from cf_spec_context import BindingInput, bind_specs, context_sha256, load_context, resync_active_hash, save_context
-    from cf_spec_resolver import resolve_candidates
+    from codeflow.spec.cf_spec_resolver import resolve_candidates
 
     candidate = resolve_candidates(str(root), "code", ["src/app.py"])[0]
     context = bind_specs(load_context(str(task_dir / "spec-context.yml")), (BindingInput(candidate, "plan", "changed reason"),))

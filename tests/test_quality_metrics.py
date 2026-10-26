@@ -14,9 +14,9 @@ import tempfile
 import yaml
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", "code-flow", "scripts"))
-import cf_checks
-import cf_log
-from cf_scan import build_review_list
+from codeflow.acceptance import cf_checks
+from codeflow.core import cf_log
+from codeflow.spec.cf_scan import build_review_list
 from cf_stats import quality_loop_summary
 
 QL_CONFIG = {"quality_loop": {"enabled": True}}

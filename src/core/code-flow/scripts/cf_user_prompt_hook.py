@@ -9,9 +9,9 @@ import re
 import sys
 from pathlib import Path
 
-import cf_log
-from cf_checks import detect_correction
-from cf_core import (
+from codeflow.core import cf_log
+from codeflow.acceptance.cf_checks import detect_correction
+from codeflow.core.cf_core import (
     ConfigError,
     ensure_utf8_io,
     load_config,
@@ -20,9 +20,9 @@ from cf_core import (
     resolve_session_id,
     timing_log,
 )
-from cf_session_state import load_session_state, save_session_state
-from cf_injection import injection_output, injection_text
-from cf_spec_router import RouterError, RouteResult, route_prompt
+from codeflow.core.cf_session_state import load_session_state, save_session_state
+from codeflow.spec.cf_injection import injection_output, injection_text
+from codeflow.spec.cf_spec_router import RouterError, RouteResult, route_prompt
 
 
 _PATH_RE = re.compile(r'`([^`\n]+)`|@?((?:[a-zA-Z]:[\\/]|/)?[a-zA-Z0-9_.][a-zA-Z0-9_./\\\-]*\.[a-zA-Z]{1,8})(?![a-zA-Z0-9_])')

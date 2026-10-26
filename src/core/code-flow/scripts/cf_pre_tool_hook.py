@@ -4,11 +4,11 @@ import json
 import os
 import sys
 
-from cf_core import ensure_utf8_io, resolve_session_id, timing_log
-from cf_log import warn
-from cf_edit_service import prepare_edit
-from cf_injection import injection_output, pre_tool_payload
-from cf_native_paths import project_root
+from codeflow.core.cf_core import ensure_utf8_io, resolve_session_id, timing_log
+from codeflow.core.cf_log import warn
+from codeflow.spec.cf_edit_service import prepare_edit
+from codeflow.spec.cf_injection import injection_output, pre_tool_payload
+from codeflow.core.cf_native_paths import project_root
 
 
 def main() -> None:

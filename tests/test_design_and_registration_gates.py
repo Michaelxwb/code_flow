@@ -15,14 +15,14 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src/core/code-flow/scripts"))
 
-from cf_check_registration import _parse_collection, validate_registration
+from codeflow.acceptance.cf_check_registration import _parse_collection, validate_registration
 from cf_design_lint import lint_designs
-from cf_rule_readiness import artifact_problem
+from codeflow.spec.cf_rule_readiness import artifact_problem
 from cf_spec_context import ArtifactRef, _doctor_command, apply_artifact_ref, load_context, save_context
 from cf_acceptance_manifest import write_manifest
-from cf_check_inputs import check_input_hash
-from cf_exec_base import worktree_fingerprint
-from cf_plan_quality import verify_plan
+from codeflow.acceptance.cf_check_inputs import check_input_hash
+from codeflow.core.cf_exec_base import worktree_fingerprint
+from codeflow.acceptance.cf_plan_quality import verify_plan
 from test_audit_mainline_e2e import _repo
 
 

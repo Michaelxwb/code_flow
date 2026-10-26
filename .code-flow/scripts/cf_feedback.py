@@ -13,9 +13,9 @@ import argparse
 import os
 import sys
 
-from cf_checks import load_check_state, load_spec_checks, record_false_positive
-from cf_core import build_effective_mapping, load_config, normalize_spec_entry
-from cf_log import append_event
+from codeflow.acceptance.cf_checks import load_check_state, load_spec_checks, record_false_positive
+from codeflow.core.cf_core import build_effective_mapping, load_config, normalize_spec_entry
+from codeflow.core.cf_log import append_event
 
 
 def known_check_ids(project_root: str) -> set[str]:

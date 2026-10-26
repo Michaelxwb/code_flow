@@ -11,9 +11,9 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_spec_context import RuleBinding, RuleStageStatus, SpecBinding, SpecContext
-from cf_spec_metadata import SpecHashes
-from cf_task_state import FINISHED_STATUSES
-from cf_workflow_service import task_truth_issues
+from codeflow.spec.cf_spec_metadata import SpecHashes
+from codeflow.core.cf_task_state import FINISHED_STATUSES
+from codeflow.spec.cf_workflow_service import task_truth_issues
 
 
 def _status(status: str) -> RuleStageStatus:

@@ -15,27 +15,27 @@ import time
 
 from cf_acceptance_manifest import record_manual_evidence
 from cf_acceptance_runner import run_manifest
-from cf_acceptance_schema import load_manifest, scenario_check_ids, validate_execution_baseline, verified_evidence
-from cf_exec_base import execution_session
-import cf_git
+from codeflow.acceptance.cf_acceptance_schema import load_manifest, scenario_check_ids, validate_execution_baseline, verified_evidence
+from codeflow.core.cf_exec_base import execution_session
+from codeflow.core import cf_git
 from cf_spec_context import (ContextError, DEFAULT_ACTIVE_EXCLUDES, Decision, SpecContext,
                              apply_decision, load_active_task, load_context, save_context,
                              start_active_task)
 from cf_spec_gate import evidence_deferral_kind, validate_stage
-from cf_spec_metadata import load_spec_metadata
+from codeflow.spec.cf_spec_metadata import load_spec_metadata
 from cf_spec_session import context_sha256
-from cf_spec_verify import (VerificationScope, run_all_verifiers, store_verification_evidence)
-from cf_exec_base import worktree_fingerprint
-from cf_task_doc import TaskDocumentError, parse_task_document
+from codeflow.spec.cf_spec_verify import (VerificationScope, run_all_verifiers, store_verification_evidence)
+from codeflow.core.cf_exec_base import worktree_fingerprint
+from codeflow.task.cf_task_doc import TaskDocumentError, parse_task_document
 from cf_task_index import project_task_nodes
-from cf_task_runtime import (_NON_EXECUTION_ERRORS, _apply_evidence, _evidence_data,
+from codeflow.task.cf_task_runtime import (_NON_EXECUTION_ERRORS, _apply_evidence, _evidence_data,
                              run_done_gate)
-from cf_workflow_service import (FINISHED_STATUSES, _require_marker_task,
+from codeflow.spec.cf_workflow_service import (FINISHED_STATUSES, _require_marker_task,
                                  _sync_markdown, block_task, check_startable,
                                  cleanup_session_projections, complete_task,
                                  locate_task_file, provisional_task, read_task_section,
                                  remove_session_projection, resume_task, task_truth_issues)
-from cf_workflow_transaction import recover_transition
+from codeflow.spec.cf_workflow_transaction import recover_transition
 
 
 def finish_task(root: str, directory: str, task_file: str, task_id: str) -> dict[str, object]:
@@ -549,7 +549,7 @@ def _run_requirement_verifiers(
         metadata = load_spec_metadata(str(Path(root) / ".code-flow/specs" / str(info["path"])))
         result = run_all_verifiers(metadata, scope, (confirmations or {}).get(spec_id), stage=None)
         try:
-            from cf_evidence_store import requirement_key
+            from codeflow.evidence.cf_evidence_store import requirement_key
             store_verification_evidence(
                 metadata, scope, result, requirement=requirement_key(directory),
             )
@@ -664,7 +664,7 @@ def _validation_view(details: Mapping[str, object]) -> dict[str, object]:
 
 
 def _validator_execution_count(root: str, selected: Sequence[str], reused: int) -> int:
-    from cf_validators import resolve_validators, trigger_matches
+    from codeflow.core.cf_validators import resolve_validators, trigger_matches
 
     _config, validators = resolve_validators(root)
     applicable = 0
@@ -831,7 +831,7 @@ def _pending_scenario_rows(data: Mapping[str, object], selected_ids: Optional[se
         str(item.get("id")): item for item in data.get("checks", [])
         if isinstance(item, Mapping) and item.get("id")
     }
-    from cf_acceptance_risk import accepted_risk as _accepted_risk
+    from codeflow.acceptance.cf_acceptance_risk import accepted_risk as _accepted_risk
     for row in data["scenarios"]:
         if row.get("exec") == "aspirational":
             continue
@@ -860,13 +860,13 @@ def _pending_scenario_rows(data: Mapping[str, object], selected_ids: Optional[se
 
 def _stale_functional_rows(data: Mapping[str, object], root: str) -> list[str]:
     """Functional rows claiming verified but recorded against different content."""
-    from cf_acceptance_evidence import stale_scenario_checks
+    from codeflow.acceptance.cf_acceptance_evidence import stale_scenario_checks
     fingerprint = worktree_fingerprint(root)
     checks = {
         str(item.get("id")): item for item in data.get("checks", [])
         if isinstance(item, Mapping) and item.get("id")
     }
-    from cf_check_inputs import check_input_hashes
+    from codeflow.acceptance.cf_check_inputs import check_input_hashes
     per_check = check_input_hashes(root, checks, fingerprint)
     stale: list[str] = []
     for row in data.get("scenarios", []) or []:
@@ -1020,7 +1020,7 @@ def _promote_verified(tasks: Sequence[tuple[Path, str, str]]) -> None:
 
 def _compact_requirement_contexts(root: str, directory: str) -> None:
     """Keep spec-context bounded after a full requirement gate passes."""
-    from cf_evidence_store import compact_context_file, requirement_key
+    from codeflow.evidence.cf_evidence_store import compact_context_file, requirement_key
     for path in sorted(Path(directory).rglob("spec-context.yml")):
         try:
             compact_context_file(path, root=root, requirement=requirement_key(directory))

@@ -16,7 +16,7 @@ from cf_acceptance_manifest import (
     validate_manifest,
     write_manifest,
 )
-from cf_acceptance_schema import validate_checks
+from codeflow.acceptance.cf_acceptance_schema import validate_checks
 
 
 def test_legacy_annotated_e2e_manifest_is_healed(tmp_path: Path) -> None:

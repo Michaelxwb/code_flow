@@ -14,7 +14,7 @@ SCRIPTS = ROOT / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_spec_context import BindingInput, bind_specs, load_context, new_context, save_context
-from cf_spec_resolver import resolve_candidates
+from codeflow.spec.cf_spec_resolver import resolve_candidates
 from cf_spec_session import context_sha256, project_task_session
 
 

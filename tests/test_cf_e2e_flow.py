@@ -21,7 +21,7 @@ from cf_acceptance_manifest import write_manifest  # noqa: E402
 from cf_acceptance_runner import run_manifest  # noqa: E402
 from cf_spec_context import BindingInput, bind_specs, load_context, new_context, save_context  # noqa: E402
 from cf_spec_gate import validate_stage  # noqa: E402
-from cf_spec_resolver import resolve_candidates  # noqa: E402
+from codeflow.spec.cf_spec_resolver import resolve_candidates  # noqa: E402
 from cf_stop_hook import _acceptance_gap  # noqa: E402
 from cf_task_workflow import confirm_manual, verify_e2e  # noqa: E402
 from cf_validation import validate_files  # noqa: E402

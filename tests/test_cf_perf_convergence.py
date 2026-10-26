@@ -10,8 +10,8 @@ import yaml
 SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from cf_spec_resolver import resolve_candidates  # noqa: E402
-from cf_spec_router import _read_candidates  # noqa: E402
+from codeflow.spec.cf_spec_resolver import resolve_candidates  # noqa: E402
+from codeflow.spec.cf_spec_router import _read_candidates  # noqa: E402
 from cf_stats import _violation_fixed, violation_fixed_batch  # noqa: E402
 
 

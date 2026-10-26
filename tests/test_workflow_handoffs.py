@@ -12,8 +12,8 @@ sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_manifest import write_manifest
 from cf_validation import validation_scope
-from cf_workflow_service import start_task
-from cf_workflow_transaction import commit_transition, recover_transition
+from codeflow.spec.cf_workflow_service import start_task
+from codeflow.spec.cf_workflow_transaction import commit_transition, recover_transition
 from test_audit_mainline_e2e import _git, _repo
 
 
@@ -32,7 +32,7 @@ def _transition_files(root: Path) -> tuple[Path, Path]:
 
 
 def test_transition_write_failure_preserves_both_files(tmp_path: Path) -> None:
-    import cf_workflow_transaction as transaction
+    from codeflow.spec import cf_workflow_transaction as transaction
     task, marker = _transition_files(tmp_path)
     original = transaction._write
 
@@ -50,7 +50,7 @@ def test_transition_write_failure_preserves_both_files(tmp_path: Path) -> None:
 
 
 def _interrupt_transition(root: Path, task: Path, marker: Path) -> None:
-    import cf_workflow_transaction as transaction
+    from codeflow.spec import cf_workflow_transaction as transaction
     original = transaction._write
 
     def interrupt_marker(path: Path, value: str) -> None:
@@ -192,7 +192,7 @@ def test_draft_block_resume_cli_does_not_create_active_marker(tmp_path: Path) ->
 
 
 def test_done_rejects_wrong_demand_before_mutating_context(tmp_path: Path) -> None:
-    from cf_task_runtime import run_done_gate
+    from codeflow.task.cf_task_runtime import run_done_gate
     root, directory = _repo(tmp_path)
     start_task(str(root), str(directory), str(directory / "work.md"), "TASK-001")
     other = root / ".code-flow/tasks/other"
@@ -241,13 +241,13 @@ def test_manifest_cannot_redirect_evidence_to_another_task_file(tmp_path: Path) 
 @pytest.mark.parametrize("evidence", [{}, {"status": "failed", "exit_code": 1},
                                      {"status": "passed", "exit_code": 1}])
 def test_verified_label_alone_does_not_close_acceptance(evidence: dict) -> None:
-    from cf_acceptance_schema import verified_evidence
+    from codeflow.acceptance.cf_acceptance_schema import verified_evidence
     assert not verified_evidence({"status": "verified", "kind": "functional", "evidence": evidence})
 
 
 def test_stats_counts_selected_platform_and_excludes_session(tmp_path: Path) -> None:
-    from cf_core import project_instruction_file
-    from cf_scan import build_report
+    from codeflow.core.cf_core import project_instruction_file
+    from codeflow.spec.cf_scan import build_report
     (tmp_path / "AGENTS.md").write_text("Project rules\n" * 30)
     session = tmp_path / ".code-flow/specs/_session/task-demo.md"
     session.parent.mkdir(parents=True)

@@ -22,21 +22,21 @@ from pathlib import Path
 import sys
 from typing import IO, Mapping, Optional, Sequence
 
-import cf_fs
-from cf_exec_base import (
+from codeflow.core import cf_fs
+from codeflow.core.cf_exec_base import (
     execution_key,
     invalidate_executions,
     remaining_seconds,
     run_command,
     worktree_fingerprint,
 )
-from cf_check_inputs import check_input_hashes, match_path
-from cf_acceptance_risk import accepted_risk as _accepted_risk
-from cf_acceptance_schema import (check_outcome, load_manifest, recorded_check_hash,
+from codeflow.acceptance.cf_check_inputs import check_input_hashes, match_path
+from codeflow.acceptance.cf_acceptance_risk import accepted_risk as _accepted_risk
+from codeflow.acceptance.cf_acceptance_schema import (check_outcome, load_manifest, recorded_check_hash,
                                   scenario_check_ids, validate_execution_baseline)
-from cf_acceptance_evidence import persist_results
-from cf_evidence_store import EvidenceStore
-from cf_worktree_env import (
+from codeflow.acceptance.cf_acceptance_evidence import persist_results
+from codeflow.evidence.cf_evidence_store import EvidenceStore
+from codeflow.core.cf_worktree_env import (
     SharedEnvLockTimeout,
     check_environment,
     effective_parallel_safe,
@@ -577,7 +577,7 @@ def _atomic_checkpoint(path: Path, payload: Mapping[str, object]) -> None:
 
 
 def _checkpoint_path(manifest_file: str, root: str) -> Path:
-    from cf_evidence_store import requirement_key
+    from codeflow.evidence.cf_evidence_store import requirement_key
     digest = hashlib.sha256(str(Path(manifest_file).resolve()).encode("utf-8")).hexdigest()[:16]
     requirement = requirement_key(Path(manifest_file).resolve().parent)
     return EvidenceStore(root, requirement).directory.parent / "_checkpoints" / f"acceptance-{digest}.json"

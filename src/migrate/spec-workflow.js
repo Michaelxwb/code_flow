@@ -5,7 +5,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const PREFLIGHT = path.join(__dirname, "../core/code-flow/scripts/cf_spec_migrate.py");
+const PREFLIGHT = path.join(__dirname, "../core/code-flow/scripts/codeflow/spec/cf_spec_migrate.py");
 
 function walkFiles(root, directory = root) {
   const files = [];

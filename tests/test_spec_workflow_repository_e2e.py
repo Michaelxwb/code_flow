@@ -19,8 +19,8 @@ SCRIPTS = ROOT / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_spec_context import BindingInput, bind_specs, load_context, new_context, refresh_context, save_context, start_active_task
-from cf_spec_resolver import resolve_candidates
-from cf_spec_router import route_prompt
+from codeflow.spec.cf_spec_resolver import resolve_candidates
+from codeflow.spec.cf_spec_router import route_prompt
 from cf_spec_session import context_sha256
 import cf_stop_hook
 import cf_user_prompt_hook

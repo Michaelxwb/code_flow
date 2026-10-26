@@ -15,11 +15,11 @@ import sys
 import time
 from typing import IO, Mapping, Optional, Sequence
 
-import cf_fs
-import cf_git
-from cf_spec_metadata import SpecHashes, SpecMetadata, SpecRule, load_spec_metadata
-from cf_spec_resolver import SpecCandidate, resolve_candidates
-from cf_core import phase_timing
+from codeflow.core import cf_fs
+from codeflow.core import cf_git
+from codeflow.spec.cf_spec_metadata import SpecHashes, SpecMetadata, SpecRule, load_spec_metadata
+from codeflow.spec.cf_spec_resolver import SpecCandidate, resolve_candidates
+from codeflow.core.cf_core import phase_timing
 
 
 CONTEXT_VERSION = 1
@@ -1374,7 +1374,7 @@ def _application_ref(task_dir: str, value: Mapping[str, object]) -> ArtifactRef:
     target = (base / artifact).resolve()
     if base != target and base not in target.parents:
         raise ContextError("artifact_outside_task", "applications[].artifact", artifact, task_dir)
-    from cf_rule_readiness import artifact_problem
+    from codeflow.spec.cf_rule_readiness import artifact_problem
     section = _string(value.get("section_id"), "applications[].section_id", "")
     item = _string(value.get("item_id"), "applications[].item_id", "")
     problem = artifact_problem(str(base), artifact, section, item)
@@ -1473,8 +1473,8 @@ def _bind_command(args: argparse.Namespace, payload: Mapping[str, object]) -> di
 
 
 def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> dict[str, object]:
-    from cf_workflow_service import WorkflowError, locate_task_file
-    from cf_workflow_transaction import recover_transition
+    from codeflow.spec.cf_workflow_service import WorkflowError, locate_task_file
+    from codeflow.spec.cf_workflow_transaction import recover_transition
 
     recover_transition(args.root)
     if args.active_action in ("pause", "resume", "block", "complete"):
@@ -1502,7 +1502,7 @@ def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> 
                 args.root, args.task_dir, args.task, args.context_sha256, owned
             )
             return {"ok": True, "active": _active_data(active)}
-        from cf_workflow_service import start_task
+        from codeflow.spec.cf_workflow_service import start_task
 
         try:
             return start_task(args.root, args.task_dir, str(task_file), args.task, owned)
@@ -1514,7 +1514,7 @@ def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> 
         if task_file is None:
             active = resume_active_task(args.root)
         else:
-            from cf_workflow_service import resume_task
+            from codeflow.spec.cf_workflow_service import resume_task
 
             try:
                 return resume_task(args.root, _directory(), str(task_file), args.task)
@@ -1524,7 +1524,7 @@ def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> 
         if task_file is None:
             active = block_active_task(args.root)
         else:
-            from cf_workflow_service import block_task
+            from codeflow.spec.cf_workflow_service import block_task
 
             reason = payload.get("reason", "")
             try:
@@ -1536,7 +1536,7 @@ def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> 
         if task_file is None:
             active = complete_active_task(args.root, gate)
         else:
-            from cf_workflow_service import complete_task
+            from codeflow.spec.cf_workflow_service import complete_task
 
             try:
                 return complete_task(args.root, _directory(), str(task_file), args.task, gate)
@@ -1559,7 +1559,7 @@ def _start_command(args: argparse.Namespace, payload: Mapping[str, object]) -> d
     NOTES, depends, marker) are enforced before any state changes, and the
     Markdown view flips to in-progress in the same call.
     """
-    from cf_workflow_service import WorkflowError, start_task
+    from codeflow.spec.cf_workflow_service import WorkflowError, start_task
 
     owned = tuple(
         _string(item, "owned_paths[]", "")
@@ -1904,7 +1904,7 @@ def _doctor_command(args: argparse.Namespace) -> dict[str, object]:
     findings.extend(_doctor_config(root))
     findings.extend(_doctor_migrations(root))
     findings.extend(_doctor_legacy(root))
-    from cf_rule_readiness import applied_findings, convention_findings
+    from codeflow.spec.cf_rule_readiness import applied_findings, convention_findings
     from cf_spec_gate import result_to_data, validate_stage
     findings.extend(applied_findings(context, str(root), task_dir=str(task_dir)))
     findings.extend(convention_findings(str(root), [binding.path for binding in context.bindings]))

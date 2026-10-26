@@ -19,7 +19,7 @@ from cf_acceptance_manifest import main as manifest_main, validate_manifest
 from cf_scenarios import ScenarioError, parse_scenarios, validate_e2e_quality
 from cf_spec_context import ArtifactRef
 from cf_spec_gate import validate_stage
-from cf_spec_verify import VerificationScope, run_all_verifiers
+from codeflow.spec.cf_spec_verify import VerificationScope, run_all_verifiers
 from test_audit_mainline_e2e import _repo
 from test_cf_spec_gate import _context
 from test_cf_spec_verify import _metadata

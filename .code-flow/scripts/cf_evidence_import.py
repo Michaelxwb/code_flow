@@ -29,11 +29,11 @@ from typing import IO, Mapping, Optional, Sequence
 from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 
-from cf_acceptance_evidence import persist_results
-from cf_acceptance_schema import load_manifest, scenario_check_ids
-from cf_check_inputs import check_input_hashes
-from cf_evidence_store import EvidenceStoreError, discover_project_root
-from cf_exec_base import worktree_fingerprint
+from codeflow.acceptance.cf_acceptance_evidence import persist_results
+from codeflow.acceptance.cf_acceptance_schema import load_manifest, scenario_check_ids
+from codeflow.acceptance.cf_check_inputs import check_input_hashes
+from codeflow.evidence.cf_evidence_store import EvidenceStoreError, discover_project_root
+from codeflow.core.cf_exec_base import worktree_fingerprint
 
 MANIFEST_NAME = ".acceptance-manifest.json"
 FORMATS = ("junit", "playwright")

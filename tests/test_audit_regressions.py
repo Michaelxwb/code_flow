@@ -13,9 +13,9 @@ from cf_acceptance_manifest import write_manifest
 from cf_acceptance_runner import run_manifest
 from cf_spec_context import load_context, save_context, start_active_task
 from cf_spec_session import context_sha256, project_task_session
-from cf_spec_verify import VerificationScope, run_all_verifiers
-from cf_task_runtime import run_done_gate
-from cf_workflow_service import WorkflowError, check_startable, complete_task, start_task
+from codeflow.spec.cf_spec_verify import VerificationScope, run_all_verifiers
+from codeflow.task.cf_task_runtime import run_done_gate
+from codeflow.spec.cf_workflow_service import WorkflowError, check_startable, complete_task, start_task
 from test_cf_injection_version import _repo, _ctx, _prompt
 from test_cf_spec_verify import _metadata
 
@@ -54,7 +54,7 @@ def test_owner_evidence_is_persisted_to_original_manifest(tmp_path: Path) -> Non
 
 
 def test_evidence_adds_status_cell_without_merging_last_contract_cell(tmp_path: Path) -> None:
-    from cf_acceptance_evidence import sync_task_evidence
+    from codeflow.acceptance.cf_acceptance_evidence import sync_task_evidence
     task = tmp_path / "task.md"
     task.write_text("## TASK-001: Demo\n### Acceptance Contract\n"
                     "| S-01 | real DB | assert persisted |\n")
@@ -146,7 +146,7 @@ def test_done_revalidates_manifest(tmp_path: Path, damage: str) -> None:
 def test_user_confirmed_pending_design_plan_can_still_start(tmp_path: Path) -> None:
     from test_audit_mainline_e2e import _repo as mainline_repo
     from cf_spec_context import BindingInput, bind_specs, new_context
-    from cf_spec_resolver import resolve_candidates
+    from codeflow.spec.cf_spec_resolver import resolve_candidates
     root, directory = mainline_repo(tmp_path)
     spec = root / ".code-flow/specs/app/rules.md"
     spec.write_text(spec.read_text().replace("stages: [code]", "stages: [design, plan, code]"))

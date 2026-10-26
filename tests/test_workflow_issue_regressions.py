@@ -15,12 +15,12 @@ import pytest
 SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from cf_acceptance_plan import build_e2e_plan
+from codeflow.acceptance.cf_acceptance_plan import build_e2e_plan
 from cf_acceptance_runner import run_manifest
-from cf_rule_readiness import artifact_problem, referenced_item
+from codeflow.spec.cf_rule_readiness import artifact_problem, referenced_item
 from cf_spec_context import ContextError, _application_ref
 from cf_stop_hook import _acceptance_gap
-from cf_workflow_service import task_truth_issues
+from codeflow.spec.cf_workflow_service import task_truth_issues
 from test_cf_e2e_precision import _scenario
 from test_audit_mainline_e2e import _repo
 
@@ -104,7 +104,7 @@ def test_collect_honors_done_gate_deferrals_with_real_acceptance_proof(tmp_path:
     from cf_spec_context import RuleStageStatus, load_context, save_context
     from cf_task_parallel import ParallelEvidenceError, _require_evidence
     from cf_task_workflow import finish_task
-    from cf_workflow_service import start_task
+    from codeflow.spec.cf_workflow_service import start_task
     root, demand = _repo(tmp_path)
     task = demand / "work.md"
     assert start_task(str(root), str(demand), str(task), "TASK-001", ())["ok"]
@@ -213,7 +213,7 @@ def test_manifest_registers_real_tests_without_editing_generated_json(
 
 def test_failed_registration_does_not_replace_existing_lock(tmp_path: Path) -> None:
     from cf_acceptance_manifest import write_manifest
-    from cf_acceptance_registration import RegistrationError
+    from codeflow.acceptance.cf_acceptance_registration import RegistrationError
     task, target = _browser_plan(tmp_path)
     write_manifest(str(task), str(target))
     previous = target.read_bytes()
@@ -271,7 +271,7 @@ def test_new_file_proof_survives_commit_and_invalidates_on_content_change(tmp_pa
 
 
 def test_deletion_fingerprint_survives_commit(tmp_path: Path) -> None:
-    from cf_exec_base import worktree_fingerprint
+    from codeflow.core.cf_exec_base import worktree_fingerprint
     root, _ = _repo(tmp_path)
     (root / "src/app.py").unlink()
     before = worktree_fingerprint(str(root))
@@ -298,7 +298,7 @@ def test_requirement_smoke_filters_draft_owners_before_execution(tmp_path: Path)
 
 
 def test_plan_reports_explicit_refresh_for_stale_artifact(tmp_path: Path) -> None:
-    from cf_plan_quality import verify_plan
+    from codeflow.acceptance.cf_plan_quality import verify_plan
     from cf_spec_context import ArtifactRef, RuleStageStatus, apply_artifact_ref, load_context, save_context
     root, demand = _repo(tmp_path)
     artifact = demand / "design.md"
@@ -319,11 +319,11 @@ def test_plan_reports_explicit_refresh_for_stale_artifact(tmp_path: Path) -> Non
 
 def test_stop_concurrency_returns_owner_and_recovers_after_kill(tmp_path: Path) -> None:
     from cf_stop_hook import build_stop_result
-    from cf_stop_guard import stop_guard
+    from codeflow.core.cf_stop_guard import stop_guard
     flow = tmp_path / ".code-flow"
     flow.mkdir()
     (flow / "config.yml").write_text("quality_loop:\n  enabled: true\n")
-    script = ("from cf_stop_guard import stop_guard; import sys\n"
+    script = ("from codeflow.core.cf_stop_guard import stop_guard; import sys\n"
               f"with stop_guard({str(tmp_path)!r}, 'holder'):\n print('ready', flush=True)\n sys.stdin.read()\n")
     holder = subprocess.Popen([sys.executable, "-u", "-c", script], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE, text=True, env={**os.environ, "PYTHONPATH": str(SCRIPTS)})
@@ -342,7 +342,7 @@ def test_stop_concurrency_returns_owner_and_recovers_after_kill(tmp_path: Path) 
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX process-group regression")
 def test_command_timeout_terminates_descendants_holding_output_pipes(tmp_path: Path) -> None:
-    from cf_exec_base import run_command
+    from codeflow.core.cf_exec_base import run_command
     marker = tmp_path / "orphan-output.txt"
     child = f"import time; from pathlib import Path; time.sleep(0.5); Path({str(marker)!r}).write_text('orphan')"
     command = [sys.executable, "-c", "import subprocess,sys,time; "

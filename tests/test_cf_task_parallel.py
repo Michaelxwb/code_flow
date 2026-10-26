@@ -22,7 +22,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_manifest import write_manifest  # noqa: E402
 from cf_acceptance_runner import run_manifest  # noqa: E402
-from cf_evidence_store import EvidenceStore  # noqa: E402
+from codeflow.evidence.cf_evidence_store import EvidenceStore  # noqa: E402
 from cf_task_parallel import ParallelError, cleanup, collect, main, merge, prepare  # noqa: E402
 
 
@@ -578,7 +578,7 @@ def test_s06_three_worktrees_share_central_evidence_without_committing(tmp_path:
     common = Path(_git(root, "rev-parse", "--git-common-dir").strip())
     if not common.is_absolute():
         common = (root / common).resolve()
-    from cf_evidence_store import requirement_key
+    from codeflow.evidence.cf_evidence_store import requirement_key
     requirement = requirement_key(Path(EVIDENCE_TASK_FILE).parent)
     store = EvidenceStore(root, requirement=requirement)
     assert store.directory.resolve() == (common / "code-flow/evidence" / requirement).resolve()
@@ -811,7 +811,7 @@ def test_batch_smoke_shared_env_lock_serializes_real_worktrees(tmp_path: Path) -
     prepared = prepare(root, BATCH_TASK_FILE, tasks, "run-lock")
     assert prepared["ok"] is True
 
-    from cf_worktree_env import shared_env_lock_path
+    from codeflow.core.cf_worktree_env import shared_env_lock_path
 
     env = dict(os.environ)
     env["PYTHONPATH"] = str(SCRIPTS) + os.pathsep + env.get("PYTHONPATH", "")
@@ -861,7 +861,7 @@ def test_batch_smoke_shared_env_lock_serializes_real_worktrees(tmp_path: Path) -
 def test_batch_smoke_shared_env_lock_recovers_stale_owner(tmp_path: Path) -> None:
     """stale timeout：残留锁超过阈值可被后继 worktree 接管。"""
     root = _repo(tmp_path)
-    from cf_worktree_env import shared_env_lock, shared_env_lock_path
+    from codeflow.core.cf_worktree_env import shared_env_lock, shared_env_lock_path
 
     lock = shared_env_lock_path(str(root))
     lock.parent.mkdir(parents=True, exist_ok=True)

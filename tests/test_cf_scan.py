@@ -9,7 +9,7 @@ import unittest.mock as mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", "code-flow", "scripts"))
 
-from cf_scan import main
+from codeflow.spec.cf_scan import main
 
 
 def _write(path: str, content: str) -> None:

@@ -12,8 +12,8 @@ import tempfile
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", "code-flow", "scripts"))
-import cf_checks
-from cf_checks import load_spec_checks, parse_spec_checks, run_checks
+from codeflow.acceptance import cf_checks
+from codeflow.acceptance.cf_checks import load_spec_checks, parse_spec_checks, run_checks
 
 VALID_SPEC = """---
 description: 测试用规范

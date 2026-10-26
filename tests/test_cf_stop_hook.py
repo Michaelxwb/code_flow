@@ -18,9 +18,9 @@ import unittest.mock as mock
 import yaml
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", "code-flow", "scripts"))
-import cf_log
+from codeflow.core import cf_log
 import cf_stop_hook
-from cf_validators import expand_braces, trigger_matches
+from codeflow.core.cf_validators import expand_braces, trigger_matches
 
 
 def test_expand_braces():

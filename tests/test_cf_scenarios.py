@@ -189,7 +189,7 @@ def test_migrate_legacy_coverage_to_scenarios() -> None:
 
 
 def test_traceability_from_scenarios_source(tmp_path: Path) -> None:
-    from cf_traceability import build_traceability_from_scenarios
+    from codeflow.acceptance.cf_traceability import build_traceability_from_scenarios
     source = _source(tmp_path, """
 schema: 1
 scenarios:
@@ -212,7 +212,7 @@ scenarios:
 
 
 def test_multi_check_missing_check_blocks(tmp_path: Path) -> None:
-    from cf_traceability import build_traceability_from_scenarios
+    from codeflow.acceptance.cf_traceability import build_traceability_from_scenarios
     source = _source(tmp_path, """
 schema: 1
 scenarios:

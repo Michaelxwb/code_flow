@@ -18,7 +18,7 @@ from typing import IO, Mapping, Optional, Sequence
 
 import yaml
 
-from cf_markdown import frontmatter_block
+from codeflow.core.cf_markdown import frontmatter_block
 
 
 SCHEMA_VERSION = 1
@@ -91,7 +91,7 @@ def _validate_one(item: Mapping[str, object]) -> dict[str, object]:
     if exec_mode not in EXEC_MODES:
         raise ScenarioError("invalid_exec", f"{scenario_id}: exec 非法: {exec_mode!r}")
     try:
-        from cf_scenario_quality import validate_extensions
+        from codeflow.acceptance.cf_scenario_quality import validate_extensions
         extra = validate_extensions(item)
     except ValueError as exc:
         raise ScenarioError("invalid_scenario_contract", f"{scenario_id}: {exc}") from exc
@@ -155,7 +155,7 @@ def parse_scenarios(path: object, *, text: Optional[str] = None) -> dict[str, ob
 def _definition(scenario: Mapping[str, object]) -> dict[str, object]:
     fields = ("title", "priority", "level", "exec", "env", "components", "boundary",
               "preconditions", "steps", "expected", "rules", "why_e2e", "trigger_paths", "smoke")
-    from cf_scenario_quality import EXTRA_FIELDS
+    from codeflow.acceptance.cf_scenario_quality import EXTRA_FIELDS
     return {field: scenario.get(field) for field in (*fields, *EXTRA_FIELDS)}
 
 
@@ -188,7 +188,7 @@ def _quality_issue(code: str, scenario: str, field: str, message: str) -> dict[s
 
 def validate_e2e_quality(scenarios: Sequence[Mapping[str, object]]) -> dict[str, object]:
     """Validate semantic acceptance contracts through one shared quality gate."""
-    from cf_scenario_quality import quality_report
+    from codeflow.acceptance.cf_scenario_quality import quality_report
     return quality_report(scenarios)
 
 

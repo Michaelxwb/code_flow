@@ -25,7 +25,7 @@ from cf_spec_context import (  # noqa: E402
     save_context,
     start_active_task,
 )
-from cf_spec_resolver import resolve_candidates  # noqa: E402
+from codeflow.spec.cf_spec_resolver import resolve_candidates  # noqa: E402
 from cf_spec_session import context_sha256  # noqa: E402
 from cf_spec_context import load_context  # noqa: E402
 import cf_user_prompt_hook as prompt_hook  # noqa: E402

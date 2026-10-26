@@ -7,7 +7,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", "code-flow", "scripts"))
-from cf_core import compress_content
+from codeflow.core.cf_core import compress_content
 
 SPEC_WITH_EXAMPLE = """# Spec
 

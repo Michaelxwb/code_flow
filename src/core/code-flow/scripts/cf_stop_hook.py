@@ -17,16 +17,16 @@ import sys
 import time
 from dataclasses import replace
 
-import cf_log
-from cf_exec_base import execution_session
+from codeflow.core import cf_log
+from codeflow.core.cf_exec_base import execution_session
 from cf_spec_context import load_active_task
-from cf_task_runtime import run_done_gate
-from cf_stop_guard import StopAlreadyRunning, stop_guard
-from cf_acceptance_evidence import line_status, scenario_line
-from cf_task_doc import TaskDocumentError, parse_task_document
-from cf_validators import PARSE_ERROR, VALID, is_heavy, load_validators, run_validators
+from codeflow.task.cf_task_runtime import run_done_gate
+from codeflow.core.cf_stop_guard import StopAlreadyRunning, stop_guard
+from codeflow.acceptance.cf_acceptance_evidence import line_status, scenario_line
+from codeflow.task.cf_task_doc import TaskDocumentError, parse_task_document
+from codeflow.core.cf_validators import PARSE_ERROR, VALID, is_heavy, load_validators, run_validators
 from cf_acceptance_manifest import coverage_execution
-from cf_core import (
+from codeflow.core.cf_core import (
     ensure_utf8_io,
     load_config,
     normalize_path,

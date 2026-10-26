@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-import cf_log
-from cf_checks import load_check_state
-from cf_core import (
+from codeflow.core import cf_log
+from codeflow.acceptance.cf_checks import load_check_state
+from codeflow.core.cf_core import (
     build_effective_mapping,
     build_spec_catalog,
     compress_content,
@@ -357,8 +357,8 @@ def _catalog_usage(root: str, config: dict[str, object], budget: dict[str, objec
 
 
 def _runtime_manifest_counts(manifest: Path) -> dict[str, int]:
-    from cf_acceptance_risk import risk_counts
-    from cf_acceptance_schema import scenario_check_ids
+    from codeflow.acceptance.cf_acceptance_risk import risk_counts
+    from codeflow.acceptance.cf_acceptance_schema import scenario_check_ids
     if not manifest.is_file():
         return {}
     try:
@@ -395,7 +395,7 @@ def _deferred_rule_count(context: Path) -> int:
 
 def _runtime_usage(root: str) -> dict[str, object]:
     """Counts describe unique checks, live risk acceptances and deferred rules."""
-    from cf_evidence_store import EvidenceStore, requirement_key
+    from codeflow.evidence.cf_evidence_store import EvidenceStore, requirement_key
     marker = Path(root) / ".code-flow/.active-task.json"
     task_dir = ""
     if marker.is_file():
@@ -452,7 +452,7 @@ def _stats_report(root: str, args: argparse.Namespace) -> dict[str, object]:
         "runtime": _runtime_usage(root),
     }
     if args.audit:
-        from cf_scan import build_report
+        from codeflow.spec.cf_scan import build_report
         scan = build_report(root, args.platform)
         report["audit"] = {"files": [entry for entry in scan["files"] if entry.get("issues")], "review": scan["review"]}
     return report
