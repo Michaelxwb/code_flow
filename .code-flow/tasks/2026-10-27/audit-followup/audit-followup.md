@@ -95,6 +95,8 @@
 - S-02: stale — input changed: CHK-b3051cc489a2 (confirmed_by: runtime)
 - S-01: verified — automated command passed; run_id=4aec17af02be41ad82841fa3378941f7 (confirmed_by: runner)
 - S-02: verified — automated command passed; run_id=4aec17af02be41ad82841fa3378941f7 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=bcde0604449945c484fd950fe4dfa240 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=bcde0604449945c484fd950fe4dfa240 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -148,6 +150,8 @@
 - S-04: stale — input changed: CHK-1078c53d3738 (confirmed_by: runtime)
 - S-03: verified — automated command passed; run_id=4877e81ebf864ad3822f95cff8bb7d3f (confirmed_by: runner)
 - S-04: verified — automated command passed; run_id=4877e81ebf864ad3822f95cff8bb7d3f (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=428ad30f907a4c62ba5a342b21a290c4 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=428ad30f907a4c62ba5a342b21a290c4 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -198,6 +202,10 @@
 | S-06 | N/A: 行为保持型重构，改动前既有生命周期用例为回归基线 | PASS: test_cf_workflow_service.py + test_cf_spec_context.py + test_cf_user_prompt_hook.py 70 passed；全量 968 passed, 3 skipped；context-gate verifier 66 passed；hook-protocol verifier 76 passed | tests/test_cf_workflow_service.py；tests/test_cf_spec_context.py；tests/test_cf_user_prompt_hook.py | 真实 git 仓库、active marker、spec-context.yml、hook 子进程 | verified |
 - S-05: verified — automated command passed; run_id=ebf4f3cdf360442a861fa6668a6ec1a0 (confirmed_by: runner)
 - S-06: verified — automated command passed; run_id=ebf4f3cdf360442a861fa6668a6ec1a0 (confirmed_by: runner)
+- S-05: stale — input changed: CHK-c1b4098c9633 (confirmed_by: runtime)
+- S-06: stale — input changed: CHK-27ddb78b4ad6 (confirmed_by: runtime)
+- S-05: verified — automated command passed; run_id=646a3609c392470fae722678c89e4dec (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=646a3609c392470fae722678c89e4dec (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -286,6 +294,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 - S-08: verified — automated command passed; run_id=7d51b235c996466aa2ff5996e7814bb2 (confirmed_by: runner)
 - S-08: stale — input changed: CHK-f6ae7934bfda (confirmed_by: runtime)
 - S-08: verified — automated command passed; run_id=5f3a7bfc79694e60850ddd509e8f7221 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=f98c9dffe23c49bbb7788c43953b7bb5 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -334,6 +343,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 - S-09: verified — automated command passed; run_id=2c80dc8bcfeb4283acd0d6ea380604c5 (confirmed_by: runner)
 - S-09: stale — input changed: CHK-1592ed61c3ae (confirmed_by: runtime)
 - S-09: verified — automated command passed; run_id=eaec7856fc914cb692a590d41e912862 (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=273691944ca34433affe59a2d57b922a (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -380,6 +390,8 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 |--------|-----|-------|---------|-------------|------|
 | S-10 | RED: `runInit` 340 行、缺少 `src/adapters/install-plan.json`、`_select_scenarios` ImportError | GREEN: 54 passed（四平台 fresh/upgrade 与 rule-table parity 矩阵） | tests/test_cli_spec_workflow.py::test_install_plan_declaration_covers_platforms_and_is_packaged; ::test_run_init_is_orchestration_only_and_under_two_hundred_lines; tests/test_cf_acceptance_runner.py::test_profile_rule_matrix_matches_legacy_branch_implementation | 真实 `node src/cli.js init --platform=<4>` 临时项目 + 真实 runner fixture | verified |
 - S-10: verified — automated command passed; run_id=4a4f58ea280b49c5a6d8fb52967dcf6f (confirmed_by: runner)
+- S-10: stale — input changed: CHK-06e561265170 (confirmed_by: runtime)
+- S-10: verified — automated command passed; run_id=0e189596c87049e6ae27f530c19a6cf4 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
