@@ -55,6 +55,7 @@ LAYERS: dict[str, int] = {
     "cf_feedback": 3,
     "cf_injection": 2,
     "cf_log": 0,
+    "cf_markdown": 1,
     "cf_native_paths": 0,
     "cf_opencode_event": 3,
     "cf_patch": 0,
@@ -111,13 +112,11 @@ DEPENDENCY_EDGE_ALLOWLIST = frozenset({
 # (importer, source module, private symbol, batch after which it must be gone)
 PRIVATE_SYMBOL_ALLOWLIST = frozenset({
     ("cf_acceptance_evidence", "cf_spec_context", "_atomic_text", 4),
-    ("cf_acceptance_manifest", "cf_scenarios", "_frontmatter", 4),
     ("cf_acceptance_registration", "cf_check_registration", "_collected", 6),
     ("cf_acceptance_registration", "cf_check_registration", "_execution_argv", 6),
     ("cf_acceptance_registration", "cf_check_registration", "_pytest_markers", 6),
     ("cf_acceptance_registration", "cf_check_registration", "_registration_issues", 6),
     ("cf_acceptance_registration", "cf_check_registration", "_requirements", 6),
-    ("cf_checks", "cf_core", "_FRONTMATTER_RE", 4),
     ("cf_codex_hook", "cf_core", "_log", 4),
     ("cf_context_cache", "cf_core", "_log", 4),
     ("cf_injection", "cf_core", "_log", 4),
@@ -125,10 +124,6 @@ PRIVATE_SYMBOL_ALLOWLIST = frozenset({
     ("cf_post_hook", "cf_core", "_log", 4),
     ("cf_pre_tool_hook", "cf_core", "_log", 4),
     ("cf_spec_router", "cf_core", "_log", 4),
-    ("cf_stop_hook", "cf_acceptance_manifest", "_column_indexes", 4),
-    ("cf_stop_hook", "cf_acceptance_manifest", "_column_value", 4),
-    ("cf_stop_hook", "cf_acceptance_manifest", "_kind", 4),
-    ("cf_stop_hook", "cf_acceptance_manifest", "_parse_exec", 4),
     ("cf_stop_hook", "cf_core", "_log", 4),
     ("cf_task_parallel", "cf_task_merge", "_check_conflicts", 6),
     ("cf_task_parallel", "cf_task_runtime", "_task_scope_specs", 6),
@@ -568,8 +563,30 @@ def test_atomic_write() -> None:
     pytest.skip("plan skeleton: implemented in TASK-006")
 
 
-def test_markdown_primitives() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-007")
+def test_markdown_primitives(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.syspath_prepend(str(SCRIPTS))
+    from cf_markdown import parse_frontmatter, table_columns
+
+    # No frontmatter → empty metadata, body unchanged.
+    meta, body = parse_frontmatter("# Title\n\nplain markdown\n")
+    assert meta == {}
+    assert body == "# Title\n\nplain markdown\n"
+
+    # Frontmatter is split from the body.
+    meta, body = parse_frontmatter("---\ndescription: 示例\n---\nbody\n")
+    assert meta == {"description": "示例"}
+    assert body == "body\n"
+
+    # No header row → empty column index.
+    assert table_columns(["no table"]) == {}
+    assert table_columns(["| --- | --- |"]) == {}
+
+    # Column order changes are resolved by header text, not position.
+    columns = table_columns(["| 测试层级 | 执行命令 | 场景ID |", "| --- | --- | --- |"])
+    assert columns == {"测试层级": 0, "执行命令": 1, "场景ID": 2}
+    reordered = table_columns(["| 场景ID | 执行命令 | 测试层级 |", "| --- | --- | --- |"])
+    assert reordered["执行命令"] == 1
+    assert reordered["测试层级"] == 2
 
 
 def test_legacy_removal() -> None:

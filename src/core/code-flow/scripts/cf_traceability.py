@@ -18,10 +18,10 @@ import sys
 from typing import IO, Mapping, Optional, Sequence
 
 from cf_acceptance_schema import EXEC_MODES, load_manifest, scenario_check_ids
+from cf_markdown import column_index, is_separator_row, table_cells
 
 
 _SCENARIO_ID_RE = re.compile(r"^[SEB]-\d+$")
-_SEPARATOR_RE = re.compile(r"^:?-{2,}:?$")
 
 
 @dataclass(frozen=True)
@@ -53,15 +53,14 @@ def _table_blocks(text: str) -> list[tuple[list[str], list[list[str]]]]:
     header: Optional[list[str]] = None
     rows: list[list[str]] = []
     for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("|"):
-            cells = [item.strip() for item in stripped.strip("|").split("|")]
-            if all(_SEPARATOR_RE.match(cell.replace(" ", "")) for cell in cells):
+        cells = table_cells(line)
+        if cells:
+            if is_separator_row(cells):
                 continue
             if header is None:
-                header = cells
+                header = list(cells)
             else:
-                rows.append(cells)
+                rows.append(list(cells))
             continue
         if header is not None:
             blocks.append((header, rows))
@@ -69,14 +68,6 @@ def _table_blocks(text: str) -> list[tuple[list[str], list[list[str]]]]:
     if header is not None:
         blocks.append((header, rows))
     return blocks
-
-
-def _column(header: Sequence[str], *names: str) -> int:
-    for name in names:
-        for index, cell in enumerate(header):
-            if name.lower() in cell.lower():
-                return index
-    return -1
 
 
 def _cell(row: Sequence[str], index: int) -> str:
@@ -97,10 +88,10 @@ def _require_full_design_scenarios(text: str) -> None:
     """Only complete legacy definitions can substitute for a missing source."""
     references = False
     for header, rows in _table_blocks(text):
-        column = _column(header, "场景id", "场景编号")
+        column = column_index(header, "场景id", "场景编号")
         if column < 0 or not any(_SCENARIO_ID_RE.match(_cell(row, column)) for row in rows):
             continue
-        if _column(header, "测试层级") >= 0:
+        if column_index(header, "测试层级") >= 0:
             return
         references = True
     if references:
@@ -118,16 +109,16 @@ def parse_design_scenarios(design_file: str) -> tuple[DesignScenario, ...]:
     section = _acceptance_section(text)
     scenarios: dict[str, DesignScenario] = {}
     for header, rows in _table_blocks(section):
-        id_index = _column(header, "场景id", "场景编号")
-        level_index = _column(header, "测试层级")
+        id_index = column_index(header, "场景id", "场景编号")
+        level_index = column_index(header, "测试层级")
         if id_index == -1 or level_index == -1:
             continue
-        feature_index = _column(header, "功能id", "feature")
-        priority_index = _column(header, "优先级", "priority")
-        boundary_index = _column(header, "关键真实边界", "真实边界")
-        exec_index = _column(header, "执行方式", "exec")
-        env_index = _column(header, "环境", "env")
-        inputs_index = _column(header, "输入", "inputs")
+        feature_index = column_index(header, "功能id", "feature")
+        priority_index = column_index(header, "优先级", "priority")
+        boundary_index = column_index(header, "关键真实边界", "真实边界")
+        exec_index = column_index(header, "执行方式", "exec")
+        env_index = column_index(header, "环境", "env")
+        inputs_index = column_index(header, "输入", "inputs")
         for row in rows:
             scenario_id = _cell(row, id_index)
             if not _SCENARIO_ID_RE.match(scenario_id):

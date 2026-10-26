@@ -231,6 +231,10 @@ bindings:
           section_id: TASK-010
           item_id: TASK-010
           artifact_sha256: 8d5c20e690c7463f57d93e68555ce7dc675d999ff613ae21bb8c8f75143b4812
+        - artifact: runtime-consolidation.md
+          section_id: TASK-010
+          item_id: TASK-010
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       review:
@@ -283,6 +287,10 @@ bindings:
           section_id: TASK-011
           item_id: TASK-011
           artifact_sha256: 8d5c20e690c7463f57d93e68555ce7dc675d999ff613ae21bb8c8f75143b4812
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       review:
@@ -335,6 +343,10 @@ bindings:
           section_id: TASK-011
           item_id: TASK-011
           artifact_sha256: 8d5c20e690c7463f57d93e68555ce7dc675d999ff613ae21bb8c8f75143b4812
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       review:
@@ -388,6 +400,10 @@ bindings:
           section_id: TASK-011
           item_id: TASK-011
           artifact_sha256: 8d5c20e690c7463f57d93e68555ce7dc675d999ff613ae21bb8c8f75143b4812
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       review:
@@ -440,6 +456,10 @@ bindings:
           section_id: TASK-011
           item_id: TASK-011
           artifact_sha256: 8d5c20e690c7463f57d93e68555ce7dc675d999ff613ae21bb8c8f75143b4812
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       review:
@@ -492,6 +512,10 @@ bindings:
           section_id: TASK-002
           item_id: TASK-002
           artifact_sha256: 8d5c20e690c7463f57d93e68555ce7dc675d999ff613ae21bb8c8f75143b4812
+        - artifact: runtime-consolidation.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       review:
@@ -848,6 +872,10 @@ bindings:
           section_id: TASK-010
           item_id: TASK-010
           artifact_sha256: 8d5c20e690c7463f57d93e68555ce7dc675d999ff613ae21bb8c8f75143b4812
+        - artifact: runtime-consolidation.md
+          section_id: TASK-010
+          item_id: TASK-010
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       review:
@@ -913,6 +941,10 @@ bindings:
           section_id: TASK-005
           item_id: TASK-005
           artifact_sha256: 8d5c20e690c7463f57d93e68555ce7dc675d999ff613ae21bb8c8f75143b4812
+        - artifact: runtime-consolidation.md
+          section_id: TASK-005
+          item_id: TASK-005
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       review:
@@ -981,6 +1013,10 @@ bindings:
           section_id: TASK-011
           item_id: TASK-011
           artifact_sha256: 8d5c20e690c7463f57d93e68555ce7dc675d999ff613ae21bb8c8f75143b4812
+        - artifact: runtime-consolidation.md
+          section_id: TASK-011
+          item_id: TASK-011
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       review:
@@ -1032,6 +1068,10 @@ bindings:
           section_id: TASK-001
           item_id: TASK-001
           artifact_sha256: 8d5c20e690c7463f57d93e68555ce7dc675d999ff613ae21bb8c8f75143b4812
+        - artifact: runtime-consolidation.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       review:
@@ -1083,6 +1123,10 @@ bindings:
           section_id: TASK-001
           item_id: TASK-001
           artifact_sha256: 8d5c20e690c7463f57d93e68555ce7dc675d999ff613ae21bb8c8f75143b4812
+        - artifact: runtime-consolidation.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 37e65aefaf5f1c189728c2f2a9d8e1e5e421afcc5c161b6ff12503026ffafd89
         decision: null
         evidence: []
       review:

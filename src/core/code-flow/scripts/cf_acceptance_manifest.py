@@ -17,6 +17,7 @@ from typing import IO, Callable, Mapping, Optional, Sequence
 from cf_acceptance_schema import (
     EXEC_MODES, load_manifest, scenario_check_ids, validate_checks, validate_scenarios,
 )
+from cf_markdown import column_index, frontmatter_block, table_cells
 
 
 _ROW_RE = re.compile(r"^\|\s*([SEB]-\d+)\s*\|(.+?)\|$")
@@ -84,11 +85,9 @@ def _column_indexes(cells: Sequence[str]) -> dict[str, int]:
     """Map table headers to field offsets (fields omit the leading 场景ID cell)."""
     indexes: dict[str, int] = {}
     for key, names in _COLUMN_NAMES.items():
-        for index, cell in enumerate(cells[1:]):
-            lowered = cell.strip().lower()
-            if any(name.lower() in lowered for name in names):
-                indexes[key] = index
-                break
+        index = column_index(cells[1:], *names)
+        if index >= 0:
+            indexes[key] = index
     return indexes
 
 
@@ -96,6 +95,23 @@ def _column_value(fields: Sequence[str], columns: Mapping[str, int], key: str, f
     """Prefer named headers; only headerless legacy tables use positional fallback."""
     index = columns.get(key, -1) if columns else fallback
     return fields[index].strip() if 0 <= index < len(fields) else ""
+
+
+def coverage_execution(coverage: str, scenario: str) -> tuple[str, str]:
+    """Return (kind, exec mode) for one Acceptance Coverage table row."""
+    columns: dict[str, int] = {}
+    for line in coverage.splitlines():
+        cells = table_cells(line)
+        if not cells:
+            continue
+        header = _column_indexes(cells)
+        if "level" in header:
+            columns = header
+        if cells[0] == scenario:
+            fields = cells[1:]
+            return (_kind(_column_value(fields, columns, "level", 1)),
+                    _parse_exec(_column_value(fields, columns, "exec", 9)))
+    return "", ""
 
 
 def _metadata_cell(fields: Sequence[str], columns: Mapping[str, int], key: str) -> str:
@@ -257,12 +273,11 @@ def _contract_commands(text: str) -> dict[str, str]:
             continue
         command_idx = -1
         for line in contract.group(1).splitlines():
-            stripped = line.strip()
-            if not stripped.startswith("|"):
+            cells = table_cells(line)
+            if not cells:
                 continue
-            cells = [cell.strip() for cell in stripped.strip("|").split("|")]
             if command_idx == -1:
-                match_column = next((i for i, cell in enumerate(cells) if "命令" in cell), -1)
+                match_column = column_index(cells, "命令")
                 if match_column == -1:
                     continue
                 command_idx = match_column
@@ -347,12 +362,17 @@ _SCENARIO_SOURCE_FIELDS = ("why_e2e", "trigger_paths", "smoke", "components", "s
 
 def _source_contract(scenarios_file: str) -> tuple[dict[str, object], dict[str, set[str]]]:
     import yaml
-    from cf_scenarios import ScenarioError, _frontmatter, parse_scenarios
+    from cf_scenarios import ScenarioError, parse_scenarios
 
     try:
         source = parse_scenarios(scenarios_file)
         raw_text = Path(scenarios_file).read_text(encoding="utf-8")
-        raw = yaml.safe_load(_frontmatter(raw_text)) or {}
+        block = frontmatter_block(raw_text)
+        if block is None:
+            if raw_text.startswith("---"):
+                raise ScenarioError("scenario_source_invalid_frontmatter", "frontmatter 缺少闭合 ---")
+            block = raw_text
+        raw = yaml.safe_load(block) or {}
     except (OSError, UnicodeError, yaml.YAMLError, ScenarioError) as exc:
         code = getattr(exc, "code", "scenario_source_unreadable")
         message = getattr(exc, "message", str(exc))
@@ -426,11 +446,10 @@ def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallba
             break
         if not in_table:
             continue
-        if line.strip().startswith("|"):
-            header = [item.strip() for item in line.strip().strip("|").split("|")]
-            if header and header[0].replace(" ", "") in ("场景ID", "场景编号"):
-                columns = _column_indexes(header)
-                continue
+        header = table_cells(line)
+        if header and header[0].replace(" ", "") in ("场景ID", "场景编号"):
+            columns = _column_indexes(header)
+            continue
         match = _ROW_RE.match(line)
         if not match or set(match.group(2).replace("|", "").strip()) <= {"-", " "}:
             continue
