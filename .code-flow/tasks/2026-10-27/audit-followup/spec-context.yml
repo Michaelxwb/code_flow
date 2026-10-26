@@ -31,34 +31,33 @@ bindings:
     verifier_stage: code
     stage_status:
       code:
-        status: unverified
+        status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
-          executed_at: '2026-10-26T17:50:51.486869+00:00'
-          status: unverified
+          executed_at: '2026-10-26T18:00:43.942154+00:00'
+          status: verified
           rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
           artifact_sha256: null
-          diff_sha256: 30d3b24e1153d4744bc27d2d36367b03a7a76876c16bbe23d38cdb9326f7d06e
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
+          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          result_sha256: 1085c4cab6098edb47d916a3f61807f8941bff345e264feb00b9abd8a1d910cf
+          error_code: null
           details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
-        - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
-          executed_at: '2026-10-26T17:55:26.480290+00:00'
-          status: unverified
-          rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
-          artifact_sha256: null
-          diff_sha256: dffb4095343d1c94fd95203e2f8f9d45d8fe6ccdf560e969ac537c09523da481
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
-          details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cli_spec_workflow.py::test_package_manifest_includes_migrator_without_new_dependency
+            exit_code: 0
+            stdout_sha256: 4bcefcc9f6c645923b9993ccf73ad92e6b400ca25458ea14e095857fc2131342
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '.                                                                        [100%]
+
+              1 passed in 0.01s
+
+              '
       design:
         status: pending
         refs: []
@@ -87,34 +86,42 @@ bindings:
     verifier_stage: code
     stage_status:
       code:
-        status: unverified
+        status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
-          executed_at: '2026-10-26T17:50:51.486889+00:00'
-          status: unverified
+          executed_at: '2026-10-26T18:00:43.994907+00:00'
+          status: verified
           rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
           artifact_sha256: null
-          diff_sha256: 30d3b24e1153d4744bc27d2d36367b03a7a76876c16bbe23d38cdb9326f7d06e
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
+          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          result_sha256: b993aeefb614fe0bf53e1d4c9059ce0c76d04eb18efd68f4adbdb2bb9b9737d9
+          error_code: null
           details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
-        - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
-          executed_at: '2026-10-26T17:55:26.480311+00:00'
-          status: unverified
-          rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
-          artifact_sha256: null
-          diff_sha256: dffb4095343d1c94fd95203e2f8f9d45d8fe6ccdf560e969ac537c09523da481
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
-          details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
+            argv:
+            - node
+            - tests/test_cli_merge_helpers.js
+            exit_code: 0
+            stdout_sha256: f949ebd1c6c270c9d311154b189fccdd6a07acb4095f9d8700be60a0afe5b511
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "Running cli.js merge helper tests...\n  ✓ RUNTIME_GITIGNORE matches\
+              \ canonical template\n  ✓ ensureRuntimeGitignore creates/extends managed\
+              \ block only\n  ✓ mergeClaudeMd adds missing section\n  ✓ mergeClaudeMd\
+              \ ignores ## inside fenced code\n  ✓ mergeClaudeMd keeps managed start\
+              \ marker\n  ✓ mergeClaudeMd repairs unpaired end marker\n  ✓ mergeClaudeMd\
+              \ ignores marker-free files\n  ✓ maskFencedCode preserves byte offsets\n\
+              \  ✓ mergeSettingsJson adds new event\n  ✓ mergeSettingsJson adds new\
+              \ matcher within existing event\n  ✓ mergeSettingsJson adds new command\
+              \ into existing matcher\n  ✓ mergeSettingsJson never overwrites user\
+              \ command\n  ✓ mergeSettingsJson replaces retired managed hooks\n  ✓\
+              \ mergeSettingsJson is idempotent on identical content\n  ✓ mergeCodexConfigToml\
+              \ adds missing hook flag\n  ✓ mergeCodexConfigToml creates [features]\
+              \ section\n  ✓ mergeCodexConfigToml inserts before blank section gap\n\
+              \  ✓ mergeCodexConfigToml migrates deprecated hook alias\n  ✓ mergeCodexConfigToml\
+              \ is idempotent\n  ✓ mergeOpencodeJson migrates legacy plugin key\n\
+              \  ✓ mergeOpencodeJson drops auto-discovered local plugin entry\n  ✓\
+              \ mergeOpencodeJson is idempotent\n\nAll 22 tests passed.\n"
       design:
         status: pending
         refs: []
@@ -143,34 +150,33 @@ bindings:
     verifier_stage: code
     stage_status:
       code:
-        status: unverified
+        status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
-          executed_at: '2026-10-26T17:50:51.486895+00:00'
-          status: unverified
+          executed_at: '2026-10-26T18:00:44.402762+00:00'
+          status: verified
           rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
           artifact_sha256: null
-          diff_sha256: 30d3b24e1153d4744bc27d2d36367b03a7a76876c16bbe23d38cdb9326f7d06e
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
+          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          result_sha256: c04095652339aeb3c4b2a85a99001464ed5fdfde8df37d51c8c605df486c13ac
+          error_code: null
           details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
-        - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
-          executed_at: '2026-10-26T17:55:26.480318+00:00'
-          status: unverified
-          rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
-          artifact_sha256: null
-          diff_sha256: dffb4095343d1c94fd95203e2f8f9d45d8fe6ccdf560e969ac537c09523da481
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
-          details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_adapter_parity.py
+            exit_code: 0
+            stdout_sha256: 8478e6b437f3d9b065e15424a141410ceb40ad20fedf65c2732406d7c7f846c5
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '.............                                                            [100%]
+
+              13 passed in 0.26s
+
+              '
       design:
         status: pending
         refs: []
@@ -199,34 +205,33 @@ bindings:
     verifier_stage: code
     stage_status:
       code:
-        status: unverified
+        status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
-          executed_at: '2026-10-26T17:50:51.486899+00:00'
-          status: unverified
+          executed_at: '2026-10-26T18:00:45.071254+00:00'
+          status: verified
           rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
           artifact_sha256: null
-          diff_sha256: 30d3b24e1153d4744bc27d2d36367b03a7a76876c16bbe23d38cdb9326f7d06e
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
+          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          result_sha256: a4bb98c3241680b2d0f8926147ba670836ae53dd2b41889416f486409cfaf45c
+          error_code: null
           details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
-        - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
-          executed_at: '2026-10-26T17:55:26.480323+00:00'
-          status: unverified
-          rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
-          artifact_sha256: null
-          diff_sha256: dffb4095343d1c94fd95203e2f8f9d45d8fe6ccdf560e969ac537c09523da481
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
-          details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            exit_code: 0
+            stdout_sha256: 3230560ca605e62ec8d6ead7a7bd614c50705fdc6ae66aa82ba19e68eb84f45a
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '......                                                                   [100%]
+
+              6 passed in 0.55s
+
+              '
       design:
         status: pending
         refs: []
@@ -255,34 +260,68 @@ bindings:
     verifier_stage: code
     stage_status:
       code:
-        status: unverified
+        status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
-          executed_at: '2026-10-26T17:50:51.486904+00:00'
-          status: unverified
+          executed_at: '2026-10-26T18:00:46.894026+00:00'
+          status: verified
           rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
           artifact_sha256: null
-          diff_sha256: 30d3b24e1153d4744bc27d2d36367b03a7a76876c16bbe23d38cdb9326f7d06e
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
+          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          result_sha256: da22ccd2ebfc6de05f9b25cd90b93351a7b83840ac944a53dce4b89b684185f3
+          error_code: null
           details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
-        - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
-          executed_at: '2026-10-26T17:55:26.480327+00:00'
-          status: unverified
-          rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
-          artifact_sha256: null
-          diff_sha256: dffb4095343d1c94fd95203e2f8f9d45d8fe6ccdf560e969ac537c09523da481
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
-          details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
+            argv:
+            - node
+            - tests/test_spec_workflow_migrate.js
+            exit_code: 0
+            stdout_sha256: 3c33a7081e5c7ef414ca8dc6bbeac6efc1b6ce6eec8c0ca947f2cab1c61a7a69
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '✔ B-08 dry-run is a single in-memory preview with zero writes
+              (55.902833ms)
+
+              ✔ prepare creates bound plan, byte backup, empty staging and journal
+              (60.124583ms)
+
+              ✔ S-12 apply is idempotent and writes version last (207.116333ms)
+
+              ✔ S-08 migration derives managed ignore block from the runtime declaration
+              (193.683958ms)
+
+              ✔ S-08 migration appends the declared block when no managed block exists
+              (191.722625ms)
+
+              ✔ E-08 injected rename failure restores all original bytes (335.236084ms)
+
+              ✔ B-05 interruption before version is completed from proven target hashes
+              (204.592459ms)
+
+              ✔ EXDEV fails closed and rolls back without copy-delete commit fallback
+              (168.137292ms)
+
+              ✔ re-apply after rollback succeeds (staging is reset) (306.009ms)
+
+              ✔ apply refuses a plan whose project_root differs from cwd (57.07425ms)
+
+              ℹ tests 10
+
+              ℹ suites 0
+
+              ℹ pass 10
+
+              ℹ fail 0
+
+              ℹ cancelled 0
+
+              ℹ skipped 0
+
+              ℹ todo 0
+
+              ℹ duration_ms 1782.384417
+
+              '
       design:
         status: pending
         refs: []
@@ -312,34 +351,28 @@ bindings:
     verifier_stage: code
     stage_status:
       code:
-        status: unverified
+        status: verified
         refs: []
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
-          executed_at: '2026-10-26T17:50:51.486908+00:00'
-          status: unverified
+          executed_at: '2026-10-26T18:00:48.536197+00:00'
+          status: verified
           rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
           artifact_sha256: null
-          diff_sha256: 30d3b24e1153d4744bc27d2d36367b03a7a76876c16bbe23d38cdb9326f7d06e
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
+          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          result_sha256: 3cd1ee3e105ef106eaf349c7f44dbe753eef65fb606a2a7258e3beef3f4d9ba5
+          error_code: null
           details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
-        - verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
-          executed_at: '2026-10-26T17:55:26.480332+00:00'
-          status: unverified
-          rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
-          artifact_sha256: null
-          diff_sha256: dffb4095343d1c94fd95203e2f8f9d45d8fe6ccdf560e969ac537c09523da481
-          result_sha256: d64204fb7714b293f7c2c717d11b0177e91f6d85475ba7fcf81ce5cced5edeab
-          error_code: deferred_to_review
-          details:
-            reason: review_stage
-            deferral_kind: review_stage
-            deferred_to_review: true
+            argv:
+            - node
+            - tests/test_opencode_plugin.js
+            exit_code: 0
+            stdout_sha256: b5cddc8bb165e694dfbf074fd3c013bc4b5d1dabdd5be6b949e310ad873ef801
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: 'OpenCode v2 native callback/runtime integration tests passed.
+
+              '
       design:
         status: pending
         refs: []
@@ -581,26 +614,15 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
-          executed_at: '2026-10-26T17:51:12.204242+00:00'
+          executed_at: '2026-10-26T18:01:11.860722+00:00'
           status: verified
           rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
           artifact_sha256: null
-          diff_sha256: 30d3b24e1153d4744bc27d2d36367b03a7a76876c16bbe23d38cdb9326f7d06e
-          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          result_sha256: 364f153a289a4fd1a234ecd2f1d03cda175d67d6ba3d9223b3afbe1331a92956
           error_code: null
           details:
-            checked_files: 0
-            violations: []
-        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
-          executed_at: '2026-10-26T17:55:47.248393+00:00'
-          status: verified
-          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
-          artifact_sha256: null
-          diff_sha256: dffb4095343d1c94fd95203e2f8f9d45d8fe6ccdf560e969ac537c09523da481
-          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
-          error_code: null
-          details:
-            checked_files: 0
+            checked_files: 25
             violations: []
       design:
         status: pending
@@ -635,26 +657,15 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
-          executed_at: '2026-10-26T17:51:12.207918+00:00'
+          executed_at: '2026-10-26T18:01:11.899606+00:00'
           status: verified
           rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
           artifact_sha256: null
-          diff_sha256: 30d3b24e1153d4744bc27d2d36367b03a7a76876c16bbe23d38cdb9326f7d06e
-          result_sha256: c02a0060787785e4b0dec8b234ac597f22c86aef997cb8ef31eb65038103bef7
+          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          result_sha256: a2f48e9a5d844c4ac164b1d7b597fffb9d05d5dbe189583b9afb2d31ff62b15f
           error_code: null
           details:
-            checked_files: 18
-            violations: []
-        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
-          executed_at: '2026-10-26T17:55:47.249122+00:00'
-          status: verified
-          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
-          artifact_sha256: null
-          diff_sha256: dffb4095343d1c94fd95203e2f8f9d45d8fe6ccdf560e969ac537c09523da481
-          result_sha256: 391b244089c85f50a45a0bffc21abae5968dcd07efd606b83f9d8e9b6b0d956b
-          error_code: null
-          details:
-            checked_files: 1
+            checked_files: 289
             violations: []
       design:
         status: pending
@@ -689,12 +700,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
-          executed_at: '2026-10-26T17:51:03.948573+00:00'
+          executed_at: '2026-10-26T18:01:01.227638+00:00'
           status: verified
           rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
           artifact_sha256: null
-          diff_sha256: 30d3b24e1153d4744bc27d2d36367b03a7a76876c16bbe23d38cdb9326f7d06e
-          result_sha256: 703845e3e6c59d4ea921580dd8089ca4feb5c726b7ea8bb88c278feb13d0018e
+          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          result_sha256: 14a6be73dcf7ae381cc179f3c7acd66f893332c3d2a370918ff3d57a9e275c70
           error_code: null
           details:
             argv:
@@ -709,45 +720,14 @@ bindings:
             - tests/test_opencode_native.py
             - tests/test_runtime_contract.py
             exit_code: 0
-            stdout_sha256: d88f1aba3be82f0de559f48a223f53a44a984977e9343527da099986f6200b94
+            stdout_sha256: de409cb0bd454eeca46356e101e453103d9726d1df1e2912a52e0fc12793f935
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '........................................................................
               [ 94%]
 
               ....                                                                     [100%]
 
-              76 passed in 12.07s
-
-              '
-        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
-          executed_at: '2026-10-26T17:55:38.846727+00:00'
-          status: verified
-          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
-          artifact_sha256: null
-          diff_sha256: dffb4095343d1c94fd95203e2f8f9d45d8fe6ccdf560e969ac537c09523da481
-          result_sha256: b3e16b928b37323d8a086d3268294432a7820d9fbee2b72027fb769300afe03b
-          error_code: null
-          details:
-            argv:
-            - python3
-            - -m
-            - pytest
-            - -q
-            - tests/test_hook_command_robustness.py
-            - tests/test_cf_user_prompt_hook.py
-            - tests/test_cf_post_hook.py
-            - tests/test_codex_native_hook.py
-            - tests/test_opencode_native.py
-            - tests/test_runtime_contract.py
-            exit_code: 0
-            stdout_sha256: 20888d1c8a4fe40edc8c3a3a0edf485ab82a9d59680e9a04189cc9e6d1221e8b
-            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-            output: '........................................................................
-              [ 94%]
-
-              ....                                                                     [100%]
-
-              76 passed in 11.89s
+              76 passed in 12.21s
 
               '
       design:
@@ -783,12 +763,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
-          executed_at: '2026-10-26T17:51:11.296303+00:00'
+          executed_at: '2026-10-26T18:01:11.045693+00:00'
           status: verified
           rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
           artifact_sha256: null
-          diff_sha256: 30d3b24e1153d4744bc27d2d36367b03a7a76876c16bbe23d38cdb9326f7d06e
-          result_sha256: fe58142af78e2afd4007e21da13c79e2990fcbf876a62e76e3c2383955b42204
+          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          result_sha256: 082eeca8b767e8538a69a3aecdb19b85404b4045cd89adbeb7d7d1e3403d8924
           error_code: null
           details:
             argv:
@@ -800,36 +780,11 @@ bindings:
             - tests/test_cf_spec_gate.py
             - tests/test_cf_task_runtime.py
             exit_code: 0
-            stdout_sha256: 76a1c048629058b16d0861ee04d1bee4051ede65db2fdd27a2894b74c929ab57
+            stdout_sha256: c3b64fbd34c1a656005baf03a07582022fe67ae8c87b372ca4d7eec20ae46335
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '..................................................................       [100%]
 
-              66 passed in 7.14s
-
-              '
-        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
-          executed_at: '2026-10-26T17:55:46.320746+00:00'
-          status: verified
-          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
-          artifact_sha256: null
-          diff_sha256: dffb4095343d1c94fd95203e2f8f9d45d8fe6ccdf560e969ac537c09523da481
-          result_sha256: bfba961b9a9646aba505890f294be2862849e2ade41ced1ea42724a085a78447
-          error_code: null
-          details:
-            argv:
-            - python3
-            - -m
-            - pytest
-            - -q
-            - tests/test_cf_spec_context.py
-            - tests/test_cf_spec_gate.py
-            - tests/test_cf_task_runtime.py
-            exit_code: 0
-            stdout_sha256: 8c38a649b03d0276cf19fc2be6e66ea1aa02286f278f39692f5cd80427b91fab
-            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-            output: '..................................................................       [100%]
-
-              66 passed in 7.21s
+              66 passed in 7.15s
 
               '
       design:
@@ -865,36 +820,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
-          executed_at: '2026-10-26T17:51:12.203761+00:00'
+          executed_at: '2026-10-26T18:01:11.852361+00:00'
           status: verified
           rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
           artifact_sha256: null
-          diff_sha256: 30d3b24e1153d4744bc27d2d36367b03a7a76876c16bbe23d38cdb9326f7d06e
-          result_sha256: ce7c21918067e452be9d8ed5ba24d928ba3e0a67f72d39043cd4dd2f368c7d59
-          error_code: null
-          details:
-            argv:
-            - python3
-            - -m
-            - pytest
-            - -q
-            - tests/test_spec_workflow_templates.py
-            - tests/test_adapter_parity.py
-            - tests/test_spec_workflow_residue.py
-            exit_code: 0
-            stdout_sha256: 09905c80dc265e9ec7f45c7791801723a3d677fe765780feaa4f96f6f8f60d5d
-            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-            output: '.............................                                            [100%]
-
-              29 passed in 0.63s
-
-              '
-        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
-          executed_at: '2026-10-26T17:55:47.247869+00:00'
-          status: verified
-          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
-          artifact_sha256: null
-          diff_sha256: dffb4095343d1c94fd95203e2f8f9d45d8fe6ccdf560e969ac537c09523da481
+          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
           result_sha256: 2f2246d6d50190ecdc55752fc68cbe33e9bbf516baef567e4465e19e7eb30456
           error_code: null
           details:

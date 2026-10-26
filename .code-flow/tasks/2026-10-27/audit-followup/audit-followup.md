@@ -51,7 +51,7 @@
 
 ## TASK-001: TASK 契约摘要收口
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**:
 - **Source**: docs/codebase-consolidation-audit.md#A2, docs/codebase-consolidation-audit.md#A4
@@ -99,6 +99,8 @@
 - S-02: verified — automated command passed; run_id=bcde0604449945c484fd950fe4dfa240 (confirmed_by: runner)
 - S-01: verified — automated command passed; run_id=45b89e76982d41e087e2f53c5d16fa37 (confirmed_by: runner)
 - S-02: verified — automated command passed; run_id=45b89e76982d41e087e2f53c5d16fa37 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -109,7 +111,7 @@
 
 ## TASK-002: 验收域 manifest 归属收口
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P2
 - **Depends**:
 - **Source**: docs/codebase-consolidation-audit.md#A4
@@ -156,6 +158,8 @@
 - S-04: verified — automated command passed; run_id=428ad30f907a4c62ba5a342b21a290c4 (confirmed_by: runner)
 - S-03: verified — automated command passed; run_id=b855836d026a4e3d960686fb78af0f44 (confirmed_by: runner)
 - S-04: verified — automated command passed; run_id=b855836d026a4e3d960686fb78af0f44 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -166,7 +170,7 @@
 
 ## TASK-003: Context 域职责与依赖收口
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P2
 - **Depends**: TASK-002
 - **Source**: docs/codebase-consolidation-audit.md#A4, docs/codebase-consolidation-audit.md#A8
@@ -212,6 +216,8 @@
 - S-06: verified — automated command passed; run_id=646a3609c392470fae722678c89e4dec (confirmed_by: runner)
 - S-05: verified — automated command passed; run_id=d2e6897186584874a8c2b6ba22a71f1f (confirmed_by: runner)
 - S-06: verified — automated command passed; run_id=d2e6897186584874a8c2b6ba22a71f1f (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -222,7 +228,7 @@
 
 ## TASK-004: 依赖棘轮推进到 batch 4
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P2
 - **Depends**: TASK-001, TASK-002, TASK-003
 - **Source**: docs/codebase-consolidation-audit.md#A4
@@ -256,6 +262,7 @@ TASK-001/002/003 完成后，batch 3 私有符号与 batch 4 反向边应已清�
 | S-07 | N/A: ratchet/guard task; batch-4 edges were removed by TASK-002/003; synthetic edge assertion is the RED guard | PASS: 36 passed in test_runtime_consolidation.py; max SCC 6; no expired allowlist entries | tests/test_runtime_consolidation.py::test_scc_budget; ::test_allowlist_ratchet; ::test_dependency_direction | real AST import graph over 75 modules, excluding TYPE_CHECKING and including delayed imports | verified |
 - S-07: verified — automated command passed; run_id=1e8ebdc13cd641a3bd6c8188179726fc (confirmed_by: runner)
 - S-07: verified — automated command passed; run_id=5e8516a9b1074061b07005c00ac5bb41 (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -266,7 +273,7 @@ TASK-001/002/003 完成后，batch 3 私有符号与 batch 4 反向边应已清�
 
 ## TASK-005: 安装 ignore 单一来源
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P2
 - **Depends**:
 - **Source**: docs/codebase-consolidation-audit.md#A3
@@ -306,6 +313,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 - S-08: verified — automated command passed; run_id=5f3a7bfc79694e60850ddd509e8f7221 (confirmed_by: runner)
 - S-08: verified — automated command passed; run_id=f98c9dffe23c49bbb7788c43953b7bb5 (confirmed_by: runner)
 - S-08: verified — automated command passed; run_id=f1aff932cbf44437be1c17fc0ea27522 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -316,7 +324,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 
 ## TASK-006: 平台正文单一来源生成
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P2
 - **Depends**:
 - **Source**: docs/codebase-consolidation-audit.md#A7
@@ -356,6 +364,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 - S-09: verified — automated command passed; run_id=eaec7856fc914cb692a590d41e912862 (confirmed_by: runner)
 - S-09: verified — automated command passed; run_id=273691944ca34433affe59a2d57b922a (confirmed_by: runner)
 - S-09: verified — automated command passed; run_id=edf1713c26194d67b21a15d9db9f0815 (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -366,7 +375,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 
 ## TASK-007: 编排入口职责收口
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P2
 - **Depends**: TASK-005
 - **Source**: docs/codebase-consolidation-audit.md#A8
@@ -405,6 +414,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 - S-10: stale — input changed: CHK-06e561265170 (confirmed_by: runtime)
 - S-10: verified — automated command passed; run_id=0e189596c87049e6ae27f530c19a6cf4 (confirmed_by: runner)
 - S-10: verified — automated command passed; run_id=23d96fa9b0be41889fec7b5ce5b48778 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
