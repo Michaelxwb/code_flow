@@ -41,9 +41,9 @@
 | S-13 | runtime-consolidation.design.md#2.5 验收条件 | system | 公开 CLI/Hook 输出 | TASK-008 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_legacy_removal"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-14 | runtime-consolidation.design.md#2.5 验收条件 | integration | verify_plan → 读取计数 | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_verify_plan_reads"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | E-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 快照 → 文件变更 → drift | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_snapshot_drift"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-15 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 层映射 | TASK-001 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-16 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 私有 allowlist | TASK-001 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_private_symbol_guard"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| B-03 | runtime-consolidation.design.md#2.5 验收条件 | contract | allowlist 到期批次 | TASK-001 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-15 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 层映射 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-16 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 私有 allowlist | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_private_symbol_guard"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| B-03 | runtime-consolidation.design.md#2.5 验收条件 | contract | allowlist 到期批次 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-17 | runtime-consolidation.design.md#2.5 验收条件 | system | 四平台安装 → hook 调用 | TASK-011 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_four_platform_install"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-18 | runtime-consolidation.design.md#2.5 验收条件 | integration | 旧平铺 → migrate → 包布局 | TASK-011 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_package_upgrade_cleanup"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-19 | runtime-consolidation.design.md#2.5 验收条件 | system | src/core → .code-flow → npm tarball | TASK-010 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_canonical_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
@@ -55,7 +55,7 @@
 
 ## TASK-001: 基线冻结与分层守卫
 
-- **Status**: in-progress
+- **Status**: done
 - **Priority**: P0
 - **Depends**: 无
 - **Source**: runtime-consolidation.design.md#3.2 架构设计, runtime-consolidation.design.md#3.5 质量实现方案
@@ -70,30 +70,41 @@
 
 ### Checklist
 
-- [ ] 交付 `基线守卫 + 默认测试入口`，并提供 `pytest -q tests` 全绿的可重复演示
-- [ ] 冻结当前工作树，按主题形成独立提交，确保后续批次 diff 可审查
-- [ ] [S-15][contract] 新增 `tests/test_runtime_consolidation.py::test_dependency_direction`，用 AST 解析 `src/core/code-flow/scripts/*.py`，断言 L0/L1 不导入 L2/L3；存量违规进入带批次号的 allowlist
-- [ ] [S-16][contract] 新增 `test_private_symbol_guard`，扫描 `from cf_x import _y`，allowlist 首期为 33 个存量符号
-- [ ] [B-03][contract] 新增 `test_allowlist_ratchet`，allowlist 条目必须仍被引用，且超过批次期限时失败
-- [ ] [E-01][integration] 新增 `tests/test_js_suites.py`，用 subprocess 执行 4 个 `tests/*.js`，让 `pytest -q tests` 覆盖 JS 套件
-- [ ] 运行 `python3 -m pytest -q tests` 与 `node tests/test_cli_merge_helpers.js`
-- [ ] 运行 Spec verifier：`RULE-scripts-no-print-debug-001` / `RULE-scripts-no-bare-except-001`（regex 扫描）
+- [x] 交付 `基线守卫 + 默认测试入口`，并提供 `pytest -q tests` 全绿的可重复演示
+- [x] 冻结当前工作树，按主题形成独立提交，确保后续批次 diff 可审查
+- [x] [S-15][contract] 新增 `tests/test_runtime_consolidation.py::test_dependency_direction`，用 AST 解析 `src/core/code-flow/scripts/*.py`，断言 L0/L1 不导入 L2/L3；存量违规进入带批次号的 allowlist
+- [x] [S-16][contract] 新增 `test_private_symbol_guard`，扫描 `from cf_x import _y`，allowlist 首期为 33 个存量符号
+- [x] [B-03][contract] 新增 `test_allowlist_ratchet`，allowlist 条目必须仍被引用，且超过批次期限时失败
+- [x] [E-01][integration] 新增 `tests/test_js_suites.py`，用 subprocess 执行 4 个 `tests/*.js`，让 `pytest -q tests` 覆盖 JS 套件
+- [x] 运行 `python3 -m pytest -q tests` 与 `node tests/test_cli_merge_helpers.js`
+- [x] 运行 Spec verifier：`RULE-scripts-no-print-debug-001` / `RULE-scripts-no-bare-except-001`（regex 扫描）
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-15 | contract | 真实 AST 导入图 | 注入 L0→L2 边时测试失败并指出边 | tests/test_runtime_consolidation.py::test_dependency_direction | planned | planned |
-| S-16 | contract | 真实 AST 导入图 | 新增私有导入失败；移除代码后 allowlist 条目失败 | tests/test_runtime_consolidation.py::test_private_symbol_guard | planned | planned |
-| B-03 | contract | allowlist 元数据 | 超期条目导致失败 | tests/test_runtime_consolidation.py::test_allowlist_ratchet | planned | planned |
+| S-15 | contract | 真实 AST 导入图 | 注入 L0→L2 边时测试失败并指出边 | tests/test_runtime_consolidation.py::test_dependency_direction | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_dependency_direction` | verified |
+| S-16 | contract | 真实 AST 导入图 | 新增私有导入失败；移除代码后 allowlist 条目失败 | tests/test_runtime_consolidation.py::test_private_symbol_guard | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_private_symbol_guard` | verified |
+| B-03 | contract | allowlist 元数据 | 超期条目导致失败 | tests/test_runtime_consolidation.py::test_allowlist_ratchet | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_allowlist_ratchet` | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-15 | 无生产 RED：新增守卫基础设施；实现前为 skeleton skip，不存在可复现的生产缺陷（不伪造失败）。合成断言 `_layer_violations({("cf_log","cf_spec_context")})` 证明检测生效 | PASS: 3 passed（含 24 deselected） | `tests/test_runtime_consolidation.py::test_dependency_direction` 末尾合成违规断言；真实导入图经 AST 解析 | 真实 `src/core/code-flow/scripts/*.py` AST + 11 条带批次 allowlist | verified |
+| S-16 | 无生产 RED：新增守卫基础设施；skeleton skip，无生产缺陷可复现（不伪造失败） | PASS: 3 passed | `test_private_symbol_guard` 的 `unexpected`/`stale` 双向断言 | 真实 AST 扫描，44 条导入 / 33 个符号 / 19 个消费者 | verified |
+| B-03 | 无生产 RED：棘轮逻辑为新增校验，无生产缺陷可复现 | PASS: 3 passed | `test_allowlist_ratchet` 的 `_expired` 合成条目断言 | allowlist 元数据（批次 2/3/4/6/7） | verified |
+
+> JS 套件 RED（E-01 归属 TASK-002）：`node tests/test_cli_merge_helpers.js` 退出 1，`testRuntimeGitignoreMatchesCanonicalTemplate` 报 `embedded RUNTIME_GITIGNORE must match src/core/code-flow/.gitignore entries`（缺 `.stop.lock`、`.context-state.json`）。`tests/test_js_suites.py` 以 `KNOWN_FAILURES` 棘轮固定该失败；TASK-002 修复后必须删除该条目，否则 wrapper 会因“已知失败现在通过”而失败。
+- S-15: verified — automated command passed; run_id=0366c68bf50642c888ab1f4d53587760 (confirmed_by: runner)
+- S-16: verified — automated command passed; run_id=0366c68bf50642c888ab1f4d53587760 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=0366c68bf50642c888ab1f4d53587760 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
 - [2026-10-26] started
+- [2026-10-26] guards + JS suite entry implemented; baseline frozen in 3 commits
+- [2026-10-26] completed (done)
 
 ---
 
