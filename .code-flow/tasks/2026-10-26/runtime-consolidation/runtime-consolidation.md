@@ -38,7 +38,7 @@
 | S-10 | runtime-consolidation.design.md#2.5 验收条件 | integration | 真实 git 仓库 → cf_git | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_git_primitive_parity"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
 | S-11 | runtime-consolidation.design.md#2.5 验收条件 | integration | 文件系统 → atomic_write_text | TASK-006 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_atomic_write"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
 | S-12 | runtime-consolidation.design.md#2.5 验收条件 | unit | parse_frontmatter / table_columns | TASK-007 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_markdown_primitives"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
-| S-13 | runtime-consolidation.design.md#2.5 验收条件 | system | 公开 CLI/Hook 输出 | TASK-008 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_legacy_removal"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-13 | runtime-consolidation.design.md#2.5 验收条件 | system | 公开 CLI/Hook 输出 | TASK-008 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_legacy_removal"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no | verified |
 | S-14 | runtime-consolidation.design.md#2.5 验收条件 | integration | verify_plan → 读取计数 | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_verify_plan_reads"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | E-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 快照 → 文件变更 → drift | TASK-009 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_snapshot_drift"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-15 | runtime-consolidation.design.md#2.5 验收条件 | contract | AST 导入图 → 层映射 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
@@ -481,11 +481,11 @@
 
 ## TASK-008: 旧路径与导航清理
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-004, TASK-006, TASK-007
 - **Source**: runtime-consolidation.design.md#2.4 范围与边界, runtime-consolidation.design.md#3.2 架构设计
-- **Spec-Refs**: 无
+- **Spec-Refs**: N/A
 - **Acceptance-Refs**: S-13
 - **Estimate**: 1d
 - **Capability**: 删除无生产调用的旧 Spec 函数与专属词表后，公开 CLI/Hook 输出与路由结果不变。
@@ -496,24 +496,30 @@
 
 ### Checklist
 
-- [ ] 交付 `旧路径删除 + 导航修正`，并提供删除前后公开入口对照
-- [ ] [S-13][system] 公开 CLI 与 Hook 输出、路由结果与基线一致
-- [ ] 删除三个旧函数与专属测试，确认无 `getattr`/星号导入的隐藏调用
-- [ ] 更新 `_map.md` 注入章节与 `code-standards.md` Avoid 条目
-- [ ] 运行公开命令回归
+- [x] 交付 `旧路径删除 + 导航修正`，并提供删除前后公开入口对照
+- [x] [S-13][system] 公开 CLI 与 Hook 输出、路由结果与基线一致
+- [x] 删除三个旧函数与专属测试，确认无 `getattr`/星号导入的隐藏调用
+- [x] 更新 `_map.md` 注入章节与 `code-standards.md` Avoid 条目
+- [x] 运行公开命令回归
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-13 | system | 公开 CLI/Hook | 输出与路由不变 | tests/test_runtime_consolidation.py::test_legacy_removal | planned | planned |
+| S-13 | system | 公开 CLI/Hook | 输出与路由不变 | tests/test_runtime_consolidation.py::test_legacy_removal | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_legacy_removal` | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-13 | `test_legacy_removal` 失败：`canonical cf_core still exports read_matched_specs`（1 failed）。纯重构无生产缺陷，RED 来自移除守卫断言 | PASS: 1 passed；全量 `python3 -m pytest -q tests` → 925 passed, 11 skipped | `tests/test_runtime_consolidation.py::test_legacy_removal`：canonical/live `cf_core` 均无旧符号；安装后 Hook 的 Catalog 路由仍列 8 个 spec、显式路径路由只注入 3 个 frontend spec；`spec catalog` 返回 8 项且 scope 为 path/unmatched | 真实 `node src/cli.js init --platform=claude` 临时项目 + 子进程运行安装后的 `cf_user_prompt_hook.py` + `node src/cli.js spec catalog`，无 mock | verified |
+- S-13: verified — automated command passed; run_id=86e36b7214904c82ada41b0e3d87257b (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
+- [2026-10-26] started
+- [2026-10-26] removed read_matched_specs/read_specs/extract_context_tags + tag vocab/regex; trimmed cf_task_state to FINISHED_STATUSES; refreshed scripts spec navigation
+- [2026-10-26] completed (done)
 
 ---
 

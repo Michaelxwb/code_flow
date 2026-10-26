@@ -21,7 +21,7 @@
 
 - 配置：`load_config`（mtime 缓存）；运行态只允许 `.active-task.json`、`.catalog-state.json` 与需求目录 `spec-context.yml`
 - 路由：`cf_spec_router.py` 按 active Context / explicit path / Catalog 三分支确定，禁止 prompt 关键词和全域 fallback
-- 注入：`read_matched_specs` / `select_specs_tiered` / `assemble_context` / `build_spec_catalog`
+- 注入：`cf_spec_router` 决定路由；`assemble_context` / `build_spec_catalog` / `compress_content`
 - `compress_content`（无损，围栏内不去重）；`resolve_session_id`（hook id 优先）
 
 ## Quick Navigation
