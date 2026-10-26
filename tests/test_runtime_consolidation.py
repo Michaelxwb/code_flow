@@ -8,13 +8,18 @@ stays independent of unimplemented modules.
 from __future__ import annotations
 
 import ast
+import json
 from pathlib import Path
-from typing import Iterable
+import subprocess
+import sys
+from typing import Iterable, Optional
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "src" / "core" / "code-flow" / "scripts"
+sys.path.insert(0, str(SCRIPTS))
 
 CURRENT_BATCH = 1
 
@@ -75,6 +80,7 @@ LAYERS: dict[str, int] = {
     "cf_traceability": 3,
     "cf_user_prompt_hook": 3,
     "cf_validation": 3,
+    "cf_validators": 1,
     "cf_workflow_service": 2,
     "cf_workflow_transaction": 2,
     "cf_worktree_env": 0,
@@ -91,8 +97,6 @@ DEPENDENCY_EDGE_ALLOWLIST = frozenset({
     ("cf_plan_quality", "cf_spec_gate", 6),
     ("cf_scenarios", "cf_acceptance_manifest", 4),
     ("cf_task_parallel", "cf_task_workflow", 6),
-    ("cf_task_runtime", "cf_stop_hook", 2),
-    ("cf_task_runtime", "cf_validation", 2),
 })
 
 # (importer, source module, private symbol, batch after which it must be gone)
@@ -130,7 +134,6 @@ PRIVATE_SYMBOL_ALLOWLIST = frozenset({
     ("cf_task_workflow", "cf_task_runtime", "_NON_EXECUTION_ERRORS", 6),
     ("cf_task_workflow", "cf_task_runtime", "_apply_evidence", 6),
     ("cf_task_workflow", "cf_task_runtime", "_evidence_data", 6),
-    ("cf_task_workflow", "cf_validation", "_validators", 2),
     ("cf_task_workflow", "cf_workflow_service", "_require_marker_task", 7),
     ("cf_task_workflow", "cf_workflow_service", "_sync_markdown", 7),
     ("cf_user_prompt_hook", "cf_core", "_log", 4),
@@ -253,20 +256,121 @@ def test_canonical_ignore_drift() -> None:
     pytest.skip("plan skeleton: implemented in TASK-002")
 
 
-def test_validator_corrupt_consistent() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-003")
+def _validator_project(tmp_path: Path, validation: Optional[str]) -> Path:
+    root = tmp_path / "project"
+    (root / ".code-flow").mkdir(parents=True)
+    (root / ".code-flow" / "config.yml").write_text(
+        "quality_loop:\n  enabled: true\n"
+        "spec_workflow:\n  schema_version: 1\n  enforcement: required\n"
+        "path_mapping: {}\n",
+        encoding="utf-8",
+    )
+    if validation is not None:
+        (root / ".code-flow" / "validation.yml").write_text(validation, encoding="utf-8")
+    return root
 
 
-def test_validator_missing_policy() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-003")
+def _edit_event(root: Path, rel: str = "src/a.py", sid: str = "sid-1") -> None:
+    import cf_log
+
+    cf_log.append_event(str(root), "edit", {"file": rel, "tool": "Edit"}, sid)
 
 
-def test_heavy_deferral() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-003")
+def _heavy_validation(marker: Path) -> str:
+    return yaml.safe_dump({
+        "validators": [{
+            "name": "HeavySuite",
+            "trigger": "**/*.py",
+            "command": f"python3 -c \"open({str(marker)!r}, 'a').write('x')\"",
+            "timeout": 5000,
+            "heavy": True,
+            "on_fail": "fix",
+        }],
+    })
 
 
-def test_stop_json_protocol() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-003")
+def test_validator_corrupt_consistent(tmp_path: Path) -> None:
+    """[S-03] 同一份坏 YAML 在 validate / Stop / finish 三入口一致 block。"""
+    from cf_stop_hook import build_stop_result
+    from cf_task_runtime import _run_finish_validation
+    from cf_validation import validate_files
+
+    root = _validator_project(tmp_path, "validators: [")
+    _edit_event(root)
+
+    validated = validate_files(str(root), ["src/a.py"])
+    stop = build_stop_result(str(root), "sid-1")
+    issue, deferred_heavy = _run_finish_validation(str(root), ("src/a.py",))
+
+    assert validated["decision"] == "block"
+    assert validated["reason"] == "invalid_validation_config", validated
+    assert stop.get("decision") == "block", stop
+    assert "invalid_validation_config" in stop.get("reason", "")
+    assert issue.startswith("finish validation blocked"), issue
+    assert "invalid_validation_config" in issue
+    assert deferred_heavy == 0
+
+
+def test_validator_missing_policy(tmp_path: Path) -> None:
+    """[S-04] 缺失/空配置保持既有策略：validate 阻断，finish 放行。"""
+    from cf_task_runtime import _run_finish_validation
+    from cf_validation import validate_files
+    from cf_validators import load_validators
+
+    root = _validator_project(tmp_path, None)
+    assert load_validators(str(root)).state == "missing"
+    validated = validate_files(str(root), ["src/a.py"])
+    assert validated["decision"] == "block"
+    assert validated["reason"] == "no_validators_configured"
+    issue, deferred_heavy = _run_finish_validation(str(root), ("src/a.py",))
+    assert issue == "", issue
+    assert deferred_heavy == 0
+
+    empty_root = _validator_project(tmp_path / "empty", "validators: []\n")
+    assert load_validators(str(empty_root)).state == "empty"
+    empty_validated = validate_files(str(empty_root), ["src/a.py"])
+    assert empty_validated["decision"] == "block"
+    assert empty_validated["reason"] == "no_validators_configured"
+    empty_issue, empty_deferred = _run_finish_validation(str(empty_root), ("src/a.py",))
+    assert empty_issue == "", empty_issue
+    assert empty_deferred == 0
+
+
+def test_heavy_deferral(tmp_path: Path) -> None:
+    """[S-05] heavy validator 在 finish 默认延期且 deferred_heavy 计数为 1。"""
+    from cf_task_runtime import _run_finish_validation
+
+    marker = tmp_path / "heavy-ran"
+    root = _validator_project(tmp_path / "deferred", _heavy_validation(marker))
+
+    issue, deferred_heavy = _run_finish_validation(str(root), ("src/a.py",))
+
+    assert issue == "", issue
+    assert deferred_heavy == 1
+    assert not marker.exists(), "heavy validator 默认不得在 finish 执行"
+
+
+def test_stop_json_protocol(tmp_path: Path) -> None:
+    """[E-02] Stop stdout 是单个 JSON 对象，decision/reason 明确。"""
+    root = _validator_project(tmp_path, "validators: [")
+    _edit_event(root)
+
+    completed = subprocess.run(
+        [sys.executable, str(SCRIPTS / "cf_stop_hook.py")],
+        cwd=str(root),
+        input=json.dumps({"session_id": "sid-1", "hook_event_name": "Stop"}),
+        text=True,
+        capture_output=True,
+        timeout=30,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    output = completed.stdout.strip()
+    assert output, "blocked Stop must emit one JSON object"
+    payload = json.loads(output)
+    assert isinstance(payload, dict)
+    assert payload["decision"] == "block"
+    assert "invalid_validation_config" in payload["reason"]
 
 
 def test_task_heading_edges() -> None:

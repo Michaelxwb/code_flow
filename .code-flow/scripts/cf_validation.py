@@ -8,9 +8,11 @@ import os
 from pathlib import Path
 from typing import IO, Optional, Sequence
 import sys
+import time
 
 from cf_exec_base import execution_session
 from cf_spec_context import _git_changes, current_owned_paths, load_active_task
+from cf_validators import PARSE_ERROR, VALID, ValidatorConfig, is_heavy, resolve_validators, run_validators
 
 
 _MANAGED_PREFIXES = (".code-flow/", ".claude/", ".codex/", ".costrict/", ".opencode/", ".agents/")
@@ -43,29 +45,16 @@ def validation_scope(root: str, files: Sequence[str] = ()) -> tuple[str, ...]:
     return tuple(sorted(item for item in scoped if not _is_managed(item)))
 
 
-def _validators(root: str) -> list[dict[str, object]]:
-    from cf_stop_hook import load_validators
-    if (Path(root) / ".code-flow/validation.yml").is_file():
-        return load_validators(root)
-    package = Path(root) / "package.json"
-    if not package.is_file():
-        return []
-    data = json.loads(package.read_text(encoding="utf-8"))
-    scripts = data.get("scripts", {}) if isinstance(data, dict) else {}
-    if not isinstance(scripts, dict):
-        raise ValueError("invalid package scripts")
-    return [{"name": name, "trigger": "*", "command": f"npm run {name}", "timeout": 60000}
-            for name in ("test", "lint") if isinstance(scripts.get(name), str)]
-
-
 def validate_files(root: str, files: Sequence[str] = (), budget: Optional[float] = None,
                    include_heavy: bool = True, use_cache: bool = True) -> dict[str, object]:
-    from cf_stop_hook import run_validators
     selected = validation_scope(root, files)
-    validators = _validators(root)
+    config, effective = resolve_validators(root)
+    if config.state == PARSE_ERROR:
+        return {"decision": "block", "files": selected, "reason": "invalid_validation_config",
+                "error": config.error}
+    validators = list(effective)
     if not include_heavy:
-        validators = [item for item in validators
-                      if not (isinstance(item, dict) and item.get("heavy") is True)]
+        validators = [item for item in validators if not is_heavy(item)]
     if not selected:
         return {"decision": "pass", "files": [], "reason": "no_changes"}
     if not validators:
@@ -74,10 +63,10 @@ def validate_files(root: str, files: Sequence[str] = (), budget: Optional[float]
     if not math.isfinite(maximum) or maximum <= 0:
         raise ValueError("validation budget must be finite and positive")
     with execution_session():
-        failures, truncated, reused = run_validators(root, validators, list(selected), "cf-validate",
-                                                    maximum, strict=True, cache=use_cache)
-    return {"decision": "block" if failures or truncated else "pass", "files": selected,
-            "failures": failures, "incomplete": truncated, "reused": reused}
+        outcome = run_validators(root, ValidatorConfig(VALID, tuple(validators)), list(selected),
+                                 "cf-validate", time.monotonic() + maximum, strict=True, cache=use_cache)
+    return {"decision": "block" if outcome.failures or outcome.truncated else "pass", "files": selected,
+            "failures": outcome.failures, "incomplete": outcome.truncated, "reused": outcome.reused}
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:

@@ -25,10 +25,10 @@
 | S-02 | runtime-consolidation.design.md#2.5 验收条件 | integration | 旧 ignore → init upgrade → 合并块 | TASK-002 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_upgrade_preserves_user_ignore"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | B-01 | runtime-consolidation.design.md#2.5 验收条件 | integration | 用户自有 ignore 文件 | TASK-002 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_user_owned_ignore_untouched"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | E-01 | runtime-consolidation.design.md#2.5 验收条件 | integration | canonical .gitignore → cli.js → pytest | TASK-002 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_canonical_ignore_drift"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-03 | runtime-consolidation.design.md#2.5 验收条件 | integration | validation.yml → validate/Stop/finish | TASK-003 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_validator_corrupt_consistent"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 无 validation.yml → 策略分支 | TASK-003 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_validator_missing_policy"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| S-05 | runtime-consolidation.design.md#2.5 验收条件 | integration | heavy_at_finish → finish 结果 | TASK-003 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_heavy_deferral"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
-| E-02 | runtime-consolidation.design.md#2.5 验收条件 | integration | Stop stdin/stdout JSON | TASK-003 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_stop_json_protocol"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-03 | runtime-consolidation.design.md#2.5 验收条件 | integration | validation.yml → validate/Stop/finish | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_validator_corrupt_consistent"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-04 | runtime-consolidation.design.md#2.5 验收条件 | integration | 无 validation.yml → 策略分支 | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_validator_missing_policy"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| S-05 | runtime-consolidation.design.md#2.5 验收条件 | integration | heavy_at_finish → finish 结果 | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_heavy_deferral"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
+| E-02 | runtime-consolidation.design.md#2.5 验收条件 | integration | Stop stdin/stdout JSON | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_stop_json_protocol"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-06 | runtime-consolidation.design.md#2.5 验收条件 | unit | parse_task_document | TASK-004 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_task_heading_edges"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-07 | runtime-consolidation.design.md#2.5 验收条件 | integration | 五个 TASK 消费者 | TASK-004 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_duplicate_task_id"] | P0 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
 | S-08 | runtime-consolidation.design.md#2.5 验收条件 | unit | status 投影 | TASK-004 | designed | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_missing_status_draft"] | P1 | auto | none | tests/test_runtime_consolidation.py | - | - | no |
@@ -153,11 +153,11 @@
 
 ## TASK-003: validator 引擎收口
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: runtime-consolidation.design.md#3.2 架构设计, runtime-consolidation.design.md#3.4 接口设计
-- **Spec-Refs**: 无（引擎 API 由 TASK-001 的 scripts 规则覆盖）
+- **Spec-Refs**: N/A
 - **Acceptance-Refs**: S-03, S-04, S-05, E-02
 - **Estimate**: 2d
 - **Capability**: 同一份损坏的 `validation.yml` 在 validate、Stop、finish 三个入口返回一致的阻断与 `invalid_validation_config`。
@@ -168,29 +168,42 @@
 
 ### Checklist
 
-- [ ] 交付 `三入口一致的 validator 结论`，并提供同一坏 YAML 的三入口演示
-- [ ] [S-03][integration] 实现四态配置；损坏配置在三入口均 block，reason=`invalid_validation_config`
-- [ ] [S-04][integration] 保持缺失/空配置的既有产品策略，并显式测试
-- [ ] [S-05][integration] heavy validator 的 finish 延期与 deferred_heavy 计数保持不变
-- [ ] [E-02][integration] Stop 输出单个 JSON 对象，decision/reason 明确
-- [ ] 删除 `cf_stop_hook` 中的引擎实现，更新 `cf_validation`、`cf_task_runtime`、`cf_task_workflow` 的导入
-- [ ] 运行相关测试与 `code-flow validate`
+- [x] 交付 `三入口一致的 validator 结论`，并提供同一坏 YAML 的三入口演示
+- [x] [S-03][integration] 实现四态配置；损坏配置在三入口均 block，reason=`invalid_validation_config`
+- [x] [S-04][integration] 保持缺失/空配置的既有产品策略，并显式测试
+- [x] [S-05][integration] heavy validator 的 finish 延期与 deferred_heavy 计数保持不变
+- [x] [E-02][integration] Stop 输出单个 JSON 对象，decision/reason 明确
+- [x] 删除 `cf_stop_hook` 中的引擎实现，更新 `cf_validation`、`cf_task_runtime`、`cf_task_workflow` 的导入
+- [x] 运行相关测试与 `code-flow validate`
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-03 | integration | 真实 YAML + 三入口 | 三者一致 block | tests/test_runtime_consolidation.py::test_validator_corrupt_consistent | planned | planned |
-| S-04 | integration | 无 YAML 项目 | validate block / finish 放行 | tests/test_runtime_consolidation.py::test_validator_missing_policy | planned | planned |
-| S-05 | integration | heavy 配置 | deferred_heavy=1 | tests/test_runtime_consolidation.py::test_heavy_deferral | planned | planned |
-| E-02 | integration | Stop stdin/stdout | 合法 JSON + reason | tests/test_runtime_consolidation.py::test_stop_json_protocol | planned | planned |
+| S-03 | integration | 真实 YAML + 三入口 | 三者一致 block | tests/test_runtime_consolidation.py::test_validator_corrupt_consistent | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_validator_corrupt_consistent` | verified |
+| S-04 | integration | 无 YAML 项目 | validate block / finish 放行 | tests/test_runtime_consolidation.py::test_validator_missing_policy | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_validator_missing_policy` | verified |
+| S-05 | integration | heavy 配置 | deferred_heavy=1 | tests/test_runtime_consolidation.py::test_heavy_deferral | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_heavy_deferral` | verified |
+| E-02 | integration | Stop stdin/stdout | 合法 JSON + reason | tests/test_runtime_consolidation.py::test_stop_json_protocol | `python3 -m pytest -q tests/test_runtime_consolidation.py::test_stop_json_protocol` | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写 RED/GREEN 与断言位置；本阶段未执行。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-03 | `test_validator_corrupt_consistent` 失败：validate 为 block 但 reason=`no_validators_configured`，Stop stdout 为空，finish issue 为空（同一坏 YAML 三入口分歧） | PASS: `4 passed`（四场景合跑） | 三入口同时断言 `decision=block` 且 reason/issue 含 `invalid_validation_config` | 真实临时项目 + `validation.yml: validators: [` + 真实 Edit 事件；分别调用 `validate_files` / `build_stop_result` / `_run_finish_validation` | verified |
+| S-04 | 测试因 `cf_validators` 四态 API 不存在而 ModuleNotFoundError；既有产品分支 validate=block(`no_validators_configured`)、finish 放行在本任务前已成立 | PASS: missing 与 empty 两种配置均 validate block、finish 放行 | `load_validators(...).state` 为 `missing`/`empty`；validate reason 与 finish (`""`, 0) 断言 | 真实无 `validation.yml` 项目与 `validators: []` 项目，无 package.json 回退 | verified |
+| S-05 | 无生产 RED：heavy 延期与 deferred_heavy 计数在本任务前已正确，RED 运行时该用例已通过（不伪造失败） | PASS: deferred_heavy=1 且 heavy 命令未执行 | `_run_finish_validation(...) == ("", 1)` 与 marker 不存在断言 | 真实 `heavy: true` validator + 真实文件改动列表 | verified |
+| E-02 | Stop Hook 子进程 stdout 为空（把损坏配置当未配置） | PASS: stdout 为单个 JSON 对象 | `json.loads(stdout)` 且 `decision=block`、reason 含 `invalid_validation_config` | 真实 `cf_stop_hook.py` 子进程 + stdin Stop 事件 + 真实 edit 日志 | verified |
+- S-03: verified — automated command passed; run_id=8e2aa25cdbdf48689525a6004e06b852 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=8e2aa25cdbdf48689525a6004e06b852 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=8e2aa25cdbdf48689525a6004e06b852 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=8e2aa25cdbdf48689525a6004e06b852 (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
+- [2026-10-26] started
+- [2026-10-26] cf_validators L1 engine added; cf_stop_hook reduced to hook adaptation; validate/Stop/finish share four-state config
+- [2026-10-26] RED/GREEN recorded; full pytest suite 910 passed / 23 skipped
+- [2026-10-26] completed (done)
 
 ---
 
