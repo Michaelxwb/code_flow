@@ -26,7 +26,8 @@ from cf_spec_metadata import load_spec_metadata
 from cf_spec_session import context_sha256
 from cf_spec_verify import (VerificationScope, run_all_verifiers, store_verification_evidence)
 from cf_exec_base import worktree_fingerprint
-from cf_task_index import parse_task_file
+from cf_task_doc import TaskDocumentError, parse_task_document
+from cf_task_index import project_task_nodes
 from cf_task_runtime import (_NON_EXECUTION_ERRORS, _apply_evidence, _evidence_data,
                              run_done_gate)
 from cf_workflow_service import (FINISHED_STATUSES, _require_marker_task,
@@ -401,9 +402,17 @@ def _demand_tasks(directory: Path) -> list[tuple[Path, str, str]]:
     for task_file in sorted(directory.glob("*.md")):
         if task_file.name.endswith((".design.md", ".prd.md")):
             continue
-        if not re.search(r"(?m)^## TASK-\d+:", task_file.read_text(encoding="utf-8")):
-            continue
-        for node in parse_task_file(str(task_file)):
+        try:
+            text = task_file.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise ValueError(f"task_read_error: {exc}") from exc
+        try:
+            document = parse_task_document(text, source=str(task_file))
+        except TaskDocumentError as exc:
+            if exc.code == "task_document_empty":
+                continue
+            raise ValueError(str(exc)) from exc
+        for node in project_task_nodes(document):
             if node.task_id in seen:
                 raise ValueError(f"duplicate task id: {node.task_id}")
             seen.add(node.task_id)

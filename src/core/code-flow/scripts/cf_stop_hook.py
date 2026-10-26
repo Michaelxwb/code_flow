@@ -23,6 +23,7 @@ from cf_spec_context import load_active_task
 from cf_task_runtime import run_done_gate
 from cf_stop_guard import StopAlreadyRunning, stop_guard
 from cf_acceptance_evidence import line_status, scenario_line
+from cf_task_doc import TaskDocumentError, parse_task_document
 from cf_validators import PARSE_ERROR, VALID, is_heavy, load_validators, run_validators
 from cf_acceptance_manifest import coverage_execution
 from cf_core import (
@@ -37,9 +38,6 @@ from cf_core import (
 
 TOTAL_BUDGET_SECONDS = 30.0
 GATE_BUDGET_SECONDS = 25.0
-_TASK_SECTION_RE = re.compile(
-    r"(?ms)^## (TASK-\d+):.*?(?=^## TASK-\d+:|\Z)"
-)
 _SCENARIO_RE = re.compile(r"\b[SEB]-\d+\b")
 _UNVERIFIED_RE = re.compile(r"\b(?:planned|pending|tbd)\b", re.IGNORECASE)
 
@@ -144,9 +142,23 @@ def task_acceptance_failures(project_root: str, files: list) -> list:
             continue
         if "## Acceptance Coverage" not in text:
             continue
-        coverage = text.split("## Acceptance Coverage", 1)[1].split("## TASK-", 1)[0]
-        for match in _TASK_SECTION_RE.finditer(text):
-            detail = _acceptance_gap(match.group(1), match.group(0), coverage)
+        coverage = text.split("## Acceptance Coverage", 1)[1]
+        boundary = coverage.find("\n## ")
+        if boundary != -1:
+            coverage = coverage[:boundary]
+        try:
+            document = parse_task_document(text, source=rel_path)
+        except TaskDocumentError as exc:
+            if exc.code == "task_document_empty":
+                continue
+            failures.append({
+                "name": "任务段落解析",
+                "on_fail": "修复任务文件中重复或损坏的 TASK 段落后再结束",
+                "detail": str(exc),
+            })
+            continue
+        for task in document.tasks:
+            detail = _acceptance_gap(task.id, task.body, coverage)
             if detail:
                 failures.append({
                     "name": "任务验收契约",
