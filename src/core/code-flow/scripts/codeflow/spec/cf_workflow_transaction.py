@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from codeflow.core import cf_fs
-from cf_spec_context import _acquire_active_lock, _release_active_lock
+from codeflow.cli.cf_spec_context import _acquire_active_lock, _release_active_lock
 
 
 def _read(path: Path) -> Optional[str]:

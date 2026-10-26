@@ -8,6 +8,7 @@ stays independent of unimplemented modules.
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import os
 import re
@@ -1075,12 +1076,182 @@ def test_snapshot_drift(tmp_path: Path) -> None:
     assert result["reason"] == "plan_snapshot_drift"
 
 
-def test_four_platform_install() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-011")
+PLATFORMS = ("claude", "codex", "costrict", "opencode")
+PACKAGE_GROUPS = ("core", "spec", "task", "acceptance", "evidence", "hooks", "cli")
+LEGACY_RUNTIME_VERSION = "0.7.0"
 
 
-def test_package_upgrade_cleanup() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-011")
+def _package_version() -> str:
+    return json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]
+
+
+def _run_runtime_cli(project: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [_node_binary(), str(CLI), *arguments],
+        cwd=str(project), text=True, capture_output=True, timeout=180, check=False,
+    )
+
+
+def _hook_probe(project: Path, script: str, payload: dict) -> str:
+    """[S-17] Run an installed hook exactly as the host does: path + stdin JSON."""
+    result = subprocess.run(
+        [sys.executable, str(project / ".code-flow/scripts" / script)],
+        cwd=str(project), input=json.dumps(payload), text=True,
+        capture_output=True, timeout=120, check=False,
+    )
+    assert result.returncode == 0, f"{script} exited {result.returncode}:\n{result.stderr}"
+    output = result.stdout.strip()
+    if output:
+        parsed = json.loads(output)  # non-JSON stdout breaks the host protocol
+        assert isinstance(parsed, dict), f"{script} must emit a single JSON object"
+    return output
+
+
+@pytest.mark.parametrize("platform", PLATFORMS)
+def test_four_platform_install(platform: str, tmp_path: Path) -> None:
+    """[S-17] 真实四平台 fresh 安装：22 个入口存在，Hook 返回合法 JSON 或静默 no-op。"""
+    project = tmp_path / platform
+    project.mkdir()
+    installed = _run_runtime_cli(project, "init", f"--platform={platform}")
+    assert installed.returncode == 0, installed.stdout + installed.stderr
+
+    scripts = project / ".code-flow/scripts"
+    for module in sorted(_flat_entry_modules()):
+        assert (scripts / f"{module}.py").is_file(), f"{platform}: missing entry {module}.py"
+    for group in PACKAGE_GROUPS:
+        assert (scripts / "codeflow" / group / "__init__.py").is_file(), f"{platform}: missing codeflow/{group}"
+
+    event = {"session_id": "s-17", "hook_event_name": "PreToolUse", "tool_name": "Read",
+             "tool_input": {"file_path": "README.md"}}
+    _hook_probe(project, "cf_user_prompt_hook.py",
+                {"prompt": "explain the architecture", "session_id": "s-17"})
+    _hook_probe(project, "cf_pre_tool_hook.py", event)
+    _hook_probe(project, "cf_post_hook.py", {**event, "hook_event_name": "PostToolUse"})
+    _hook_probe(project, "cf_stop_hook.py", {"session_id": "s-17", "hook_event_name": "Stop"})
+    if platform == "codex":
+        _hook_probe(project, "cf_codex_hook.py",
+                    {"cwd": str(project), "session_id": "s-17",
+                     "hook_event_name": "PreToolUse", "tool_name": "Read", "tool_input": {}})
+        _hook_probe(project, "cf_codex_hook.py",
+                    {"cwd": str(project), "session_id": "s-17",
+                     "hook_event_name": "UserPromptSubmit", "prompt": "explain the architecture"})
+    if platform == "opencode":
+        _hook_probe(project, "cf_opencode_event.py",
+                    {"kind": "session.prompt", "directory": str(project),
+                     "event": {"sessionID": "s-17", "prompt": {"text": "explain the architecture"}}})
+
+
+_PACKAGE_MODULE_IMPORT = re.compile(
+    r"(?m)^(?P<indent>[ \t]*)from codeflow\.(?:core|spec|task|acceptance|evidence|hooks|cli)\."
+    r"(?P<module>cf_[a-z_]+) import ")
+_PACKAGE_NAME_IMPORT = re.compile(
+    r"(?m)^(?P<indent>[ \t]*)from codeflow\.(?:core|spec|task|acceptance|evidence|hooks|cli) import "
+    r"(?P<names>cf_[a-z_]+(?:, cf_[a-z_]+)*)[ \t]*(?:#.*)?$")
+_PACKAGE_DOTTED_IMPORT = re.compile(
+    r"(?m)^(?P<indent>[ \t]*)import codeflow\.(?:core|spec|task|acceptance|evidence|hooks|cli)\."
+    r"(?P<module>cf_[a-z_]+)(?P<alias> as cf_[a-z_]+)?$")
+
+
+def _flatten_imports(text: str) -> str:
+    text = _PACKAGE_MODULE_IMPORT.sub(lambda match: f"{match['indent']}from {match['module']} import ", text)
+    text = _PACKAGE_NAME_IMPORT.sub(lambda match: f"{match['indent']}import {match['names']}", text)
+    text = _PACKAGE_DOTTED_IMPORT.sub(
+        lambda match: f"{match['indent']}import {match['module']}{match['alias'] or ''}", text)
+    return text
+
+
+def _flatten_legacy_layout(project: Path) -> set[str]:
+    """Rewrite a packaged runtime into the pre-package flat layout (no mocks)."""
+    scripts = project / ".code-flow/scripts"
+    flat: dict[str, str] = {}
+    for path in sorted((scripts / "codeflow").rglob("*.py")):
+        if path.name == "__init__.py":
+            continue
+        flat[path.stem] = _flatten_imports(path.read_text(encoding="utf-8"))
+    shutil.rmtree(scripts / "codeflow")
+    for stem, text in flat.items():
+        (scripts / f"{stem}.py").write_text(text, encoding="utf-8")
+    return {f"{stem}.py" for stem in flat}
+
+
+def _legacy_flat_install(project: Path) -> set[str]:
+    """Install the current runtime, then downgrade it to a genuine flat layout."""
+    for platform in PLATFORMS:
+        result = _run_runtime_cli(project, "init", f"--platform={platform}")
+        assert result.returncode == 0, result.stdout + result.stderr
+    flat = _flatten_legacy_layout(project)
+
+    scripts = project / ".code-flow/scripts"
+    manifest_path = project / ".code-flow/.runtime-install.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["version"] = LEGACY_RUNTIME_VERSION
+    for relative in [key for key in manifest["files"] if key.startswith(".code-flow/scripts/")]:
+        del manifest["files"][relative]
+    for path in sorted(scripts.rglob("*.py")):
+        relative = path.relative_to(project).as_posix()
+        manifest["files"][relative] = hashlib.sha256(path.read_bytes()).hexdigest()
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+    (project / ".code-flow/.version").write_text(LEGACY_RUNTIME_VERSION + "\n", encoding="utf-8")
+    versions_path = project / ".code-flow/.adapter-versions.json"
+    versions = json.loads(versions_path.read_text(encoding="utf-8"))
+    versions["core"] = LEGACY_RUNTIME_VERSION
+    versions["adapters"] = {name: LEGACY_RUNTIME_VERSION for name in versions["adapters"]}
+    versions_path.write_text(json.dumps(versions, indent=2) + "\n", encoding="utf-8")
+    return flat
+
+
+def _script_snapshot(project: Path) -> dict[str, str]:
+    snapshot: dict[str, str] = {}
+    for relative in (".code-flow/.version", ".code-flow/.runtime-install.json"):
+        snapshot[relative] = hashlib.sha256((project / relative).read_bytes()).hexdigest()
+    for path in sorted((project / ".code-flow/scripts").rglob("*")):
+        if path.is_file() and "__pycache__" not in path.parts:
+            snapshot[path.relative_to(project).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return snapshot
+
+
+def test_package_upgrade_cleanup(tmp_path: Path) -> None:
+    """[S-18] 旧平铺安装真实 runtime migrate：保留 shim、清理旧实现、manifest 校验通过。"""
+    project = tmp_path / "project"
+    project.mkdir()
+    flat = _legacy_flat_install(project)
+    scripts = project / ".code-flow/scripts"
+    assert not (scripts / "codeflow").exists(), "legacy fixture must be a flat layout"
+    assert (scripts / "cf_task_runtime.py").is_file()
+
+    applied = _run_runtime_cli(project, "migrate", "--runtime", "--apply")
+    assert applied.returncode == 0, applied.stdout + applied.stderr
+    data = json.loads(applied.stdout)
+    assert data["status"] == "committed", data
+
+    entries = _flat_entry_modules()
+    assert {path.name for path in scripts.glob("*.py")} == {f"{module}.py" for module in entries}, (
+        "old flat implementation files must be removed; only the 22 entry shims remain"
+    )
+    for module in entries:
+        shim = scripts / f"{module}.py"
+        assert shim.is_file()
+        assert len(shim.read_text(encoding="utf-8").splitlines()) <= 15, f"{module}.py is not a thin shim"
+    for group in PACKAGE_GROUPS:
+        assert (scripts / "codeflow" / group / "__init__.py").is_file(), f"missing codeflow/{group}"
+        assert any((scripts / "codeflow" / group).glob("*.py")), f"empty codeflow/{group}"
+
+    manifest = json.loads((project / ".code-flow/.runtime-install.json").read_text(encoding="utf-8"))
+    version = (project / ".code-flow/.version").read_text(encoding="utf-8").strip()
+    assert manifest["version"] == version == _package_version()
+    for relative, digest in manifest["files"].items():
+        target = project / relative
+        assert target.is_file(), f"manifest lists missing artifact: {relative}"
+        assert hashlib.sha256(target.read_bytes()).hexdigest() == digest, f"artifact drifted: {relative}"
+    verified = _run_runtime_cli(project, "spec", "validate", "--help")
+    assert verified.returncode == 0, verified.stdout + verified.stderr
+
+    workspace = project / ".code-flow/migrations" / data["migration_id"]
+    journal = json.loads((workspace / "journal.json").read_text(encoding="utf-8"))
+    stale = ({f".code-flow/scripts/{name}" for name in flat}
+             - {f".code-flow/scripts/{module}.py" for module in entries})
+    assert stale <= set(journal["deletions"]), "migration must journal every removed flat module"
 
 
 def _script_py_files(scripts: Path) -> set[str]:
@@ -1118,7 +1289,7 @@ def test_canonical_parity() -> None:
         "the 22 host entry modules must stay flat; internal modules live under codeflow/"
     )
     package = canonical - flat
-    for subpackage in ("core", "spec", "task", "acceptance", "evidence"):
+    for subpackage in ("core", "spec", "task", "acceptance", "evidence", "hooks", "cli"):
         assert f"codeflow/{subpackage}/__init__.py" in package, f"missing codeflow/{subpackage}__init__.py"
         assert any(
             relative.startswith(f"codeflow/{subpackage}/")
@@ -1142,5 +1313,36 @@ def test_canonical_parity() -> None:
         )
 
 
-def test_migration_rollback() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-011")
+def test_migration_rollback(tmp_path: Path) -> None:
+    """[E-05] 旧平铺布局迁移写入失败后 rollback 恢复全部旧文件与版本。"""
+    project = tmp_path / "project"
+    project.mkdir()
+    _legacy_flat_install(project)
+    before = _script_snapshot(project)
+    failure_target = ".code-flow/scripts/codeflow/core/cf_core.py"
+    assert not (project / failure_target).exists()
+
+    program = """
+const fs = require('fs');
+const original = fs.copyFileSync;
+const root = process.argv[1];
+fs.copyFileSync = function(source, target) {
+  if (target === root + %s) throw new Error('injected write failure');
+  return original(source, target);
+};
+process.stdout.write(JSON.stringify(require(process.argv[2]).run(root, ['--apply'])));
+""" % json.dumps("/" + failure_target)
+    result = subprocess.run(
+        [_node_binary(), "-e", program, str(project), str(ROOT / "src/migrate/runtime.js")],
+        capture_output=True, text=True, timeout=180, check=False,
+    )
+    data = json.loads(result.stdout)
+    assert data["status"] == "rolled_back", data
+    assert "injected write failure" in data.get("error", ""), data
+
+    assert _script_snapshot(project) == before, "rollback must restore the old flat layout byte-for-byte"
+    assert (project / ".code-flow/.version").read_text(encoding="utf-8").strip() == LEGACY_RUNTIME_VERSION
+    assert not list((project / ".code-flow/scripts/codeflow").rglob("*.py")), "rollback must not leave package modules"
+    assert (project / ".code-flow/scripts/cf_task_runtime.py").is_file()
+    manifest = json.loads((project / ".code-flow/.runtime-install.json").read_text(encoding="utf-8"))
+    assert manifest["version"] == LEGACY_RUNTIME_VERSION

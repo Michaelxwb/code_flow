@@ -8,8 +8,8 @@ from typing import Protocol
 
 from codeflow.core import cf_fs
 from codeflow.core.cf_log import warn
-import cf_spec_context
-from cf_spec_context import (ContextError, SpecContext, context_from_data,
+import codeflow.cli.cf_spec_context as cf_spec_context
+from codeflow.cli.cf_spec_context import (ContextError, SpecContext, context_from_data,
                              context_sha256, context_to_data)
 
 

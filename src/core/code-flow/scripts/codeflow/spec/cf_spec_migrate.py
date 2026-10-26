@@ -17,7 +17,7 @@ import yaml
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from cf_spec_context import BindingInput, bind_specs, new_context, save_context
+from codeflow.cli.cf_spec_context import BindingInput, bind_specs, new_context, save_context
 from codeflow.spec.cf_spec_metadata import SpecMetadata, SpecMetadataError, load_spec_metadata
 from codeflow.spec.cf_spec_resolver import SCOPE_PRIORITY, SpecCandidate
 

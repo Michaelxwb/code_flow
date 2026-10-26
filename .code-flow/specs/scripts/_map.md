@@ -1,24 +1,27 @@
 # Python Scripts Retrieval Map
 
-> code-flow Python 脚本层导航。顶层 `cf_*.py` 是路径冻结的外部入口；内部模块按职责位于 `codeflow/{core,spec,task,acceptance,evidence}/`。
+> code-flow Python 脚本层导航。顶层 `cf_*.py` 是路径冻结的外部入口 shim（只做导入与 `main()`），实现按职责位于 `codeflow/{core,spec,task,acceptance,evidence,hooks,cli}/`。
 
 ## Layout
 
-- 入口层（平铺，22 个）：`cf_*_hook.py`、`cf_spec_context.py`、`cf_spec_gate.py`、`cf_spec_session.py`、`cf_validation.py`、`cf_task_workflow.py` 等，由 `runtime-commands.json` 与平台 hook 按文件路径直接调用
+- 入口层（平铺，22 个 shim，≤15 行）：`cf_*_hook.py`、`cf_spec_context.py`、`cf_spec_gate.py`、`cf_spec_session.py`、`cf_validation.py`、`cf_task_workflow.py` 等，由 `runtime-commands.json` 与平台 hook 按文件路径直接调用；shim 通过 `sys.modules` 别名保留 `import cf_x` 的兼容窗口
+- `codeflow/hooks/`：6 个 host 协议入口实现（`cf_stop_hook`、`cf_user_prompt_hook`、`cf_pre_tool_hook`、`cf_post_hook`、`cf_codex_hook`、`cf_opencode_event`）
+- `codeflow/cli/`：16 个 `runtime-commands.json` 命令模块（`cf_spec_context`、`cf_task_workflow`、`cf_acceptance_runner`、`cf_stats` 等）
 - `codeflow/core/`：L0/L1 基础原语（`cf_log`、`cf_core`、`cf_fs`、`cf_git`、`cf_exec_base`、`cf_markdown`、`cf_validators`、`cf_patch`、`cf_native_paths`、`cf_runtime_install`）
 - `codeflow/spec/`：Spec 解析、路由与工作流编排（`cf_spec_router`、`cf_spec_resolver`、`cf_spec_metadata`、`cf_edit_service`、`cf_workflow_service`、`cf_spec_migrate`）
 - `codeflow/task/`：TASK 文档解析与运行（`cf_task_doc`、`cf_task_plan`、`cf_task_runtime`、`cf_task_merge`）
 - `codeflow/acceptance/`：验收 schema/manifest、质量判定与追溯（`cf_acceptance_schema`、`cf_checks`、`cf_plan_quality`、`cf_traceability`）
 - `codeflow/evidence/`：证据存储（`cf_evidence_store`）
-- 入口通过 `from codeflow.<sub>.<module> import ...` 使用内部模块；包内导入统一使用 `codeflow.*` 绝对导入
+- 所有模块（含入口实现）使用 `codeflow.*` 绝对导入；平铺 shim 不得承载业务逻辑
 
 ## Entrypoints
 
-- Codex 原生入口：`cf_codex_hook.py`（patch 解析、cwd/session_id、成功判定）；共享补丁解析/路径：`codeflow/core/cf_patch.py` / `codeflow/core/cf_native_paths.py`；共享编辑服务：`codeflow/spec/cf_edit_service.py`；安装校验：`codeflow/core/cf_runtime_install.py`
+- Codex 原生入口：`cf_codex_hook.py` → `codeflow/hooks/cf_codex_hook.py`（patch 解析、cwd/session_id、成功判定）；共享补丁解析/路径：`codeflow/core/cf_patch.py` / `codeflow/core/cf_native_paths.py`；共享编辑服务：`codeflow/spec/cf_edit_service.py`；安装校验：`codeflow/core/cf_runtime_install.py`
 - PreToolUse：`cf_pre_tool_hook.py`（Context/scope 检查）；PostToolUse：`cf_post_hook.py`（edit 事件 + checks 合规反馈）
 - Stop/session.idle：`cf_stop_hook.py`（validation/task 验收，decision=block）
 - UserPromptSubmit：`cf_user_prompt_hook.py`（active Context / explicit path / Catalog 三分支）；OpenCode 原生入口：`cf_opencode_event.py`，共享 prompt / stop 服务返回业务结果，不解析其他平台的 Hook 输出
 - 任务事实源：`cf_spec_context.py`；Stage Gate：`cf_spec_gate.py`；Rule Evidence：`codeflow/spec/cf_spec_verify.py`；统计/审计：`cf_stats.py`
+- 运行时迁移（旧平铺 → 包布局）：`src/migrate/runtime.js` 清理旧平铺内部模块，保留 22 个 shim，走 backup/journal/rollback
 - Hook stdout 必须 `json.dumps(payload, ensure_ascii=False)`
 
 ## Quality Loop（v0.5）
