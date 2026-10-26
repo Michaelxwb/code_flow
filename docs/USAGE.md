@@ -306,6 +306,8 @@ checks 字段：`id`（kebab-case 唯一）、`type`（当前支持 regex；ast/
 
 会话结束时，Stop Hook 按 `validation.yml` 对本会话编辑过的文件执行校验，未过项会把 AI 拦回修复（总预算 30s，超时输出已完成部分；无 validation.yml 则静默跳过）。
 
+同一工作区的 Stop 使用非阻塞进程锁；并发调用立即返回 stop_already_running 和持有者 PID。进程退出后 OS 自动释放锁。命令超时会清理子进程组，避免后代进程持有输出管道导致长期等待。
+
 ### 学习沉淀（纠正即规范）
 
 你在对话中纠正 AI（"不要用 print 调试"、"改回去"）会被记录为 correction 事件；`/cf-learn` 把同类纠正与 AI 随后的修正编辑配对成 ✅/❌ 证据对，聚合 ≥2 次生成候选规范（附 checks 草稿），由你确认后落盘——**纠正一次，不用说第二遍**。
@@ -428,8 +430,9 @@ code-flow evidence import --format playwright --file ci/playwright.json \
 ```bash
 code-flow scenarios parse --file "<需求>.scenarios.md" --quality --json
 code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json
-code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json" --scenarios-file "<需求>.scenarios.md"
-# 在对应 check 上补齐真实测试登记后运行完整门禁
+code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json" --scenarios-file "<需求>.scenarios.md" --register-checks
+code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
+# 真实测试登记与引用同步后运行完整门禁
 code-flow acceptance manifest --verify-plan --require-scenarios --task-dir "<需求目录>" --task-file "<任务文件>"
 ```
 
@@ -446,12 +449,14 @@ E2E 只用于 P0/P1 关键用户旅程，且必须证明低层测试覆盖不了
 - 每个 expected 通过 `expected_refs` 引用存在的步骤（从 1 开始）或已声明断言 ID；deferred 必须声明 defer_reason、owner、target_phase。
 - env 使用 none/local/local-api/browser/external/staging/capacity/ci/production；components 使用稳定标识符。数据库属于组件，不使用 env=db。
 - `code-flow scenarios parse --file <需求>.scenarios.md --quality --json` 和 `code-flow acceptance manifest --verify-plan --require-scenarios ...` 会失败关闭。
-- `code-flow task start` 返回 `e2e_plan`：只把当前 TASK 的 `owned` E2E 和全局 `smoke` E2E 放进 `scheduled`，其余保持 deferred；agent 不得把 deferred 场景补成本任务测试。
-- 旧 manifest 没有 `e2e_gate` 时只返回 `legacy_e2e_plan` 警告，避免升级中断在途任务；重新执行 plan 锁定后会强制质量门禁。
+- `code-flow task start` 返回 `e2e_plan`：当前 TASK 的 owned E2E 和全局 smoke E2E 中，只有非 deferred 场景进入 scheduled。显式 deferred 仍显示归属并留到需求终验。
+- 旧 manifest 没有 e2e_gate 时返回 legacy_e2e_plan 警告；缺 quality_schema: 2 时保留原门禁并提示 legacy_quality_schema。新锁文件启用当前质量校验，完整 verify-plan 始终严格检查。
 - `task verify --profile changed` 只跑 `trigger_paths` 命中当前 diff 的 E2E；没有 `trigger_paths` 的 smoke E2E 不会在 changed 中顺跑。`--profile smoke` 只跑 smoke E2E（旧计划无 smoke 标记时才回退全量）。
 - 不要把“全量 E2E 通过”作为每个小 PR 的硬门禁；全量 E2E 放 nightly / release，PR 用受影响的 component/contract/integration + 少量 smoke。
 
 数量报告区分声明的 e2e_browser_count/system_count/capacity_count 与通过真实收集的 runnable 数量；未检查的 runnable 为 null。收集通过不等于已运行真实浏览器或已通过业务断言。完整字段与可复制示例见[验收契约](acceptance-contract.md)。
+
+`--register-checks` 从 pytest / Playwright 真实收集自动生成登记，项目收集器通过 --registration-file 配置。重锁保留历史并把变化场景标为 stale；提交不改变相同内容的验收指纹，未跟踪新文件也纳入验证。
 
 ### `/cf-init` / `$cf-init`
 

@@ -43,6 +43,7 @@
 - 非行为类任务可显式写 `Acceptance-Refs: N/A`；不得用 N/A 跳过已有设计场景
 - E2E 必须已通过 plan 精度门禁：P0/P1、`why_e2e`、`boundary`、非 smoke 的 `trigger_paths` 缺一不可；`start` 会在 `e2e_plan.quality.ok=false` 时阻断，不要手工改 manifest 绕过
 - 有 canonical 场景源时，start 同时复核浏览器边界、expected_refs 和延后责任信息。沿用 plan 已登记的可收集测试骨架；按当前 TASK 补齐断言并执行 functional RED/GREEN，浏览器 E2E 留到需求终验运行。
+- 显式 `exec: deferred` 保留在 owned/smoke 提示中，但不进入 scheduled，也不在 Start 收集。旧锁文件缺少 `quality_schema: 2` 时保留原门禁并提示 `legacy_quality_schema`；按提示补字段、重锁和验证计划，不宣称新质量检查已通过。Done 阶段的显式延期场景允许 e2e_deferred，verified 仍须完整验收。
 
 ### 2. 加载详设上下文
 
