@@ -795,7 +795,7 @@
       "kind": "functional",
       "boundary": "真实 npm pack + node CLI/init/migrate",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "bash",
         "-lc",
@@ -811,7 +811,86 @@
         "tests/**"
       ],
       "smoke": false,
-      "check": "CHK-f6ae7934bfda"
+      "check": "CHK-f6ae7934bfda",
+      "revision": 1,
+      "evidence": {
+        "id": "S-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "check_id": "CHK-f6ae7934bfda",
+        "input_hash": "7fb6c7021b51139b0f74c2b380887a638b344cffde808fdacf98b8d9669a4b9b",
+        "check_config": {
+          "id": "CHK-f6ae7934bfda",
+          "command": [
+            "bash",
+            "-lc",
+            "python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/**"
+          ],
+          "preflight": [],
+          "paths": []
+        },
+        "revision": 1,
+        "run_id": "7d51b235c996466aa2ff5996e7814bb2",
+        "executed_at": "2026-10-26T17:33:47.871903+00:00",
+        "command": [
+          "bash",
+          "-lc",
+          "python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "7fb6c7021b51139b0f74c2b380887a638b344cffde808fdacf98b8d9669a4b9b"
+      },
+      "runs": [
+        {
+          "id": "S-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "check_id": "CHK-f6ae7934bfda",
+          "input_hash": "7fb6c7021b51139b0f74c2b380887a638b344cffde808fdacf98b8d9669a4b9b",
+          "check_config": {
+            "id": "CHK-f6ae7934bfda",
+            "command": [
+              "bash",
+              "-lc",
+              "python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/**"
+            ],
+            "preflight": [],
+            "paths": []
+          },
+          "revision": 1,
+          "run_id": "7d51b235c996466aa2ff5996e7814bb2",
+          "executed_at": "2026-10-26T17:33:47.871903+00:00",
+          "command": [
+            "bash",
+            "-lc",
+            "python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "7fb6c7021b51139b0f74c2b380887a638b344cffde808fdacf98b8d9669a4b9b"
+        }
+      ]
     },
     {
       "id": "S-09",

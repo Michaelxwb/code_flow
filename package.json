@@ -14,6 +14,7 @@
     "src/runtime.js",
     "src/migrate/**",
     "src/core/**",
+    "src/core/code-flow/scripts/runtime-resources.json",
     "src/adapters/**",
     "docs/migrations/spec-workflow-0.6.0.md",
     "docs/migrations/runtime-0.7.0.md",

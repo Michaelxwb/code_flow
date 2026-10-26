@@ -34,7 +34,7 @@
 | S-05 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + Context 文件 | TASK-003 | planned | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_spec_context.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-06 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 active marker + spec-context.yml + hook 子进程 | TASK-003 | planned | ["python3","-m","pytest","-q","tests/test_cf_workflow_service.py","tests/test_cf_spec_context.py","tests/test_cf_user_prompt_hook.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-07 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + SCC 计算 | TASK-004 | planned | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-08 | docs/codebase-consolidation-audit.md#A3 | system | 真实 npm pack + node CLI/init/migrate | TASK-005 | planned | ["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"] | P2 | auto | none | tests/** | - | - | no |
+| S-08 | docs/codebase-consolidation-audit.md#A3 | system | 真实 npm pack + node CLI/init/migrate | TASK-005 | verified | ["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"] | P2 | auto | none | tests/** | - | - | no |
 | S-09 | docs/codebase-consolidation-audit.md#A7 | integration | 真实 adapters 文件 + 归一化 parity | TASK-006 | planned | ["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"] | P2 | auto | none | tests/** | - | - | no |
 | S-10 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 CLI 安装 + runner fixture 矩阵 | TASK-007 | planned | ["python3","-m","pytest","-q","tests/test_cli_spec_workflow.py","tests/test_cf_acceptance_runner.py"] | P2 | auto | none | tests/** | - | - | no |
 
@@ -229,7 +229,7 @@ TASK-001/002/003 完成后，batch 3 私有符号与 batch 4 反向边应已清�
 
 ## TASK-005: 安装 ignore 单一来源
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P2
 - **Depends**:
 - **Source**: docs/codebase-consolidation-audit.md#A3
@@ -244,29 +244,32 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 
 ### Checklist
 
-- [ ] 新增单一 ignore 声明并加入 npm `files`；CLI `ensureRuntimeGitignore` 从声明读取
-- [ ] `cf_spec_migrate._write_target_ignore` 从同一运行时声明读取，不再内嵌列表
-- [ ] 源模板 `.gitignore` 与声明一致性测试；CLI 内嵌列表删除或改为派生
-- [ ] [S-08][system] 真实 `npm pack` 后 fresh init 生成完整 20 条；upgrade 补齐缺项；用户自有 ignore 字节不变
-- [ ] [S-08][system] 迁移器写入的 block 与声明一致，旧 `.inject-state` 处理不变
-- [ ] RULE-cli-user-content-preservation-001 verifier: node tests/test_cli_merge_helpers.js
-- [ ] RULE-cli-migration-transaction-001 verifier: node tests/test_spec_workflow_migrate.js
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 新增单一 ignore 声明并加入 npm `files`；CLI `ensureRuntimeGitignore` 从声明读取
+- [x] `cf_spec_migrate._write_target_ignore` 从同一运行时声明读取，不再内嵌列表
+- [x] 源模板 `.gitignore` 与声明一致性测试；CLI 内嵌列表删除或改为派生
+- [x] [S-08][system] 真实 `npm pack` 后 fresh init 生成完整 20 条；upgrade 补齐缺项；用户自有 ignore 字节不变
+- [x] [S-08][system] 迁移器写入的 block 与声明一致，旧 `.inject-state` 处理不变
+- [x] RULE-cli-user-content-preservation-001 verifier: node tests/test_cli_merge_helpers.js
+- [x] RULE-cli-migration-transaction-001 verifier: node tests/test_spec_workflow_migrate.js
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-08 | system | 真实 npm tarball、node CLI、Python 迁移器 | 三处派生一致；20 条完整；用户内容保留 | `tests/test_runtime_consolidation.py::test_packed_install_ignore`、`tests/test_spec_workflow_migrate.js` | `["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"]` | planned |
+| S-08 | system | 真实 npm tarball、node CLI、Python 迁移器 | 三处派生一致；20 条完整；用户内容保留 | `tests/test_runtime_consolidation.py::test_packed_install_ignore`、`tests/test_spec_workflow_migrate.js` | `["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"]` | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-08 | planned | planned | planned | planned | planned |
+| S-08 | FAIL: ENOENT `src/core/code-flow/scripts/runtime-resources.json` in test_runtime_ignore_single_source and both new migrate JS cases | PASS: pytest 34 passed; node migrate 10/10 tests; merge helpers 22/22 | tests/test_runtime_consolidation.py::test_runtime_ignore_single_source; ::test_packed_install_ignore; tests/test_spec_workflow_migrate.js S-08 cases | real `npm pack` tarball + packed CLI init; real Python migrator staging on temp project; canonical/deployed declaration byte-identical | verified |
+- S-08: verified — automated command passed; run_id=7d51b235c996466aa2ff5996e7814bb2 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-27] started
+- [2026-10-27] completed (done)
 
 ---
 
