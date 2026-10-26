@@ -367,13 +367,14 @@ _SCENARIO_SOURCE_FIELDS = ("why_e2e", "trigger_paths", "smoke", "components", "s
                            "expected_refs", "preconditions", "defer_reason", "target_phase", "features", "tags")
 
 
-def _source_contract(scenarios_file: str) -> tuple[dict[str, object], dict[str, set[str]]]:
+def _source_contract(scenarios_file: str,
+                     text: Optional[str] = None) -> tuple[dict[str, object], dict[str, set[str]]]:
     import yaml
     from cf_scenarios import ScenarioError, parse_scenarios
 
     try:
-        source = parse_scenarios(scenarios_file)
-        raw_text = Path(scenarios_file).read_text(encoding="utf-8")
+        source = parse_scenarios(scenarios_file, text=text)
+        raw_text = Path(scenarios_file).read_text(encoding="utf-8") if text is None else text
         block = frontmatter_block(raw_text)
         if block is None:
             if raw_text.startswith("---"):
@@ -393,7 +394,8 @@ def _source_contract(scenarios_file: str) -> tuple[dict[str, object], dict[str, 
     return source, explicit
 
 
-def _merge_scenario_source(rows: list[dict[str, object]], scenarios_file: str) -> None:
+def _merge_scenario_source(rows: list[dict[str, object]], scenarios_file: str,
+                           text: Optional[str] = None) -> None:
     """Merge E2E precision fields from the canonical scenario source.
 
     The Acceptance Coverage table is a projection. Quality fields live in the
@@ -403,7 +405,7 @@ def _merge_scenario_source(rows: list[dict[str, object]], scenarios_file: str) -
     """
     if not scenarios_file:
         return
-    source, explicit = _source_contract(scenarios_file)
+    source, explicit = _source_contract(scenarios_file, text)
     by_id = {
         str(item.get("id")): item for item in rows
         if isinstance(item, dict) and isinstance(item.get("id"), str)
@@ -437,9 +439,10 @@ def _merge_scenario_source(rows: list[dict[str, object]], scenarios_file: str) -
 
 
 def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallback: bool = True,
-                  scenarios_file: str = "", merge_source: bool = True) -> dict[str, object]:
+                  scenarios_file: str = "", merge_source: bool = True, *,
+                  text: Optional[str] = None, scenario_text: Optional[str] = None) -> dict[str, object]:
     path = Path(task_file)
-    text = path.read_text(encoding="utf-8")
+    text = path.read_text(encoding="utf-8") if text is None else text
     contract_commands = _contract_commands(text) if contract_fallback else {}
     rows: list[dict[str, object]] = []
     in_table = False
@@ -499,7 +502,7 @@ def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallba
         if candidate.is_file():
             scenarios_file = str(candidate)
     if merge_source:
-        _merge_scenario_source(rows, scenarios_file)
+        _merge_scenario_source(rows, scenarios_file, scenario_text)
     validate_scenarios(rows)
     checks = _derive_checks(rows)
     return {"schema": _MANIFEST_SCHEMA, "task_file": str(path), "task_sha256": _manifest_hash(rows),
@@ -508,8 +511,11 @@ def _extract_rows(task_file: str, kind_fn: Callable[[str], str], contract_fallba
 
 def extract_manifest(task_file: str, kind_fn: Callable[[str], str] = _kind,
                      contract_fallback: bool = True,
-                     scenarios_file: str = "", merge_source: bool = True) -> dict[str, object]:
-    return _extract_rows(task_file, kind_fn, contract_fallback, scenarios_file, merge_source)
+                     scenarios_file: str = "", merge_source: bool = True, *,
+                     task_text: Optional[str] = None,
+                     scenario_text: Optional[str] = None) -> dict[str, object]:
+    return _extract_rows(task_file, kind_fn, contract_fallback, scenarios_file, merge_source,
+                         text=task_text, scenario_text=scenario_text)
 
 
 def _manifest_source(task_file: str, output: str, scenarios_file: str) -> str:
@@ -756,9 +762,13 @@ def _heal_legacy_manifest(manifest_file: Path, manifest: dict[str, object], expe
 
 
 def validate_manifest(task_file: str, manifest_file: str,
-                      allow_missing_e2e_gate: bool = False) -> tuple[bool, str]:
+                      allow_missing_e2e_gate: bool = False, *,
+                      task_text: Optional[str] = None,
+                      manifest: Optional[dict[str, object]] = None,
+                      scenario_file: str = "",
+                      scenario_text: Optional[str] = None) -> tuple[bool, str]:
     try:
-        manifest = load_manifest(Path(manifest_file))
+        manifest = load_manifest(Path(manifest_file)) if manifest is None else manifest
         stored_source = manifest.get("scenarios_file")
         source_path = ""
         if isinstance(stored_source, str) and stored_source.strip():
@@ -766,7 +776,12 @@ def validate_manifest(task_file: str, manifest_file: str,
             if not candidate.is_file():
                 return False, "acceptance_manifest_scenarios_missing"
             source_path = str(candidate)
-        expected = extract_manifest(task_file, scenarios_file=source_path)
+        else:
+            fallback = Path(task_file).with_suffix(".scenarios.md")
+            if scenario_file and fallback.is_file() and fallback.resolve() == Path(scenario_file).resolve():
+                source_path = scenario_file
+        expected = extract_manifest(task_file, scenarios_file=source_path, task_text=task_text,
+                                    scenario_text=scenario_text if source_path else None)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         return False, f"acceptance_manifest_invalid: {exc}"
     schema = manifest.get("schema")
@@ -774,7 +789,8 @@ def validate_manifest(task_file: str, manifest_file: str,
         return False, "acceptance_manifest_drift"
     if manifest.get("task_sha256") != expected["task_sha256"]:
         # 旧版规则（无 Contract 回退 + _kind 精确匹配）锁定的 manifest：兼容升级。
-        legacy = extract_manifest(task_file, _legacy_kind, contract_fallback=False, merge_source=False)
+        legacy = extract_manifest(task_file, _legacy_kind, contract_fallback=False, merge_source=False,
+                                  task_text=task_text)
         if manifest.get("task_sha256") != legacy["task_sha256"]:
             return False, "acceptance_manifest_drift"
         _heal_legacy_manifest(Path(manifest_file), manifest, expected)
@@ -823,7 +839,7 @@ def validate_manifest(task_file: str, manifest_file: str,
                 continue
             if current.get(field) != item.get(field):
                 return False, f"acceptance_manifest_field_changed:{item['id']}:{field}"
-    text = Path(task_file).read_text(encoding="utf-8")
+    text = Path(task_file).read_text(encoding="utf-8") if task_text is None else task_text
     for scenario in expected["scenarios"]:
         owner = scenario["owner"]
         section = re.search(rf"(?ms)^##\s+{re.escape(owner)}:.*?(?=^##\s+TASK-|\Z)", text)

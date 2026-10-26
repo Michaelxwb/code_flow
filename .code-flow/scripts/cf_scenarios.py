@@ -118,15 +118,15 @@ def _validate_one(item: Mapping[str, object]) -> dict[str, object]:
     }
 
 
-def parse_scenarios(path: object) -> dict[str, object]:
+def parse_scenarios(path: object, *, text: Optional[str] = None) -> dict[str, object]:
     """Parse and validate one scenarios source file."""
     target = Path(path)
     try:
-        text = target.read_text(encoding="utf-8")
+        raw = target.read_text(encoding="utf-8") if text is None else text
     except (OSError, UnicodeError) as exc:
         raise ScenarioError("scenario_source_unreadable", str(exc), {"path": str(target)}) from exc
     try:
-        data = yaml.safe_load(_frontmatter_text(text))
+        data = yaml.safe_load(_frontmatter_text(raw))
     except yaml.YAMLError as exc:
         raise ScenarioError("scenario_source_invalid_yaml", str(exc), {"path": str(target)}) from exc
     document = _mapping(data, "scenarios")
