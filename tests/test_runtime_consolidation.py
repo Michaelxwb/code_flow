@@ -894,8 +894,83 @@ def test_markdown_primitives(monkeypatch: pytest.MonkeyPatch) -> None:
     assert reordered["测试层级"] == 2
 
 
-def test_legacy_removal() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-008")
+def test_legacy_removal(tmp_path: Path) -> None:
+    """[S-13] 删除旧 Spec 函数后，公开 Hook/CLI 路由输出保持一致。
+
+    真实边界：`node src/cli.js init` 安装的四平台运行时、安装后的
+    `cf_user_prompt_hook.py` 子进程、`spec catalog` CLI。无 mock。
+    """
+    import importlib.util
+
+    import cf_core
+
+    legacy = ("read_matched_specs", "read_specs", "extract_context_tags")
+    for name in legacy:
+        assert not hasattr(cf_core, name), f"canonical cf_core still exports {name}"
+    live_path = ROOT / ".code-flow/scripts/cf_core.py"
+    live_spec = importlib.util.spec_from_file_location("cf_core_live", live_path)
+    assert live_spec is not None and live_spec.loader is not None
+    live_core = importlib.util.module_from_spec(live_spec)
+    live_spec.loader.exec_module(live_core)
+    for name in legacy:
+        assert not hasattr(live_core, name), f"live cf_core still exports {name}"
+
+    project = tmp_path / "project"
+    project.mkdir()
+    installed = subprocess.run(
+        ("node", str(CLI), "init", "--platform=claude"),
+        cwd=project, text=True, capture_output=True, check=False, timeout=60,
+    )
+    assert installed.returncode == 0, installed.stderr
+
+    hook = project / ".code-flow/scripts/cf_user_prompt_hook.py"
+
+    def route(prompt: str) -> str:
+        result = subprocess.run(
+            (sys.executable, str(hook)),
+            cwd=project, input=json.dumps({"prompt": prompt, "session_id": "legacy-session"}),
+            text=True, capture_output=True, check=False, timeout=60,
+        )
+        assert result.returncode == 0 and result.stderr == ""
+        payload = json.loads(result.stdout)
+        return payload["hookSpecificOutput"]["additionalContext"]
+
+    catalog = route("explain the architecture")
+    assert catalog.startswith("## Spec Catalog (code-flow)")
+    for path in (
+        "backend/code-quality-performance.md",
+        "backend/database.md",
+        "backend/directory-structure.md",
+        "backend/logging.md",
+        "backend/platform-rules.md",
+        "frontend/component-specs.md",
+        "frontend/directory-structure.md",
+        "frontend/quality-standards.md",
+    ):
+        assert f"`{path}`" in catalog
+    assert "Active Specs" not in catalog
+
+    matched = route("edit src/components/Button.tsx")
+    assert matched.startswith("## Active Specs (path-mapped)")
+    assert "frontend/component-specs.md" in matched
+    assert "frontend/directory-structure.md" in matched
+    assert "frontend/quality-standards.md" in matched
+    assert "backend/database.md" not in matched
+    assert "Spec Catalog" not in matched
+
+    catalogued = subprocess.run(
+        ("node", str(CLI), "spec", "catalog", "--root", str(project), "--stage", "code",
+         "--paths", "src/components/Button.tsx", "--json"),
+        cwd=project, text=True, capture_output=True, check=False, timeout=60,
+    )
+    assert catalogued.returncode == 0, catalogued.stderr
+    data = json.loads(catalogued.stdout)
+    scopes = {item["path"]: item["scope"] for item in data["candidates"]}
+    assert data["ok"] is True and data["total"] == 8
+    assert scopes["frontend/component-specs.md"] == "path"
+    assert scopes["frontend/directory-structure.md"] == "path"
+    assert scopes["frontend/quality-standards.md"] == "path"
+    assert scopes["backend/database.md"] == "unmatched"
 
 
 def test_verify_plan_reads() -> None:

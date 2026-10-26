@@ -17,7 +17,6 @@ from cf_core import (
     effective_project_root,
     ensure_utf8_io,
     estimate_tokens,
-    extract_context_tags,
     is_code_file,
     match_domains,
     normalize_spec_entry,
@@ -25,12 +24,6 @@ from cf_core import (
     phase_timing,
     timing_log,
 )
-
-
-def test_context_tags_and_safe_deplural() -> None:
-    tags = extract_context_tags("models/services/address.py")
-    assert {"model", "database", "service", "address"} <= tags
-    assert "addres" not in tags
 
 
 def test_normalize_spec_entries() -> None:
