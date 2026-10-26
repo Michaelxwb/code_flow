@@ -10,6 +10,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -23,6 +24,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "src" / "core" / "code-flow" / "scripts"
+DEPLOYED_SCRIPTS = ROOT / ".code-flow" / "scripts"
 CLI = ROOT / "src" / "cli.js"
 CANONICAL_IGNORE = ROOT / "src" / "core" / "code-flow" / ".gitignore"
 RUNTIME_IGNORE_START = "# >>> code-flow:runtime schema=1"
@@ -192,6 +194,37 @@ def _expired(entries: Iterable[tuple[object, ...]], current_batch: int) -> list[
                   if isinstance(entry[-1], int) and entry[-1] <= current_batch)
 
 
+_REGEX_CALLS = frozenset({
+    "compile", "match", "search", "finditer", "findall", "sub", "subn", "fullmatch",
+})
+_TASK_HEADING_PATTERN = re.compile(r"\^##\s*\(?TASK-")
+
+
+def _task_heading_regexes(path: Path) -> list[tuple[int, str]]:
+    """Regex literals that anchor a TASK heading (`^## TASK-...`)."""
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    found: list[tuple[int, str]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not node.args:
+            continue
+        func = node.func
+        if isinstance(func, ast.Attribute):
+            if not (isinstance(func.value, ast.Name) and func.value.id == "re"):
+                continue
+            name = func.attr
+        elif isinstance(func, ast.Name):
+            name = func.id
+        else:
+            continue
+        if name not in _REGEX_CALLS:
+            continue
+        first = node.args[0]
+        if (isinstance(first, ast.Constant) and isinstance(first.value, str)
+                and _TASK_HEADING_PATTERN.search(first.value)):
+            found.append((node.lineno, first.value))
+    return found
+
+
 def test_dependency_direction() -> None:
     modules = frozenset(path.stem for path in SCRIPTS.glob("*.py"))
     missing = sorted(modules - LAYERS.keys())
@@ -228,6 +261,22 @@ def test_allowlist_ratchet() -> None:
     assert not expired_symbols, f"symbols past their cleanup batch: {expired_symbols}"
     synthetic = [("cf_log", "cf_spec_context", CURRENT_BATCH)]
     assert _expired(synthetic, CURRENT_BATCH) == synthetic
+
+
+def test_task_parser_single_source() -> None:
+    """[TASK-005] `^## TASK-` 正则只允许出现在 cf_task_doc.py（双副本）。"""
+    offenders: list[str] = []
+    for scripts in (SCRIPTS, DEPLOYED_SCRIPTS):
+        for path in sorted(scripts.glob("*.py")):
+            if path.name == "cf_task_doc.py":
+                continue
+            for lineno, pattern in _task_heading_regexes(path):
+                offenders.append(f"{path.relative_to(ROOT)}:{lineno}: {pattern}")
+    assert not offenders, (
+        "TASK headings must be parsed only by cf_task_doc:\n" + "\n".join(offenders)
+    )
+    assert _task_heading_regexes(SCRIPTS / "cf_task_doc.py"), "cf_task_doc must own the heading regex"
+    assert _task_heading_regexes(DEPLOYED_SCRIPTS / "cf_task_doc.py"), "deployed copy must match"
 
 
 def _ignore_entries(text: str) -> list[str]:
@@ -629,12 +678,125 @@ def test_task_doc_boundaries() -> None:
         assert error.value.code == "task_document_empty"
 
 
-def test_task_flow_consistency() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-005")
+def _run_script(script: str, *arguments: str, cwd: Path,
+                stdin: Optional[str] = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        (sys.executable, str(SCRIPTS / script), *arguments),
+        cwd=str(cwd), input=stdin, text=True, capture_output=True, timeout=120,
+    )
 
 
-def test_plan_gate_duplicate() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-005")
+def _duplicate_task_text() -> str:
+    return (
+        "## TASK-001: first\n"
+        "- **Status**: done\n\n"
+        "## TASK-001: second\n"
+        "- **Status**: done\n"
+    )
+
+
+def test_task_flow_consistency(tmp_path: Path) -> None:
+    """[S-09] 真实任务目录：start → finish → spec gate 三命令读取同一 TASK 状态。"""
+    from test_audit_mainline_e2e import _repo
+
+    from cf_task_doc import parse_task_document
+    from cf_task_index import parse_task_file
+
+    root, task_dir = _repo(tmp_path)
+    work = task_dir / "work.md"
+
+    started = _run_script(
+        "cf_spec_context.py", "start",
+        "--task-dir", str(task_dir), "--task-file", str(work),
+        "--task", "TASK-001", "--root", str(root), "--json",
+        cwd=root, stdin=json.dumps({"owned_paths": []}),
+    )
+    assert started.returncode == 0, started.stdout + started.stderr
+    start_data = json.loads(started.stdout)
+    assert start_data["ok"] is True, start_data
+    assert start_data["active"]["task_id"] == "TASK-001"
+    assert parse_task_document(work.read_text(encoding="utf-8")).tasks[0].status == "in-progress"
+
+    finished = _run_script(
+        "cf_task_workflow.py", "finish",
+        "--task-dir", str(task_dir), "--task", "TASK-001",
+        "--root", str(root), "--json",
+        cwd=root,
+    )
+    assert finished.returncode == 0, finished.stdout + finished.stderr
+    finish_data = json.loads(finished.stdout)
+    assert finish_data["decision"] == "pass", finish_data
+    assert parse_task_document(work.read_text(encoding="utf-8")).tasks[0].status == "done"
+
+    gate = _run_script(
+        "cf_spec_gate.py",
+        "--task-dir", str(task_dir), "--stage", "code",
+        "--task", "TASK-001", "--json",
+        cwd=root,
+    )
+    assert gate.returncode == 0, gate.stdout + gate.stderr
+    gate_data = json.loads(gate.stdout)
+    assert gate_data["decision"] == "pass", gate_data
+    nodes = {node.task_id: node.status for node in parse_task_file(str(work))}
+    assert nodes["TASK-001"] == "done"
+
+
+def test_plan_gate_duplicate(tmp_path: Path) -> None:
+    """[E-03] plan 阶段 gate 对重复 TASK ID 返回 block 且引用 duplicate_task_id。"""
+    root = tmp_path / "project"
+    task_dir = root / ".code-flow" / "tasks" / "demo"
+    task_dir.mkdir(parents=True)
+    (root / ".code-flow" / "config.yml").write_text(
+        "spec_workflow:\n  schema_version: 1\n  enforcement: required\npath_mapping: {}\n",
+        encoding="utf-8",
+    )
+    (task_dir / "spec-context.yml").write_text(
+        yaml.safe_dump({
+            "version": 1,
+            "task": "demo",
+            "enforcement": "required",
+            "updated_at": "2026-10-26T00:00:00+00:00",
+            "sources": [],
+            "bindings": [],
+        }),
+        encoding="utf-8",
+    )
+    task_file = task_dir / "work.md"
+    task_file.write_text(_duplicate_task_text(), encoding="utf-8")
+
+    completed = _run_script(
+        "cf_spec_gate.py",
+        "--task-dir", str(task_dir), "--stage", "plan",
+        "--artifact", str(task_file), "--json",
+        cwd=root,
+    )
+
+    assert completed.returncode == 3, completed.stdout + completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["decision"] == "block", payload
+    assert [issue["code"] for issue in payload["errors"]] == ["duplicate_task_id"]
+
+
+def test_manifest_and_stop_reject_duplicate_task_id(tmp_path: Path) -> None:
+    """[TASK-005] manifest Contract 提取与 Stop 收尾对重复 ID 一致拒绝。"""
+    from cf_acceptance_manifest import _contract_commands
+    from cf_stop_hook import task_acceptance_failures
+
+    with pytest.raises(ValueError, match="duplicate_task_id"):
+        _contract_commands(_duplicate_task_text())
+
+    root = tmp_path / "project"
+    relative = ".code-flow/tasks/demo/work.md"
+    task_file = root / relative
+    task_file.parent.mkdir(parents=True)
+    task_file.write_text(
+        _duplicate_task_text() + "\n## Acceptance Coverage\n| 场景ID | 状态 |\n|---|---|\n",
+        encoding="utf-8",
+    )
+
+    failures = task_acceptance_failures(str(root), [relative])
+
+    assert any("duplicate_task_id" in str(item.get("detail", "")) for item in failures), failures
 
 
 def _git_repo_with_changes(root: Path) -> None:

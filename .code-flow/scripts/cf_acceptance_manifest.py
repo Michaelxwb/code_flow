@@ -18,6 +18,7 @@ from cf_acceptance_schema import (
     EXEC_MODES, load_manifest, scenario_check_ids, validate_checks, validate_scenarios,
 )
 from cf_markdown import column_index, frontmatter_block, table_cells
+from cf_task_doc import TaskDocumentError, parse_task_document
 
 
 _ROW_RE = re.compile(r"^\|\s*([SEB]-\d+)\s*\|(.+?)\|$")
@@ -265,9 +266,15 @@ def _contract_commands(text: str) -> dict[str, str]:
     第 7 列（argv JSON）等价。
     """
     commands: dict[str, str] = {}
-    for section in re.finditer(r"(?ms)^## TASK-\d+:.*?(?=^## |\Z)", text):
+    try:
+        document = parse_task_document(text)
+    except TaskDocumentError as exc:
+        if exc.code == "task_document_empty":
+            return commands
+        raise
+    for section in document.tasks:
         contract = re.search(
-            r"(?ms)^### Acceptance Contract[^\n]*\n(.*?)(?=^### |^## |\Z)", section.group(0)
+            r"(?ms)^### Acceptance Contract[^\n]*\n(.*?)(?=^### |^## |\Z)", section.body
         )
         if contract is None:
             continue

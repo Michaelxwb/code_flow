@@ -242,3 +242,19 @@ def test_doc_state_drift(tmp_path: Path) -> None:
     )
     context = SpecContext(1, "demo", "required", "2026-10-22T00:00:00+00:00", (), (binding,))
     assert task_truth_issues(str(task), "TASK-001", context) == ("spec#RULE-code-001: pending",)
+
+
+def test_markdown_sync_preserves_crlf() -> None:
+    """Markdown view sync must keep CRLF line endings while replacing one section."""
+    from cf_workflow_service import _render_markdown
+
+    text = (
+        "## TASK-001: Demo\r\n- **Status**: draft\r\n\r\n"
+        "## TASK-002: Other\r\n- **Status**: draft\r\n"
+    )
+
+    rendered = _render_markdown(text, "TASK-001", "in-progress")
+
+    assert "- **Status**: in-progress\r\n" in rendered
+    assert "\r\n## TASK-002: Other\r\n" in rendered
+    assert "\n" not in rendered.replace("\r\n", ""), "不得混入裸 LF"

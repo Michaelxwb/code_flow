@@ -181,32 +181,63 @@ def _append_log_entry(section: str, log_line: str) -> str:
 
 def _set_status(section: str, status: str, log_line: str = "") -> str:
     if re.search(r"(?m)^- \*\*Status\*\*:", section):
-        section = re.sub(r"(?m)^- \*\*Status\*\*:.*$", f"- **Status**: {status}", section, count=1)
+        section = re.sub(r"(?m)^(- \*\*Status\*\*:)[^\r\n]*", rf"\1 {status}", section, count=1)
     else:
-        anchor = re.search(r"(?m)^## TASK-\d+:.*$", section)
-        insert_at = anchor.end() if anchor else 0
-        section = section[:insert_at] + f"\n- **Status**: {status}" + section[insert_at:]
+        line_end = section.find("\n")
+        if line_end == -1:
+            insert_at = len(section)
+        elif line_end > 0 and section[line_end - 1] == "\r":
+            insert_at = line_end - 1
+        else:
+            insert_at = line_end
+        eol = "\r\n" if "\r\n" in section else "\n"
+        section = section[:insert_at] + eol + f"- **Status**: {status}" + section[insert_at:]
     if log_line and log_line not in section.splitlines():
         section = _append_log_entry(section, log_line)
     return section
 
 
-def _render_markdown(text: str, task_id: str, status: str, log_line: str = "", prepend: str = "") -> str:
-    match = re.search(rf"(?ms)^## {re.escape(task_id)}:.*?(?=^## |\Z)", text)
-    if match is None:
+def _section_span(text: str, task_id: str) -> tuple[int, int]:
+    """Offsets of one TASK section in the original text (line endings preserved)."""
+    heading = f"## {task_id}:"
+    start = end = -1
+    offset = 0
+    for line in text.splitlines(keepends=True):
+        content = line.rstrip("\r\n")
+        if content.startswith(heading):
+            if start != -1:
+                raise WorkflowError("duplicate_task_id", task_id)
+            start = offset
+        elif start != -1 and content.startswith("## "):
+            end = offset
+            break
+        offset += len(line)
+    if start == -1:
         raise WorkflowError("task_not_found", task_id)
-    section = _set_status(match.group(0), status, log_line)
+    return start, len(text) if end == -1 else end
+
+
+def _render_markdown(text: str, task_id: str, status: str, log_line: str = "", prepend: str = "") -> str:
+    try:
+        document = parse_task_document(text)
+    except TaskDocumentError as exc:
+        raise WorkflowError(exc.code, str(exc), exc.details) from exc
+    if not any(task.id == task_id for task in document.tasks):
+        raise WorkflowError("task_not_found", task_id)
+    start, end = _section_span(text, task_id)
+    section = text[start:end]
+    updated = _set_status(section, status, log_line)
     if not prepend and status in ("done", "verified"):
-        section = re.sub(r"(?m)^> (?:PROVISIONAL|BLOCKED):[^\n]*\n?", "", section)
-    if prepend and prepend not in section:
-        if "### Log" in section:
-            section = section.replace("### Log", prepend + "\n### Log", 1)
+        updated = re.sub(r"(?m)^> (?:PROVISIONAL|BLOCKED):[^\n]*\n?", "", updated)
+    if prepend and prepend not in updated:
+        if "### Log" in updated:
+            updated = updated.replace("### Log", prepend + "\n### Log", 1)
         else:
-            at = _trailing_separator_at(section)
-            head, tail = section[:at].rstrip(), section[at:].lstrip("\n")
-            section = f"{head}\n\n{prepend}\n" + (f"\n{tail}" if tail else "")
-    text = text[:match.start()] + section + text[match.end():]
-    return re.sub(r"(?m)^- \*\*Updated\*\*:.*$", f"- **Updated**: {_today()}", text, count=1)
+            at = _trailing_separator_at(updated)
+            head, tail = updated[:at].rstrip(), updated[at:].lstrip("\n")
+            updated = f"{head}\n\n{prepend}\n" + (f"\n{tail}" if tail else "")
+    text = text[:start] + updated + text[end:]
+    return re.sub(r"(?m)^(- \*\*Updated\*\*:)[^\r\n]*", rf"\1 {_today()}", text, count=1)
 
 
 def _sync_markdown(task_file: str, task_id: str, status: str, log_line: str = "", prepend: str = "") -> str:
