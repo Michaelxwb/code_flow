@@ -9,7 +9,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
-import cf_spec_session
+import codeflow.cli.cf_spec_session as cf_spec_session
 from typing import Mapping, Optional, Sequence
 
 from codeflow.core.cf_core import (
@@ -24,10 +24,10 @@ from codeflow.core.cf_core import (
     resolve_compress,
 )
 from codeflow.core.cf_log import warn
-from cf_spec_context import ContextError, SpecContext, load_active_task, load_context
+from codeflow.cli.cf_spec_context import ContextError, SpecContext, load_active_task, load_context
 from codeflow.core.cf_context_cache import load_snapshot
 from codeflow.spec.cf_spec_resolver import resolve_candidate_headers, resolve_candidates
-from cf_spec_session import context_sha256, project_task_session
+from codeflow.cli.cf_spec_session import context_sha256, project_task_session
 
 
 _PROJECTION_CACHE_PATH = ".code-flow/.task-projection-state.json"

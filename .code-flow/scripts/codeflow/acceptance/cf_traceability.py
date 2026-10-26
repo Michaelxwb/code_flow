@@ -426,7 +426,7 @@ if __name__ == "__main__":
 
 def build_traceability_from_scenarios(scenarios_file: str, manifest_file: str) -> dict[str, object]:
     """Join the scenario source with manifest checks (0.9 source model)."""
-    from cf_scenarios import parse_scenarios
+    from codeflow.cli.cf_scenarios import parse_scenarios
     source = parse_scenarios(scenarios_file)
     manifest_scenarios, checks = _load_manifest(manifest_file)[1:]
     source_ids = {str(item["id"]) for item in source["scenarios"]}

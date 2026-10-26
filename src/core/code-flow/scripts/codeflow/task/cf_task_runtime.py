@@ -12,7 +12,7 @@ from pathlib import Path
 import time
 from typing import Mapping, Optional
 
-from cf_spec_context import (
+from codeflow.cli.cf_spec_context import (
     BindingInput,
     RuleBinding,
     RuleStageStatus,
@@ -26,10 +26,10 @@ from cf_spec_context import (
     resync_active_hash,
     save_context,
 )
-from cf_spec_gate import evidence_deferral_kind, validate_stage
+from codeflow.cli.cf_spec_gate import evidence_deferral_kind, validate_stage
 from codeflow.spec.cf_spec_metadata import SpecMetadata, load_spec_metadata
 from codeflow.spec.cf_spec_resolver import resolve_candidates, SpecCandidate
-from cf_spec_session import context_sha256
+from codeflow.cli.cf_spec_session import context_sha256
 from codeflow.spec.cf_spec_verify import VerificationEvidence, VerificationScope, run_all_verifiers, store_verification_evidence
 from codeflow.core.cf_core import load_config, phase_timing, resolve_quality_loop
 from codeflow.acceptance.cf_acceptance_schema import load_manifest, validate_execution_baseline
@@ -82,7 +82,7 @@ def _acceptance_baseline_issue(task_dir: str, owner: str) -> str:
             return "acceptance_manifest_missing" if requires else ""
         data = load_manifest(path)
         if requires:
-            from cf_acceptance_manifest import validate_manifest
+            from codeflow.cli.cf_acceptance_manifest import validate_manifest
             valid, reason = validate_manifest(str(task), str(path))
             if not valid:
                 return reason
@@ -249,7 +249,7 @@ def _task_scope_specs(root: str, task_dir: str, owner: str, files: tuple[str, ..
     task = locate_task_file(task_dir, owner)
     if task is None:
         return scope
-    from cf_spec_session import _refs, _task_section
+    from codeflow.cli.cf_spec_session import _refs, _task_section
 
     try:
         refs = _refs(_task_section(task.read_text(encoding="utf-8"), owner))
@@ -371,7 +371,7 @@ def _run_acceptance(root: str, task_dir: str, owner: str, include_e2e: bool,
         return "", "pass", ()
     manifest_path = Path(task_dir) / ".acceptance-manifest.json"
     if manifest_path.is_file():
-        from cf_acceptance_runner import run_manifest
+        from codeflow.cli.cf_acceptance_runner import run_manifest
         scenario_result = run_manifest(str(manifest_path), root, write_evidence=True, include_e2e=include_e2e, owner=owner, deadline=deadline)
         if scenario_result["decision"] == "block":
             statuses = [

@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""Project one TASK's bound rules into a bounded session document."""
+
+from __future__ import annotations
+
+import argparse
+import os
+from dataclasses import dataclass
+import json
+from pathlib import Path
+import re
+import sys
+from typing import IO, Mapping, Optional, Sequence
+
+from codeflow.cli.cf_spec_context import RuleBinding, SpecContext, context_sha256, load_context
+from codeflow.task.cf_task_doc import parse_task_document
+
+
+@dataclass(frozen=True)
+class SessionProjection:
+    text: str
+    included_rules: int
+    total_rules: int
+    truncated: bool
+
+
+# context_sha256 is defined next to the identity projection in cf_spec_context
+# and re-exported here for callers that import the session module.
+
+
+def _task_section(text: str, task_id: str) -> str:
+    for task in parse_task_document(text).tasks:
+        if task.id == task_id:
+            return task.body
+    raise ValueError(f"task_not_found: {task_id}")
+
+
+_EMPTY_REF_MARKERS = frozenset(("n/a", "none", "null", "-", "—"))
+
+
+def _refs(section: str) -> tuple[str, ...]:
+    # [ \t]* 而非 \s*：空 Spec-Refs 不得跨行吞掉下一字段（Acceptance-Refs 等）
+    match = re.search(r"(?m)^- \*\*Spec-Refs\*\*:[ \t]*(.*)$", section)
+    if match is None:
+        raise ValueError("spec_refs_missing")
+    cleaned = (item.strip() for item in match.group(1).split(","))
+    return tuple(item for item in cleaned if item and item.lower() not in _EMPTY_REF_MARKERS)
+
+
+def _rule_index(context: SpecContext) -> Mapping[str, RuleBinding]:
+    return {
+        f"{binding.spec_id}#{rule.ref}": rule
+        for binding in context.bindings
+        for rule in binding.rules
+    }
+
+
+def _acceptance_contract(section: str) -> str:
+    match = re.search(r"(?ms)^### Acceptance Contract\s*$\n(.*?)(?=^### |^## |\Z)", section)
+    if match is None:
+        raise ValueError("acceptance_contract_missing")
+    return match.group(1).strip()
+
+
+def _rule_line(ref: str, rule: RuleBinding, compact: bool = False) -> str:
+    hashes = f"rule_sha256={rule.text_sha256} verifier={rule.verifier_ref}"
+    if compact:
+        return f"- `{ref}` {hashes}\n"
+    artifacts = sorted({item.artifact for status in rule.stage_status.values() for item in status.refs})
+    return f"- `{ref}`: {rule.summary}\n  - {hashes}; artifacts={','.join(artifacts) or 'none'}\n"
+
+
+def _reference_header(section: str) -> str:
+    lines = re.findall(r"(?m)^- \*\*(?:Source|Design-Refs|Acceptance-Refs)\*\*:[ \t]*[^\n]*", section)
+    return "".join(line + "\n" for line in lines)
+
+
+def project_task_session(
+    context: SpecContext, task_file: str, task_id: str, max_chars: int = 12000,
+    *, context_hash: Optional[str] = None,
+) -> SessionProjection:
+    section = _task_section(Path(task_file).read_text(encoding="utf-8"), task_id)
+    refs = _refs(section)
+    index = _rule_index(context)
+    missing = tuple(ref for ref in refs if ref not in index)
+    if missing:
+        raise ValueError(f"unknown_spec_refs: {', '.join(missing)}")
+    acceptance = _acceptance_contract(section)
+    header = (f"# {task_id} Spec Context\n\n- Context-SHA256: `{context_hash or context_sha256(context)}`\n"
+              + _reference_header(section) + "\n## Required Rules\n")
+    footer = f"\n## Acceptance Contract\n{acceptance}\n"
+    lines: list[str] = []
+    for ref in refs:
+        candidate = _rule_line(ref, index[ref])
+        if len(header + "".join(lines) + candidate + footer) > max_chars:
+            break
+        lines.append(candidate)
+    truncated = len(lines) < len(refs) or len(header + "".join(lines) + footer) > max_chars
+    if truncated:
+        footer = "\n> 投影超过预算；完整 Context 保留在需求目录，请拆分 TASK。\n" + footer
+    text = (header + "".join(lines) + footer)[:max_chars]
+    return SessionProjection(text, len(lines), len(refs), truncated)
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog=os.environ.get("CF_RUNTIME_COMMAND", "cf_spec_session.py"))
+    parser.add_argument("--task-dir", required=True)
+    parser.add_argument("--task-file", required=True)
+    parser.add_argument("--task", required=True)
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--budget", type=int, default=12000)
+    parser.add_argument("--json", action="store_true")
+    return parser
+
+
+def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
+    try:
+        args = _parser().parse_args(argv)
+        context = load_context(str(Path(args.task_dir) / "spec-context.yml"))
+        result = project_task_session(context, args.task_file, args.task, args.budget)
+        Path(args.output).write_text(result.text, encoding="utf-8")
+        stdout.write(json.dumps(result.__dict__, ensure_ascii=False))
+        return 0
+    except Exception as exc:
+        stdout.write(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
+        return 3

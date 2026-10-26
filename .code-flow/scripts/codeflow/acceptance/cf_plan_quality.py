@@ -48,7 +48,7 @@ def _read_snapshot(path: Path) -> FileSnapshot:
 def load_plan_snapshot(directory: str, task_file: str,
                        require_scenarios: bool = False) -> PlanSnapshot:
     """Read TASK, manifest and scenario source at most once for one operation."""
-    from cf_scenarios import ScenarioError
+    from codeflow.cli.cf_scenarios import ScenarioError
     base = Path(directory)
     manifest = _read_snapshot(base / ".acceptance-manifest.json")
     task = _read_snapshot(Path(task_file))
@@ -70,7 +70,7 @@ def _root(directory: Path) -> Path:
 
 
 def _source(directory: Path, manifest: Mapping[str, object], required: bool) -> str:
-    from cf_scenarios import require_source
+    from codeflow.cli.cf_scenarios import require_source
     named = manifest.get("scenarios_file")
     if isinstance(named, str) and named:
         return str(directory / named)
@@ -107,13 +107,13 @@ def _scenario_snapshot(snapshot: PlanSnapshot, source_file: str) -> Optional[Fil
 
 def verify_plan(directory: str, task_file: str, require_scenarios: bool = False,
                 *, snapshot: Optional[PlanSnapshot] = None) -> dict[str, object]:
-    from cf_acceptance_manifest import validate_manifest
+    from codeflow.cli.cf_acceptance_manifest import validate_manifest
     from codeflow.acceptance.cf_acceptance_schema import load_manifest
     from codeflow.acceptance.cf_check_registration import validate_registration
-    from cf_design_lint import lint_requirement
-    from cf_scenarios import parse_scenarios, validate_e2e_quality
-    from cf_spec_context import load_context
-    from cf_spec_gate import result_to_data, validate_plan_coverage, validate_stage
+    from codeflow.cli.cf_design_lint import lint_requirement
+    from codeflow.cli.cf_scenarios import parse_scenarios, validate_e2e_quality
+    from codeflow.cli.cf_spec_context import load_context
+    from codeflow.cli.cf_spec_gate import result_to_data, validate_plan_coverage, validate_stage
     base = Path(directory)
     path = base / ".acceptance-manifest.json"
     if not path.is_file():
