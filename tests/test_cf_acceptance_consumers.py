@@ -20,15 +20,15 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src/core/code-flow/scripts"))
 
-from cf_acceptance_evidence import stale_scenario_checks
+from codeflow.acceptance.cf_acceptance_evidence import stale_scenario_checks
 from cf_acceptance_manifest import record_accepted_risk
 from cf_acceptance_runner import run_manifest
-from cf_acceptance_schema import load_manifest
+from codeflow.acceptance.cf_acceptance_schema import load_manifest
 from cf_audit import build_audit
-from cf_check_inputs import check_input_hashes
-from cf_evidence_store import EvidenceStore, requirement_key
+from codeflow.acceptance.cf_check_inputs import check_input_hashes
+from codeflow.evidence.cf_evidence_store import EvidenceStore, requirement_key
 from cf_evidence_import import import_report
-from cf_exec_base import worktree_fingerprint
+from codeflow.core.cf_exec_base import worktree_fingerprint
 from cf_task_parallel import _missing_evidence
 from cf_task_workflow import _stale_functional_rows, verify_layers
 

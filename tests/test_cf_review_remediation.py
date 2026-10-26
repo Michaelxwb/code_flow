@@ -13,10 +13,10 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 import cf_acceptance_runner as runner  # noqa: E402
-from cf_acceptance_schema import load_manifest  # noqa: E402
-from cf_evidence_store import EvidenceStore  # noqa: E402
+from codeflow.acceptance.cf_acceptance_schema import load_manifest  # noqa: E402
+from codeflow.evidence.cf_evidence_store import EvidenceStore  # noqa: E402
 from cf_task_parallel import ParallelEvidenceError, _evidence_state  # noqa: E402
-from cf_worktree_env import _lock_is_stale, effective_parallel_safe, worktree_identity  # noqa: E402
+from codeflow.core.cf_worktree_env import _lock_is_stale, effective_parallel_safe, worktree_identity  # noqa: E402
 
 
 def _git(root: Path, *args: str) -> None:
@@ -32,7 +32,7 @@ def _repo(tmp_path: Path) -> Path:
     _git(root, "config", "user.name", "review")
     (root / "src").mkdir()
     (root / "src/app.py").write_text("VALUE = 1\n", encoding="utf-8")
-    (root / ".gitignore").write_text("report.tmp\n", encoding="utf-8")
+    (root / ".gitignore").write_text("report.tmp\nruns.txt\n", encoding="utf-8")
     _git(root, "add", "-A")
     _git(root, "commit", "-qm", "init")
     return root

@@ -13,10 +13,10 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_spec_context import BindingInput, Decision, apply_decision, bind_specs, complete_active_task, load_active_task, load_context, new_context, save_context, start_active_task
-from cf_spec_resolver import resolve_candidates
-from cf_spec_router import route_prompt
+from codeflow.spec.cf_spec_resolver import resolve_candidates
+from codeflow.spec.cf_spec_router import route_prompt
 from cf_spec_session import context_sha256
-from cf_task_runtime import evaluate_scope, run_done_gate
+from codeflow.task.cf_task_runtime import evaluate_scope, run_done_gate
 
 
 def _git(root: Path, *args: str) -> None:

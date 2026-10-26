@@ -13,7 +13,7 @@ import pytest
 SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from cf_workflow_service import WorkflowError, block_task, complete_task, resume_task, start_task  # noqa: E402
+from codeflow.spec.cf_workflow_service import WorkflowError, block_task, complete_task, resume_task, start_task  # noqa: E402
 from cf_spec_context import load_active_task  # noqa: E402
 
 
@@ -44,7 +44,7 @@ def _repo(tmp_path: Path, sections: str) -> tuple[Path, Path]:
         encoding="utf-8",
     )
     from cf_spec_context import BindingInput, bind_specs, new_context, save_context
-    from cf_spec_resolver import resolve_candidates
+    from codeflow.spec.cf_spec_resolver import resolve_candidates
 
     candidate = resolve_candidates(str(tmp_path), "code", ["src/app.py"])[0]
     save_context(
@@ -195,7 +195,7 @@ def test_log_inserted_before_last_separator_when_body_has_rule(tmp_path: Path) -
 
 def test_remove_and_cleanup_session_projections(tmp_path: Path) -> None:
     """投影清理：单任务删除返回状态；cleanup 只删本需求、不碰其他需求。"""
-    from cf_workflow_service import cleanup_session_projections, remove_session_projection
+    from codeflow.spec.cf_workflow_service import cleanup_session_projections, remove_session_projection
 
     session = tmp_path / ".code-flow/specs/_session"
     session.mkdir(parents=True)
@@ -223,8 +223,8 @@ def test_remove_and_cleanup_session_projections(tmp_path: Path) -> None:
 def test_doc_state_drift(tmp_path: Path) -> None:
     """[E-04] 文档写 verified，但 required code Rule 未 verified → 必须报漂移。"""
     from cf_spec_context import RuleBinding, RuleStageStatus, SpecBinding, SpecContext
-    from cf_spec_metadata import SpecHashes
-    from cf_workflow_service import task_truth_issues
+    from codeflow.spec.cf_spec_metadata import SpecHashes
+    from codeflow.spec.cf_workflow_service import task_truth_issues
 
     task = tmp_path / "demo.md"
     task.write_text(
@@ -242,3 +242,19 @@ def test_doc_state_drift(tmp_path: Path) -> None:
     )
     context = SpecContext(1, "demo", "required", "2026-10-22T00:00:00+00:00", (), (binding,))
     assert task_truth_issues(str(task), "TASK-001", context) == ("spec#RULE-code-001: pending",)
+
+
+def test_markdown_sync_preserves_crlf() -> None:
+    """Markdown view sync must keep CRLF line endings while replacing one section."""
+    from codeflow.spec.cf_workflow_service import _render_markdown
+
+    text = (
+        "## TASK-001: Demo\r\n- **Status**: draft\r\n\r\n"
+        "## TASK-002: Other\r\n- **Status**: draft\r\n"
+    )
+
+    rendered = _render_markdown(text, "TASK-001", "in-progress")
+
+    assert "- **Status**: in-progress\r\n" in rendered
+    assert "\r\n## TASK-002: Other\r\n" in rendered
+    assert "\n" not in rendered.replace("\r\n", ""), "不得混入裸 LF"

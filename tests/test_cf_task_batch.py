@@ -15,7 +15,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_spec_context import BindingInput, bind_specs, new_context, save_context, load_context  # noqa: E402
-from cf_spec_resolver import resolve_candidates  # noqa: E402
+from codeflow.spec.cf_spec_resolver import resolve_candidates  # noqa: E402
 from cf_task_index import parse_task_file  # noqa: E402
 from cf_task_workflow import finish_batch, main  # noqa: E402
 

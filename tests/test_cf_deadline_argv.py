@@ -12,7 +12,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_runner import run_manifest  # noqa: E402
-from cf_stop_hook import run_validators  # noqa: E402
+from codeflow.core.cf_validators import VALID, ValidatorConfig, run_validators  # noqa: E402
 
 
 def _manifest(tmp_path: Path, command: list) -> str:
@@ -48,7 +48,8 @@ def test_validators_past_deadline_marked_incomplete(tmp_path: Path) -> None:
         {"name": "never", "trigger": "**/*.py", "command": "python3 -c pass {files}", "timeout": 60000},
     ]
     failures, truncated, _reused = run_validators(
-        str(tmp_path), validators, ["a.py"], "sid", deadline=time.monotonic() - 1.0
+        str(tmp_path), ValidatorConfig(VALID, tuple(validators)), ["a.py"], "sid",
+        deadline=time.monotonic() - 1.0,
     )
     assert truncated is True
     assert any(item.get("incomplete") for item in failures)
@@ -72,7 +73,7 @@ def test_argv_handles_spaces_and_shell_metachars(tmp_path: Path) -> None:
         }
     ]
     failures, truncated, _reused = run_validators(
-        str(tmp_path), validators, ["src/a b.py", "src/x$(y).py"], "sid"
+        str(tmp_path), ValidatorConfig(VALID, tuple(validators)), ["src/a b.py", "src/x$(y).py"], "sid"
     )
     assert truncated is False
     assert failures == [], failures

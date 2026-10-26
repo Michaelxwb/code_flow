@@ -19,7 +19,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_manifest import write_manifest  # noqa: E402
 from cf_acceptance_runner import run_manifest  # noqa: E402
-from cf_task_merge import (  # noqa: E402
+from codeflow.task.cf_task_merge import (  # noqa: E402
     MergeConflictError,
     merge_context_docs,
     merge_context_text,
@@ -546,7 +546,7 @@ def test_stale_after_merge_downgrades_verified_and_changed_reruns(tmp_path: Path
 
 def test_merge_invalidates_only_changed_check_and_preserves_history(tmp_path: Path) -> None:
     from cf_task_parallel import _stale_after_merge
-    from cf_exec_base import worktree_fingerprint
+    from codeflow.core.cf_exec_base import worktree_fingerprint
     root = _merge_repo(tmp_path)
     for name in ("a.py", "b.py"):
         (root / name).write_text("value = 1\n", encoding="utf-8")

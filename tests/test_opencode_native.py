@@ -31,7 +31,7 @@ def invoke(root: Path, kind: str, event: dict[str, object]) -> dict[str, object]
 
 
 def test_native_event_shapes_and_failed_tools(tmp_path: Path) -> None:
-    import cf_log
+    from codeflow.core import cf_log
     _project(tmp_path)
     result = invoke(tmp_path, "session.prompt", {"sessionID": "native", "prompt": {"text": "review src/a.py"}})
     assert "RULE-python-001" in result["context"] and not result["blocked"]
@@ -73,10 +73,10 @@ def test_rule_text_cannot_be_mistaken_for_a_blocking_decision(tmp_path: Path) ->
 
 
 def test_native_scope_expansion_is_advisory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import cf_edit_service
+    from codeflow.spec import cf_edit_service
     from cf_opencode_event import dispatch
     _project(tmp_path)
-    from cf_spec_router import RouteResult
+    from codeflow.spec.cf_spec_router import RouteResult
     monkeypatch.setattr(cf_edit_service, "route_prompt", lambda *args, **kwargs:
                         RouteResult("task", "bound rules", (), "hash", ("new-required",)))
     result = dispatch({"directory": str(tmp_path), "kind": "tool.before", "event": {

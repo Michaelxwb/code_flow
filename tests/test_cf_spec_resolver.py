@@ -11,8 +11,8 @@ import yaml
 SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "core" / "code-flow" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-import cf_spec_resolver
-from cf_spec_resolver import (
+from codeflow.spec import cf_spec_resolver
+from codeflow.spec.cf_spec_resolver import (
     SpecResolutionError,
     build_candidate_page,
     resolve_candidate_headers,

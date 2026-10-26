@@ -113,7 +113,6 @@ except:
 - 外部依赖仅限 pyyaml，其他功能用标准库实现
 - Catalog 状态只允许 schema v1 的 session_id/prompt_count/last_emitted；任务绑定事实只能来自 `spec-context.yml`
 - Hook 的 session_id 优先从 stdin JSON 读取；平台缺失该字段时才允许显式 fallback
-- 复数归一只能走 `_SAFE_DEPLURALS` 白名单，禁止 naive 字符串操作去 's'
 - required Context/Rule 不得因展示预算被截断；超预算 TASK 必须阻断并拆分
 - 会话事件必须经 `cf_log.append_event` 写入，禁止手拼 JSONL；事件载荷遵循 _map 的 schema 约定
 - checks 执行必须有护栏：单条超时、内容大小上限、disabled 过滤（`cf_checks.run_checks` 模式）
@@ -138,7 +137,6 @@ except:
 ## Avoid
 - 禁止在 Hook stdout 输出非 JSON 内容（会破坏 Claude Code / Codex 协议）
 - 禁止使用 print() 调试输出到 stdout，用 _log() 输出到 stderr
-- 禁止在 extract_context_tags() 中使用 naive 字符串操作去复数（如直接去 's'）
 - 禁止在 Codex UserPromptSubmit Hook 中用 os.getpid() 作为 session_id
 - 禁止用 `dir/**/*.ext` 写 fnmatch 匹配模式——fnmatch 的 `**` 非递归语义，该写法要求至少一层子目录、静默漏掉直系文件；用 `dir/*.ext`（`*` 跨 `/`）。本陷阱在 config patterns 与 checks files 缺省值上各踩中一次
 

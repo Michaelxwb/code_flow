@@ -89,7 +89,7 @@ code-flow design lint --file order.design.md --scenarios-file order.scenarios.md
 
 ## 测试登记与收集
 
-在 manifest 对应 check 上登记套件与具体用例。重新锁定计划会保留这些设置；更改设置使旧输入指纹失效。collect 使用 argv，不经过 shell，单条最多 60 秒、单次登记校验总预算 60 秒。
+锁定时加 `--register-checks`，工具从 pytest / Playwright 的真实收集结果登记套件、具体用例、markers 和 collect。默认收集超时 10 秒，登记总预算 60 秒；只收集，不执行测试体。登记失败会保留原锁文件并输出具体 check、命令和错误。重新锁定会保留登记设置，更改设置使旧输入指纹失效。
 
 pytest 示例：项目应注册并实际使用 browser/smoke/capacity markers。
 
@@ -129,7 +129,17 @@ Playwright 示例：使用明确的 chromium/firefox/webkit/browser 项目名称
 
 check 的 command 必须实际选择已登记的测试 ID、文件或匹配的 marker。不可证明选择范围的 -k/grep 过滤应改用具体用例 ID。npm/pnpm/yarn 脚本会解析到 package.json 中的直接命令；串联多个 shell 命令时请拆成 preflight 与测试 check，避免登记正确却执行了别的命令。
 
-上面的 JSON 是对应 check 的字段片段，不是完整 manifest。先生成 manifest，再在实际 check 上补齐登记字段；`suite`、`test_ids`、`markers`、`collect` 在重新锁定时保留。capacity check 与收集到的用例都需要 capacity marker，smoke 同理。静态标注 `suite=browser` 或 `smoke=true` 不构成收集证明。
+上面的 JSON 是对应 check 的字段片段。使用项目自定义收集器时，先生成 manifest 获取真实 check ID，将登记字段放入独立文件，再通过正式命令写入：
+
+```json
+{"checks":{"CHK-实际ID":{"suite":"browser","test_ids":["tests/orders.spec.ts:8@chromium"],"markers":["smoke"],"collect":{"argv":["node","scripts/collect-tests.js"],"format":"json","timeout":20}}}}
+```
+
+```bash
+code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json" --registration-file registration.json
+```
+
+`--registration-file` 同样执行真实收集和执行选择校验；只允许修改登记字段，未知 check ID 会报错。capacity check 与收集到的用例都需要 capacity marker，smoke 同理。
 
 ## 计划到终验
 
@@ -137,8 +147,9 @@ check 的 command 必须实际选择已登记的测试 ID、文件或匹配的 m
 
 ```bash
 # 生成或重新锁定 manifest；沿用项目实际命名的场景源
-code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json" --scenarios-file "<需求>.scenarios.md"
-# 补齐 checks 上的登记信息后，执行完整计划门禁
+code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json" --scenarios-file "<需求>.scenarios.md" --register-checks
+# 同步已修改工件的引用哈希，再执行完整计划门禁
+code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
 code-flow acceptance manifest --verify-plan --require-scenarios --task-dir "<需求目录>" --task-file "<任务文件>"
 # 开发期间只跑 validators，允许任务进行中，不推进状态
 code-flow task verify --task-dir "<需求目录>" --checks --profile full --root "$PWD" --json
@@ -146,7 +157,13 @@ code-flow task verify --task-dir "<需求目录>" --checks --profile full --root
 code-flow task verify --task-dir "<需求目录>" --layers validators,review,e2e --profile full --root "$PWD" --json
 ```
 
-`--require-scenarios` 用于明确要求场景源；即使不传，`--verify-plan` 也始终检查 manifest 基线、场景语义、实际登记/收集、设计闭环和 plan Spec Gate。已有场景源会被自动发现，参数不是绕过质量检查的开关。start 会复核 canonical 场景的语义与登记。
+`--require-scenarios` 用于明确要求场景源；即使不传，`--verify-plan` 也始终检查 manifest 基线、场景语义、实际登记/收集、设计闭环和 plan Spec Gate。已有场景源会被自动发现。新锁文件声明 `quality_schema: 2`，start 复核当前质量和登记；旧锁文件缺少该版本时，start 保留原 E2E 门禁并输出 `legacy_quality_schema` 警告，提示补字段并重锁，不宣称新质量检查通过。
+
+显式 `exec: deferred` 的 E2E 保留在 owned/smoke 提示中，编码阶段不进入 scheduled，也不执行登记收集；完整 verify-plan 仍检查其质量和登记，需求终验再执行。Done 的 integration/system/capacity 延后场景也可保留 e2e_deferred；verified 必须闭环。并行批次只运行本批 TASK 的场景，需求终验继续覆盖整个需求。
+
+重锁按场景保存 status、revision、evidence、runs 和 stale_checks。场景契约或 check 配置变化时，保留历史并标为 stale；未变场景保留有效状态。CLI 的 relock 字段报告 preserved/stale/removed，旧锁文件损坏会给出 warnings。
+
+验收指纹包含尚未跟踪的新文件；同一份内容在 add/commit 前后保持一致，删除后提交也一致。测试报告、计数文件等产物应加入 .gitignore；默认工作树指纹排除 .code-flow 和标准 .acceptance-manifest.json，显式 inputs 单独计算。
 
 变更 command、inputs 或登记配置会使旧输入证明失效。多 check 场景逐个保存结果，A 通过不能覆盖 B 失败；CI 按 check 回传，格式见 [CI 证据指南](ci/acceptance-evidence.md)。手工将 TASK 或场景状态改成 verified 不会产生执行证据。
 
@@ -155,6 +172,8 @@ code-flow task verify --task-dir "<需求目录>" --layers validators,review,e2e
 设计 frontmatter 设置 `design_template: lite|full|frontend` 中的实际模板值，再运行 `code-flow design lint --file <design> --scenarios-file <scenarios> --json`。多份设计重复 --file。检查未定义 FEAT/API/NFR、冲突 NFR、无场景功能、场景与功能错配及对应模板的必填章节。
 
 doctor 会分别报告健康检查与各阶段 readiness。applied artifact 必须引用正确章节中的已完成条目；仅出现 Rule ID 或含有“待确认/TBD”的占位说明不构成证明。code/review 必须有执行证据。Conventions 中的关键约束应提升为 Rules；其余通过 convention_review_required 明确提示审查。
+
+`spec apply/bind` 的工件相对当前需求目录解析，gate/doctor 使用同一基准；不搜索其他需求的同名文件。section_id 支持标题、标准 slug 和 TASK 编号；旧 task-008、rule-api-002 别名按大小写无关的完整 ID 解析。写入应用引用时立即验证目标章节和条目，仍拒绝未解决占位。`rule_artifact_stale` 保留阻断并在 next 给出显式 refresh 命令。
 
 规则无需改代码也可以通过有效自动验证证明符合，因此 `decision=null` 本身不是错误。确实不适用时使用 `not_applicable` 和用户 decision；不得将未处理的“需同步 spec 文本”标为 applied。doctor 顶层 decision 表示诊断健康，`readiness.plan/code/review` 分别表示阶段准备情况，二者应一起查看。
 
@@ -178,6 +197,11 @@ doctor 会分别报告健康检查与各阶段 readiness。applied artifact 必�
 | `e2e_check_not_browser` / `capacity_check_not_marked` / `smoke_check_not_registered` | 修复实际套件/marker 及收集配置；不能只修改统计字段 |
 | `check_test_not_collected` / `check_execution_selection_mismatch` | 核对具体 ID、文件/项目选择和真正执行的 command |
 | `rule_applied_unresolved` / `rule_execution_evidence_missing` | 完成引用条目并重做有效验证；需要不适用决策时记录用户确认 |
+| `legacy_quality_schema` | 旧计划继续使用原门禁；补齐新字段并重锁，再执行完整 verify-plan |
+| `check_collection_inference_unsupported` | 用 --registration-file 声明项目收集器，再执行真实登记校验 |
+| `stop_already_running` | 提示包含锁持有者 PID；等待该进程退出后重试，进程结束或被终止后 OS 自动释放锁 |
+
+本轮问题回归入口为 `tests/test_workflow_issue_regressions.py`，覆盖同名工件隔离、旧引用、延期范围、批次 owner、真实收集、重锁历史、提交前后指纹、refresh 提示及 Stop 并发/进程超时。
 | `convention_review_required` | 审查未纳入 Rules 的重要约定；需机器强制的约定提升为稳定 Rule 与 verifier |
 
 修改 canonical 场景或任务后重新锁定 manifest，再运行 verify-plan；Context 漂移按 `code-flow spec refresh` 的诊断处理。不要删除 marker、手改 input_hash 或绕过失败的门禁。

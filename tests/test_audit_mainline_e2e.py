@@ -24,10 +24,10 @@ from cf_spec_context import (  # noqa: E402
     new_context,
     save_context,
 )
-from cf_spec_resolver import resolve_candidates  # noqa: E402
+from codeflow.spec.cf_spec_resolver import resolve_candidates  # noqa: E402
 from cf_spec_session import context_sha256  # noqa: E402
-from cf_task_runtime import run_done_gate  # noqa: E402
-from cf_workflow_service import complete_task, start_task  # noqa: E402
+from codeflow.task.cf_task_runtime import run_done_gate  # noqa: E402
+from codeflow.spec.cf_workflow_service import complete_task, start_task  # noqa: E402
 
 
 def _git(root: Path, *args: str) -> None:

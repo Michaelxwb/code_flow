@@ -10,7 +10,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_runner import run_manifest
-from cf_evidence_store import EvidenceStore
+from codeflow.evidence.cf_evidence_store import EvidenceStore
 import pytest
 
 RUNNER = SCRIPTS / "cf_acceptance_runner.py"
@@ -367,7 +367,7 @@ def test_isolated_check_injects_worktree_namespace(tmp_path: Path) -> None:
 
 
 def test_shared_env_scope_is_never_parallel_safe() -> None:
-    from cf_worktree_env import effective_parallel_safe
+    from codeflow.core.cf_worktree_env import effective_parallel_safe
 
     assert effective_parallel_safe({"env_scope": "shared", "parallel_safe": True}) is False
     assert effective_parallel_safe({"env_scope": "shared"}) is False
@@ -592,6 +592,7 @@ def test_max_failures_stops_after_limit_and_keeps_completed_evidence(tmp_path: P
 
 def _per_check_repo(tmp_path: Path) -> tuple[Path, Path, Path]:
     _git_repo(tmp_path)
+    (tmp_path / "src/a.py").write_text("VALUE = 1\n", encoding="utf-8")
     (tmp_path / "src/b.py").write_text("OTHER = 1\n", encoding="utf-8")
     _git(tmp_path, "add", "-A")
     _git(tmp_path, "commit", "-qm", "checks")
@@ -723,6 +724,7 @@ def test_expired_accepted_risk_blocks(tmp_path: Path) -> None:
 
 def test_multi_check_reuses_each_check_and_writes_central_evidence(tmp_path: Path) -> None:
     _git_repo(tmp_path)
+    (tmp_path / "src/a.py").write_text("A = 1\n", encoding="utf-8")
     (tmp_path / "src/b.py").write_text("B = 1\n", encoding="utf-8")
     _git(tmp_path, "add", "-A")
     _git(tmp_path, "commit", "-qm", "b")
@@ -757,7 +759,7 @@ def test_multi_check_reuses_each_check_and_writes_central_evidence(tmp_path: Pat
     assert marker_a.read_text() == "xx"
     assert marker_b.read_text() == "x"
 
-    from cf_evidence_store import EvidenceStore, requirement_key
+    from codeflow.evidence.cf_evidence_store import EvidenceStore, requirement_key
     store = EvidenceStore(str(tmp_path), requirement_key(manifest.parent))
     assert len(store.list_runs("CHK-A")) == 2
     assert len(store.list_runs("CHK-B")) == 1

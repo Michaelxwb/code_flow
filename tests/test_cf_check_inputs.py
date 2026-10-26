@@ -5,7 +5,7 @@ import sys
 SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from cf_check_inputs import check_input_hash, expand_inputs, match_path
+from codeflow.acceptance.cf_check_inputs import check_input_hash, expand_inputs, match_path
 
 
 def _repo(tmp_path: Path) -> Path:
@@ -47,7 +47,7 @@ def test_check_hash_changes_only_when_declared_input_changes(tmp_path: Path) -> 
 
 
 def test_batch_hash_matches_union_and_isolates_checks(tmp_path: Path) -> None:
-    from cf_check_inputs import check_input_hashes
+    from codeflow.acceptance.cf_check_inputs import check_input_hashes
     root = _repo(tmp_path)
     checks = {
         "A": {"command": ["true"], "inputs": ["a.py"]},

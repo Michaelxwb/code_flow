@@ -18,9 +18,9 @@ import unittest.mock as mock
 import yaml
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", "code-flow", "scripts"))
-import cf_log
+from codeflow.core import cf_log
 import cf_stop_hook
-from cf_stop_hook import expand_braces, trigger_matches
+from codeflow.core.cf_validators import expand_braces, trigger_matches
 
 
 def test_expand_braces():
@@ -176,6 +176,25 @@ def test_heavy_validator_skipped_on_stop_but_run_by_validate():
         from cf_validation import validate_files
         result = validate_files(root, ["src/a.py"])
         assert result["decision"] == "block", "cf-validate 必须仍然执行 heavy validator"
+
+
+def test_heavy_validator_skipped_when_light_validator_present():
+    """混合配置：Stop 只跑轻量项，不得因为传回完整 config 而执行 heavy。"""
+    with tempfile.TemporaryDirectory() as root:
+        marker = os.path.join(root, "heavy-ran")
+        heavy = {
+            "name": "heavy",
+            "trigger": "**/*.py",
+            "command": f"python3 -c \"open({marker!r}, 'w').write('x')\"",
+            "timeout": 5000,
+            "heavy": True,
+            "on_fail": "n/a",
+        }
+        _make_project(root, [PASS_V, heavy])
+        cf_log.append_event(root, "edit", {"file": "src/a.py", "tool": "Edit"}, "s1")
+        assert _run(root) == {}
+        assert not os.path.exists(marker), "Stop 不得执行 heavy validator"
+
 
 
 def test_manual_run_without_pipe_exits_immediately():

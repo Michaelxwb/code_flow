@@ -18,7 +18,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_manifest import write_manifest  # noqa: E402
 from cf_spec_context import BindingInput, bind_specs, new_context, save_context  # noqa: E402
-from cf_spec_resolver import resolve_candidates  # noqa: E402
+from codeflow.spec.cf_spec_resolver import resolve_candidates  # noqa: E402
 
 
 def _git(root: Path, *args: str) -> None:

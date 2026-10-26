@@ -56,6 +56,15 @@ function writeJson(file, value) {
   fs.renameSync(`${file}.tmp`, file);
 }
 
+function staleScripts(root, installed) {
+  // 0.9 moved the flat cf_*.py implementation modules under codeflow/{hooks,cli};
+  // upgrades must remove the old flat files, keeping the 22 path-frozen shims.
+  const current = new Set(Object.keys(runtime.artifactSources(installed)));
+  return walk(root, '.code-flow/scripts')
+    .filter(file => file.endsWith('.py'))
+    .filter(file => !current.has(file.replace(/\\/g, '/')));
+}
+
 function prepare(root, locked = false) {
   guardVersion(root);
   const installed = platforms(root);
@@ -64,7 +73,8 @@ function prepare(root, locked = false) {
   const staging = path.join(workspace, 'staging');
   fs.mkdirSync(staging, { recursive: true });
   fs.mkdirSync(path.join(workspace, 'backup'));
-  const original = inputs(root, installed);
+  const stale = staleScripts(root, installed);
+  const original = [...new Set([...inputs(root, installed), ...stale])];
   const sources = Object.fromEntries(original.map(file => [file, runtime.digest(path.join(root, file))]));
   const journal = { schema_version: 1, id, root, platforms: installed,
     status: 'staging', sources, hashes: {}, deletions: [], written: [] };
@@ -81,6 +91,7 @@ function prepare(root, locked = false) {
     });
     if (result.error || result.status !== 0) throw new Error(`Runtime staging failed: ${result.error || result.stderr || result.stdout}`);
   }
+  for (const relative of stale) fs.rmSync(path.join(staging, relative), { force: true });
   runtime.verify(staging);
   const targets = walk(staging).filter(file => file !== '.runtime-stage.json' && !file.startsWith('.code-flow/backups/'));
   const hashes = Object.fromEntries(targets.map(file => [file, runtime.digest(path.join(staging, file))]));

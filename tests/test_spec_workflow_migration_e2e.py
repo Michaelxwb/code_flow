@@ -98,7 +98,7 @@ def test_s_09_full_project_migrates_once_with_user_and_archive_bytes(tmp_path: P
         assert (tmp_path / path).is_file()
     residue = [path for path in tmp_path.rglob("*cf-inject*") if ".code-flow/migrations/" not in path.as_posix()]
     assert residue == []
-    assert (tmp_path / ".code-flow/scripts/cf_spec_router.py").is_file()
+    assert (tmp_path / ".code-flow/scripts/codeflow/spec/cf_spec_router.py").is_file()
 
 
 def test_b_03_any_unresolved_demand_blocks_whole_project(tmp_path: Path) -> None:

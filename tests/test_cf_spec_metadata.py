@@ -12,7 +12,7 @@ import pytest
 SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "core" / "code-flow" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from cf_spec_metadata import SpecMetadataError, load_spec_header, load_spec_metadata
+from codeflow.spec.cf_spec_metadata import SpecMetadataError, load_spec_header, load_spec_metadata
 
 
 VALID_SPEC = """\
@@ -228,8 +228,8 @@ def test_routing_modules_defer_yaml_import_until_parse() -> None:
 import sys
 sys.path.insert(0, 'src/core/code-flow/scripts')
 import cf_spec_context
-import cf_spec_metadata
-import cf_spec_resolver
+from codeflow.spec import cf_spec_metadata
+from codeflow.spec import cf_spec_resolver
 print('yaml' in sys.modules)
 """
     result = subprocess.run((sys.executable, "-c", script), capture_output=True, text=True, check=True)

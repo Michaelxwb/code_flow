@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from cf_task_plan import evaluate_plan, parse_estimate_hours  # noqa: E402
+from codeflow.task.cf_task_plan import evaluate_plan, parse_estimate_hours  # noqa: E402
 
 PLAN_SOURCES = (
     ROOT / "src/adapters/claude/commands/cf-task/plan.md",

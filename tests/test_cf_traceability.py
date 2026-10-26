@@ -15,7 +15,7 @@ SCRIPTS = ROOT / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_manifest import write_manifest  # noqa: E402
-from cf_traceability import (  # noqa: E402
+from codeflow.acceptance.cf_traceability import (  # noqa: E402
     build_traceability,
     parse_design_scenarios,
     render_markdown,
@@ -161,7 +161,7 @@ def test_missing_design_scenario_in_manifest_blocks(tmp_path: Path) -> None:
 def test_cli_emits_json_and_exit_code(tmp_path: Path) -> None:
     design_file, manifest_file = _fixture(tmp_path)
     result = subprocess.run(
-        [sys.executable, str(SCRIPTS / "cf_traceability.py"), "--design", design_file,
+        [sys.executable, str(SCRIPTS / "codeflow/acceptance/cf_traceability.py"), "--design", design_file,
          "--manifest", manifest_file, "--json"],
         capture_output=True, text=True, check=False,
     )
@@ -174,7 +174,7 @@ def test_cli_emits_json_and_exit_code(tmp_path: Path) -> None:
     unbound_dir.mkdir()
     unbound_design, unbound_manifest = _fixture(unbound_dir, UNBOUND_TASK)
     result = subprocess.run(
-        [sys.executable, str(SCRIPTS / "cf_traceability.py"), "--design", unbound_design,
+        [sys.executable, str(SCRIPTS / "codeflow/acceptance/cf_traceability.py"), "--design", unbound_design,
          "--manifest", unbound_manifest, "--json"],
         capture_output=True, text=True, check=False,
     )

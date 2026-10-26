@@ -112,18 +112,21 @@ code/review 的 applied 引用不能替代执行证据。自动 verifier 能证�
 2. API/CLI/后台全链路改为 system/integration，同时移除 why_e2e；保留为 e2e 的场景必须有浏览器 env/组件和匹配 boundary。
 3. 补齐具体 expected 与逐条 expected_refs；有条件预期声明前置条件。deferred 补 defer_reason、owner、target_phase。
 4. 使用合法 env；数据库放在 components。设计声明实际 design_template，统一 FEAT/API/NFR 定义及功能到场景关系。
-5. 生成 manifest，在对应 check 上登记 browser 套件、具体 test_ids、smoke/capacity markers 与 collect；执行 command 必须选中这些用例。延期执行不免除计划登记。
+5. 生成 manifest 时加 --register-checks，由真实 pytest / Playwright 收集登记；自定义收集器使用 --registration-file。执行 command 必须选中登记用例。延期执行不免除完整计划登记。
 6. 执行以下门禁。更改登记配置或命令会使旧输入证明失效，按实际需要重跑受影响检查。
 
 ```bash
 code-flow scenarios parse --file "<需求>.scenarios.md" --quality --json
 code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json
-code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json" --scenarios-file "<需求>.scenarios.md"
-# 补齐对应 check 登记后再运行
+code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json" --scenarios-file "<需求>.scenarios.md" --register-checks
+code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
+# 登记与引用同步后再运行
 code-flow acceptance manifest --verify-plan --require-scenarios --task-dir "<需求目录>" --task-file "<任务文件>"
 ```
 
 `--verify-plan` 始终执行完整检查，不能通过不传 `--require-scenarios` 绕过。旧文档可读与旧 evidence 可追溯不代表新计划自动通过。`--checks` 只跑开发期 validators、不推进终态；需求级 full 终验才证明完整范围。浏览器可运行数量来自实际收集，已执行结果仍来自有效运行证据。
+
+旧锁文件缺少 quality_schema: 2 时，start 保留原 E2E 门禁并提示 legacy_quality_schema，给在途任务留下显式补字段与重锁的窗口；不会自动生成 expected_refs、延期负责人或用户确认。重锁启用当前门禁。已有场景历史按 ID 保留，契约变化标为 stale，CLI relock 字段列出影响；登记失败保留旧锁文件。
 
 ## 7. 回滚
 

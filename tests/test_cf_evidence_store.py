@@ -25,8 +25,8 @@ sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_manifest import write_manifest  # noqa: E402
 from cf_acceptance_runner import run_manifest  # noqa: E402
-from cf_acceptance_schema import verified_evidence  # noqa: E402
-from cf_evidence_store import (  # noqa: E402
+from codeflow.acceptance.cf_acceptance_schema import verified_evidence  # noqa: E402
+from codeflow.evidence.cf_evidence_store import (  # noqa: E402
     DEFAULT_HISTORY_LIMIT,
     EvidenceStore,
     EvidenceStoreError,
@@ -34,7 +34,7 @@ from cf_evidence_store import (  # noqa: E402
     compact_evidence,
     evidence_root,
 )
-from cf_exec_base import worktree_fingerprint  # noqa: E402
+from codeflow.core.cf_exec_base import worktree_fingerprint  # noqa: E402
 from cf_spec_context import (  # noqa: E402
     ContextSource,
     RuleBinding,
@@ -43,7 +43,7 @@ from cf_spec_context import (  # noqa: E402
     SpecContext,
     save_context,
 )
-from cf_spec_metadata import SpecHashes  # noqa: E402
+from codeflow.spec.cf_spec_metadata import SpecHashes  # noqa: E402
 
 
 def _git(root: Path, *arguments: str) -> str:
@@ -278,7 +278,7 @@ def test_b02_non_git_fallback_store_and_runner(tmp_path: Path) -> None:
 
 
 def test_spec_verifier_evidence_can_be_persisted_as_central_runs(tmp_path: Path) -> None:
-    from cf_spec_verify import (
+    from codeflow.spec.cf_spec_verify import (
         VerificationEvidence,
         VerificationResult,
         VerificationScope,
@@ -310,7 +310,7 @@ def test_spec_verifier_evidence_can_be_persisted_as_central_runs(tmp_path: Path)
 
 
 def test_s05_deferral_does_not_clear_previous_verified_state() -> None:
-    from cf_task_runtime import _update_rule
+    from codeflow.task.cf_task_runtime import _update_rule
 
     verified = {
         "verifier_ref": "demo-spec#RULE-001",
@@ -346,7 +346,7 @@ def test_s05_deferral_does_not_clear_previous_verified_state() -> None:
 
 def test_s05_stale_verified_evidence_is_downgraded_by_deferral() -> None:
     """A deferral must not preserve verified evidence from a different diff."""
-    from cf_task_runtime import _update_rule
+    from codeflow.task.cf_task_runtime import _update_rule
 
     verified = {
         "verifier_ref": "demo-spec#RULE-001",
@@ -699,8 +699,8 @@ def test_ci_import_uses_per_check_input_hash(ci_repo, tmp_path: Path) -> None:
     completed = _run_import(repo, manifest, report, commit=head)
     assert completed.returncode == 0, completed.stderr
 
-    from cf_check_inputs import check_input_hash
-    from cf_exec_base import worktree_fingerprint
+    from codeflow.acceptance.cf_check_inputs import check_input_hash
+    from codeflow.core.cf_exec_base import worktree_fingerprint
     check = next(item for item in data["checks"] if item["id"] == data["scenarios"][0]["check"])
     fallback = worktree_fingerprint(str(repo), include_untracked=False)
     expected = check_input_hash(str(repo), check, fallback)["input_hash"]

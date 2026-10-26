@@ -46,9 +46,9 @@ from cf_spec_context import (
     save_context,
     start_active_task,
 )
-import cf_spec_router
-from cf_spec_resolver import resolve_candidates
-from cf_spec_router import RouterError, route_prompt
+from codeflow.spec import cf_spec_router
+from codeflow.spec.cf_spec_resolver import resolve_candidates
+from codeflow.spec.cf_spec_router import RouterError, route_prompt
 
 
 def test_artifact_hash_cache_reuses_unchanged_file(tmp_path: Path, monkeypatch) -> None:
@@ -630,8 +630,8 @@ def test_start_manifest_failure_does_not_activate_task(tmp_path: Path) -> None:
 
 
 def test_run_git_forces_utf8_decoding(monkeypatch: pytest.MonkeyPatch) -> None:
-    """git 输出 UTF-8 文件名；_run_git 必须显式 encoding="utf-8" 才能正确解码 CJK。"""
-    import cf_spec_context
+    """git 输出 UTF-8 文件名；cf_git.run_git 必须显式 encoding="utf-8" 才能正确解码 CJK。"""
+    from codeflow.core import cf_git
 
     captured: dict = {}
 
@@ -639,8 +639,8 @@ def test_run_git_forces_utf8_decoding(monkeypatch: pytest.MonkeyPatch) -> None:
         captured.update(kwargs)
         return subprocess.CompletedProcess(args, 0, stdout="?? 中文.py", stderr="")
 
-    monkeypatch.setattr(cf_spec_context.subprocess, "run", fake_run)
-    output = cf_spec_context._run_git(".", ("status", "--porcelain"))
+    monkeypatch.setattr(cf_git.subprocess, "run", fake_run)
+    output = cf_git.run_git(".", ("status", "--porcelain"))
 
     assert captured.get("encoding") == "utf-8"
     assert output == "?? 中文.py"

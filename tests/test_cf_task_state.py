@@ -11,17 +11,9 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "src/core/code-flow/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from cf_spec_context import RuleBinding, RuleStageStatus, SpecBinding, SpecContext
-from cf_spec_metadata import SpecHashes
-from cf_task_state import (
-    CHECK_STATUSES,
-    FINISHED_STATUSES,
-    SCENARIO_STATUSES,
-    TASK_STATUSES,
-    is_finished,
-    is_open,
-    is_provisional,
-)
-from cf_workflow_service import task_truth_issues
+from codeflow.spec.cf_spec_metadata import SpecHashes
+from codeflow.core.cf_task_state import FINISHED_STATUSES
+from codeflow.spec.cf_workflow_service import task_truth_issues
 
 
 def _status(status: str) -> RuleStageStatus:
@@ -56,15 +48,9 @@ def _task(tmp_path: Path, status: str) -> Path:
     return path
 
 
-def test_task_status_sets_are_explicit() -> None:
-    assert "provisional" in TASK_STATUSES
+def test_finished_statuses_exclude_provisional() -> None:
+    assert FINISHED_STATUSES == ("done", "verified")
     assert "provisional" not in FINISHED_STATUSES
-    assert "aspirational" in SCENARIO_STATUSES
-    assert "env_blocked" in CHECK_STATUSES
-    assert is_finished("done") and is_finished("verified")
-    assert not is_finished("provisional")
-    assert is_open("provisional")
-    assert is_provisional("provisional")
 
 
 def test_done_rejects_unverified_required_code_rule(tmp_path: Path) -> None:

@@ -24,7 +24,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from cf_acceptance_manifest import write_manifest  # noqa: E402
 from cf_audit import build_audit, render_markdown  # noqa: E402
-from cf_evidence_store import EvidenceStore  # noqa: E402
+from codeflow.evidence.cf_evidence_store import EvidenceStore  # noqa: E402
 
 
 DESIGN = """# Demo design

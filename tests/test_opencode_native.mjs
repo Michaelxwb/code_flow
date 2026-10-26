@@ -160,7 +160,7 @@ try {
   assert.equal(await context(h, "expansion"), "");
   writeFileSync(entry, nativeEntry);
 
-  const service = path.join(directory, ".code-flow/scripts/cf_edit_service.py");
+  const service = path.join(directory, ".code-flow/scripts/codeflow/spec/cf_edit_service.py");
   writeFileSync(service, readFileSync(service, "utf8") + "\n# runtime drift\n");
   await h.send({ type: "session.idle", data: { sessionID: "idle-error" } });
   assert.equal((await context(h, "idle-error")).match(/drifted/g)?.length, 1);

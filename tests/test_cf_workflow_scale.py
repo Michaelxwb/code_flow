@@ -39,10 +39,10 @@ from cf_spec_context import (  # noqa: E402
     start_active_task,
 )
 from cf_spec_gate import validate_stage  # noqa: E402
-from cf_spec_metadata import SpecHashes  # noqa: E402
-from cf_spec_resolver import resolve_candidates  # noqa: E402
+from codeflow.spec.cf_spec_metadata import SpecHashes  # noqa: E402
+from codeflow.spec.cf_spec_resolver import resolve_candidates  # noqa: E402
 from cf_task_workflow import finish_task  # noqa: E402
-from cf_workflow_service import read_task_section, section_status  # noqa: E402
+from codeflow.spec.cf_workflow_service import read_task_section, section_status  # noqa: E402
 
 
 TASK_COUNT = 119

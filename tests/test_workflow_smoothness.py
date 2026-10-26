@@ -26,7 +26,7 @@ import sys  # noqa: E402
 if sys_path_added not in sys.path:
     sys.path.insert(0, sys_path_added)
 
-from cf_acceptance_evidence import persist_results  # noqa: E402
+from codeflow.acceptance.cf_acceptance_evidence import persist_results  # noqa: E402
 from cf_acceptance_manifest import extract_manifest, validate_manifest, write_manifest  # noqa: E402
 from cf_acceptance_runner import run_manifest  # noqa: E402
 from cf_spec_context import (  # noqa: E402
@@ -39,10 +39,10 @@ from cf_spec_context import (  # noqa: E402
     resync_active_hash,
     save_context,
 )
-from cf_spec_resolver import resolve_candidates  # noqa: E402
+from codeflow.spec.cf_spec_resolver import resolve_candidates  # noqa: E402
 from cf_spec_session import context_sha256  # noqa: E402
-from cf_task_runtime import _update_rule  # noqa: E402
-from cf_workflow_service import start_task  # noqa: E402
+from codeflow.task.cf_task_runtime import _update_rule  # noqa: E402
+from codeflow.spec.cf_workflow_service import start_task  # noqa: E402
 
 
 # --- helpers ---
@@ -148,8 +148,8 @@ def test_relock_preserves_runtime_state(tmp_path: Path) -> None:
     assert validate_manifest(str(task), str(target)) == (True, "")
 
 
-def test_relock_after_task_edit_drops_stale_evidence(tmp_path: Path) -> None:
-    """任务事实变化（作用域漂移）时重锁必须丢弃旧证据。"""
+def test_relock_after_task_edit_preserves_history_as_stale(tmp_path: Path) -> None:
+    """任务事实变化时保留历史，stale 状态阻止旧证据继续算通过。"""
     task = _task_file(
         tmp_path,
         "| S-01 | d.md#x | integration | real | TASK-001 | planned |",
@@ -169,8 +169,8 @@ def test_relock_after_task_edit_drops_stale_evidence(tmp_path: Path) -> None:
 
     write_manifest(str(task), str(target))
     again = json.loads(target.read_text(encoding="utf-8"))["scenarios"][0]
-    assert again.get("evidence") is None
-    assert again["status"] == "planned"
+    assert again["evidence"]["exit_code"] == 0
+    assert again["status"] == "stale"
 
 
 # --- 3. 无自有场景 TASK ---
@@ -235,7 +235,7 @@ def test_e2e_deferred_still_recorded_before_verification(tmp_path: Path) -> None
 
 def test_ownerless_scenario_without_coverage_not_written_to_first_task(tmp_path: Path) -> None:
     """无 owner 且无 Coverage 表的旧场景不得写入第一个 TASK 段。"""
-    from cf_acceptance_evidence import sync_task_evidence
+    from codeflow.acceptance.cf_acceptance_evidence import sync_task_evidence
 
     task = tmp_path / "task.md"
     task.write_text(
@@ -253,7 +253,7 @@ def test_ownerless_scenario_without_coverage_not_written_to_first_task(tmp_path:
 
 
 def test_ownerless_scenario_with_coverage_updates_only_coverage(tmp_path: Path) -> None:
-    from cf_acceptance_evidence import sync_task_evidence
+    from codeflow.acceptance.cf_acceptance_evidence import sync_task_evidence
 
     task = tmp_path / "task.md"
     task.write_text(
@@ -464,7 +464,7 @@ def test_validation_scope_git_changes_excludes_managed(tmp_path: Path) -> None:
 # --- 10. validator skip_if_missing ---
 
 def test_validator_skip_if_missing_does_not_block(tmp_path: Path) -> None:
-    from cf_stop_hook import run_validators
+    from codeflow.core.cf_validators import VALID, ValidatorConfig, run_validators
 
     _write(tmp_path / "src/app.py", "x = 1\n")
     validator = {
@@ -473,13 +473,13 @@ def test_validator_skip_if_missing_does_not_block(tmp_path: Path) -> None:
         "timeout": 30000, "skip_if_missing": True,
     }
     failures, truncated, _ = run_validators(
-        str(tmp_path), [validator], ["src/app.py"], "s1", total_budget=10.0,
+        str(tmp_path), ValidatorConfig(VALID, (validator,)), ["src/app.py"], "s1",
     )
     assert failures == [] and truncated is False
 
 
 def test_validator_without_skip_if_missing_still_fails(tmp_path: Path) -> None:
-    from cf_stop_hook import run_validators
+    from codeflow.core.cf_validators import VALID, ValidatorConfig, run_validators
 
     _write(tmp_path / "src/app.py", "x = 1\n")
     validator = {
@@ -488,7 +488,7 @@ def test_validator_without_skip_if_missing_still_fails(tmp_path: Path) -> None:
         "timeout": 30000,
     }
     failures, _truncated, _ = run_validators(
-        str(tmp_path), [validator], ["src/app.py"], "s1", total_budget=10.0,
+        str(tmp_path), ValidatorConfig(VALID, (validator,)), ["src/app.py"], "s1",
     )
     assert len(failures) == 1
 
