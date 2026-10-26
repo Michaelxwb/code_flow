@@ -450,6 +450,8 @@ def _write_target_ignore(staging: Path) -> None:
         "worktrees/\n"
         ".validation-cache.json\n"
         ".artifact-hash-cache.json\n"
+        ".runtime-install.json\n"
+        ".runtime-migration.lock/\n"
         ".verifier-cache.json\n"
         "# <<< code-flow:runtime schema=1\n"
     )

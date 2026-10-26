@@ -8,6 +8,11 @@ stays independent of unimplemented modules.
 from __future__ import annotations
 
 import ast
+import os
+import shutil
+import subprocess
+import tarfile
+import tempfile
 from pathlib import Path
 from typing import Iterable
 
@@ -15,6 +20,11 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "src" / "core" / "code-flow" / "scripts"
+CLI = ROOT / "src" / "cli.js"
+CANONICAL_IGNORE = ROOT / "src" / "core" / "code-flow" / ".gitignore"
+RUNTIME_IGNORE_START = "# >>> code-flow:runtime schema=1"
+RUNTIME_IGNORE_END = "# <<< code-flow:runtime schema=1"
+RUNTIME_IGNORE_ENTRIES = 20
 
 CURRENT_BATCH = 1
 
@@ -237,20 +247,174 @@ def test_allowlist_ratchet() -> None:
     assert _expired(synthetic, CURRENT_BATCH) == synthetic
 
 
+def _ignore_entries(text: str) -> list[str]:
+    return [line for line in text.splitlines() if line and not line.startswith("#")]
+
+
+def _node_binary() -> str:
+    node = shutil.which("node")
+    assert node is not None, "node is required for runtime ignore integration tests"
+    return node
+
+
+def _run_cli_init(cli: Path, project: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [_node_binary(), str(cli), "init", "--platform=claude"],
+        cwd=project,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+
+
+def _extract_tarball(tarball: Path, dest: Path) -> None:
+    """Extract a locally built tarball, rejecting traversal and links."""
+    dest.mkdir(parents=True, exist_ok=True)
+    root = dest.resolve()
+    with tarfile.open(tarball) as archive:
+        for member in archive.getmembers():
+            target = (dest / member.name).resolve()
+            assert str(target).startswith(str(root) + os.sep) or target == root, (
+                f"unsafe tarball member: {member.name}"
+            )
+            assert not (member.issym() or member.islnk()), f"unexpected link: {member.name}"
+        archive.extractall(dest)
+
+
 def test_packed_install_ignore() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-002")
+    npm = shutil.which("npm")
+    assert npm is not None, "npm is required for the real tarball install probe"
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        pack_dir = tmp_path / "pack"
+        pack_dir.mkdir()
+        packed = subprocess.run(
+            [npm, "pack", "--pack-destination", str(pack_dir), "--silent"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=180,
+            check=False,
+        )
+        assert packed.returncode == 0, f"npm pack failed:\n{packed.stdout}{packed.stderr}"
+        tarballs = list(pack_dir.glob("*.tgz"))
+        assert len(tarballs) == 1, f"expected one tarball, got {tarballs}"
+
+        extracted = tmp_path / "extracted"
+        _extract_tarball(tarballs[0], extracted)
+        packed_cli = extracted / "package" / "src" / "cli.js"
+        assert packed_cli.is_file(), "tarball must ship src/cli.js"
+        # The published tarball never carries .gitignore; init must recreate it.
+        assert not (extracted / "package" / "src" / "core" / "code-flow" / ".gitignore").exists()
+
+        project = tmp_path / "project"
+        project.mkdir()
+        result = _run_cli_init(packed_cli, project)
+        assert result.returncode == 0, f"init failed:\n{result.stdout}{result.stderr}"
+
+        ignore = project / ".code-flow" / ".gitignore"
+        assert ignore.is_file(), "packed install must create .code-flow/.gitignore"
+        entries = _ignore_entries(ignore.read_text())
+        assert len(entries) == RUNTIME_IGNORE_ENTRIES, (
+            f"expected {RUNTIME_IGNORE_ENTRIES} runtime entries, got {entries}"
+        )
+        assert ".stop.lock" in entries, "packed install is missing .stop.lock"
+        assert ".context-state.json" in entries, "packed install is missing .context-state.json"
+        assert entries == _ignore_entries(CANONICAL_IGNORE.read_text())
 
 
 def test_upgrade_preserves_user_ignore() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-002")
+    canonical_entries = _ignore_entries(CANONICAL_IGNORE.read_text())
+    assert len(canonical_entries) == RUNTIME_IGNORE_ENTRIES
+    removed_entries = (".stop.lock", ".debug.log")
+    stale_managed = [entry for entry in canonical_entries if entry not in removed_entries]
+    user_lines = ["# user-managed entries", "my-local-notes.txt"]
+    stale_text = (
+        RUNTIME_IGNORE_START + "\n"
+        + "\n".join(stale_managed) + "\n"
+        + RUNTIME_IGNORE_END + "\n"
+        + "\n".join(user_lines) + "\n"
+    )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        project = Path(tmp)
+        (project / ".code-flow").mkdir()
+        (project / ".code-flow" / ".version").write_text("0.7.0\n")
+        (project / ".code-flow" / "runtime-commands.json").write_text("{}\n")
+        ignore = project / ".code-flow" / ".gitignore"
+        ignore.write_text(stale_text)
+
+        result = _run_cli_init(CLI, project)
+        assert result.returncode == 0, f"upgrade failed:\n{result.stdout}{result.stderr}"
+
+        upgraded = ignore.read_text()
+        managed_block = upgraded.split(RUNTIME_IGNORE_START, 1)[1].split(RUNTIME_IGNORE_END, 1)[0]
+        managed_entries = _ignore_entries(managed_block)
+        assert sorted(managed_entries) == sorted(canonical_entries), (
+            "upgrade must leave exactly the canonical managed entries in the block"
+        )
+        assert len(managed_entries) == len(set(managed_entries)), "managed entries must not duplicate"
+        for entry in removed_entries:
+            assert entry in managed_entries, f"managed entry not restored: {entry}"
+        assert upgraded.split(RUNTIME_IGNORE_END, 1)[1] == "\n" + "\n".join(user_lines) + "\n", (
+            "user-owned lines after the managed block must stay byte-identical"
+        )
 
 
 def test_user_owned_ignore_untouched() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-002")
+    user_text = "# my project ignores\nnode_modules/\ncoverage/\n"
+    with tempfile.TemporaryDirectory() as tmp:
+        project = Path(tmp)
+        (project / ".code-flow").mkdir()
+        ignore = project / ".code-flow" / ".gitignore"
+        ignore.write_bytes(user_text.encode("utf-8"))
+        before = ignore.read_bytes()
+
+        result = _run_cli_init(CLI, project)
+        assert result.returncode == 0, f"init failed:\n{result.stdout}{result.stderr}"
+        assert ignore.read_bytes() == before, "a user-owned ignore file must not be rewritten"
 
 
 def test_canonical_ignore_drift() -> None:
-    pytest.skip("plan skeleton: implemented in TASK-002")
+    node = _node_binary()
+    with tempfile.TemporaryDirectory() as tmp:
+        shadow = Path(tmp)
+        shutil.copytree(ROOT / "src", shadow / "src")
+        shutil.copy2(ROOT / "package.json", shadow / "package.json")
+        (shadow / "tests").mkdir()
+        suite = shadow / "tests" / "test_cli_merge_helpers.js"
+        shutil.copy2(ROOT / "tests" / "test_cli_merge_helpers.js", suite)
+
+        def run_guard() -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [node, str(suite)],
+                cwd=shadow,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+
+        baseline = run_guard()
+        assert baseline.returncode == 0, (
+            "canonical .gitignore and cli.js already drifted:\n"
+            + baseline.stdout + baseline.stderr
+        )
+
+        # Simulate a release that adds a managed entry to the canonical template
+        # without updating the embedded RUNTIME_GITIGNORE.
+        drift_entry = ".drift-probe-cache.json"
+        canonical = shadow / "src" / "core" / "code-flow" / ".gitignore"
+        canonical.write_text(
+            canonical.read_text().replace(
+                RUNTIME_IGNORE_END, drift_entry + "\n" + RUNTIME_IGNORE_END
+            )
+        )
+        drifted = run_guard()
+        output = drifted.stdout + drifted.stderr
+        assert drifted.returncode != 0, "drift guard must fail when canonical gains an entry"
+        assert drift_entry in output, f"drift failure must name the missing entry:\n{output}"
 
 
 def test_validator_corrupt_consistent() -> None:
