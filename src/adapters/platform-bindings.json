@@ -1,0 +1,370 @@
+{
+  "schema_version": 1,
+  "canonical_platform": "claude",
+  "platforms": {
+    "costrict": {
+      "area": "commands",
+      "replacements": [
+        [
+          "--platform=claude",
+          "--platform=costrict"
+        ],
+        [
+          ".claude/settings.local.json",
+          ".costrict/settings.local.json"
+        ]
+      ],
+      "commands": {}
+    },
+    "opencode": {
+      "area": "commands",
+      "replacements": [
+        [
+          "/project:",
+          "/"
+        ],
+        [
+          "--platform=claude",
+          "--platform=opencode"
+        ],
+        [
+          "CLAUDE.md",
+          "AGENTS.md"
+        ]
+      ],
+      "commands": {
+        "cf-init": {
+          "description": "一键初始化项目规范体系，检测技术栈，生成 spec 模板和配置",
+          "afterFrontmatterBlankLines": 1,
+          "sectionReplacement": {
+            "heading": "### 6. 生成 .claude/settings.local.json Hook 配置",
+            "replacement": "### 6. 生成 OpenCode 插件配置\n\nOpenCode v2 会自动加载 `.opencode/plugins/` 下的插件目录，无需在 `opencode.json` 中声明。\n检查 `opencode.json` 是否存在。如果不存在，创建：\n\n```json\n{\n  \"$schema\": \"https://opencode.ai/config.json\"\n}\n```\n\n如果 `opencode.json` 已存在，只做 v1→v2 迁移，保留用户已有配置：\n- 删除遗留的顶层 `plugin` 键（v1 写法，如 `\".opencode/plugins/code-flow\"`）；其中非本地的用户条目搬入 `plugins`。\n- 不要向 `plugins` 写入 `.opencode/plugins/code-flow`（自动发现已覆盖，显式声明会导致重复加载或包解析告警）。\n\n确保 `.opencode/plugins/code-flow/` 已存在且为 v2 形态（默认导出 `{ id: \"code-flow\", setup }`，不依赖 `@opencode/plugin` 包），\n注册 `session.prompt` / `tool.execute.before` / `tool.execute.after` / `session.context` hooks，并通过 `event.subscribe` 订阅 `session.idle` 和 `session.deleted`。\n插件直接调用原生 RPC 入口 `cf_opencode_event.py`，使用 OpenCode 的 sessionID、input.path 和 input.patchText，经 context hook 注入 specs。\n\n"
+          }
+        },
+        "cf-learn": {
+          "description": "自动扫描项目代码，提取编码约束和团队规范，更新 spec 文件",
+          "afterFrontmatterBlankLines": 1
+        },
+        "cf-spec": {
+          "description": "管理 Spec Context、漂移恢复与一次性迁移",
+          "afterFrontmatterBlankLines": 1
+        },
+        "cf-stats": {
+          "description": "统计规范体系的 token 使用情况",
+          "afterFrontmatterBlankLines": 1
+        },
+        "cf-task-prd": {
+          "description": "从一句话需求出发产生产品需求文档(PRD)",
+          "afterFrontmatterBlankLines": 2
+        },
+        "cf-task-status": {
+          "description": "显示任务状态总览",
+          "afterFrontmatterBlankLines": 1,
+          "blankAfterTitle": 1
+        },
+        "cf-task-archive": {
+          "description": "归档已完成的 task 文件",
+          "afterFrontmatterBlankLines": 2
+        },
+        "cf-task-note": {
+          "description": "讨论文件中的 #NOTES 标记，对齐最优解后沉淀回原文",
+          "afterFrontmatterBlankLines": 1,
+          "blankAfterTitle": 1
+        },
+        "cf-task-block": {
+          "description": "标记子任务为阻塞状态",
+          "afterFrontmatterBlankLines": 1,
+          "blankAfterTitle": 1
+        },
+        "cf-task-graph": {
+          "description": "可视化子任务依赖关系 DAG",
+          "afterFrontmatterBlankLines": 1,
+          "blankAfterTitle": 1
+        },
+        "cf-validate": {
+          "description": "根据变更文件自动匹配并执行验证规则",
+          "afterFrontmatterBlankLines": 2
+        },
+        "cf-sync": {
+          "description": "双副本同步：检查漂移并一键部署 canonical 源",
+          "afterFrontmatterBlankLines": 1,
+          "blankAfterTitle": 1
+        },
+        "cf-task-align": {},
+        "cf-task-plan": {},
+        "cf-task-start": {},
+        "cf-task-verify-e2e": {}
+      }
+    },
+    "codex": {
+      "area": "skills",
+      "replacements": [
+        [
+          "/project:cf-task:",
+          "cf-task-"
+        ],
+        [
+          "/project:cf-",
+          "cf-"
+        ],
+        [
+          "/cf-task:",
+          "cf-task-"
+        ],
+        [
+          "cf-task:",
+          "cf-task-"
+        ],
+        [
+          "/cf-",
+          "cf-"
+        ],
+        [
+          "CLAUDE.md",
+          "AGENTS.md"
+        ],
+        [
+          "--platform=claude",
+          "--platform=codex"
+        ],
+        [
+          "用 Read 工具按行号范围回读",
+          "按按行号范围回读"
+        ],
+        [
+          "用 Read 按行号范围读取",
+          "按行号范围读取"
+        ],
+        [
+          "用 Read 加载",
+          "读取"
+        ],
+        [
+          "用 Read 读取",
+          "读取"
+        ],
+        [
+          "用 Glob/Read 扫描",
+          "用 `rg --files` 或 `find` 扫描"
+        ],
+        [
+          "用 Glob 搜索",
+          "用 `rg --files` 或 `find` 搜索"
+        ],
+        [
+          "用 Glob 检查",
+          "用 `rg --files` 检查"
+        ],
+        [
+          "用 Glob 扫描",
+          "用 `rg --files` 扫描"
+        ],
+        [
+          "用 Glob 定位",
+          "用 `rg --files` 或 `find` 定位"
+        ],
+        [
+          "指定文件：Glob 定位后 Read",
+          "指定文件：用 `rg --files` 或 `find` 定位后读取"
+        ],
+        [
+          "全部文件：Glob ",
+          "全部文件：用 `rg --files` 或 `find` 搜索 "
+        ],
+        [
+          "如 Glob 搜索现有",
+          "如用 `rg` 搜索现有"
+        ],
+        [
+          "Read 读取",
+          "读取"
+        ],
+        [
+          "Read PRD",
+          "读取 PRD"
+        ],
+        [
+          "Read 作为参考材料",
+          "读取 作为参考材料"
+        ],
+        [
+          "逐个 Read",
+          "逐个读取"
+        ],
+        [
+          "用 Bash 执行",
+          "用 shell 命令执行"
+        ],
+        [
+          "用 Write 写入 `.code-flow/tasks",
+          "用 apply_patch 写入 `.code-flow/tasks"
+        ],
+        [
+          "用 Write 写入",
+          "写入"
+        ],
+        [
+          "用 Edit ",
+          "用 apply_patch "
+        ],
+        [
+          "**Edit 边界约束",
+          "**apply_patch 边界约束"
+        ],
+        [
+          "追加到目标文件的相近章节：",
+          "用 `apply_patch` 追加到目标文件的相近章节："
+        ],
+        [
+          "Read",
+          "读取"
+        ]
+      ],
+      "commands": {
+        "cf-init": {
+          "description": "Initialize the code-flow spec system in a project. Use when setting up .code-flow/ directory, generating spec files, configuring Codex hooks (.codex/hooks.json), creating AGENTS.md, or bootstrapping coding standards for a new or existing project.",
+          "sectionReplacement": {
+            "heading": "### 6. 生成 .claude/settings.local.json Hook 配置",
+            "replacement": "### 6. 生成 .codex/hooks.json 和 .codex/config.toml\n\n安装 Hook 和配置必须执行 `code-flow init --platform=codex`，由适配器模板统一生成/合并，保留用户配置。`PreToolUse`、`PostToolUse`、`UserPromptSubmit`、`Stop` 四个事件调用 `cf_codex_hook.py`，配置启用 `[features] hooks = true`，保留用户模型、sandbox、approval 设置，不得整文件覆盖；写文件 matcher 为 `^apply_patch$`，输入来自 `tool_input.command`、`cwd`、`session_id`。不得手工拼装或修改受管理 Hook。\n\n旧安装或清单校验失败时执行 `code-flow migrate --runtime --dry-run` 查看范围，再执行 `code-flow migrate --runtime --apply` 更新全部已安装平台。\n\nCodex 会要求 review/trust 非 managed command hooks。生成或更新 hook 后，提醒用户在 Codex CLI 中运行 `/hooks` 并信任 code-flow hooks。\n\n"
+          },
+          "appendix": "\n安装产物由 `code-flow init --platform=codex` 统一部署。脚本、Skill、Hook 的完整性由安装清单校验；损坏时执行 `code-flow migrate --runtime --dry-run` 查看修复范围，再执行 `code-flow migrate --runtime --apply`。不得凭技能名猜 Python 脚本入口。\n"
+        },
+        "cf-learn": {
+          "description": "Scan project configs, current workspace changes, and code patterns to extract evidence-backed coding standards and retrieval maps. Use for cf-learn, cf-learn --map, cf-learn --review, or when updating specs from existing conventions.",
+          "restore": [
+            [
+              "- 写入：AGENTS.md +A",
+              "- 写入：CLAUDE.md +A"
+            ]
+          ]
+        },
+        "cf-spec": {
+          "description": "Manage schema-v1 Spec Context, drift recovery, and prepared one-shot migration plans.",
+          "dropTitle": true,
+          "dropText": [
+            "管理 schema v1 Spec Context 与一次性迁移。用法：\n\n"
+          ]
+        },
+        "cf-stats": {
+          "description": "Show token usage statistics for the spec system (per-file breakdown, budget utilization, L0/L1 tiers, compression, quality_loop health); --audit adds a spec quality audit. Use when checking token usage, budget, spec system health, or spec quality issues. Replaces the former cf-scan.",
+          "dropTitle": true,
+          "dropText": [
+            "统计规范体系的 token 使用情况（各文件分布、预算利用率、压缩与 quality_loop 健康度）；`--audit` 附带规范质量审计。\n\n"
+          ],
+          "restore": [
+            [
+              "> 原 `cf-scan`",
+              "> 原 cf-scan"
+            ]
+          ]
+        },
+        "cf-task-prd": {
+          "description": "Generate a Product Requirements Document (PRD) from a one-liner requirement through structured interactive dialogue. Use when starting from a vague idea without a clear PRD document. The output feeds cf-task-align for technical design.",
+          "dropTitle": true,
+          "dropText": [
+            "从一句话需求出发，通过结构化对话产出产品需求文档（PRD），为 `cf-task:align` 提供足够丰富的输入。\n\n"
+          ],
+          "restore": [
+            [
+              "用 `rg --files` 检查",
+              "用 `rg --files` 或 `find` 检查"
+            ],
+            [
+              "则 读取（",
+              "则读取（"
+            ]
+          ]
+        },
+        "cf-task-align": {
+          "description": "Generate a design brief (.design.md) from a requirement through structured interactive dialogue. Accepts plain text, an existing PRD (.prd.md) to derive from, or a .design.md draft to resume. Adapts to the nature of the work — feature development, refactoring, CLI tools, background jobs, performance optimization, etc.",
+          "dropTitle": true,
+          "dropText": [
+            "从需求出发，通过结构化对话产出设计简报（`.design.md`），为 `cf-task:plan` 提供足够丰富的输入。支持三种输入：纯文本需求、`.prd.md` 产品需求文档、`.design.md` 草稿。\n\n"
+          ],
+          "restore": [
+            [
+              "便于 `cf-task-archive`",
+              "便于 `cf-task:archive`"
+            ]
+          ]
+        },
+        "cf-task-plan": {
+          "description": "Break down a design document or design brief into structured task files with atomic subtasks, priorities, dependencies, and source chapter references. Use when starting work on a new feature from a design doc or a .design.md brief produced by cf-task-align.",
+          "dropTitle": true,
+          "dropText": [
+            "从设计文档或设计简报拆解需求，生成结构化任务文件。\n\n"
+          ],
+          "restore": [
+            [
+              "从 cf-task-align 产出",
+              "从 cf-task:align 产出"
+            ]
+          ]
+        },
+        "cf-task-start": {
+          "description": "Activate a subtask and begin coding. Runs pre-checks (status, #NOTES, dependencies), loads design doc context by source reference, executes checklist items, and marks done when all items complete. Use when starting or continuing implementation work on a task.",
+          "dropTitle": true,
+          "dropText": [
+            "激活子任务并开始编码。支持单任务模式和整文件模式。\n\n"
+          ],
+          "restore": [
+            [
+              "（cf-task-start 生成，archive 清理）",
+              "（cf-task:start 生成，archive 清理）"
+            ]
+          ]
+        },
+        "cf-task-status": {
+          "description": "\"Show task status overview: subtask states, progress percentages, blocked items, and overall completion. Use when checking task progress, what's done, what's blocked, or what needs to be done next.\"",
+          "dropTitle": true,
+          "dropText": [
+            "显示任务状态总览。\n\n"
+          ]
+        },
+        "cf-task-archive": {
+          "description": "Archive a completed task file after completeness, correctness, traceability, and consistency validation. Use when all subtasks are done and you want to archive the task file and check for spec updates.",
+          "dropTitle": true,
+          "dropText": [
+            "归档已完成的整个 task 文件。归档前执行四维校验，归档后提示更新 specs。\n\n"
+          ]
+        },
+        "cf-task-verify-e2e": {
+          "description": "Run layered verification or full requirement verification, including deferred E2E",
+          "dropTitle": true
+        },
+        "cf-task-note": {
+          "description": "Discuss #NOTES annotations in task files or design briefs, propose solutions with context, resolve questions collaboratively, and merge conclusions back removing the #NOTES marker. Use when files have unresolved #NOTES markers.",
+          "dropTitle": true,
+          "dropText": [
+            "与用户协作讨论文件中的 `#NOTES` 标记，对齐最优解后将结论沉淀回原文，删除标记。\n\n支持两种文件类型：\n- **任务文件**（`.md`）：讨论任务中的实现细节问题\n- **设计简报**（`.design.md`）：讨论设计方案中的缺陷或待确认项\n\n"
+          ]
+        },
+        "cf-task-block": {
+          "description": "Mark a subtask as blocked with a reason. Use when a task cannot proceed due to external dependency, missing information, pending design decision, or unresolved question.",
+          "dropTitle": true,
+          "dropText": [
+            "标记子任务为阻塞状态。\n\n"
+          ]
+        },
+        "cf-task-graph": {
+          "description": "Visualize task dependency DAG, identify parallelizable task groups and critical path. Use when planning execution order, understanding task dependencies, or deciding which tasks can run concurrently.",
+          "dropTitle": true,
+          "dropText": [
+            "可视化子任务的依赖关系 DAG，识别可并行执行的任务组。\n\n"
+          ]
+        },
+        "cf-validate": {
+          "description": "Run validation rules (lint, type check, tests) against changed files based on .code-flow/validation.yml. Auto-fix failures. Use when validating code changes, running project checks, or after editing source files.",
+          "dropTitle": true,
+          "dropText": [
+            "根据变更文件自动匹配并执行验证规则（测试、类型检查、lint），失败时自动尝试修复。\n"
+          ]
+        },
+        "cf-sync": {
+          "description": "One-command canonical → deploy sync for dual-copy artifacts, with drift check.",
+          "blankAfterTitle": 1
+        }
+      }
+    }
+  }
+}

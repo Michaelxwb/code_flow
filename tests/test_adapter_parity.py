@@ -10,6 +10,8 @@
 
 import json
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -171,3 +173,83 @@ def test_opencode_core_task_workflow_has_all_context_gates() -> None:
     for command, required in phrases.items():
         text = _read(f"src/adapters/opencode/commands/cf-task/{command}.md")
         assert all(item in text for item in required), f"opencode {command} 缺 Context/Gate 步骤"
+
+
+GENERATOR = ROOT / "src/render-runtime-contract.js"
+
+
+def _run_generator(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["node", str(GENERATOR), *args], capture_output=True, text=True, timeout=30)
+
+
+def _minimal_generator_repo(tmp_path: Path) -> Path:
+    """复制生成器所需的最小真实输入：四平台正文 + 运行时命令注册表。"""
+    root = tmp_path / "repo"
+    shutil.copytree(ROOT / "src/adapters", root / "src/adapters")
+    registry = root / "src/core/code-flow/runtime-commands.json"
+    registry.parent.mkdir(parents=True)
+    shutil.copy(ROOT / "src/core/code-flow/runtime-commands.json", registry)
+    return root
+
+
+def _adapter_bytes(root: Path) -> dict[str, bytes]:
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in (root / "src/adapters").rglob("*.md")
+    }
+
+
+def test_s09_generated_platform_bodies_have_no_drift() -> None:
+    """Codex/Costrict/OpenCode 正文由 canonical Claude 生成；仓库内生成物不得手工漂移。"""
+    result = _run_generator("--check")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_s09_generator_check_detects_body_drift(tmp_path: Path) -> None:
+    root = _minimal_generator_repo(tmp_path)
+    target = root / "src/adapters/opencode/commands/cf-task/prd.md"
+    target.write_text(target.read_text(encoding="utf-8") + "\n<!-- injected drift -->\n", encoding="utf-8")
+    result = _run_generator("--check", "--root", str(root))
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "cf-task/prd.md" in result.stdout + result.stderr
+
+
+def test_s09_generator_is_idempotent_and_preserves_bodies(tmp_path: Path) -> None:
+    root = _minimal_generator_repo(tmp_path)
+    expected = _adapter_bytes(root)
+    tampered = root / "src/adapters/codex/skills/cf-task-prd/SKILL.md"
+    tampered.write_text("tampered\n", encoding="utf-8")
+
+    regenerated = _run_generator("--root", str(root))
+    assert regenerated.returncode == 0, regenerated.stdout + regenerated.stderr
+    assert _adapter_bytes(root) == expected, "生成结果必须与当前正文逐字一致"
+
+    second = _run_generator("--root", str(root))
+    assert second.returncode == 0, second.stdout + second.stderr
+    assert _adapter_bytes(root) == expected, "生成必须幂等"
+    assert _run_generator("--check", "--root", str(root)).returncode == 0
+
+
+def test_s09_generator_preserves_examples_errors_and_steps(tmp_path: Path) -> None:
+    """适配不得借生成删掉示例块、错误信息或步骤说明。"""
+    root = _minimal_generator_repo(tmp_path)
+    assert _run_generator("--root", str(root)).returncode == 0
+    checks = {
+        "src/adapters/codex/skills/cf-task-start/SKILL.md": ("code-flow:runtime-commands start", "#NOTES"),
+        "src/adapters/opencode/commands/cf-task/prd.md": ("code-flow:runtime-commands start", "PRD"),
+        "src/adapters/costrict/commands/cf-task/verify-e2e.md": ("code-flow:runtime-commands start", "deferred E2E"),
+        "src/adapters/opencode/commands/cf-init.md": ("### 6. 生成 OpenCode 插件配置", "opencode.json"),
+        "src/adapters/codex/skills/cf-init/SKILL.md": ("### 6. 生成 .codex/hooks.json 和 .codex/config.toml", "apply_patch"),
+    }
+    for relative, markers in checks.items():
+        text = (root / relative).read_text(encoding="utf-8")
+        for marker in markers:
+            assert marker in text, f"{relative} 丢失内容 {marker!r}"
+
+
+def test_s09_generator_uses_only_node_builtins() -> None:
+    text = GENERATOR.read_text(encoding="utf-8")
+    requires = re.findall(r"""require\(['"]([^'"]+)['"]\)""", text)
+    assert requires, "生成器应声明所需模块"
+    for name in requires:
+        assert name.startswith(".") or name in {"fs", "path", "assert", "os", "crypto"}, name
