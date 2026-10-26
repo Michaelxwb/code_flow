@@ -15,7 +15,6 @@ import os
 import re
 import sys
 import time
-from dataclasses import replace
 
 from codeflow.core import cf_log
 from codeflow.core.cf_exec_base import execution_session
@@ -24,7 +23,7 @@ from codeflow.task.cf_task_runtime import run_done_gate
 from codeflow.core.cf_stop_guard import StopAlreadyRunning, stop_guard
 from codeflow.acceptance.cf_acceptance_evidence import line_status, scenario_line
 from codeflow.task.cf_task_doc import TaskDocumentError, parse_task_document
-from codeflow.core.cf_validators import PARSE_ERROR, VALID, is_heavy, load_validators, run_validators
+from codeflow.core.cf_validators import PARSE_ERROR, VALID, load_validators, run_validators
 from codeflow.cli.cf_acceptance_manifest import coverage_execution
 from codeflow.core.cf_core import (
     ensure_utf8_io,
@@ -215,11 +214,9 @@ def _stop_feedback(root: str, sid: str, files: list[str], enforcement: str, dead
             "detail": f"invalid_validation_config: {config.error}",
         })
     elif config.state == VALID:
-        validators = [item for item in config.validators if not is_heavy(item)]
-        if validators:
-            outcome = run_validators(
-                root, replace(config, validators=tuple(validators)), files, sid, deadline=deadline
-            )
+        filtered = config.without_heavy()
+        if filtered.validators:
+            outcome = run_validators(root, filtered, files, sid, deadline=deadline)
             failures.extend(outcome.failures)
             truncated = outcome.truncated
     if not failures:

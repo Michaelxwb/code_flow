@@ -352,6 +352,51 @@ def cleanup_session_projections(root: str, directory: str) -> dict[str, object]:
     }
 
 
+def _worktree_registration_issue(root: str, task_id: str) -> str:
+    """Refuse a parallel worktree that is not registered in its run.json.
+
+    A background worker must not self-provision a worktree: the run ledger is
+    what collect/merge later reads. Plain single-task runs are unaffected
+    because their root is not under `.code-flow/worktrees/`.
+    """
+    path = Path(root).resolve()
+    parts = path.parts
+    try:
+        flow_index = parts.index(".code-flow")
+    except ValueError:
+        return ""
+    if flow_index + 1 >= len(parts) or parts[flow_index + 1] != "worktrees":
+        return ""
+    run_dir = path.parent
+    meta_path = run_dir / "run.json"
+    if not meta_path.is_file():
+        return f"{path} is not registered in a parallel run (missing {meta_path})"
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return f"run.json unreadable: {exc}"
+    if not isinstance(meta, Mapping):
+        return f"run.json must be an object: {meta_path}"
+    if (meta.get("version") != 1
+            or not isinstance(meta.get("task_file"), str) or not meta.get("task_file")
+            or not isinstance(meta.get("base_head"), str) or not meta.get("base_head")):
+        return f"run.json is incomplete: {meta_path}"
+    entries = meta.get("worktrees")
+    if not isinstance(entries, list):
+        return f"run.json worktrees must be a list: {meta_path}"
+    for entry in entries:
+        if not isinstance(entry, Mapping) or entry.get("task") != task_id:
+            continue
+        raw = entry.get("path")
+        if not isinstance(raw, str) or not Path(raw).is_absolute():
+            return f"run.json path for {task_id} must be an absolute path"
+        entry_path = Path(raw).resolve()
+        if entry_path == path:
+            return ""
+        return f"worktree path mismatch for {task_id}: run.json={entry_path}, cwd={path}"
+    return f"{task_id} is not registered in {meta_path}"
+
+
 def start_task(
     root: str,
     task_dir: str,
@@ -368,6 +413,9 @@ def start_task(
 
     recover_transition(root)
     directory, candidate = _resolve_paths(root, task_dir, task_file)
+    registration = _worktree_registration_issue(root, task_id)
+    if registration:
+        raise WorkflowError("worktree_not_registered", task_id, (registration,))
     blockers = check_startable(str(candidate), task_id)
     marker_active = (Path(root) / ".code-flow" / ".active-task.json").exists()
     if marker_active:

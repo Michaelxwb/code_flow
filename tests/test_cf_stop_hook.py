@@ -196,6 +196,12 @@ def test_heavy_validator_skipped_when_light_validator_present():
         assert not os.path.exists(marker), "Stop 不得执行 heavy validator"
 
 
+def test_without_heavy_drops_heavy_entries():
+    from codeflow.core.cf_validators import VALID, ValidatorConfig
+    config = ValidatorConfig(VALID, ({"name": "light"}, {"name": "heavy", "heavy": True}))
+    assert [item["name"] for item in config.without_heavy().validators] == ["light"]
+
+
 
 def test_manual_run_without_pipe_exits_immediately():
     """交互式手动运行（无 stdin 管道）必须立即退出，不得阻塞读取 stdin。"""

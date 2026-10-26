@@ -28,6 +28,10 @@ from codeflow.spec.cf_spec_router import RouterError, RouteResult, route_prompt
 _PATH_RE = re.compile(r'`([^`\n]+)`|@?((?:[a-zA-Z]:[\\/]|/)?[a-zA-Z0-9_.][a-zA-Z0-9_./\\\-]*\.[a-zA-Z]{1,8})(?![a-zA-Z0-9_])')
 _EXT_RE = re.compile(r'\.(py|js|jsx|ts|tsx|vue|svelte|go|rs|java|rb|cs|cpp|c|h)$')
 _URL_RE = re.compile(r'\b[a-zA-Z][a-zA-Z0-9+.-]*://[^\s`<>]+')
+_HARNESS_RE = re.compile(
+    r"<(?P<tag>task-notification|output-file)\b[^>]*>.*?</(?P=tag)>",
+    re.IGNORECASE | re.DOTALL,
+)
 
 _COMPRESS_INTERVAL = 25
 _REMINDER_TEXT = (
@@ -45,7 +49,8 @@ def extract_paths_from_prompt(prompt: str, root: str | None = None) -> list[str]
     """
     paths = []
     seen = set()
-    for match in _PATH_RE.finditer(_URL_RE.sub("", prompt)):
+    text = _HARNESS_RE.sub("", prompt)
+    for match in _PATH_RE.finditer(_URL_RE.sub("", text)):
         candidate = normalize_path((match.group(1) or match.group(2)).lstrip('@'))
         if '/' not in candidate and not _EXT_RE.search(candidate):
             continue

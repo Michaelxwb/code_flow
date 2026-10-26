@@ -51,6 +51,7 @@ _SCENARIO_PRIORITY = {
     "pending": 20,
     "tbd": 20,
     "planned": 10,
+    "designed": 5,
     "": 0,
 }
 
