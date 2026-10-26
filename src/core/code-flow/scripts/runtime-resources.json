@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "gitignore": {
+    "start": "# >>> code-flow:runtime schema=1",
+    "end": "# <<< code-flow:runtime schema=1",
+    "entries": [
+      ".active-task.json",
+      ".active-task.lock",
+      ".stop.lock",
+      ".catalog-state.json",
+      ".session-state.json",
+      ".context-state.json",
+      ".task-projection-state.json",
+      "migrations/",
+      "backups/",
+      ".debug.log",
+      ".session-log.jsonl",
+      ".check-state.json",
+      "sessions/",
+      "specs/_session/",
+      "worktrees/",
+      ".validation-cache.json",
+      ".artifact-hash-cache.json",
+      ".runtime-install.json",
+      ".runtime-migration.lock/",
+      ".verifier-cache.json"
+    ]
+  }
+}

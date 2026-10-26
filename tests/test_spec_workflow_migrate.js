@@ -88,6 +88,54 @@ test("S-12 apply is idempotent and writes version last", () => {
   assert.deepEqual(snapshot(root), beforeSecond);
 });
 
+test("S-08 migration derives managed ignore block from the runtime declaration", () => {
+  const declaration = JSON.parse(fs.readFileSync(
+    path.resolve(__dirname, "..", "src/core/code-flow/scripts/runtime-resources.json"), "utf8"));
+  const block = declaration.gitignore;
+  const root = project();
+  const ignore = path.join(root, ".code-flow/.gitignore");
+  fs.writeFileSync(ignore, [
+    "# user-owned entries",
+    "my-notes.txt",
+    ".inject-state",
+    block.start,
+    ".active-task.json",
+    block.end,
+    "after-marker.txt",
+  ].join("\n") + "\n");
+
+  const prepared = migrate.prepare(root);
+  const applied = migrate.apply(prepared.plan);
+  assert.equal(applied.status, "committed");
+
+  const text = fs.readFileSync(ignore, "utf8");
+  assert.equal(text.includes(".inject-state"), false, "legacy .inject-state entry must be dropped");
+  const managed = text.split(block.start)[1].split(block.end)[0];
+  const entries = managed.split("\n").filter(line => line && !line.startsWith("#"));
+  assert.deepEqual(entries, block.entries, "managed block must match the declaration");
+  assert.ok(text.includes("# user-owned entries\nmy-notes.txt\n"), "user lines before the block must survive");
+  assert.ok(text.includes("after-marker.txt\n"), "user lines after the block must survive");
+});
+
+test("S-08 migration appends the declared block when no managed block exists", () => {
+  const declaration = JSON.parse(fs.readFileSync(
+    path.resolve(__dirname, "..", "src/core/code-flow/scripts/runtime-resources.json"), "utf8"));
+  const block = declaration.gitignore;
+  const root = project();
+  const ignore = path.join(root, ".code-flow/.gitignore");
+  fs.writeFileSync(ignore, "# user-owned entries\nmy-notes.txt\n.inject-state\n");
+
+  const prepared = migrate.prepare(root);
+  const applied = migrate.apply(prepared.plan);
+  assert.equal(applied.status, "committed");
+
+  const text = fs.readFileSync(ignore, "utf8");
+  const expectedBlock = [block.start, ...block.entries, block.end].join("\n");
+  assert.ok(text.startsWith("# user-owned entries\nmy-notes.txt\n"), "user content must stay first");
+  assert.ok(text.includes(expectedBlock), "appended block must match the declaration");
+  assert.equal(text.includes(".inject-state"), false, "legacy .inject-state entry must be dropped");
+});
+
 test("E-08 injected rename failure restores all original bytes", () => {
   for (const failAfter of [0, 3]) {
     const root = project();

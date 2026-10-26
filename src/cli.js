@@ -590,32 +590,17 @@ const MANAGED_LEGACY_SKILL_NAMES = new Set([
 
 // Runtime ignore list for the managed `.code-flow/.gitignore`.
 // npm never ships `.gitignore` files in tarballs, so `src/core/code-flow/.gitignore`
-// cannot reach `code-flow init` from a published package. The content is embedded
-// here and written on init when missing; a test keeps it aligned with the
-// source-tree template so both paths stay in sync.
+// cannot reach `code-flow init` from a published package. The packaged
+// `scripts/runtime-resources.json` declaration is the single source shared with
+// cf_spec_migrate; a test keeps the source-tree template aligned with it.
+const RUNTIME_RESOURCES = JSON.parse(fs.readFileSync(
+  path.join(__dirname, 'core/code-flow/scripts/runtime-resources.json'), 'utf8'));
+const RUNTIME_IGNORE_START = RUNTIME_RESOURCES.gitignore.start;
+const RUNTIME_IGNORE_END = RUNTIME_RESOURCES.gitignore.end;
 const RUNTIME_GITIGNORE = [
-  '# >>> code-flow:runtime schema=1',
-  '.active-task.json',
-  '.active-task.lock',
-  '.stop.lock',
-  '.catalog-state.json',
-  '.session-state.json',
-  '.context-state.json',
-  '.task-projection-state.json',
-  'migrations/',
-  'backups/',
-  '.debug.log',
-  '.session-log.jsonl',
-  '.check-state.json',
-  'sessions/',
-  'specs/_session/',
-  'worktrees/',
-  '.validation-cache.json',
-  '.artifact-hash-cache.json',
-  '.runtime-install.json',
-  '.runtime-migration.lock/',
-  '.verifier-cache.json',
-  '# <<< code-flow:runtime schema=1',
+  RUNTIME_IGNORE_START,
+  ...RUNTIME_RESOURCES.gitignore.entries,
+  RUNTIME_IGNORE_END,
   '',
 ].join('\n');
 
@@ -630,11 +615,11 @@ function ensureRuntimeGitignore(cwd, results) {
   // Existing managed block: add runtime entries introduced by later releases.
   // Files without our markers are user-owned and left untouched.
   const text = fs.readFileSync(dest, 'utf8');
-  const endMarker = '# <<< code-flow:runtime schema=1';
-  if (!text.includes('# >>> code-flow:runtime schema=1') || !text.includes(endMarker)) return;
+  const endMarker = RUNTIME_IGNORE_END;
+  if (!text.includes(RUNTIME_IGNORE_START) || !text.includes(endMarker)) return;
   const lines = text.split('\n');
-  const missing = RUNTIME_GITIGNORE.split('\n').filter(
-    line => line && !line.startsWith('#') && !lines.includes(line)
+  const missing = RUNTIME_RESOURCES.gitignore.entries.filter(
+    line => line && !lines.includes(line)
   );
   if (missing.length === 0) return;
   const at = lines.indexOf(endMarker);

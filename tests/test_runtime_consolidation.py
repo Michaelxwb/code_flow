@@ -28,6 +28,8 @@ SCRIPTS = ROOT / "src" / "core" / "code-flow" / "scripts"
 DEPLOYED_SCRIPTS = ROOT / ".code-flow" / "scripts"
 CLI = ROOT / "src" / "cli.js"
 CANONICAL_IGNORE = ROOT / "src" / "core" / "code-flow" / ".gitignore"
+RUNTIME_RESOURCES = ROOT / "src" / "core" / "code-flow" / "scripts" / "runtime-resources.json"
+DEPLOYED_RESOURCES = ROOT / ".code-flow" / "scripts" / "runtime-resources.json"
 RUNTIME_IGNORE_START = "# >>> code-flow:runtime schema=1"
 RUNTIME_IGNORE_END = "# <<< code-flow:runtime schema=1"
 RUNTIME_IGNORE_ENTRIES = 20
@@ -372,6 +374,46 @@ def _extract_tarball(tarball: Path, dest: Path) -> None:
         archive.extractall(dest)
 
 
+def _runtime_ignore_declaration() -> dict[str, object]:
+    data = json.loads(RUNTIME_RESOURCES.read_text(encoding="utf-8"))
+    block = data["gitignore"]
+    assert isinstance(block, dict)
+    return block
+
+
+def test_runtime_ignore_single_source() -> None:
+    """[S-08] One packaged declaration drives CLI, migrator, and source template."""
+    block = _runtime_ignore_declaration()
+    assert block["start"] == RUNTIME_IGNORE_START
+    assert block["end"] == RUNTIME_IGNORE_END
+    entries = block["entries"]
+    assert isinstance(entries, list)
+    assert len(entries) == RUNTIME_IGNORE_ENTRIES
+    assert len(entries) == len(set(entries)), "runtime ignore entries must not repeat"
+
+    canonical = CANONICAL_IGNORE.read_text(encoding="utf-8")
+    assert canonical == "\n".join([RUNTIME_IGNORE_START, *entries, RUNTIME_IGNORE_END]) + "\n", (
+        "src/core/code-flow/.gitignore must be derived from the declaration"
+    )
+    assert DEPLOYED_RESOURCES.is_file(), "deployed runtime must ship the declaration"
+    assert DEPLOYED_RESOURCES.read_bytes() == RUNTIME_RESOURCES.read_bytes(), (
+        "canonical and deployed declarations must stay identical"
+    )
+
+    cli = CLI.read_text(encoding="utf-8")
+    assert "runtime-resources.json" in cli, "cli.js must read the runtime declaration"
+    for entry in entries:
+        assert f"'{entry}'," not in cli, f"cli.js must not embed runtime entry: {entry}"
+
+    for scripts in (SCRIPTS, DEPLOYED_SCRIPTS):
+        migrator = scripts / "codeflow" / "spec" / "cf_spec_migrate.py"
+        text = migrator.read_text(encoding="utf-8")
+        assert "runtime-resources.json" in text, f"{migrator.relative_to(ROOT)} must read the declaration"
+        assert '".active-task.json\\n"' not in text, (
+            f"{migrator.relative_to(ROOT)} must not embed the ignore list"
+        )
+
+
 def test_packed_install_ignore() -> None:
     npm = shutil.which("npm")
     assert npm is not None, "npm is required for the real tarball install probe"
@@ -397,6 +439,10 @@ def test_packed_install_ignore() -> None:
         assert packed_cli.is_file(), "tarball must ship src/cli.js"
         # The published tarball never carries .gitignore; init must recreate it.
         assert not (extracted / "package" / "src" / "core" / "code-flow" / ".gitignore").exists()
+        packed_resources = (
+            extracted / "package" / "src" / "core" / "code-flow" / "scripts" / "runtime-resources.json"
+        )
+        assert packed_resources.is_file(), "tarball must ship the runtime ignore declaration"
 
         project = tmp_path / "project"
         project.mkdir()
@@ -411,7 +457,11 @@ def test_packed_install_ignore() -> None:
         )
         assert ".stop.lock" in entries, "packed install is missing .stop.lock"
         assert ".context-state.json" in entries, "packed install is missing .context-state.json"
+        assert entries == _runtime_ignore_declaration()["entries"]
         assert entries == _ignore_entries(CANONICAL_IGNORE.read_text())
+        installed_resources = project / ".code-flow" / "scripts" / "runtime-resources.json"
+        assert installed_resources.is_file(), "init must install the declaration beside the runtime"
+        assert installed_resources.read_bytes() == RUNTIME_RESOURCES.read_bytes()
 
 
 def test_upgrade_preserves_user_ignore() -> None:

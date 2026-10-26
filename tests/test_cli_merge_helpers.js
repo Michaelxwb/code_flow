@@ -45,7 +45,8 @@ function withTmp(fn) {
 // --- RUNTIME_GITIGNORE ---
 
 function testRuntimeGitignoreMatchesCanonicalTemplate() {
-  // npm never ships `.gitignore`, so cli.js embeds the list. Keep it identical
+  // npm never ships `.gitignore`, so cli.js derives the list from the packaged
+  // scripts/runtime-resources.json declaration. Keep it identical
   // (module block order aside) to src/core/code-flow/.gitignore.
   const canonical = fs.readFileSync(
     path.resolve(__dirname, '..', 'src', 'core', 'code-flow', '.gitignore'), 'utf8'
