@@ -58,7 +58,7 @@
 
 ## TASK-001: 基线冻结与分层守卫
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: 无
 - **Source**: runtime-consolidation.design.md#3.2 架构设计, runtime-consolidation.design.md#3.5 质量实现方案
@@ -117,6 +117,9 @@
 - S-15: verified — automated command passed; run_id=02f70cfe23df49989a2809da079da6a8 (confirmed_by: runner)
 - S-16: verified — automated command passed; run_id=02f70cfe23df49989a2809da079da6a8 (confirmed_by: runner)
 - B-03: verified — automated command passed; run_id=02f70cfe23df49989a2809da079da6a8 (confirmed_by: runner)
+- S-15: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- S-16: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -128,7 +131,7 @@
 
 ## TASK-002: 安装资源单一来源
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: runtime-consolidation.design.md#3.3 数据设计, runtime-consolidation.design.md#3.4 接口设计
@@ -192,6 +195,10 @@
 - S-02: verified — automated command passed; run_id=701305df64cc44278bdaa8fa23194f74 (confirmed_by: runner)
 - B-01: verified — automated command passed; run_id=701305df64cc44278bdaa8fa23194f74 (confirmed_by: runner)
 - E-01: verified — automated command passed; run_id=701305df64cc44278bdaa8fa23194f74 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -204,7 +211,7 @@
 
 ## TASK-003: validator 引擎收口
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: runtime-consolidation.design.md#3.2 架构设计, runtime-consolidation.design.md#3.4 接口设计
@@ -268,6 +275,10 @@
 - S-04: verified — automated command passed; run_id=ffc0d39f528c4428bcde599b571783d8 (confirmed_by: runner)
 - S-05: verified — automated command passed; run_id=ffc0d39f528c4428bcde599b571783d8 (confirmed_by: runner)
 - E-02: verified — automated command passed; run_id=ffc0d39f528c4428bcde599b571783d8 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -280,7 +291,7 @@
 
 ## TASK-004: TASK 文档单一解析核心
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: runtime-consolidation.design.md#3.3 数据设计, runtime-consolidation.design.md#3.4 接口设计
@@ -342,6 +353,10 @@
 - S-07: verified — automated command passed; run_id=f30c5363c1a442389a435bd0834316ec (confirmed_by: runner)
 - S-08: verified — automated command passed; run_id=f30c5363c1a442389a435bd0834316ec (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=f30c5363c1a442389a435bd0834316ec (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -354,7 +369,7 @@
 
 ## TASK-005: TASK 解析剩余消费者与单一解析守卫
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-004
 - **Source**: runtime-consolidation.design.md#3.2 架构设计, runtime-consolidation.design.md#3.4 接口设计
@@ -401,6 +416,8 @@
 - E-03: verified — automated command passed; run_id=09fa2084ae6b4f1f9ead5bf4c469bb3d (confirmed_by: runner)
 - S-09: verified — automated command passed; run_id=a83e49a1eee14990aa43124f9f009845 (confirmed_by: runner)
 - E-03: verified — automated command passed; run_id=a83e49a1eee14990aa43124f9f009845 (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -415,7 +432,7 @@
 
 ## TASK-006: Git 与原子文件原语
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-001
 - **Source**: runtime-consolidation.design.md#3.4 接口设计
@@ -462,6 +479,8 @@
 - S-11: verified — automated command passed; run_id=6b2700cc17c540babef3c9fb446b902f (confirmed_by: runner)
 - S-10: verified — automated command passed; run_id=a912e89e726040a8904495a66e746cfe (confirmed_by: runner)
 - S-11: verified — automated command passed; run_id=a912e89e726040a8904495a66e746cfe (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -474,7 +493,7 @@
 
 ## TASK-007: Markdown 与表格原语
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-001
 - **Source**: runtime-consolidation.design.md#3.4 接口设计
@@ -514,6 +533,7 @@
 - S-12: verified — automated command passed; run_id=110ed15d46d348c4aa5a4a48a324cb2a (confirmed_by: runner)
 - S-12: verified — automated command passed; run_id=637422397c974429a07d5837204f3a6c (confirmed_by: runner)
 - S-12: verified — automated command passed; run_id=54fdd8f4926a4d0c909ddb3989a41356 (confirmed_by: runner)
+- S-12: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -525,7 +545,7 @@
 
 ## TASK-008: 旧路径与导航清理
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-004, TASK-006, TASK-007
 - **Source**: runtime-consolidation.design.md#2.4 范围与边界, runtime-consolidation.design.md#3.2 架构设计
@@ -561,6 +581,7 @@
 - S-13: stale — input changed: CHK-3e2b61002b19 (confirmed_by: runtime)
 - S-13: verified — automated command passed; run_id=7e29676100434497b21e3546e022a89d (confirmed_by: runner)
 - S-13: verified — automated command passed; run_id=d7c13076e41848ef8b839538ab856bb1 (confirmed_by: runner)
+- S-13: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -572,7 +593,7 @@
 
 ## TASK-009: verify_plan 单次操作快照
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-003, TASK-004
 - **Source**: runtime-consolidation.design.md#3.5 质量实现方案
@@ -618,6 +639,8 @@
 - E-04: verified — automated command passed; run_id=21581b314aa44e57a7f9e8115d71cfe6 (confirmed_by: runner)
 - S-14: verified — automated command passed; run_id=9e7a9890970949a9be38f1b60a7c8d47 (confirmed_by: runner)
 - E-04: verified — automated command passed; run_id=9e7a9890970949a9be38f1b60a7c8d47 (confirmed_by: runner)
+- S-14: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -631,7 +654,7 @@
 
 ## TASK-010: 内部模块包化
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-005, TASK-008, TASK-009
 - **Source**: runtime-consolidation.design.md#4.1 部署架构, runtime-consolidation.design.md#4.4 数据迁移
@@ -666,6 +689,8 @@
 
 > 守卫更新：`test_dependency_direction` / `test_private_symbol_guard` 现同时扫描平铺入口与 `codeflow/**/*.py`，模块键仍取文件名 stem（`codeflow.core.cf_log` → `cf_log`）；真实导入图下 8 条依赖边 allowlist 与 21 条私有符号 allowlist 均无需放宽或删除。包化本身是机械重构，无生产 RED；`test_task_parser_single_source` 同步扫描包内文件，`cf_task_doc` owner 断言改为 `codeflow/task/cf_task_doc.py`。测试导入共改写 399 条语句（103 个文件），仍只使用 `sys.path.insert(scripts)`，未新增依赖。全量 `python3 -m pytest -q tests` = 933 passed, 6 skipped。
 - S-19: verified — automated command passed; run_id=ae3e6ed5745d466483530aabd75cda34 (confirmed_by: runner)
+- S-19: stale — input changed: CHK-11ed4f2d2f4a (confirmed_by: runtime)
+- S-19: verified — automated command passed; run_id=e3cdf159932c4af88bd6044cb45483ae (confirmed_by: runner)
 
 ### Log
 - [2026-10-26] created (draft)
@@ -679,7 +704,7 @@
 
 ## TASK-011: 入口 shim 与迁移兼容
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-010
 - **Source**: runtime-consolidation.design.md#4.1 部署架构, runtime-consolidation.design.md#4.2 发布与回滚, runtime-consolidation.design.md#4.4 数据迁移
