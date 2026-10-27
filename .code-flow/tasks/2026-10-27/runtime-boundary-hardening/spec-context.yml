@@ -1,7 +1,7 @@
 version: 1
 task: runtime-boundary-hardening
 enforcement: required
-updated_at: '2026-10-27T06:28:08.043510+00:00'
+updated_at: '2026-10-27T11:20:37.245263+00:00'
 sources:
 - type: cli
   ref: bind
@@ -10,7 +10,7 @@ bindings:
   path: scripts/code-standards.md
   status: active
   hashes:
-    file_sha256: 268ead3a5c0c1da3a80d837424ebcc29bba9643d8fea80e45f3af00ea44e8927
+    file_sha256: 1e2921e02a90cb0195cc3f00d5a5727f22f550660f621c803585611228959224
     metadata_sha256: 1a080f178a6cc806a462b457d6b831b3ccb42ed14a07092b7bff380dcc674939
     rules_sha256: a78a60d13e2473c23756d62aa501f494500270cd62e66e3c72a334c4c69b634d
   selected_by: path_mapping
@@ -397,33 +397,6 @@ bindings:
         decision: null
         evidence: []
   - ref: PATTERN-scripts-008
-    summary: 路径提取正则 `_PATH_RE` 支持裸路径/`@path`/反引号路径，需至少一个斜杠或代码扩展名（`cf_user_prompt_hook.py`）
-    text_sha256: 84810934be480fce3f7a9758618ca2d5e3448b51349513d9798e448d6e4915a3
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
-    stage_status:
-      design:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: PATTERN-scripts-009
     summary: 测试 fixture 模式：`_make_project() + tempfile.TemporaryDirectory() + mock
       stdin/stdout`（tests/test_cf_*.py）
     text_sha256: 6edab46112eb211ee3ca46805091abff5f0c46a3b5eaca2b77fc4ab5538cf472
@@ -432,26 +405,26 @@ bindings:
     verifier_stage: code
     stage_status:
       design:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       code:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       review:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
-  - ref: PATTERN-scripts-010
+  - ref: PATTERN-scripts-009
     summary: 测试取 fixture 数据按名称选择而非列表索引，结构扩展不连带断（test_hook_command_robustness::_command_for）
     text_sha256: 6db937b1e84c2278c3dc3d9feef51c5644f4af6c315eeeb0c6c4cfbdc734400a
     enforcement: advisory
@@ -459,26 +432,26 @@ bindings:
     verifier_stage: code
     stage_status:
       design:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       code:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       review:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
-  - ref: PATTERN-scripts-011
+  - ref: PATTERN-scripts-010
     summary: TASK 段落解析唯一权威是 `cf_task_doc.parse_task_document`；其他模块不得自写 `^## TASK-`
       正则。Checklist 中的场景 ID 必须属于该 TASK 的 `Acceptance-Refs`；`S-01~04` 区间要先展开；plan quality
       报 checklist mismatch。
@@ -488,22 +461,50 @@ bindings:
     verifier_stage: code
     stage_status:
       design:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       code:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       review:
-        status: pending
+        status: stale
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-011
+    summary: 新增 `tests/*.py` 必须自带 `SCRIPTS = .../src/core/code-flow/scripts; sys.path.insert(0,
+      str(SCRIPTS))`，不得依赖其他测试模块的 `sys.path` 副作用。
+    text_sha256: dfce8f3a3e746c2c1cd03b17ad30cc81860fa390ef498d766cc3999cdea7848d
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: stale
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: stale
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: stale
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: stale
         refs: []
         decision: null
         evidence: []
@@ -516,22 +517,22 @@ bindings:
     verifier_stage: code
     stage_status:
       design:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       code:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       review:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
