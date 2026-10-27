@@ -1,0 +1,537 @@
+version: 1
+task: runtime-boundary-hardening
+enforcement: required
+updated_at: '2026-10-27T06:28:08.043510+00:00'
+sources:
+- type: cli
+  ref: bind
+bindings:
+- spec_id: scripts-code-standards
+  path: scripts/code-standards.md
+  status: active
+  hashes:
+    file_sha256: 268ead3a5c0c1da3a80d837424ebcc29bba9643d8fea80e45f3af00ea44e8927
+    metadata_sha256: 1a080f178a6cc806a462b457d6b831b3ccb42ed14a07092b7bff380dcc674939
+    rules_sha256: a78a60d13e2473c23756d62aa501f494500270cd62e66e3c72a334c4c69b634d
+  selected_by: path_mapping
+  reason: Python runtime, Hook and test paths match the required scripts spec
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-scripts-no-print-debug-001
+    summary: Hook modules must not write debug output with print(), preserving the
+      stdout JSON protocol.
+    text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-boundary-hardening.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-no-print-debug-001
+          artifact_sha256: b1fda38525bf6a29b897eae1836227b9045a80098582e45464e348c5ad469ae6
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-boundary-hardening.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 165e84d9ba4586a757a07efe152d809259ddaea7c0a6cc95f68f7fbc2b3897f8
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-no-bare-except-001
+    summary: Python modules must not use a bare except clause that silently erases
+      failure context.
+    text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-boundary-hardening.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-no-bare-except-001
+          artifact_sha256: b1fda38525bf6a29b897eae1836227b9045a80098582e45464e348c5ad469ae6
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-boundary-hardening.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 165e84d9ba4586a757a07efe152d809259ddaea7c0a6cc95f68f7fbc2b3897f8
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-hook-protocol-001
+    summary: Installed hooks must keep guarded project resolution, valid JSON output,
+      silent no-op behavior, and explicit stderr diagnostics.
+    text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-boundary-hardening.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-hook-protocol-001
+          artifact_sha256: b1fda38525bf6a29b897eae1836227b9045a80098582e45464e348c5ad469ae6
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-boundary-hardening.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 165e84d9ba4586a757a07efe152d809259ddaea7c0a6cc95f68f7fbc2b3897f8
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-context-gate-001
+    summary: Spec Context refresh, scope expansion, verifier Evidence, and required
+      Stage Gates must remain deterministic and fail-closed.
+    text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-boundary-hardening.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-context-gate-001
+          artifact_sha256: b1fda38525bf6a29b897eae1836227b9045a80098582e45464e348c5ad469ae6
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-boundary-hardening.md
+          section_id: TASK-007
+          item_id: TASK-007
+          artifact_sha256: 165e84d9ba4586a757a07efe152d809259ddaea7c0a6cc95f68f7fbc2b3897f8
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-canonical-parity-001
+    summary: Canonical Python runtime, live deployment, templates, and platform adapters
+      must remain synchronized without legacy runtime residue.
+    text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-boundary-hardening.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-canonical-parity-001
+          artifact_sha256: b1fda38525bf6a29b897eae1836227b9045a80098582e45464e348c5ad469ae6
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: runtime-boundary-hardening.md
+          section_id: TASK-009
+          item_id: TASK-009
+          artifact_sha256: 165e84d9ba4586a757a07efe152d809259ddaea7c0a6cc95f68f7fbc2b3897f8
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-001
+    summary: 顶层 `cf_*.py` 只做 ≤15 行 shim（import + `main()`）；单一功能实现放 `codeflow/<domain>/cf_<feature>.py`
+      的 **feature-scoped core module**；跨功能稳定原语放 `codeflow/core/` 的专用模块（`cf_fs`/`cf_git`/`cf_markdown`/`cf_validators`），不要继续堆进
+      `cf_core.py`
+    text_sha256: 3bc6c0547823cf143ae7ead7647350477a25f7dd96b503bb77bf8e588881990e
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-002
+    summary: 新增 Context/router 能力 → 保持 feature module 单一职责，公开数据结构完整 type hints，函数
+      ≤50 行
+    text_sha256: 0a0bdac02a0cdd3a5765702728a4cfd133f928bc04b21254b22535aff5baf883
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-003
+    summary: 新增 Claude Hook → 在 settings.local.json 模板中注册，入口 shim 放 scripts/，实现放 `codeflow/hooks/`
+    text_sha256: 97da00ec98292cc1856b2b3c22373615004dd82b803f088509418846d2ab91d7
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-004
+    summary: 新增 Codex Hook → 在 hooks.json 模板中注册（3 层结构：event → [{hooks:[{type,command}]}]），入口
+      shim 放 scripts/，实现放 `codeflow/hooks/`
+    text_sha256: 9c4c9fd87abe67e6391181a737a8ce0f0b53725e981fedaa3fcb25f4221f0199
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-005
+    summary: Codex prompt 路径提取同时支持裸路径、`@path`、反引号路径，并在注入前做去重与噪音过滤（需至少一个斜杠或有效代码扩展名）
+    text_sha256: 448907a472ddb048d8542219617f22f70a91099bfc0e9cf21597edb2ac22ea15
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-006
+    summary: 测试 → tests/ 目录，使用 pytest，覆盖 happy path / fail-closed / 空输入
+    text_sha256: 6a16a49993f19e203b0565d1859ee5d21d83c3e40604743429b8e448a4839594
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-007
+    summary: Claude/Costrict 编辑入口接受原生 `Edit/Write/MultiEdit`；Codex 原生入口严格接受 `apply_patch`
+      与 `tool_input.command`，按补丁中的每个文件操作调用共享服务；工具协议不得互相伪装。
+    text_sha256: e982bc26252cf00d0d6ae74b35125ab3220273cbeffa7f6bfc68dc35c68a6f1e
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-008
+    summary: 路径提取正则 `_PATH_RE` 支持裸路径/`@path`/反引号路径，需至少一个斜杠或代码扩展名（`cf_user_prompt_hook.py`）
+    text_sha256: 84810934be480fce3f7a9758618ca2d5e3448b51349513d9798e448d6e4915a3
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-009
+    summary: 测试 fixture 模式：`_make_project() + tempfile.TemporaryDirectory() + mock
+      stdin/stdout`（tests/test_cf_*.py）
+    text_sha256: 6edab46112eb211ee3ca46805091abff5f0c46a3b5eaca2b77fc4ab5538cf472
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-010
+    summary: 测试取 fixture 数据按名称选择而非列表索引，结构扩展不连带断（test_hook_command_robustness::_command_for）
+    text_sha256: 6db937b1e84c2278c3dc3d9feef51c5644f4af6c315eeeb0c6c4cfbdc734400a
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-011
+    summary: TASK 段落解析唯一权威是 `cf_task_doc.parse_task_document`；其他模块不得自写 `^## TASK-`
+      正则。Checklist 中的场景 ID 必须属于该 TASK 的 `Acceptance-Refs`；`S-01~04` 区间要先展开；plan quality
+      报 checklist mismatch。
+    text_sha256: 770c7af3ac082711fdf6ab59cc99deeea08f5170da5a55627e08a32b8dd085e5
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-012
+    summary: 新增 `tests/*.py` 必须自带 `SCRIPTS = .../src/core/code-flow/scripts; sys.path.insert(0,
+      str(SCRIPTS))`，不得依赖其他测试模块的 `sys.path` 副作用。
+    text_sha256: dfce8f3a3e746c2c1cd03b17ad30cc81860fa390ef498d766cc3999cdea7848d
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []

@@ -52,7 +52,7 @@
 
 ### A1 / P1：validator 配置错误在三个入口有不同结论
 
-证据：[load_validators](../src/core/code-flow/scripts/cf_stop_hook.py#L79)、[validate_files](../src/core/code-flow/scripts/cf_validation.py#L61)、[finish validation](../src/core/code-flow/scripts/cf_task_runtime.py#L389)。
+证据：[load_validators](../../../../../src/core/code-flow/scripts/cf_stop_hook.py#L79)、[validate_files](../../../../../src/core/code-flow/scripts/cf_validation.py#L61)、[finish validation](../src/core/code-flow/scripts/cf_task_runtime.py#L389)。
 
 输入为存在但损坏的 `.code-flow/validation.yml`：`validators: [`。项目 enforcement 为 required，且存在本会话编辑事件。
 
@@ -68,7 +68,7 @@
 
 ### A2 / P1：TASK 文档存在多个解析器，读出的状态不同
 
-证据：[workflow read_task_section](../src/core/code-flow/scripts/cf_workflow_service.py#L52)、[session _task_section](../src/core/code-flow/scripts/cf_spec_session.py#L30)、[index parser](../src/core/code-flow/scripts/cf_task_index.py#L37)、[gate parser](../src/core/code-flow/scripts/cf_spec_gate.py#L215)、[plan parser](../src/core/code-flow/scripts/cf_task_plan.py#L87)。
+证据：[workflow read_task_section](../src/core/code-flow/scripts/cf_workflow_service.py#L52)、[session _task_section](../../../../../src/core/code-flow/scripts/cf_spec_session.py#L30)、[index parser](../../../../../src/core/code-flow/scripts/cf_task_index.py#L37)、[gate parser](../../../../../src/core/code-flow/scripts/cf_spec_gate.py#L215)、[plan parser](../src/core/code-flow/scripts/cf_task_plan.py#L87)。
 
 复现一：真实标题前有一行说明 `Example: ` 加行内代码 `## TASK-001: Sample`，后面才是真实的 `## TASK-001: Actual` 和 Status=done。workflow 使用字符串 find，读到示例并返回 draft；session 和 index 读到真实标题并返回 done。
 
@@ -78,7 +78,7 @@
 
 ### A3 / P1：安装忽略列表有多份来源，源码安装与 npm 包不一致
 
-证据：[源模板](../src/core/code-flow/.gitignore)、[CLI 内嵌列表](../src/cli.js#L596)、[Python 迁移列表](../src/core/code-flow/scripts/cf_spec_migrate.py#L430)。
+证据：[源模板](../../../../../src/core/code-flow/.gitignore)、[CLI 内嵌列表](../../../../../src/cli.js#L596)、[Python 迁移列表](../src/core/code-flow/scripts/cf_spec_migrate.py#L430)。
 
 真实打包和安装结果：npm 包不含源 `.gitignore`；包内 `node src/cli.js init --platform=codex` 成功，但生成的忽略列表缺少 `.stop.lock`、`.context-state.json`。源模板有 20 个条目，CLI 内嵌列表只有 18 个。这包含前几轮修复未同步完整的内容。
 
@@ -135,7 +135,7 @@ flowchart LR
 
 ### A7 / P2：平台正文复制维护，生成器目前只生成示例
 
-`src/adapters/commands.json` 已声明 Claude 为内容 canonical，但正文仍存于四个平台各 16 份文件。现有 [render-runtime-contract.js](../src/render-runtime-contract.js) 只生成命令示例，不能消除正文四处修改的成本。
+`src/adapters/commands.json` 已声明 Claude 为内容 canonical，但正文仍存于四个平台各 16 份文件。现有 [render-runtime-contract.js](../../../../../src/render-runtime-contract.js) 只生成命令示例，不能消除正文四处修改的成本。
 
 建议后期复用现有生成流程，以一份正文和明确的绑定 token 规则生成其他平台文本。现有归一化 parity 测试应继续验证行为和内容。当前 0.8 的兼容别名有明确保留窗口，删除它们需要遵守该窗口。
 
@@ -194,61 +194,61 @@ Node 侧也有责任集中：`src/cli.js` 共 1,212 行，其中 runInit 从第 
 | 模块 | 行数 | 函数数 | 入度 | 出度 | 类型 |
 |---|---:|---:|---:|---:|---|
 | [cf_acceptance_evidence](../src/core/code-flow/scripts/cf_acceptance_evidence.py) | 324 | 13 | 7 | 4 | 库 |
-| [cf_acceptance_manifest](../src/core/code-flow/scripts/cf_acceptance_manifest.py) | 926 | 35 | 8 | 7 | 入口 |
+| [cf_acceptance_manifest](../../../../../src/core/code-flow/scripts/cf_acceptance_manifest.py) | 926 | 35 | 8 | 7 | 入口 |
 | [cf_acceptance_plan](../src/core/code-flow/scripts/cf_acceptance_plan.py) | 201 | 7 | 1 | 3 | 库 |
 | [cf_acceptance_registration](../src/core/code-flow/scripts/cf_acceptance_registration.py) | 96 | 5 | 1 | 2 | 库 |
 | [cf_acceptance_risk](../src/core/code-flow/scripts/cf_acceptance_risk.py) | 73 | 4 | 6 | 1 | 库 |
-| [cf_acceptance_runner](../src/core/code-flow/scripts/cf_acceptance_runner.py) | 1492 | 79 | 2 | 7 | 入口 |
+| [cf_acceptance_runner](../../../../../src/core/code-flow/scripts/cf_acceptance_runner.py) | 1492 | 79 | 2 | 7 | 入口 |
 | [cf_acceptance_schema](../src/core/code-flow/scripts/cf_acceptance_schema.py) | 274 | 12 | 15 | 1 | 库 |
-| [cf_audit](../src/core/code-flow/scripts/cf_audit.py) | 546 | 24 | 0 | 6 | 入口 |
+| [cf_audit](../../../../../src/core/code-flow/scripts/cf_audit.py) | 546 | 24 | 0 | 6 | 入口 |
 | [cf_check_inputs](../src/core/code-flow/scripts/cf_check_inputs.py) | 157 | 9 | 6 | 0 | 库 |
 | [cf_check_registration](../src/core/code-flow/scripts/cf_check_registration.py) | 273 | 15 | 3 | 3 | 库 |
 | [cf_checks](../src/core/code-flow/scripts/cf_checks.py) | 336 | 13 | 6 | 1 | 库 |
-| [cf_codex_hook](../src/core/code-flow/scripts/cf_codex_hook.py) | 98 | 3 | 0 | 10 | 入口 |
+| [cf_codex_hook](../../../../../src/core/code-flow/scripts/cf_codex_hook.py) | 98 | 3 | 0 | 10 | 入口 |
 | [cf_context_cache](../src/core/code-flow/scripts/cf_context_cache.py) | 73 | 5 | 1 | 2 | 库 |
 | [cf_core](../src/core/code-flow/scripts/cf_core.py) | 814 | 36 | 17 | 0 | 库 |
-| [cf_design_lint](../src/core/code-flow/scripts/cf_design_lint.py) | 169 | 10 | 1 | 1 | 入口 |
+| [cf_design_lint](../../../../../src/core/code-flow/scripts/cf_design_lint.py) | 169 | 10 | 1 | 1 | 入口 |
 | [cf_edit_service](../src/core/code-flow/scripts/cf_edit_service.py) | 149 | 10 | 4 | 5 | 库 |
-| [cf_evidence_import](../src/core/code-flow/scripts/cf_evidence_import.py) | 604 | 35 | 0 | 5 | 入口 |
+| [cf_evidence_import](../../../../../src/core/code-flow/scripts/cf_evidence_import.py) | 604 | 35 | 0 | 5 | 入口 |
 | [cf_evidence_store](../src/core/code-flow/scripts/cf_evidence_store.py) | 540 | 47 | 10 | 1 | 库 |
 | [cf_exec_base](../src/core/code-flow/scripts/cf_exec_base.py) | 239 | 14 | 11 | 0 | 库 |
-| [cf_feedback](../src/core/code-flow/scripts/cf_feedback.py) | 57 | 2 | 0 | 3 | 入口 |
+| [cf_feedback](../../../../../src/core/code-flow/scripts/cf_feedback.py) | 57 | 2 | 0 | 3 | 入口 |
 | [cf_injection](../src/core/code-flow/scripts/cf_injection.py) | 112 | 9 | 6 | 2 | 库 |
 | [cf_log](../src/core/code-flow/scripts/cf_log.py) | 159 | 8 | 9 | 0 | 库 |
 | [cf_native_paths](../src/core/code-flow/scripts/cf_native_paths.py) | 26 | 2 | 3 | 1 | 库 |
-| [cf_opencode_event](../src/core/code-flow/scripts/cf_opencode_event.py) | 102 | 4 | 0 | 10 | 入口 |
+| [cf_opencode_event](../../../../../src/core/code-flow/scripts/cf_opencode_event.py) | 102 | 4 | 0 | 10 | 入口 |
 | [cf_patch](../src/core/code-flow/scripts/cf_patch.py) | 33 | 1 | 3 | 0 | 库 |
 | [cf_plan_quality](../src/core/code-flow/scripts/cf_plan_quality.py) | 75 | 4 | 1 | 7 | 库 |
-| [cf_post_hook](../src/core/code-flow/scripts/cf_post_hook.py) | 34 | 1 | 0 | 2 | 入口 |
-| [cf_pre_tool_hook](../src/core/code-flow/scripts/cf_pre_tool_hook.py) | 45 | 1 | 0 | 4 | 入口 |
+| [cf_post_hook](../../../../../src/core/code-flow/scripts/cf_post_hook.py) | 34 | 1 | 0 | 2 | 入口 |
+| [cf_pre_tool_hook](../../../../../src/core/code-flow/scripts/cf_pre_tool_hook.py) | 45 | 1 | 0 | 4 | 入口 |
 | [cf_rule_readiness](../src/core/code-flow/scripts/cf_rule_readiness.py) | 114 | 6 | 3 | 0 | 库 |
 | [cf_runtime_install](../src/core/code-flow/scripts/cf_runtime_install.py) | 32 | 1 | 3 | 0 | 库 |
 | [cf_scan](../src/core/code-flow/scripts/cf_scan.py) | 295 | 8 | 1 | 3 | 入口 |
 | [cf_scenario_quality](../src/core/code-flow/scripts/cf_scenario_quality.py) | 149 | 9 | 2 | 0 | 库 |
-| [cf_scenarios](../src/core/code-flow/scripts/cf_scenarios.py) | 350 | 19 | 5 | 2 | 入口 |
+| [cf_scenarios](../../../../../src/core/code-flow/scripts/cf_scenarios.py) | 350 | 19 | 5 | 2 | 入口 |
 | [cf_session_state](../src/core/code-flow/scripts/cf_session_state.py) | 37 | 2 | 1 | 0 | 库 |
-| [cf_spec_context](../src/core/code-flow/scripts/cf_spec_context.py) | 2123 | 105 | 16 | 7 | 入口 |
-| [cf_spec_gate](../src/core/code-flow/scripts/cf_spec_gate.py) | 331 | 19 | 6 | 3 | 入口 |
+| [cf_spec_context](../../../../../src/core/code-flow/scripts/cf_spec_context.py) | 2123 | 105 | 16 | 7 | 入口 |
+| [cf_spec_gate](../../../../../src/core/code-flow/scripts/cf_spec_gate.py) | 331 | 19 | 6 | 3 | 入口 |
 | [cf_spec_metadata](../src/core/code-flow/scripts/cf_spec_metadata.py) | 387 | 23 | 6 | 0 | 库 |
 | [cf_spec_migrate](../src/core/code-flow/scripts/cf_spec_migrate.py) | 541 | 38 | 0 | 3 | 入口 |
 | [cf_spec_resolver](../src/core/code-flow/scripts/cf_spec_resolver.py) | 369 | 21 | 4 | 1 | 库 |
 | [cf_spec_router](../src/core/code-flow/scripts/cf_spec_router.py) | 317 | 17 | 2 | 6 | 库 |
-| [cf_spec_session](../src/core/code-flow/scripts/cf_spec_session.py) | 131 | 9 | 4 | 1 | 入口 |
+| [cf_spec_session](../../../../../src/core/code-flow/scripts/cf_spec_session.py) | 131 | 9 | 4 | 1 | 入口 |
 | [cf_spec_verify](../src/core/code-flow/scripts/cf_spec_verify.py) | 651 | 36 | 2 | 5 | 库 |
-| [cf_stats](../src/core/code-flow/scripts/cf_stats.py) | 538 | 28 | 0 | 9 | 入口 |
+| [cf_stats](../../../../../src/core/code-flow/scripts/cf_stats.py) | 538 | 28 | 0 | 9 | 入口 |
 | [cf_stop_guard](../src/core/code-flow/scripts/cf_stop_guard.py) | 53 | 3 | 1 | 0 | 库 |
-| [cf_stop_hook](../src/core/code-flow/scripts/cf_stop_hook.py) | 518 | 29 | 5 | 8 | 入口 |
-| [cf_sync](../src/core/code-flow/scripts/cf_sync.py) | 148 | 8 | 0 | 0 | 入口 |
-| [cf_task_index](../src/core/code-flow/scripts/cf_task_index.py) | 190 | 7 | 2 | 2 | 入口 |
+| [cf_stop_hook](../../../../../src/core/code-flow/scripts/cf_stop_hook.py) | 518 | 29 | 5 | 8 | 入口 |
+| [cf_sync](../../../../../src/core/code-flow/scripts/cf_sync.py) | 148 | 8 | 0 | 0 | 入口 |
+| [cf_task_index](../../../../../src/core/code-flow/scripts/cf_task_index.py) | 190 | 7 | 2 | 2 | 入口 |
 | [cf_task_merge](../src/core/code-flow/scripts/cf_task_merge.py) | 629 | 43 | 1 | 1 | 库 |
-| [cf_task_parallel](../src/core/code-flow/scripts/cf_task_parallel.py) | 1099 | 61 | 0 | 14 | 入口 |
+| [cf_task_parallel](../../../../../src/core/code-flow/scripts/cf_task_parallel.py) | 1099 | 61 | 0 | 14 | 入口 |
 | [cf_task_plan](../src/core/code-flow/scripts/cf_task_plan.py) | 250 | 11 | 1 | 0 | 入口 |
 | [cf_task_runtime](../src/core/code-flow/scripts/cf_task_runtime.py) | 522 | 18 | 3 | 15 | 库 |
 | [cf_task_state](../src/core/code-flow/scripts/cf_task_state.py) | 48 | 3 | 3 | 0 | 库 |
-| [cf_task_workflow](../src/core/code-flow/scripts/cf_task_workflow.py) | 1317 | 56 | 1 | 19 | 入口 |
+| [cf_task_workflow](../../../../../src/core/code-flow/scripts/cf_task_workflow.py) | 1317 | 56 | 1 | 19 | 入口 |
 | [cf_traceability](../src/core/code-flow/scripts/cf_traceability.py) | 508 | 23 | 1 | 2 | 入口 |
-| [cf_user_prompt_hook](../src/core/code-flow/scripts/cf_user_prompt_hook.py) | 156 | 8 | 2 | 6 | 入口 |
-| [cf_validation](../src/core/code-flow/scripts/cf_validation.py) | 105 | 5 | 2 | 3 | 入口 |
+| [cf_user_prompt_hook](../../../../../src/core/code-flow/scripts/cf_user_prompt_hook.py) | 156 | 8 | 2 | 6 | 入口 |
+| [cf_validation](../../../../../src/core/code-flow/scripts/cf_validation.py) | 105 | 5 | 2 | 3 | 入口 |
 | [cf_workflow_service](../src/core/code-flow/scripts/cf_workflow_service.py) | 532 | 28 | 4 | 7 | 库 |
 | [cf_workflow_transaction](../src/core/code-flow/scripts/cf_workflow_transaction.py) | 96 | 6 | 3 | 1 | 库 |
 | [cf_worktree_env](../src/core/code-flow/scripts/cf_worktree_env.py) | 253 | 19 | 1 | 0 | 库 |

@@ -1,0 +1,58 @@
+{
+  "checks": {
+    "CHK-b2cad7b5ef6b": {
+      "suite": "unit"
+    },
+    "CHK-aad161ddf787": {
+      "suite": "unit"
+    },
+    "CHK-55d318482620": {
+      "suite": "integration"
+    },
+    "CHK-7907c924815c": {
+      "suite": "integration"
+    },
+    "CHK-d55dabdd9c27": {
+      "suite": "integration"
+    },
+    "CHK-dd658f0fa13b": {
+      "suite": "integration"
+    },
+    "CHK-3c77f13118a8": {
+      "suite": "integration"
+    },
+    "CHK-2d9c08da4eb3": {
+      "suite": "integration"
+    },
+    "CHK-8c89e458dbe7": {
+      "suite": "integration"
+    },
+    "CHK-bc2f501cf8a8": {
+      "suite": "integration"
+    },
+    "CHK-492475b44676": {
+      "suite": "integration"
+    },
+    "CHK-ddfa92004f07": {
+      "suite": "unit"
+    },
+    "CHK-522b648cd656": {
+      "suite": "system"
+    },
+    "CHK-2493448fb268": {
+      "suite": "integration"
+    },
+    "CHK-a2b62c44ccc6": {
+      "suite": "system"
+    },
+    "CHK-886cc98bf17e": {
+      "suite": "system"
+    },
+    "CHK-6ce4a1cc8b64": {
+      "suite": "unit"
+    },
+    "CHK-4557f6777cd3": {
+      "suite": "system"
+    }
+  }
+}

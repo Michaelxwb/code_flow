@@ -1,0 +1,13 @@
+{
+  "checks": {
+    "CHK-0c5a475a2a34": {
+      "suite": "integration"
+    },
+    "CHK-8ea3127662db": {
+      "suite": "unit"
+    },
+    "CHK-c82d0b4af802": {
+      "suite": "integration"
+    }
+  }
+}

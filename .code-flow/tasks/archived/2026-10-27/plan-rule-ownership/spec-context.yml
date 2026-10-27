@@ -1,0 +1,1407 @@
+version: 1
+task: plan-rule-ownership
+enforcement: required
+updated_at: '2026-10-27T06:29:32.338944+00:00'
+sources:
+- type: cli
+  ref: bind
+bindings:
+- spec_id: scripts-code-standards
+  path: scripts/code-standards.md
+  status: active
+  hashes:
+    file_sha256: 268ead3a5c0c1da3a80d837424ebcc29bba9643d8fea80e45f3af00ea44e8927
+    metadata_sha256: 1a080f178a6cc806a462b457d6b831b3ccb42ed14a07092b7bff380dcc674939
+    rules_sha256: a78a60d13e2473c23756d62aa501f494500270cd62e66e3c72a334c4c69b634d
+  selected_by: path_mapping
+  reason: Required Python scripts and tests
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-scripts-no-print-debug-001
+    summary: Hook modules must not write debug output with print(), preserving the
+      stdout JSON protocol.
+    text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: plan-rule-ownership.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-no-print-debug-001
+          artifact_sha256: 0c7821d44e3fc1bf8f70817ffeb3a1be5179705691c321cc52d087a6fbc06a0d
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: plan-rule-ownership.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 79b5ab652bb517b5af6440270877d0d2b21cfb1fba09df0e1a84d18b7dc46317
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-10-27T06:28:51.251443+00:00'
+          status: verified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
+          result_sha256: 364f153a289a4fd1a234ecd2f1d03cda175d67d6ba3d9223b3afbe1331a92956
+          error_code: null
+          details:
+            checked_files: 25
+            violations: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-no-bare-except-001
+    summary: Python modules must not use a bare except clause that silently erases
+      failure context.
+    text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: plan-rule-ownership.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-no-bare-except-001
+          artifact_sha256: 0c7821d44e3fc1bf8f70817ffeb3a1be5179705691c321cc52d087a6fbc06a0d
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: plan-rule-ownership.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 79b5ab652bb517b5af6440270877d0d2b21cfb1fba09df0e1a84d18b7dc46317
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-10-27T06:28:51.287766+00:00'
+          status: verified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
+          result_sha256: 9d65284a34328523843fd02f6769207b327a723d8c40c58fa7eeeab8e47d9170
+          error_code: null
+          details:
+            checked_files: 291
+            violations: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-hook-protocol-001
+    summary: Installed hooks must keep guarded project resolution, valid JSON output,
+      silent no-op behavior, and explicit stderr diagnostics.
+    text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: plan-rule-ownership.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-hook-protocol-001
+          artifact_sha256: 0c7821d44e3fc1bf8f70817ffeb3a1be5179705691c321cc52d087a6fbc06a0d
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: plan-rule-ownership.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 79b5ab652bb517b5af6440270877d0d2b21cfb1fba09df0e1a84d18b7dc46317
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-10-27T06:28:51.190230+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
+          result_sha256: e83b3a74225462947ed9227e4343e054535e080bb14b1cb7b7cf74d7df80926c
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            - tests/test_codex_native_hook.py
+            - tests/test_opencode_native.py
+            - tests/test_runtime_contract.py
+            exit_code: 0
+            output: '........................................................................
+              [ 94%]
+
+              ....                                                                     [100%]
+
+              76 passed in 13.33s
+
+              '
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            stdout_sha256: 26b47c440ba4414e776424b235b00583649bb7026767903ffd873a785340bf5c
+            cache_reused: true
+            scope_files:
+            - .code-flow/scripts/cf_acceptance_manifest.py
+            - .code-flow/scripts/cf_acceptance_runner.py
+            - .code-flow/scripts/cf_audit.py
+            - .code-flow/scripts/cf_codex_hook.py
+            - .code-flow/scripts/cf_design_lint.py
+            - .code-flow/scripts/cf_evidence_import.py
+            - .code-flow/scripts/cf_feedback.py
+            - .code-flow/scripts/cf_opencode_event.py
+            - .code-flow/scripts/cf_post_hook.py
+            - .code-flow/scripts/cf_pre_tool_hook.py
+            - .code-flow/scripts/cf_scenarios.py
+            - .code-flow/scripts/cf_spec_context.py
+            - .code-flow/scripts/cf_spec_gate.py
+            - .code-flow/scripts/cf_spec_session.py
+            - .code-flow/scripts/cf_stats.py
+            - .code-flow/scripts/cf_stop_hook.py
+            - .code-flow/scripts/cf_sync.py
+            - .code-flow/scripts/cf_task_index.py
+            - .code-flow/scripts/cf_task_parallel.py
+            - .code-flow/scripts/cf_task_workflow.py
+            - .code-flow/scripts/cf_user_prompt_hook.py
+            - .code-flow/scripts/cf_validation.py
+            - .code-flow/scripts/codeflow/__init__.py
+            - .code-flow/scripts/codeflow/acceptance/__init__.py
+            - .code-flow/scripts/codeflow/acceptance/cf_acceptance_evidence.py
+            - .code-flow/scripts/codeflow/acceptance/cf_acceptance_manifest_core.py
+            - .code-flow/scripts/codeflow/acceptance/cf_acceptance_plan.py
+            - .code-flow/scripts/codeflow/acceptance/cf_acceptance_registration.py
+            - .code-flow/scripts/codeflow/acceptance/cf_acceptance_risk.py
+            - .code-flow/scripts/codeflow/acceptance/cf_acceptance_schema.py
+            - .code-flow/scripts/codeflow/acceptance/cf_check_inputs.py
+            - .code-flow/scripts/codeflow/acceptance/cf_check_registration.py
+            - .code-flow/scripts/codeflow/acceptance/cf_checks.py
+            - .code-flow/scripts/codeflow/acceptance/cf_plan_quality.py
+            - .code-flow/scripts/codeflow/acceptance/cf_scenario_quality.py
+            - .code-flow/scripts/codeflow/acceptance/cf_traceability.py
+            - .code-flow/scripts/codeflow/cli/__init__.py
+            - .code-flow/scripts/codeflow/cli/cf_acceptance_manifest.py
+            - .code-flow/scripts/codeflow/cli/cf_acceptance_runner.py
+            - .code-flow/scripts/codeflow/cli/cf_audit.py
+            - .code-flow/scripts/codeflow/cli/cf_design_lint.py
+            - .code-flow/scripts/codeflow/cli/cf_evidence_import.py
+            - .code-flow/scripts/codeflow/cli/cf_feedback.py
+            - .code-flow/scripts/codeflow/cli/cf_scenarios.py
+            - .code-flow/scripts/codeflow/cli/cf_spec_context.py
+            - .code-flow/scripts/codeflow/cli/cf_spec_gate.py
+            - .code-flow/scripts/codeflow/cli/cf_spec_session.py
+            - .code-flow/scripts/codeflow/cli/cf_stats.py
+            - .code-flow/scripts/codeflow/cli/cf_sync.py
+            - .code-flow/scripts/codeflow/cli/cf_task_index.py
+            - .code-flow/scripts/codeflow/cli/cf_task_parallel.py
+            - .code-flow/scripts/codeflow/cli/cf_task_workflow.py
+            - .code-flow/scripts/codeflow/cli/cf_validation.py
+            - .code-flow/scripts/codeflow/core/__init__.py
+            - .code-flow/scripts/codeflow/core/cf_context_cache.py
+            - .code-flow/scripts/codeflow/core/cf_core.py
+            - .code-flow/scripts/codeflow/core/cf_exec_base.py
+            - .code-flow/scripts/codeflow/core/cf_fs.py
+            - .code-flow/scripts/codeflow/core/cf_git.py
+            - .code-flow/scripts/codeflow/core/cf_log.py
+            - .code-flow/scripts/codeflow/core/cf_markdown.py
+            - .code-flow/scripts/codeflow/core/cf_native_paths.py
+            - .code-flow/scripts/codeflow/core/cf_patch.py
+            - .code-flow/scripts/codeflow/core/cf_runtime_install.py
+            - .code-flow/scripts/codeflow/core/cf_session_state.py
+            - .code-flow/scripts/codeflow/core/cf_stop_guard.py
+            - .code-flow/scripts/codeflow/core/cf_task_state.py
+            - .code-flow/scripts/codeflow/core/cf_validators.py
+            - .code-flow/scripts/codeflow/core/cf_worktree_env.py
+            - .code-flow/scripts/codeflow/evidence/__init__.py
+            - .code-flow/scripts/codeflow/evidence/cf_evidence_store.py
+            - .code-flow/scripts/codeflow/hooks/__init__.py
+            - .code-flow/scripts/codeflow/hooks/cf_codex_hook.py
+            - .code-flow/scripts/codeflow/hooks/cf_opencode_event.py
+            - .code-flow/scripts/codeflow/hooks/cf_post_hook.py
+            - .code-flow/scripts/codeflow/hooks/cf_pre_tool_hook.py
+            - .code-flow/scripts/codeflow/hooks/cf_stop_hook.py
+            - .code-flow/scripts/codeflow/hooks/cf_user_prompt_hook.py
+            - .code-flow/scripts/codeflow/spec/__init__.py
+            - .code-flow/scripts/codeflow/spec/cf_active_task.py
+            - .code-flow/scripts/codeflow/spec/cf_edit_service.py
+            - .code-flow/scripts/codeflow/spec/cf_injection.py
+            - .code-flow/scripts/codeflow/spec/cf_rule_readiness.py
+            - .code-flow/scripts/codeflow/spec/cf_scan.py
+            - .code-flow/scripts/codeflow/spec/cf_spec_context_model.py
+            - .code-flow/scripts/codeflow/spec/cf_spec_metadata.py
+            - .code-flow/scripts/codeflow/spec/cf_spec_migrate.py
+            - .code-flow/scripts/codeflow/spec/cf_spec_resolver.py
+            - .code-flow/scripts/codeflow/spec/cf_spec_router.py
+            - .code-flow/scripts/codeflow/spec/cf_spec_verify.py
+            - .code-flow/scripts/codeflow/spec/cf_workflow_service.py
+            - .code-flow/scripts/codeflow/spec/cf_workflow_transaction.py
+            - .code-flow/scripts/codeflow/task/__init__.py
+            - .code-flow/scripts/codeflow/task/cf_task_doc.py
+            - .code-flow/scripts/codeflow/task/cf_task_merge.py
+            - .code-flow/scripts/codeflow/task/cf_task_plan.py
+            - .code-flow/scripts/codeflow/task/cf_task_runtime.py
+            - src/adapters/claude/CLAUDE.md
+            - src/adapters/claude/commands/cf-init.md
+            - src/adapters/claude/commands/cf-learn.md
+            - src/adapters/claude/commands/cf-spec.md
+            - src/adapters/claude/commands/cf-stats.md
+            - src/adapters/claude/commands/cf-sync.md
+            - src/adapters/claude/commands/cf-task/align.md
+            - src/adapters/claude/commands/cf-task/archive.md
+            - src/adapters/claude/commands/cf-task/block.md
+            - src/adapters/claude/commands/cf-task/graph.md
+            - src/adapters/claude/commands/cf-task/note.md
+            - src/adapters/claude/commands/cf-task/plan.md
+            - src/adapters/claude/commands/cf-task/prd.md
+            - src/adapters/claude/commands/cf-task/start.md
+            - src/adapters/claude/commands/cf-task/status.md
+            - src/adapters/claude/commands/cf-task/verify-e2e.md
+            - src/adapters/claude/commands/cf-validate.md
+            - src/adapters/claude/settings.local.json
+            - src/adapters/codex/AGENTS.md
+            - src/adapters/codex/config.toml
+            - src/adapters/codex/hooks.json
+            - src/adapters/codex/skills/cf-init/SKILL.md
+            - src/adapters/codex/skills/cf-learn/SKILL.md
+            - src/adapters/codex/skills/cf-spec/SKILL.md
+            - src/adapters/codex/skills/cf-stats/SKILL.md
+            - src/adapters/codex/skills/cf-sync/SKILL.md
+            - src/adapters/codex/skills/cf-task-align/SKILL.md
+            - src/adapters/codex/skills/cf-task-archive/SKILL.md
+            - src/adapters/codex/skills/cf-task-block/SKILL.md
+            - src/adapters/codex/skills/cf-task-graph/SKILL.md
+            - src/adapters/codex/skills/cf-task-note/SKILL.md
+            - src/adapters/codex/skills/cf-task-plan/SKILL.md
+            - src/adapters/codex/skills/cf-task-prd/SKILL.md
+            - src/adapters/codex/skills/cf-task-start/SKILL.md
+            - src/adapters/codex/skills/cf-task-status/SKILL.md
+            - src/adapters/codex/skills/cf-task-verify-e2e/SKILL.md
+            - src/adapters/codex/skills/cf-validate/SKILL.md
+            - src/adapters/commands.json
+            - src/adapters/costrict/CLAUDE.md
+            - src/adapters/costrict/commands/cf-init.md
+            - src/adapters/costrict/commands/cf-learn.md
+            - src/adapters/costrict/commands/cf-spec.md
+            - src/adapters/costrict/commands/cf-stats.md
+            - src/adapters/costrict/commands/cf-sync.md
+            - src/adapters/costrict/commands/cf-task/align.md
+            - src/adapters/costrict/commands/cf-task/archive.md
+            - src/adapters/costrict/commands/cf-task/block.md
+            - src/adapters/costrict/commands/cf-task/graph.md
+            - src/adapters/costrict/commands/cf-task/note.md
+            - src/adapters/costrict/commands/cf-task/plan.md
+            - src/adapters/costrict/commands/cf-task/prd.md
+            - src/adapters/costrict/commands/cf-task/start.md
+            - src/adapters/costrict/commands/cf-task/status.md
+            - src/adapters/costrict/commands/cf-task/verify-e2e.md
+            - src/adapters/costrict/commands/cf-validate.md
+            - src/adapters/costrict/settings.local.json
+            - src/adapters/install-plan.json
+            - src/adapters/opencode/AGENTS.md
+            - src/adapters/opencode/commands/cf-init.md
+            - src/adapters/opencode/commands/cf-learn.md
+            - src/adapters/opencode/commands/cf-spec.md
+            - src/adapters/opencode/commands/cf-stats.md
+            - src/adapters/opencode/commands/cf-sync.md
+            - src/adapters/opencode/commands/cf-task/align.md
+            - src/adapters/opencode/commands/cf-task/archive.md
+            - src/adapters/opencode/commands/cf-task/block.md
+            - src/adapters/opencode/commands/cf-task/graph.md
+            - src/adapters/opencode/commands/cf-task/note.md
+            - src/adapters/opencode/commands/cf-task/plan.md
+            - src/adapters/opencode/commands/cf-task/prd.md
+            - src/adapters/opencode/commands/cf-task/start.md
+            - src/adapters/opencode/commands/cf-task/status.md
+            - src/adapters/opencode/commands/cf-task/verify-e2e.md
+            - src/adapters/opencode/commands/cf-validate.md
+            - src/adapters/opencode/opencode.json
+            - src/adapters/opencode/plugins/code-flow/index.js
+            - src/adapters/opencode/plugins/code-flow/package.json
+            - src/adapters/platform-bindings.json
+            - src/core/code-flow/scripts/cf_acceptance_manifest.py
+            - src/core/code-flow/scripts/cf_acceptance_runner.py
+            - src/core/code-flow/scripts/cf_audit.py
+            - src/core/code-flow/scripts/cf_codex_hook.py
+            - src/core/code-flow/scripts/cf_design_lint.py
+            - src/core/code-flow/scripts/cf_evidence_import.py
+            - src/core/code-flow/scripts/cf_feedback.py
+            - src/core/code-flow/scripts/cf_opencode_event.py
+            - src/core/code-flow/scripts/cf_post_hook.py
+            - src/core/code-flow/scripts/cf_pre_tool_hook.py
+            - src/core/code-flow/scripts/cf_scenarios.py
+            - src/core/code-flow/scripts/cf_spec_context.py
+            - src/core/code-flow/scripts/cf_spec_gate.py
+            - src/core/code-flow/scripts/cf_spec_session.py
+            - src/core/code-flow/scripts/cf_stats.py
+            - src/core/code-flow/scripts/cf_stop_hook.py
+            - src/core/code-flow/scripts/cf_sync.py
+            - src/core/code-flow/scripts/cf_task_index.py
+            - src/core/code-flow/scripts/cf_task_parallel.py
+            - src/core/code-flow/scripts/cf_task_workflow.py
+            - src/core/code-flow/scripts/cf_user_prompt_hook.py
+            - src/core/code-flow/scripts/cf_validation.py
+            - src/core/code-flow/scripts/codeflow/__init__.py
+            - src/core/code-flow/scripts/codeflow/acceptance/__init__.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_evidence.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_manifest_core.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_plan.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_registration.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_risk.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_schema.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_check_inputs.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_check_registration.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_checks.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_scenario_quality.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_traceability.py
+            - src/core/code-flow/scripts/codeflow/cli/__init__.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_acceptance_manifest.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_audit.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_design_lint.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_evidence_import.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_feedback.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_stats.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_sync.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_task_index.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_validation.py
+            - src/core/code-flow/scripts/codeflow/core/__init__.py
+            - src/core/code-flow/scripts/codeflow/core/cf_context_cache.py
+            - src/core/code-flow/scripts/codeflow/core/cf_core.py
+            - src/core/code-flow/scripts/codeflow/core/cf_exec_base.py
+            - src/core/code-flow/scripts/codeflow/core/cf_fs.py
+            - src/core/code-flow/scripts/codeflow/core/cf_git.py
+            - src/core/code-flow/scripts/codeflow/core/cf_log.py
+            - src/core/code-flow/scripts/codeflow/core/cf_markdown.py
+            - src/core/code-flow/scripts/codeflow/core/cf_native_paths.py
+            - src/core/code-flow/scripts/codeflow/core/cf_patch.py
+            - src/core/code-flow/scripts/codeflow/core/cf_runtime_install.py
+            - src/core/code-flow/scripts/codeflow/core/cf_session_state.py
+            - src/core/code-flow/scripts/codeflow/core/cf_stop_guard.py
+            - src/core/code-flow/scripts/codeflow/core/cf_task_state.py
+            - src/core/code-flow/scripts/codeflow/core/cf_validators.py
+            - src/core/code-flow/scripts/codeflow/core/cf_worktree_env.py
+            - src/core/code-flow/scripts/codeflow/evidence/__init__.py
+            - src/core/code-flow/scripts/codeflow/evidence/cf_evidence_store.py
+            - src/core/code-flow/scripts/codeflow/hooks/__init__.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_codex_hook.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_opencode_event.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_post_hook.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_pre_tool_hook.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_user_prompt_hook.py
+            - src/core/code-flow/scripts/codeflow/spec/__init__.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_active_task.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_edit_service.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_injection.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_rule_readiness.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_scan.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_context_model.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_metadata.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_migrate.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_resolver.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_router.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_verify.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_workflow_service.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_workflow_transaction.py
+            - src/core/code-flow/scripts/codeflow/task/__init__.py
+            - src/core/code-flow/scripts/codeflow/task/cf_task_doc.py
+            - src/core/code-flow/scripts/codeflow/task/cf_task_merge.py
+            - src/core/code-flow/scripts/codeflow/task/cf_task_plan.py
+            - src/core/code-flow/scripts/codeflow/task/cf_task_runtime.py
+            - tests/test_cf_post_hook.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_codex_native_hook.py
+            - tests/test_hook_command_robustness.py
+            - tests/test_opencode_native.py
+            - tests/test_runtime_contract.py
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-context-gate-001
+    summary: Spec Context refresh, scope expansion, verifier Evidence, and required
+      Stage Gates must remain deterministic and fail-closed.
+    text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: plan-rule-ownership.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-context-gate-001
+          artifact_sha256: 0c7821d44e3fc1bf8f70817ffeb3a1be5179705691c321cc52d087a6fbc06a0d
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: plan-rule-ownership.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 79b5ab652bb517b5af6440270877d0d2b21cfb1fba09df0e1a84d18b7dc46317
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-10-27T06:28:51.213257+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
+          result_sha256: 2f48686ba0b90d06ff048c24436dd7081c1e9edf57aabf61e57dbf9885cca36c
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            output: '..................................................................       [100%]
+
+              66 passed in 11.37s
+
+              '
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            stdout_sha256: 7dc7705d21e44031c2f6e9131c24a8dc90dcb6186c7c1710ad059d530d36e820
+            cache_reused: true
+            scope_files:
+            - .code-flow/scripts/cf_acceptance_manifest.py
+            - .code-flow/scripts/cf_acceptance_runner.py
+            - .code-flow/scripts/cf_audit.py
+            - .code-flow/scripts/cf_codex_hook.py
+            - .code-flow/scripts/cf_design_lint.py
+            - .code-flow/scripts/cf_evidence_import.py
+            - .code-flow/scripts/cf_feedback.py
+            - .code-flow/scripts/cf_opencode_event.py
+            - .code-flow/scripts/cf_post_hook.py
+            - .code-flow/scripts/cf_pre_tool_hook.py
+            - .code-flow/scripts/cf_scenarios.py
+            - .code-flow/scripts/cf_spec_context.py
+            - .code-flow/scripts/cf_spec_gate.py
+            - .code-flow/scripts/cf_spec_session.py
+            - .code-flow/scripts/cf_stats.py
+            - .code-flow/scripts/cf_stop_hook.py
+            - .code-flow/scripts/cf_sync.py
+            - .code-flow/scripts/cf_task_index.py
+            - .code-flow/scripts/cf_task_parallel.py
+            - .code-flow/scripts/cf_task_workflow.py
+            - .code-flow/scripts/cf_user_prompt_hook.py
+            - .code-flow/scripts/cf_validation.py
+            - .code-flow/scripts/codeflow/__init__.py
+            - .code-flow/scripts/codeflow/acceptance/__init__.py
+            - .code-flow/scripts/codeflow/acceptance/cf_acceptance_evidence.py
+            - .code-flow/scripts/codeflow/acceptance/cf_acceptance_manifest_core.py
+            - .code-flow/scripts/codeflow/acceptance/cf_acceptance_plan.py
+            - .code-flow/scripts/codeflow/acceptance/cf_acceptance_registration.py
+            - .code-flow/scripts/codeflow/acceptance/cf_acceptance_risk.py
+            - .code-flow/scripts/codeflow/acceptance/cf_acceptance_schema.py
+            - .code-flow/scripts/codeflow/acceptance/cf_check_inputs.py
+            - .code-flow/scripts/codeflow/acceptance/cf_check_registration.py
+            - .code-flow/scripts/codeflow/acceptance/cf_checks.py
+            - .code-flow/scripts/codeflow/acceptance/cf_plan_quality.py
+            - .code-flow/scripts/codeflow/acceptance/cf_scenario_quality.py
+            - .code-flow/scripts/codeflow/acceptance/cf_traceability.py
+            - .code-flow/scripts/codeflow/cli/__init__.py
+            - .code-flow/scripts/codeflow/cli/cf_acceptance_manifest.py
+            - .code-flow/scripts/codeflow/cli/cf_acceptance_runner.py
+            - .code-flow/scripts/codeflow/cli/cf_audit.py
+            - .code-flow/scripts/codeflow/cli/cf_design_lint.py
+            - .code-flow/scripts/codeflow/cli/cf_evidence_import.py
+            - .code-flow/scripts/codeflow/cli/cf_feedback.py
+            - .code-flow/scripts/codeflow/cli/cf_scenarios.py
+            - .code-flow/scripts/codeflow/cli/cf_spec_context.py
+            - .code-flow/scripts/codeflow/cli/cf_spec_gate.py
+            - .code-flow/scripts/codeflow/cli/cf_spec_session.py
+            - .code-flow/scripts/codeflow/cli/cf_stats.py
+            - .code-flow/scripts/codeflow/cli/cf_sync.py
+            - .code-flow/scripts/codeflow/cli/cf_task_index.py
+            - .code-flow/scripts/codeflow/cli/cf_task_parallel.py
+            - .code-flow/scripts/codeflow/cli/cf_task_workflow.py
+            - .code-flow/scripts/codeflow/cli/cf_validation.py
+            - .code-flow/scripts/codeflow/core/__init__.py
+            - .code-flow/scripts/codeflow/core/cf_context_cache.py
+            - .code-flow/scripts/codeflow/core/cf_core.py
+            - .code-flow/scripts/codeflow/core/cf_exec_base.py
+            - .code-flow/scripts/codeflow/core/cf_fs.py
+            - .code-flow/scripts/codeflow/core/cf_git.py
+            - .code-flow/scripts/codeflow/core/cf_log.py
+            - .code-flow/scripts/codeflow/core/cf_markdown.py
+            - .code-flow/scripts/codeflow/core/cf_native_paths.py
+            - .code-flow/scripts/codeflow/core/cf_patch.py
+            - .code-flow/scripts/codeflow/core/cf_runtime_install.py
+            - .code-flow/scripts/codeflow/core/cf_session_state.py
+            - .code-flow/scripts/codeflow/core/cf_stop_guard.py
+            - .code-flow/scripts/codeflow/core/cf_task_state.py
+            - .code-flow/scripts/codeflow/core/cf_validators.py
+            - .code-flow/scripts/codeflow/core/cf_worktree_env.py
+            - .code-flow/scripts/codeflow/evidence/__init__.py
+            - .code-flow/scripts/codeflow/evidence/cf_evidence_store.py
+            - .code-flow/scripts/codeflow/hooks/__init__.py
+            - .code-flow/scripts/codeflow/hooks/cf_codex_hook.py
+            - .code-flow/scripts/codeflow/hooks/cf_opencode_event.py
+            - .code-flow/scripts/codeflow/hooks/cf_post_hook.py
+            - .code-flow/scripts/codeflow/hooks/cf_pre_tool_hook.py
+            - .code-flow/scripts/codeflow/hooks/cf_stop_hook.py
+            - .code-flow/scripts/codeflow/hooks/cf_user_prompt_hook.py
+            - .code-flow/scripts/codeflow/spec/__init__.py
+            - .code-flow/scripts/codeflow/spec/cf_active_task.py
+            - .code-flow/scripts/codeflow/spec/cf_edit_service.py
+            - .code-flow/scripts/codeflow/spec/cf_injection.py
+            - .code-flow/scripts/codeflow/spec/cf_rule_readiness.py
+            - .code-flow/scripts/codeflow/spec/cf_scan.py
+            - .code-flow/scripts/codeflow/spec/cf_spec_context_model.py
+            - .code-flow/scripts/codeflow/spec/cf_spec_metadata.py
+            - .code-flow/scripts/codeflow/spec/cf_spec_migrate.py
+            - .code-flow/scripts/codeflow/spec/cf_spec_resolver.py
+            - .code-flow/scripts/codeflow/spec/cf_spec_router.py
+            - .code-flow/scripts/codeflow/spec/cf_spec_verify.py
+            - .code-flow/scripts/codeflow/spec/cf_workflow_service.py
+            - .code-flow/scripts/codeflow/spec/cf_workflow_transaction.py
+            - .code-flow/scripts/codeflow/task/__init__.py
+            - .code-flow/scripts/codeflow/task/cf_task_doc.py
+            - .code-flow/scripts/codeflow/task/cf_task_merge.py
+            - .code-flow/scripts/codeflow/task/cf_task_plan.py
+            - .code-flow/scripts/codeflow/task/cf_task_runtime.py
+            - src/core/code-flow/scripts/cf_acceptance_manifest.py
+            - src/core/code-flow/scripts/cf_acceptance_runner.py
+            - src/core/code-flow/scripts/cf_audit.py
+            - src/core/code-flow/scripts/cf_codex_hook.py
+            - src/core/code-flow/scripts/cf_design_lint.py
+            - src/core/code-flow/scripts/cf_evidence_import.py
+            - src/core/code-flow/scripts/cf_feedback.py
+            - src/core/code-flow/scripts/cf_opencode_event.py
+            - src/core/code-flow/scripts/cf_post_hook.py
+            - src/core/code-flow/scripts/cf_pre_tool_hook.py
+            - src/core/code-flow/scripts/cf_scenarios.py
+            - src/core/code-flow/scripts/cf_spec_context.py
+            - src/core/code-flow/scripts/cf_spec_gate.py
+            - src/core/code-flow/scripts/cf_spec_session.py
+            - src/core/code-flow/scripts/cf_stats.py
+            - src/core/code-flow/scripts/cf_stop_hook.py
+            - src/core/code-flow/scripts/cf_sync.py
+            - src/core/code-flow/scripts/cf_task_index.py
+            - src/core/code-flow/scripts/cf_task_parallel.py
+            - src/core/code-flow/scripts/cf_task_workflow.py
+            - src/core/code-flow/scripts/cf_user_prompt_hook.py
+            - src/core/code-flow/scripts/cf_validation.py
+            - src/core/code-flow/scripts/codeflow/__init__.py
+            - src/core/code-flow/scripts/codeflow/acceptance/__init__.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_evidence.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_manifest_core.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_plan.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_registration.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_risk.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_schema.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_check_inputs.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_check_registration.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_checks.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_scenario_quality.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_traceability.py
+            - src/core/code-flow/scripts/codeflow/cli/__init__.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_acceptance_manifest.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_audit.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_design_lint.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_evidence_import.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_feedback.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_stats.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_sync.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_task_index.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_validation.py
+            - src/core/code-flow/scripts/codeflow/core/__init__.py
+            - src/core/code-flow/scripts/codeflow/core/cf_context_cache.py
+            - src/core/code-flow/scripts/codeflow/core/cf_core.py
+            - src/core/code-flow/scripts/codeflow/core/cf_exec_base.py
+            - src/core/code-flow/scripts/codeflow/core/cf_fs.py
+            - src/core/code-flow/scripts/codeflow/core/cf_git.py
+            - src/core/code-flow/scripts/codeflow/core/cf_log.py
+            - src/core/code-flow/scripts/codeflow/core/cf_markdown.py
+            - src/core/code-flow/scripts/codeflow/core/cf_native_paths.py
+            - src/core/code-flow/scripts/codeflow/core/cf_patch.py
+            - src/core/code-flow/scripts/codeflow/core/cf_runtime_install.py
+            - src/core/code-flow/scripts/codeflow/core/cf_session_state.py
+            - src/core/code-flow/scripts/codeflow/core/cf_stop_guard.py
+            - src/core/code-flow/scripts/codeflow/core/cf_task_state.py
+            - src/core/code-flow/scripts/codeflow/core/cf_validators.py
+            - src/core/code-flow/scripts/codeflow/core/cf_worktree_env.py
+            - src/core/code-flow/scripts/codeflow/evidence/__init__.py
+            - src/core/code-flow/scripts/codeflow/evidence/cf_evidence_store.py
+            - src/core/code-flow/scripts/codeflow/hooks/__init__.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_codex_hook.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_opencode_event.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_post_hook.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_pre_tool_hook.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_user_prompt_hook.py
+            - src/core/code-flow/scripts/codeflow/spec/__init__.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_active_task.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_edit_service.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_injection.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_rule_readiness.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_scan.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_context_model.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_metadata.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_migrate.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_resolver.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_router.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_verify.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_workflow_service.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_workflow_transaction.py
+            - src/core/code-flow/scripts/codeflow/task/__init__.py
+            - src/core/code-flow/scripts/codeflow/task/cf_task_doc.py
+            - src/core/code-flow/scripts/codeflow/task/cf_task_merge.py
+            - src/core/code-flow/scripts/codeflow/task/cf_task_plan.py
+            - src/core/code-flow/scripts/codeflow/task/cf_task_runtime.py
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-scripts-canonical-parity-001
+    summary: Canonical Python runtime, live deployment, templates, and platform adapters
+      must remain synchronized without legacy runtime residue.
+    text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+    enforcement: required
+    verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: plan-rule-ownership.design.md
+          section_id: Spec Compliance Matrix
+          item_id: RULE-scripts-canonical-parity-001
+          artifact_sha256: 0c7821d44e3fc1bf8f70817ffeb3a1be5179705691c321cc52d087a6fbc06a0d
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: plan-rule-ownership.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 79b5ab652bb517b5af6440270877d0d2b21cfb1fba09df0e1a84d18b7dc46317
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-10-27T06:28:51.244203+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
+          result_sha256: 23b6360d2ac2f9e30ad64e823d2a5d10ecd35d07311518286bf8085a3625e34c
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            output: '.............................                                            [100%]
+
+              29 passed in 0.77s
+
+              '
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            stdout_sha256: e038867d0b1827030244e6d95853ffc4901dc0c83bf04534832f9efe574ba172
+            cache_reused: true
+            scope_files:
+            - .agents/skills/cf-init/SKILL.md
+            - .agents/skills/cf-learn/SKILL.md
+            - .agents/skills/cf-spec/SKILL.md
+            - .agents/skills/cf-stats/SKILL.md
+            - .agents/skills/cf-sync/SKILL.md
+            - .agents/skills/cf-task-align/SKILL.md
+            - .agents/skills/cf-task-archive/SKILL.md
+            - .agents/skills/cf-task-block/SKILL.md
+            - .agents/skills/cf-task-graph/SKILL.md
+            - .agents/skills/cf-task-note/SKILL.md
+            - .agents/skills/cf-task-plan/SKILL.md
+            - .agents/skills/cf-task-prd/SKILL.md
+            - .agents/skills/cf-task-start/SKILL.md
+            - .agents/skills/cf-task-status/SKILL.md
+            - .agents/skills/cf-task-verify-e2e/SKILL.md
+            - .agents/skills/cf-validate/SKILL.md
+            - .claude/commands/cf-init.md
+            - .claude/commands/cf-learn.md
+            - .claude/commands/cf-spec.md
+            - .claude/commands/cf-stats.md
+            - .claude/commands/cf-sync.md
+            - .claude/commands/cf-task/align.md
+            - .claude/commands/cf-task/archive.md
+            - .claude/commands/cf-task/block.md
+            - .claude/commands/cf-task/graph.md
+            - .claude/commands/cf-task/note.md
+            - .claude/commands/cf-task/plan.md
+            - .claude/commands/cf-task/prd.md
+            - .claude/commands/cf-task/start.md
+            - .claude/commands/cf-task/status.md
+            - .claude/commands/cf-task/verify-e2e.md
+            - .claude/commands/cf-validate.md
+            - .code-flow/.gitignore
+            - .code-flow/config.yml
+            - .code-flow/specs/cli/_map.md
+            - .code-flow/specs/cli/code-standards.md
+            - .code-flow/specs/scripts/_map.md
+            - .code-flow/specs/scripts/code-standards.md
+            - .code-flow/specs/shared/_map.md
+            - .code-flow/specs/shared/design/design-frontend.md
+            - .code-flow/specs/shared/design/design-full.md
+            - .code-flow/specs/shared/design/design-lite.md
+            - .code-flow/specs/shared/prd-template.md
+            - .code-flow/specs/shared/scenarios-template.md
+            - .costrict/commands/cf-init.md
+            - .costrict/commands/cf-learn.md
+            - .costrict/commands/cf-spec.md
+            - .costrict/commands/cf-stats.md
+            - .costrict/commands/cf-sync.md
+            - .costrict/commands/cf-task/align.md
+            - .costrict/commands/cf-task/archive.md
+            - .costrict/commands/cf-task/block.md
+            - .costrict/commands/cf-task/graph.md
+            - .costrict/commands/cf-task/note.md
+            - .costrict/commands/cf-task/plan.md
+            - .costrict/commands/cf-task/prd.md
+            - .costrict/commands/cf-task/start.md
+            - .costrict/commands/cf-task/status.md
+            - .costrict/commands/cf-task/verify-e2e.md
+            - .costrict/commands/cf-validate.md
+            - .costrict/settings.local.json
+            - .opencode/commands/cf-init.md
+            - .opencode/commands/cf-learn.md
+            - .opencode/commands/cf-spec.md
+            - .opencode/commands/cf-stats.md
+            - .opencode/commands/cf-sync.md
+            - .opencode/commands/cf-task/align.md
+            - .opencode/commands/cf-task/archive.md
+            - .opencode/commands/cf-task/block.md
+            - .opencode/commands/cf-task/graph.md
+            - .opencode/commands/cf-task/note.md
+            - .opencode/commands/cf-task/plan.md
+            - .opencode/commands/cf-task/prd.md
+            - .opencode/commands/cf-task/start.md
+            - .opencode/commands/cf-task/status.md
+            - .opencode/commands/cf-task/verify-e2e.md
+            - .opencode/commands/cf-validate.md
+            - .opencode/plugins/code-flow/index.js
+            - .opencode/plugins/code-flow/package.json
+            - AGENTS.md
+            - CLAUDE.md
+            - src/adapters/claude/CLAUDE.md
+            - src/adapters/claude/commands/cf-init.md
+            - src/adapters/claude/commands/cf-learn.md
+            - src/adapters/claude/commands/cf-spec.md
+            - src/adapters/claude/commands/cf-stats.md
+            - src/adapters/claude/commands/cf-sync.md
+            - src/adapters/claude/commands/cf-task/align.md
+            - src/adapters/claude/commands/cf-task/archive.md
+            - src/adapters/claude/commands/cf-task/block.md
+            - src/adapters/claude/commands/cf-task/graph.md
+            - src/adapters/claude/commands/cf-task/note.md
+            - src/adapters/claude/commands/cf-task/plan.md
+            - src/adapters/claude/commands/cf-task/prd.md
+            - src/adapters/claude/commands/cf-task/start.md
+            - src/adapters/claude/commands/cf-task/status.md
+            - src/adapters/claude/commands/cf-task/verify-e2e.md
+            - src/adapters/claude/commands/cf-validate.md
+            - src/adapters/claude/settings.local.json
+            - src/adapters/codex/AGENTS.md
+            - src/adapters/codex/config.toml
+            - src/adapters/codex/hooks.json
+            - src/adapters/codex/skills/cf-init/SKILL.md
+            - src/adapters/codex/skills/cf-learn/SKILL.md
+            - src/adapters/codex/skills/cf-spec/SKILL.md
+            - src/adapters/codex/skills/cf-stats/SKILL.md
+            - src/adapters/codex/skills/cf-sync/SKILL.md
+            - src/adapters/codex/skills/cf-task-align/SKILL.md
+            - src/adapters/codex/skills/cf-task-archive/SKILL.md
+            - src/adapters/codex/skills/cf-task-block/SKILL.md
+            - src/adapters/codex/skills/cf-task-graph/SKILL.md
+            - src/adapters/codex/skills/cf-task-note/SKILL.md
+            - src/adapters/codex/skills/cf-task-plan/SKILL.md
+            - src/adapters/codex/skills/cf-task-prd/SKILL.md
+            - src/adapters/codex/skills/cf-task-start/SKILL.md
+            - src/adapters/codex/skills/cf-task-status/SKILL.md
+            - src/adapters/codex/skills/cf-task-verify-e2e/SKILL.md
+            - src/adapters/codex/skills/cf-validate/SKILL.md
+            - src/adapters/commands.json
+            - src/adapters/costrict/CLAUDE.md
+            - src/adapters/costrict/commands/cf-init.md
+            - src/adapters/costrict/commands/cf-learn.md
+            - src/adapters/costrict/commands/cf-spec.md
+            - src/adapters/costrict/commands/cf-stats.md
+            - src/adapters/costrict/commands/cf-sync.md
+            - src/adapters/costrict/commands/cf-task/align.md
+            - src/adapters/costrict/commands/cf-task/archive.md
+            - src/adapters/costrict/commands/cf-task/block.md
+            - src/adapters/costrict/commands/cf-task/graph.md
+            - src/adapters/costrict/commands/cf-task/note.md
+            - src/adapters/costrict/commands/cf-task/plan.md
+            - src/adapters/costrict/commands/cf-task/prd.md
+            - src/adapters/costrict/commands/cf-task/start.md
+            - src/adapters/costrict/commands/cf-task/status.md
+            - src/adapters/costrict/commands/cf-task/verify-e2e.md
+            - src/adapters/costrict/commands/cf-validate.md
+            - src/adapters/costrict/settings.local.json
+            - src/adapters/install-plan.json
+            - src/adapters/opencode/AGENTS.md
+            - src/adapters/opencode/commands/cf-init.md
+            - src/adapters/opencode/commands/cf-learn.md
+            - src/adapters/opencode/commands/cf-spec.md
+            - src/adapters/opencode/commands/cf-stats.md
+            - src/adapters/opencode/commands/cf-sync.md
+            - src/adapters/opencode/commands/cf-task/align.md
+            - src/adapters/opencode/commands/cf-task/archive.md
+            - src/adapters/opencode/commands/cf-task/block.md
+            - src/adapters/opencode/commands/cf-task/graph.md
+            - src/adapters/opencode/commands/cf-task/note.md
+            - src/adapters/opencode/commands/cf-task/plan.md
+            - src/adapters/opencode/commands/cf-task/prd.md
+            - src/adapters/opencode/commands/cf-task/start.md
+            - src/adapters/opencode/commands/cf-task/status.md
+            - src/adapters/opencode/commands/cf-task/verify-e2e.md
+            - src/adapters/opencode/commands/cf-validate.md
+            - src/adapters/opencode/opencode.json
+            - src/adapters/opencode/plugins/code-flow/index.js
+            - src/adapters/opencode/plugins/code-flow/package.json
+            - src/adapters/platform-bindings.json
+            - src/cli.js
+            - src/core/code-flow/.gitignore
+            - src/core/code-flow/config.yml
+            - src/core/code-flow/runtime-commands.json
+            - src/core/code-flow/scripts/cf_acceptance_manifest.py
+            - src/core/code-flow/scripts/cf_acceptance_runner.py
+            - src/core/code-flow/scripts/cf_audit.py
+            - src/core/code-flow/scripts/cf_codex_hook.py
+            - src/core/code-flow/scripts/cf_design_lint.py
+            - src/core/code-flow/scripts/cf_evidence_import.py
+            - src/core/code-flow/scripts/cf_feedback.py
+            - src/core/code-flow/scripts/cf_opencode_event.py
+            - src/core/code-flow/scripts/cf_post_hook.py
+            - src/core/code-flow/scripts/cf_pre_tool_hook.py
+            - src/core/code-flow/scripts/cf_scenarios.py
+            - src/core/code-flow/scripts/cf_spec_context.py
+            - src/core/code-flow/scripts/cf_spec_gate.py
+            - src/core/code-flow/scripts/cf_spec_session.py
+            - src/core/code-flow/scripts/cf_stats.py
+            - src/core/code-flow/scripts/cf_stop_hook.py
+            - src/core/code-flow/scripts/cf_sync.py
+            - src/core/code-flow/scripts/cf_task_index.py
+            - src/core/code-flow/scripts/cf_task_parallel.py
+            - src/core/code-flow/scripts/cf_task_workflow.py
+            - src/core/code-flow/scripts/cf_user_prompt_hook.py
+            - src/core/code-flow/scripts/cf_validation.py
+            - src/core/code-flow/scripts/codeflow/__init__.py
+            - src/core/code-flow/scripts/codeflow/acceptance/__init__.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_evidence.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_manifest_core.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_plan.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_registration.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_risk.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_acceptance_schema.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_check_inputs.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_check_registration.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_checks.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_scenario_quality.py
+            - src/core/code-flow/scripts/codeflow/acceptance/cf_traceability.py
+            - src/core/code-flow/scripts/codeflow/cli/__init__.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_acceptance_manifest.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_audit.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_design_lint.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_evidence_import.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_feedback.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_stats.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_sync.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_task_index.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py
+            - src/core/code-flow/scripts/codeflow/cli/cf_validation.py
+            - src/core/code-flow/scripts/codeflow/core/__init__.py
+            - src/core/code-flow/scripts/codeflow/core/cf_context_cache.py
+            - src/core/code-flow/scripts/codeflow/core/cf_core.py
+            - src/core/code-flow/scripts/codeflow/core/cf_exec_base.py
+            - src/core/code-flow/scripts/codeflow/core/cf_fs.py
+            - src/core/code-flow/scripts/codeflow/core/cf_git.py
+            - src/core/code-flow/scripts/codeflow/core/cf_log.py
+            - src/core/code-flow/scripts/codeflow/core/cf_markdown.py
+            - src/core/code-flow/scripts/codeflow/core/cf_native_paths.py
+            - src/core/code-flow/scripts/codeflow/core/cf_patch.py
+            - src/core/code-flow/scripts/codeflow/core/cf_runtime_install.py
+            - src/core/code-flow/scripts/codeflow/core/cf_session_state.py
+            - src/core/code-flow/scripts/codeflow/core/cf_stop_guard.py
+            - src/core/code-flow/scripts/codeflow/core/cf_task_state.py
+            - src/core/code-flow/scripts/codeflow/core/cf_validators.py
+            - src/core/code-flow/scripts/codeflow/core/cf_worktree_env.py
+            - src/core/code-flow/scripts/codeflow/evidence/__init__.py
+            - src/core/code-flow/scripts/codeflow/evidence/cf_evidence_store.py
+            - src/core/code-flow/scripts/codeflow/hooks/__init__.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_codex_hook.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_opencode_event.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_post_hook.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_pre_tool_hook.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py
+            - src/core/code-flow/scripts/codeflow/hooks/cf_user_prompt_hook.py
+            - src/core/code-flow/scripts/codeflow/spec/__init__.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_active_task.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_edit_service.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_injection.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_rule_readiness.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_scan.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_context_model.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_metadata.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_migrate.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_resolver.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_router.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_spec_verify.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_workflow_service.py
+            - src/core/code-flow/scripts/codeflow/spec/cf_workflow_transaction.py
+            - src/core/code-flow/scripts/codeflow/task/__init__.py
+            - src/core/code-flow/scripts/codeflow/task/cf_task_doc.py
+            - src/core/code-flow/scripts/codeflow/task/cf_task_merge.py
+            - src/core/code-flow/scripts/codeflow/task/cf_task_plan.py
+            - src/core/code-flow/scripts/codeflow/task/cf_task_runtime.py
+            - src/core/code-flow/scripts/runtime-resources.json
+            - src/core/code-flow/specs/backend/_map.md
+            - src/core/code-flow/specs/backend/code-quality-performance.md
+            - src/core/code-flow/specs/backend/database.md
+            - src/core/code-flow/specs/backend/directory-structure.md
+            - src/core/code-flow/specs/backend/logging.md
+            - src/core/code-flow/specs/backend/platform-rules.md
+            - src/core/code-flow/specs/frontend/_map.md
+            - src/core/code-flow/specs/frontend/component-specs.md
+            - src/core/code-flow/specs/frontend/directory-structure.md
+            - src/core/code-flow/specs/frontend/quality-standards.md
+            - src/core/code-flow/specs/shared/_map.md
+            - src/core/code-flow/specs/shared/design/design-frontend.md
+            - src/core/code-flow/specs/shared/design/design-full.md
+            - src/core/code-flow/specs/shared/design/design-lite.md
+            - src/core/code-flow/specs/shared/prd-template.md
+            - src/core/code-flow/specs/shared/scenarios-template.md
+            - src/core/code-flow/tasks/.gitkeep
+            - src/core/code-flow/validation.yml
+            - src/migrate/runtime.js
+            - src/migrate/spec-workflow.js
+            - src/render-runtime-contract.js
+            - src/runtime.js
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            - tests/test_spec_workflow_templates.py
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-001
+    summary: 顶层 `cf_*.py` 只做 ≤15 行 shim（import + `main()`）；单一功能实现放 `codeflow/<domain>/cf_<feature>.py`
+      的 **feature-scoped core module**；跨功能稳定原语放 `codeflow/core/` 的专用模块（`cf_fs`/`cf_git`/`cf_markdown`/`cf_validators`），不要继续堆进
+      `cf_core.py`
+    text_sha256: 3bc6c0547823cf143ae7ead7647350477a25f7dd96b503bb77bf8e588881990e
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-002
+    summary: 新增 Context/router 能力 → 保持 feature module 单一职责，公开数据结构完整 type hints，函数
+      ≤50 行
+    text_sha256: 0a0bdac02a0cdd3a5765702728a4cfd133f928bc04b21254b22535aff5baf883
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-003
+    summary: 新增 Claude Hook → 在 settings.local.json 模板中注册，入口 shim 放 scripts/，实现放 `codeflow/hooks/`
+    text_sha256: 97da00ec98292cc1856b2b3c22373615004dd82b803f088509418846d2ab91d7
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-004
+    summary: 新增 Codex Hook → 在 hooks.json 模板中注册（3 层结构：event → [{hooks:[{type,command}]}]），入口
+      shim 放 scripts/，实现放 `codeflow/hooks/`
+    text_sha256: 9c4c9fd87abe67e6391181a737a8ce0f0b53725e981fedaa3fcb25f4221f0199
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-005
+    summary: Codex prompt 路径提取同时支持裸路径、`@path`、反引号路径，并在注入前做去重与噪音过滤（需至少一个斜杠或有效代码扩展名）
+    text_sha256: 448907a472ddb048d8542219617f22f70a91099bfc0e9cf21597edb2ac22ea15
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-006
+    summary: 测试 → tests/ 目录，使用 pytest，覆盖 happy path / fail-closed / 空输入
+    text_sha256: 6a16a49993f19e203b0565d1859ee5d21d83c3e40604743429b8e448a4839594
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-007
+    summary: Claude/Costrict 编辑入口接受原生 `Edit/Write/MultiEdit`；Codex 原生入口严格接受 `apply_patch`
+      与 `tool_input.command`，按补丁中的每个文件操作调用共享服务；工具协议不得互相伪装。
+    text_sha256: e982bc26252cf00d0d6ae74b35125ab3220273cbeffa7f6bfc68dc35c68a6f1e
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-008
+    summary: 路径提取正则 `_PATH_RE` 支持裸路径/`@path`/反引号路径，需至少一个斜杠或代码扩展名（`cf_user_prompt_hook.py`）
+    text_sha256: 84810934be480fce3f7a9758618ca2d5e3448b51349513d9798e448d6e4915a3
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-009
+    summary: 测试 fixture 模式：`_make_project() + tempfile.TemporaryDirectory() + mock
+      stdin/stdout`（tests/test_cf_*.py）
+    text_sha256: 6edab46112eb211ee3ca46805091abff5f0c46a3b5eaca2b77fc4ab5538cf472
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-010
+    summary: 测试取 fixture 数据按名称选择而非列表索引，结构扩展不连带断（test_hook_command_robustness::_command_for）
+    text_sha256: 6db937b1e84c2278c3dc3d9feef51c5644f4af6c315eeeb0c6c4cfbdc734400a
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-011
+    summary: TASK 段落解析唯一权威是 `cf_task_doc.parse_task_document`；其他模块不得自写 `^## TASK-`
+      正则。Checklist 中的场景 ID 必须属于该 TASK 的 `Acceptance-Refs`；`S-01~04` 区间要先展开；plan quality
+      报 checklist mismatch。
+    text_sha256: 770c7af3ac082711fdf6ab59cc99deeea08f5170da5a55627e08a32b8dd085e5
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-scripts-012
+    summary: 新增 `tests/*.py` 必须自带 `SCRIPTS = .../src/core/code-flow/scripts; sys.path.insert(0,
+      str(SCRIPTS))`，不得依赖其他测试模块的 `sys.path` 副作用。
+    text_sha256: dfce8f3a3e746c2c1cd03b17ad30cc81860fa390ef498d766cc3999cdea7848d
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []

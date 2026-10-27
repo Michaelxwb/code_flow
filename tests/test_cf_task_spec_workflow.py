@@ -351,10 +351,17 @@ def test_plan_gate_accepts_component_and_contract_layers(tmp_path: Path) -> None
 
 
 def test_plan_workflow_requires_spec_refs_verifier_and_unique_owner() -> None:
-    command = (ROOT / "src/adapters/claude/commands/cf-task/plan.md").read_text(encoding="utf-8")
-    skill = (ROOT / "src/adapters/codex/skills/cf-task-plan/SKILL.md").read_text(encoding="utf-8")
-    for text in (command, skill):
+    paths = (
+        "src/adapters/claude/commands/cf-task/plan.md",
+        "src/adapters/codex/skills/cf-task-plan/SKILL.md",
+        "src/adapters/costrict/commands/cf-task/plan.md",
+        "src/adapters/opencode/commands/cf-task/plan.md",
+    )
+    for path in paths:
+        text = (ROOT / path).read_text(encoding="utf-8")
         assert "Spec-Refs" in text
+        assert "Rule-Owner-Refs" in text
+        assert "整个任务文件" in text
         assert "有且仅有一个责任 TASK" in text
         assert "verifier_ref" in text
         assert "--stage plan" in text

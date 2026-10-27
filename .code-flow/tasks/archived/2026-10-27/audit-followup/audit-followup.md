@@ -1,6 +1,6 @@
 # Tasks: Audit Follow-up
 
-- **Source**: docs/codebase-consolidation-audit.md
+- **Source**: codebase-consolidation-audit.md
 - **Created**: 2026-10-27
 - **Updated**: 2026-10-27
 
@@ -27,16 +27,16 @@
 
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 | 优先级 | 执行方式 | 环境 | 输入 | E2E理由 | 触发路径 | 冒烟 |
 |--------|---------|---------|-------------|---------|------|---------|--------|---------|------|------|--------|---------|------|
-| S-01 | docs/codebase-consolidation-audit.md#A2 | unit | 真实 `cf_task_doc` 解析器 + 临时 TASK 文档 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_cf_injection_version.py","tests/test_runtime_consolidation.py"] | P1 | auto | none | tests/** | - | - | no |
-| S-02 | docs/codebase-consolidation-audit.md#A2 | unit | 真实 AST 导入图 + 双副本 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_runtime_consolidation.py::test_private_symbol_guard","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/** | - | - | no |
-| S-03 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + manifest 提取 | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_acceptance_manifest.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-04 | docs/codebase-consolidation-audit.md#A4 | integration | 真实 manifest 锁定/校验 + 临时需求目录 | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_cf_acceptance_manifest.py","tests/test_acceptance_contract_hardening.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-05 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + Context 文件 | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_spec_context.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-06 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 active marker + spec-context.yml + hook 子进程 | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_cf_workflow_service.py","tests/test_cf_spec_context.py","tests/test_cf_user_prompt_hook.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-07 | docs/codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + SCC 计算 | TASK-004 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-08 | docs/codebase-consolidation-audit.md#A3 | system | 真实 npm pack + node CLI/init/migrate | TASK-005 | verified | ["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"] | P2 | auto | none | tests/** | - | - | no |
-| S-09 | docs/codebase-consolidation-audit.md#A7 | integration | 真实 adapters 文件 + 归一化 parity | TASK-006 | verified | ["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"] | P2 | auto | none | tests/** | - | - | no |
-| S-10 | docs/codebase-consolidation-audit.md#A8 | integration | 真实 CLI 安装 + runner fixture 矩阵 | TASK-007 | verified | ["python3","-m","pytest","-q","tests/test_cli_spec_workflow.py","tests/test_cf_acceptance_runner.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-01 | codebase-consolidation-audit.md#A2 | unit | 真实 `cf_task_doc` 解析器 + 临时 TASK 文档 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_cf_injection_version.py","tests/test_runtime_consolidation.py"] | P1 | auto | none | tests/** | - | - | no |
+| S-02 | codebase-consolidation-audit.md#A2 | unit | 真实 AST 导入图 + 双副本 | TASK-001 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_runtime_consolidation.py::test_private_symbol_guard","tests/test_runtime_consolidation.py::test_allowlist_ratchet"] | P1 | auto | none | tests/** | - | - | no |
+| S-03 | codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + manifest 提取 | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_acceptance_manifest.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-04 | codebase-consolidation-audit.md#A4 | integration | 真实 manifest 锁定/校验 + 临时需求目录 | TASK-002 | verified | ["python3","-m","pytest","-q","tests/test_cf_acceptance_manifest.py","tests/test_acceptance_contract_hardening.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-05 | codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + Context 文件 | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py::test_dependency_direction","tests/test_cf_spec_context.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-06 | codebase-consolidation-audit.md#A8 | integration | 真实 active marker + spec-context.yml + hook 子进程 | TASK-003 | verified | ["python3","-m","pytest","-q","tests/test_cf_workflow_service.py","tests/test_cf_spec_context.py","tests/test_cf_user_prompt_hook.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-07 | codebase-consolidation-audit.md#A4 | unit | 真实 AST 导入图 + SCC 计算 | TASK-004 | verified | ["python3","-m","pytest","-q","tests/test_runtime_consolidation.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-08 | codebase-consolidation-audit.md#A3 | system | 真实 npm pack + node CLI/init/migrate | TASK-005 | verified | ["bash","-lc","python3 -m pytest -q tests/test_runtime_consolidation.py && node tests/test_spec_workflow_migrate.js"] | P2 | auto | none | tests/** | - | - | no |
+| S-09 | codebase-consolidation-audit.md#A7 | integration | 真实 adapters 文件 + 归一化 parity | TASK-006 | verified | ["python3","-m","pytest","-q","tests/test_adapter_parity.py","tests/test_spec_workflow_templates.py"] | P2 | auto | none | tests/** | - | - | no |
+| S-10 | codebase-consolidation-audit.md#A8 | integration | 真实 CLI 安装 + runner fixture 矩阵 | TASK-007 | verified | ["python3","-m","pytest","-q","tests/test_cli_spec_workflow.py","tests/test_cf_acceptance_runner.py"] | P2 | auto | none | tests/** | - | - | no |
 
 > 全部场景为工具链内部契约验证，不涉及浏览器，不声明 E2E。A4 的收益指标是 batch-4 边清零后 16 模块 SCC 缩到不超过 7 模块；不承诺一次消除剩余编排环。
 
@@ -54,7 +54,7 @@
 - **Status**: verified
 - **Priority**: P1
 - **Depends**:
-- **Source**: docs/codebase-consolidation-audit.md#A2, docs/codebase-consolidation-audit.md#A4
+- **Source**: codebase-consolidation-audit.md#A2, codebase-consolidation-audit.md#A4
 - **Spec-Refs**: scripts-code-standards#RULE-scripts-canonical-parity-001, scripts-code-standards#RULE-scripts-no-print-debug-001
 - **Acceptance-Refs**: S-01, S-02
 - **Estimate**: 0.5d
@@ -101,6 +101,8 @@
 - S-02: verified — automated command passed; run_id=45b89e76982d41e087e2f53c5d16fa37 (confirmed_by: runner)
 - S-01: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
 - S-02: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=89844bd160f441bc8fc321a7bd683074 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=89844bd160f441bc8fc321a7bd683074 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -114,7 +116,7 @@
 - **Status**: verified
 - **Priority**: P2
 - **Depends**:
-- **Source**: docs/codebase-consolidation-audit.md#A4
+- **Source**: codebase-consolidation-audit.md#A4
 - **Spec-Refs**: scripts-code-standards#RULE-scripts-no-bare-except-001
 - **Acceptance-Refs**: S-03, S-04
 - **Estimate**: 1.5d
@@ -160,6 +162,8 @@
 - S-04: verified — automated command passed; run_id=b855836d026a4e3d960686fb78af0f44 (confirmed_by: runner)
 - S-03: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
 - S-04: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=89844bd160f441bc8fc321a7bd683074 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=89844bd160f441bc8fc321a7bd683074 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -173,7 +177,7 @@
 - **Status**: verified
 - **Priority**: P2
 - **Depends**: TASK-002
-- **Source**: docs/codebase-consolidation-audit.md#A4, docs/codebase-consolidation-audit.md#A8
+- **Source**: codebase-consolidation-audit.md#A4, codebase-consolidation-audit.md#A8
 - **Spec-Refs**: scripts-code-standards#RULE-scripts-context-gate-001, scripts-code-standards#RULE-scripts-hook-protocol-001
 - **Acceptance-Refs**: S-05, S-06
 - **Estimate**: 2d
@@ -218,6 +222,8 @@
 - S-06: verified — automated command passed; run_id=d2e6897186584874a8c2b6ba22a71f1f (confirmed_by: runner)
 - S-05: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
 - S-06: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=89844bd160f441bc8fc321a7bd683074 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=89844bd160f441bc8fc321a7bd683074 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -231,7 +237,7 @@
 - **Status**: verified
 - **Priority**: P2
 - **Depends**: TASK-001, TASK-002, TASK-003
-- **Source**: docs/codebase-consolidation-audit.md#A4
+- **Source**: codebase-consolidation-audit.md#A4
 - **Spec-Refs**: N/A
 - **Acceptance-Refs**: S-07
 - **Estimate**: 0.5d
@@ -263,6 +269,7 @@ TASK-001/002/003 完成后，batch 3 私有符号与 batch 4 反向边应已清�
 - S-07: verified — automated command passed; run_id=1e8ebdc13cd641a3bd6c8188179726fc (confirmed_by: runner)
 - S-07: verified — automated command passed; run_id=5e8516a9b1074061b07005c00ac5bb41 (confirmed_by: runner)
 - S-07: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=89844bd160f441bc8fc321a7bd683074 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -276,7 +283,7 @@ TASK-001/002/003 完成后，batch 3 私有符号与 batch 4 反向边应已清�
 - **Status**: verified
 - **Priority**: P2
 - **Depends**:
-- **Source**: docs/codebase-consolidation-audit.md#A3
+- **Source**: codebase-consolidation-audit.md#A3
 - **Spec-Refs**: cli-code-standards#RULE-cli-migration-transaction-001, cli-code-standards#RULE-cli-user-content-preservation-001
 - **Acceptance-Refs**: S-08
 - **Estimate**: 0.5d
@@ -314,6 +321,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 - S-08: verified — automated command passed; run_id=f98c9dffe23c49bbb7788c43953b7bb5 (confirmed_by: runner)
 - S-08: verified — automated command passed; run_id=f1aff932cbf44437be1c17fc0ea27522 (confirmed_by: runner)
 - S-08: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=89844bd160f441bc8fc321a7bd683074 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -327,7 +335,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 - **Status**: verified
 - **Priority**: P2
 - **Depends**:
-- **Source**: docs/codebase-consolidation-audit.md#A7
+- **Source**: codebase-consolidation-audit.md#A7
 - **Spec-Refs**: cli-code-standards#RULE-cli-platform-parity-001, cli-code-standards#RULE-cli-dependency-allowlist-001
 - **Acceptance-Refs**: S-09
 - **Estimate**: 2d
@@ -365,6 +373,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 - S-09: verified — automated command passed; run_id=273691944ca34433affe59a2d57b922a (confirmed_by: runner)
 - S-09: verified — automated command passed; run_id=edf1713c26194d67b21a15d9db9f0815 (confirmed_by: runner)
 - S-09: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=89844bd160f441bc8fc321a7bd683074 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -378,7 +387,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 - **Status**: verified
 - **Priority**: P2
 - **Depends**: TASK-005
-- **Source**: docs/codebase-consolidation-audit.md#A8
+- **Source**: codebase-consolidation-audit.md#A8
 - **Spec-Refs**: cli-code-standards#RULE-cli-hook-guard-001, cli-code-standards#RULE-cli-opencode-native-001
 - **Acceptance-Refs**: S-10
 - **Estimate**: 2d
@@ -415,6 +424,7 @@ A3 的安装缺项已行为修复，但源模板、`src/cli.js` 的 `RUNTIME_GIT
 - S-10: verified — automated command passed; run_id=0e189596c87049e6ae27f530c19a6cf4 (confirmed_by: runner)
 - S-10: verified — automated command passed; run_id=23d96fa9b0be41889fec7b5ce5b48778 (confirmed_by: runner)
 - S-10: verified — automated command passed; run_id=abffdb14cbb3471a8e794c3bc5fad7da (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=89844bd160f441bc8fc321a7bd683074 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)

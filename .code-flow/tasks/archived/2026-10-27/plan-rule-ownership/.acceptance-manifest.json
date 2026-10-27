@@ -1,0 +1,1479 @@
+{
+  "schema": 3,
+  "task_file": "plan-rule-ownership.md",
+  "task_sha256": "3c43a45b389e3f816f4a63af1be498e8d78a8c34ee177c798265553a71bd9cd7",
+  "checks": [
+    {
+      "id": "CHK-0c5a475a2a34",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "--runxfail",
+        "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": false,
+      "profile": "changed",
+      "inputs": [
+        "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+        "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+        "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+        "tests/test_plan_rule_ownership_plan.py"
+      ],
+      "preflight": [],
+      "paths": [],
+      "suite": "integration",
+      "collect": {
+        "argv": [
+          "python3",
+          "-m",
+          "pytest",
+          "--runxfail",
+          "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner",
+          "--collect-only",
+          "--verbosity=-1"
+        ],
+        "format": "pytest",
+        "timeout": 10
+      },
+      "test_ids": [
+        "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+      ],
+      "markers": []
+    },
+    {
+      "id": "CHK-8ea3127662db",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "--runxfail",
+        "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": false,
+      "profile": "changed",
+      "inputs": [
+        "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+        "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+        "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+        "tests/test_plan_rule_ownership_plan.py"
+      ],
+      "preflight": [],
+      "paths": [],
+      "suite": "unit",
+      "collect": {
+        "argv": [
+          "python3",
+          "-m",
+          "pytest",
+          "--runxfail",
+          "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed",
+          "--collect-only",
+          "--verbosity=-1"
+        ],
+        "format": "pytest",
+        "timeout": 10
+      },
+      "test_ids": [
+        "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+      ],
+      "markers": []
+    },
+    {
+      "id": "CHK-c82d0b4af802",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "--runxfail",
+        "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "env": "none",
+      "env_scope": "shared",
+      "parallel_safe": false,
+      "profile": "changed",
+      "inputs": [
+        "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+        "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+        "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+        "tests/test_plan_rule_ownership_plan.py"
+      ],
+      "preflight": [],
+      "paths": [],
+      "suite": "integration",
+      "collect": {
+        "argv": [
+          "python3",
+          "-m",
+          "pytest",
+          "--runxfail",
+          "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible",
+          "--collect-only",
+          "--verbosity=-1"
+        ],
+        "format": "pytest",
+        "timeout": 10
+      },
+      "test_ids": [
+        "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+      ],
+      "markers": []
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "S-01",
+      "source": "plan-rule-ownership.design.md#2.4 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 TASK 文档、Spec Context、Plan Gate 与 Session 投影",
+      "owner": "TASK-001",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "--runxfail",
+        "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "priority": "P1",
+      "exec": "auto",
+      "env": "none",
+      "inputs": [
+        "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+        "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+        "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+        "tests/test_plan_rule_ownership_plan.py"
+      ],
+      "smoke": false,
+      "components": [
+        "codeflow",
+        "pytest"
+      ],
+      "steps": [
+        "校验计划并分别生成两个 TASK 的 Session 投影"
+      ],
+      "expected": [
+        "Plan Gate 通过且两个投影均包含该 Rule，唯一 owner 的 verifier 与验收责任完整"
+      ],
+      "expected_refs": [
+        {
+          "expected": 1,
+          "steps": [
+            1
+          ]
+        }
+      ],
+      "preconditions": [
+        "两个 TASK 引用同一 required Rule，只有一个显式声明 Rule-Owner-Refs"
+      ],
+      "features": [
+        "FEAT-01"
+      ],
+      "check": "CHK-0c5a475a2a34",
+      "checks": [
+        "CHK-0c5a475a2a34"
+      ],
+      "revision": 2,
+      "evidence": {
+        "id": "S-01",
+        "status": "passed",
+        "check_ids": [
+          "CHK-0c5a475a2a34"
+        ],
+        "check_reused": {
+          "CHK-0c5a475a2a34": false
+        },
+        "check_results": {
+          "CHK-0c5a475a2a34": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-0c5a475a2a34": false
+        },
+        "check_configs": {
+          "CHK-0c5a475a2a34": {
+            "id": "CHK-0c5a475a2a34",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+              "tests/test_plan_rule_ownership_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-0c5a475a2a34": "6207a8cc87f4b369cef7d7f928649bb9f558458def85d8d341088e09b37159ca"
+        },
+        "input_hash": "86e9bb0e33b60b98106c5e5f1649baf4770e94afe885d79b39539be970370f26",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-0c5a475a2a34",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+            "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+            "tests/test_plan_rule_ownership_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "integration",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+          ],
+          "markers": []
+        },
+        "revision": 2,
+        "run_id": "877dfdf1f69649adaefba32fe8cf563b",
+        "executed_at": "2026-10-27T06:14:49.979587+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "86e9bb0e33b60b98106c5e5f1649baf4770e94afe885d79b39539be970370f26"
+      },
+      "runs": [
+        {
+          "id": "S-01",
+          "status": "passed",
+          "check_ids": [
+            "CHK-0c5a475a2a34"
+          ],
+          "check_reused": {
+            "CHK-0c5a475a2a34": false
+          },
+          "check_results": {
+            "CHK-0c5a475a2a34": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-0c5a475a2a34": false
+          },
+          "check_configs": {
+            "CHK-0c5a475a2a34": {
+              "id": "CHK-0c5a475a2a34",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+                "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+                "tests/test_plan_rule_ownership_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+              ],
+              "markers": []
+            }
+          },
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-0c5a475a2a34",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+              "tests/test_plan_rule_ownership_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "a68efdc73a3848b5af75214c14078454",
+          "executed_at": "2026-10-27T06:13:15.680763+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-01",
+          "status": "passed",
+          "check_ids": [
+            "CHK-0c5a475a2a34"
+          ],
+          "check_reused": {
+            "CHK-0c5a475a2a34": false
+          },
+          "check_results": {
+            "CHK-0c5a475a2a34": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-0c5a475a2a34": false
+          },
+          "check_configs": {
+            "CHK-0c5a475a2a34": {
+              "id": "CHK-0c5a475a2a34",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+                "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+                "tests/test_plan_rule_ownership_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-0c5a475a2a34": "6207a8cc87f4b369cef7d7f928649bb9f558458def85d8d341088e09b37159ca"
+          },
+          "input_hash": "86e9bb0e33b60b98106c5e5f1649baf4770e94afe885d79b39539be970370f26",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-0c5a475a2a34",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+              "tests/test_plan_rule_ownership_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+            ],
+            "markers": []
+          },
+          "revision": 2,
+          "run_id": "877dfdf1f69649adaefba32fe8cf563b",
+          "executed_at": "2026-10-27T06:14:49.979587+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_plan_rule_ownership_plan.py::test_s01_shared_rule_references_keep_one_owner"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "86e9bb0e33b60b98106c5e5f1649baf4770e94afe885d79b39539be970370f26"
+        }
+      ]
+    },
+    {
+      "id": "E-01",
+      "source": "plan-rule-ownership.design.md#2.4 验收条件",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "真实 TASK 文档解析与 Plan Gate",
+      "owner": "TASK-001",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "--runxfail",
+        "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "priority": "P1",
+      "exec": "auto",
+      "env": "none",
+      "inputs": [
+        "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+        "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+        "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+        "tests/test_plan_rule_ownership_plan.py"
+      ],
+      "smoke": false,
+      "components": [
+        "codeflow",
+        "pytest"
+      ],
+      "steps": [
+        "逐个执行计划规则覆盖校验"
+      ],
+      "expected": [
+        "三个文档均阻断并给出对应的 owner 诊断"
+      ],
+      "expected_refs": [
+        {
+          "expected": 1,
+          "steps": [
+            1
+          ]
+        }
+      ],
+      "preconditions": [
+        "分别构造无 owner、两个 owner、owner 未引用规则的文档"
+      ],
+      "features": [
+        "FEAT-01"
+      ],
+      "check": "CHK-8ea3127662db",
+      "checks": [
+        "CHK-8ea3127662db"
+      ],
+      "revision": 2,
+      "evidence": {
+        "id": "E-01",
+        "status": "passed",
+        "check_ids": [
+          "CHK-8ea3127662db"
+        ],
+        "check_reused": {
+          "CHK-8ea3127662db": false
+        },
+        "check_results": {
+          "CHK-8ea3127662db": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-8ea3127662db": false
+        },
+        "check_configs": {
+          "CHK-8ea3127662db": {
+            "id": "CHK-8ea3127662db",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+              "tests/test_plan_rule_ownership_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "unit",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-8ea3127662db": "eb0623eec3e14a8008201c97628c6c9a3eb7817fa3d722cd284fcf45c540e095"
+        },
+        "input_hash": "76eea982c96fd636070067655b92118c07d2d20eb97b0850b2cc795d1d4e3a3c",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-8ea3127662db",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+            "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+            "tests/test_plan_rule_ownership_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "unit",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+          ],
+          "markers": []
+        },
+        "revision": 2,
+        "run_id": "877dfdf1f69649adaefba32fe8cf563b",
+        "executed_at": "2026-10-27T06:14:49.979587+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "76eea982c96fd636070067655b92118c07d2d20eb97b0850b2cc795d1d4e3a3c"
+      },
+      "runs": [
+        {
+          "id": "E-01",
+          "status": "passed",
+          "check_ids": [
+            "CHK-8ea3127662db"
+          ],
+          "check_reused": {
+            "CHK-8ea3127662db": false
+          },
+          "check_results": {
+            "CHK-8ea3127662db": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-8ea3127662db": false
+          },
+          "check_configs": {
+            "CHK-8ea3127662db": {
+              "id": "CHK-8ea3127662db",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+                "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+                "tests/test_plan_rule_ownership_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+              ],
+              "markers": []
+            }
+          },
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-8ea3127662db",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+              "tests/test_plan_rule_ownership_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "unit",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "a68efdc73a3848b5af75214c14078454",
+          "executed_at": "2026-10-27T06:13:15.680763+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "E-01",
+          "status": "passed",
+          "check_ids": [
+            "CHK-8ea3127662db"
+          ],
+          "check_reused": {
+            "CHK-8ea3127662db": false
+          },
+          "check_results": {
+            "CHK-8ea3127662db": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-8ea3127662db": false
+          },
+          "check_configs": {
+            "CHK-8ea3127662db": {
+              "id": "CHK-8ea3127662db",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+                "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+                "tests/test_plan_rule_ownership_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-8ea3127662db": "eb0623eec3e14a8008201c97628c6c9a3eb7817fa3d722cd284fcf45c540e095"
+          },
+          "input_hash": "76eea982c96fd636070067655b92118c07d2d20eb97b0850b2cc795d1d4e3a3c",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-8ea3127662db",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+              "tests/test_plan_rule_ownership_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "unit",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+            ],
+            "markers": []
+          },
+          "revision": 2,
+          "run_id": "877dfdf1f69649adaefba32fe8cf563b",
+          "executed_at": "2026-10-27T06:14:49.979587+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_plan_rule_ownership_plan.py::test_e01_missing_and_duplicate_owners_fail_closed"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "76eea982c96fd636070067655b92118c07d2d20eb97b0850b2cc795d1d4e3a3c"
+        }
+      ]
+    },
+    {
+      "id": "S-02",
+      "source": "plan-rule-ownership.design.md#2.4 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "旧格式 TASK 文档、真实 Gate、Session 与 CLI",
+      "owner": "TASK-001",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "--runxfail",
+        "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "priority": "P1",
+      "exec": "auto",
+      "env": "none",
+      "inputs": [
+        "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+        "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+        "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+        "tests/test_plan_rule_ownership_plan.py"
+      ],
+      "smoke": false,
+      "components": [
+        "codeflow",
+        "pytest"
+      ],
+      "steps": [
+        "运行 Gate 和 Session 投影并读取 JSON 结果"
+      ],
+      "expected": [
+        "单引用旧计划通过，多引用无显式 owner 的旧计划阻断，原有投影与 CLI 错误协议保持有效"
+      ],
+      "expected_refs": [
+        {
+          "expected": 1,
+          "steps": [
+            1
+          ]
+        }
+      ],
+      "preconditions": [
+        "旧计划未声明 Rule-Owner-Refs，分别包含单个和多个 Rule 引用"
+      ],
+      "features": [
+        "FEAT-02"
+      ],
+      "check": "CHK-c82d0b4af802",
+      "checks": [
+        "CHK-c82d0b4af802"
+      ],
+      "revision": 2,
+      "evidence": {
+        "id": "S-02",
+        "status": "passed",
+        "check_ids": [
+          "CHK-c82d0b4af802"
+        ],
+        "check_reused": {
+          "CHK-c82d0b4af802": false
+        },
+        "check_results": {
+          "CHK-c82d0b4af802": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-c82d0b4af802": false
+        },
+        "check_configs": {
+          "CHK-c82d0b4af802": {
+            "id": "CHK-c82d0b4af802",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+              "tests/test_plan_rule_ownership_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-c82d0b4af802": "cb9f20757fad7e184b0f7db594e0ce58f55d1f7f82caaa5df74b3f81a2aa9ffd"
+        },
+        "input_hash": "e81b4826e5d25fc884815985ef80bc203600d64175b5ff15b96fb1b5bb5f72f7",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-c82d0b4af802",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+            "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+            "tests/test_plan_rule_ownership_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "integration",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+          ],
+          "markers": []
+        },
+        "revision": 2,
+        "run_id": "877dfdf1f69649adaefba32fe8cf563b",
+        "executed_at": "2026-10-27T06:14:49.979587+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "e81b4826e5d25fc884815985ef80bc203600d64175b5ff15b96fb1b5bb5f72f7"
+      },
+      "runs": [
+        {
+          "id": "S-02",
+          "status": "passed",
+          "check_ids": [
+            "CHK-c82d0b4af802"
+          ],
+          "check_reused": {
+            "CHK-c82d0b4af802": false
+          },
+          "check_results": {
+            "CHK-c82d0b4af802": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-c82d0b4af802": false
+          },
+          "check_configs": {
+            "CHK-c82d0b4af802": {
+              "id": "CHK-c82d0b4af802",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+                "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+                "tests/test_plan_rule_ownership_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+              ],
+              "markers": []
+            }
+          },
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-c82d0b4af802",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+              "tests/test_plan_rule_ownership_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "a68efdc73a3848b5af75214c14078454",
+          "executed_at": "2026-10-27T06:13:15.680763+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-02",
+          "status": "passed",
+          "check_ids": [
+            "CHK-c82d0b4af802"
+          ],
+          "check_reused": {
+            "CHK-c82d0b4af802": false
+          },
+          "check_results": {
+            "CHK-c82d0b4af802": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-c82d0b4af802": false
+          },
+          "check_configs": {
+            "CHK-c82d0b4af802": {
+              "id": "CHK-c82d0b4af802",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+                "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+                "tests/test_plan_rule_ownership_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-c82d0b4af802": "cb9f20757fad7e184b0f7db594e0ce58f55d1f7f82caaa5df74b3f81a2aa9ffd"
+          },
+          "input_hash": "e81b4826e5d25fc884815985ef80bc203600d64175b5ff15b96fb1b5bb5f72f7",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-c82d0b4af802",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "src/core/code-flow/scripts/codeflow/task/cf_task_doc.py",
+              "tests/test_plan_rule_ownership_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+            ],
+            "markers": []
+          },
+          "revision": 2,
+          "run_id": "877dfdf1f69649adaefba32fe8cf563b",
+          "executed_at": "2026-10-27T06:14:49.979587+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_plan_rule_ownership_plan.py::test_s02_legacy_plans_and_task_projections_remain_compatible"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "e81b4826e5d25fc884815985ef80bc203600d64175b5ff15b96fb1b5bb5f72f7"
+        }
+      ]
+    }
+  ],
+  "scenarios_file": "plan-rule-ownership.scenarios.md",
+  "e2e_gate": 1,
+  "quality_schema": 2,
+  "registration": {
+    "ok": true,
+    "registered": [
+      "CHK-0c5a475a2a34",
+      "CHK-8ea3127662db",
+      "CHK-c82d0b4af802"
+    ],
+    "errors": []
+  },
+  "relock": {
+    "preserved": [
+      "S-01",
+      "E-01",
+      "S-02"
+    ],
+    "stale": [],
+    "removed": []
+  }
+}

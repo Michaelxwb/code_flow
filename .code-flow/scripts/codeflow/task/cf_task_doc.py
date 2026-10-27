@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Iterator, Mapping, Union
+from typing import Iterator, Mapping, Optional, Union
 
 _HEADING_RE = re.compile(r"^## (TASK-\d+):[ \t]*(.*)$")
 _FIELD_RE = re.compile(r"^- \*\*([^*]+)\*\*:[ \t]*(.*)$")
@@ -90,7 +90,10 @@ def _fields(body: str) -> Mapping[str, str]:
     for line in _unfenced_lines(body):
         match = _FIELD_RE.match(line.rstrip())
         if match is not None:
-            fields.setdefault(match.group(1).strip(), match.group(2).strip())
+            name = match.group(1).strip()
+            if name == "Rule-Owner-Refs" and name in fields:
+                raise TaskDocumentError("duplicate_rule_owner_refs", "重复的 Rule-Owner-Refs 字段")
+            fields.setdefault(name, match.group(2).strip())
     return fields
 
 
@@ -159,3 +162,17 @@ def task_spec_refs(section: Union[TaskSection, str]) -> tuple[str, ...]:
     if unresolved:
         raise ValueError("spec_refs_unresolved: " + ", ".join(unresolved))
     return tuple(item for item in items if item.lower() not in _EMPTY_REF_MARKERS)
+
+
+def task_rule_owner_refs(section: TaskSection) -> Optional[tuple[str, ...]]:
+    """Read explicit plan owners; None means this TASK has no owner field."""
+    raw = section.fields.get("Rule-Owner-Refs")
+    if raw is None:
+        return None
+    items = tuple(item.strip() for item in raw.split(","))
+    if len(items) == 1 and items[0].lower() in _EMPTY_REF_MARKERS:
+        return ()
+    if (not all(re.fullmatch(r"[^\s,#]+#[^\s,#]+", item) for item in items)
+            or len(items) != len(set(items))):
+        raise ValueError("rule_owner_refs_invalid: " + raw)
+    return items

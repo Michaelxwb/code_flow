@@ -1,7 +1,7 @@
 version: 1
 task: audit-followup
 enforcement: required
-updated_at: '2026-10-26T17:54:29.343105+00:00'
+updated_at: '2026-10-27T06:26:05.119974+00:00'
 sources:
 - type: cli
   ref: bind
@@ -36,11 +36,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-dependency-allowlist-001
-          executed_at: '2026-10-26T18:00:43.942154+00:00'
+          executed_at: '2026-10-27T06:24:15.888207+00:00'
           status: verified
           rule_text_sha256: 4c1aa8deb169c45fbbe6c031e79e9c70c02bc24f11a9352233c3521df906ecf1
           artifact_sha256: null
-          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
           result_sha256: 1085c4cab6098edb47d916a3f61807f8941bff345e264feb00b9abd8a1d910cf
           error_code: null
           details:
@@ -51,13 +51,17 @@ bindings:
             - -q
             - tests/test_cli_spec_workflow.py::test_package_manifest_includes_migrator_without_new_dependency
             exit_code: 0
-            stdout_sha256: 4bcefcc9f6c645923b9993ccf73ad92e6b400ca25458ea14e095857fc2131342
-            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '.                                                                        [100%]
 
               1 passed in 0.01s
 
               '
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            stdout_sha256: 4bcefcc9f6c645923b9993ccf73ad92e6b400ca25458ea14e095857fc2131342
+            cache_reused: true
+            scope_files:
+            - package.json
+            - tests/test_cli_spec_workflow.py
       design:
         status: pending
         refs: []
@@ -69,7 +73,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-006
           item_id: TASK-006
-          artifact_sha256: d807eb8044189f5cb1ef715c0a65e7ecde1d93dafbf26fc9bca9171bc63d40a0
+          artifact_sha256: 290dcc46f459c55b6b617e6f3199e17a92a499eb8ce304bc71e8fa7480106e7a
         decision: null
         evidence: []
       review:
@@ -91,11 +95,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-user-content-preservation-001
-          executed_at: '2026-10-26T18:00:43.994907+00:00'
+          executed_at: '2026-10-27T06:24:15.909926+00:00'
           status: verified
           rule_text_sha256: 3ec83172932a908553c5d34024a85047d18bc6782579c371467ae9b1bc2eb320
           artifact_sha256: null
-          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
           result_sha256: b993aeefb614fe0bf53e1d4c9059ce0c76d04eb18efd68f4adbdb2bb9b9737d9
           error_code: null
           details:
@@ -103,8 +107,6 @@ bindings:
             - node
             - tests/test_cli_merge_helpers.js
             exit_code: 0
-            stdout_sha256: f949ebd1c6c270c9d311154b189fccdd6a07acb4095f9d8700be60a0afe5b511
-            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: "Running cli.js merge helper tests...\n  ✓ RUNTIME_GITIGNORE matches\
               \ canonical template\n  ✓ ensureRuntimeGitignore creates/extends managed\
               \ block only\n  ✓ mergeClaudeMd adds missing section\n  ✓ mergeClaudeMd\
@@ -122,6 +124,14 @@ bindings:
               \ is idempotent\n  ✓ mergeOpencodeJson migrates legacy plugin key\n\
               \  ✓ mergeOpencodeJson drops auto-discovered local plugin entry\n  ✓\
               \ mergeOpencodeJson is idempotent\n\nAll 22 tests passed.\n"
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            stdout_sha256: f949ebd1c6c270c9d311154b189fccdd6a07acb4095f9d8700be60a0afe5b511
+            cache_reused: true
+            scope_files:
+            - package.json
+            - src/cli.js
+            - src/core/code-flow/.gitignore
+            - tests/test_cli_merge_helpers.js
       design:
         status: pending
         refs: []
@@ -133,7 +143,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: d807eb8044189f5cb1ef715c0a65e7ecde1d93dafbf26fc9bca9171bc63d40a0
+          artifact_sha256: 290dcc46f459c55b6b617e6f3199e17a92a499eb8ce304bc71e8fa7480106e7a
         decision: null
         evidence: []
       review:
@@ -155,12 +165,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-platform-parity-001
-          executed_at: '2026-10-26T18:00:44.402762+00:00'
+          executed_at: '2026-10-27T06:24:16.356961+00:00'
           status: verified
           rule_text_sha256: 5619e50ffbd3ca509a1c8ae8527ed86377cb9daa67ce92a5ee18b84c30e9407d
           artifact_sha256: null
-          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
-          result_sha256: c04095652339aeb3c4b2a85a99001464ed5fdfde8df37d51c8c605df486c13ac
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
+          result_sha256: 54cf3f504ab10ad212ae381b164b19da4d56f4b5535e6773515442d3a6536d5b
           error_code: null
           details:
             argv:
@@ -170,11 +180,11 @@ bindings:
             - -q
             - tests/test_adapter_parity.py
             exit_code: 0
-            stdout_sha256: 8478e6b437f3d9b065e15424a141410ceb40ad20fedf65c2732406d7c7f846c5
+            stdout_sha256: 9fc0ffbd15caeeeb6e4680bc61e4d2455e5b94ba7ff480ea350ee0532e1f74a9
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '.............                                                            [100%]
 
-              13 passed in 0.26s
+              13 passed in 0.31s
 
               '
       design:
@@ -188,7 +198,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-006
           item_id: TASK-006
-          artifact_sha256: d807eb8044189f5cb1ef715c0a65e7ecde1d93dafbf26fc9bca9171bc63d40a0
+          artifact_sha256: 290dcc46f459c55b6b617e6f3199e17a92a499eb8ce304bc71e8fa7480106e7a
         decision: null
         evidence: []
       review:
@@ -210,12 +220,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-hook-guard-001
-          executed_at: '2026-10-26T18:00:45.071254+00:00'
+          executed_at: '2026-10-27T06:24:17.119139+00:00'
           status: verified
           rule_text_sha256: fb5556b1ed34d8b4f0bafa4d0246dcc74a26f4191445f0b583b6a2ee389cff58
           artifact_sha256: null
-          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
-          result_sha256: a4bb98c3241680b2d0f8926147ba670836ae53dd2b41889416f486409cfaf45c
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
+          result_sha256: 68915836acd32d76f89cc9e9a779402fe344b0e0d5894fe79b264fe6a3f7bf02
           error_code: null
           details:
             argv:
@@ -225,11 +235,11 @@ bindings:
             - -q
             - tests/test_hook_command_robustness.py
             exit_code: 0
-            stdout_sha256: 3230560ca605e62ec8d6ead7a7bd614c50705fdc6ae66aa82ba19e68eb84f45a
+            stdout_sha256: 29fe33603395be7dd07a4febbd5aa11392a8d6b257cded3e92de8342a7d585f2
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '......                                                                   [100%]
 
-              6 passed in 0.55s
+              6 passed in 0.63s
 
               '
       design:
@@ -243,7 +253,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-007
           item_id: TASK-007
-          artifact_sha256: d807eb8044189f5cb1ef715c0a65e7ecde1d93dafbf26fc9bca9171bc63d40a0
+          artifact_sha256: 290dcc46f459c55b6b617e6f3199e17a92a499eb8ce304bc71e8fa7480106e7a
         decision: null
         evidence: []
       review:
@@ -265,45 +275,45 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-migration-transaction-001
-          executed_at: '2026-10-26T18:00:46.894026+00:00'
+          executed_at: '2026-10-27T06:24:19.164840+00:00'
           status: verified
           rule_text_sha256: 13e2e21ae176534272ac8e78b8d6a74f18b0b32eac928476ca142c25e3367813
           artifact_sha256: null
-          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
-          result_sha256: da22ccd2ebfc6de05f9b25cd90b93351a7b83840ac944a53dce4b89b684185f3
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
+          result_sha256: 05149179c742c0137f2508ef554e005a9d1b7cfd39297c285d04640e17f39403
           error_code: null
           details:
             argv:
             - node
             - tests/test_spec_workflow_migrate.js
             exit_code: 0
-            stdout_sha256: 3c33a7081e5c7ef414ca8dc6bbeac6efc1b6ce6eec8c0ca947f2cab1c61a7a69
+            stdout_sha256: b845276063f1de0b423732b4f9a04f4c20e5cbe975de0f347722933b45588f25
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '✔ B-08 dry-run is a single in-memory preview with zero writes
-              (55.902833ms)
+              (69.811542ms)
 
               ✔ prepare creates bound plan, byte backup, empty staging and journal
-              (60.124583ms)
+              (64.166292ms)
 
-              ✔ S-12 apply is idempotent and writes version last (207.116333ms)
+              ✔ S-12 apply is idempotent and writes version last (241.658541ms)
 
               ✔ S-08 migration derives managed ignore block from the runtime declaration
-              (193.683958ms)
+              (203.842333ms)
 
               ✔ S-08 migration appends the declared block when no managed block exists
-              (191.722625ms)
+              (204.822209ms)
 
-              ✔ E-08 injected rename failure restores all original bytes (335.236084ms)
+              ✔ E-08 injected rename failure restores all original bytes (403.091625ms)
 
               ✔ B-05 interruption before version is completed from proven target hashes
-              (204.592459ms)
+              (214.202416ms)
 
               ✔ EXDEV fails closed and rolls back without copy-delete commit fallback
-              (168.137292ms)
+              (198.146667ms)
 
-              ✔ re-apply after rollback succeeds (staging is reset) (306.009ms)
+              ✔ re-apply after rollback succeeds (staging is reset) (335.510208ms)
 
-              ✔ apply refuses a plan whose project_root differs from cwd (57.07425ms)
+              ✔ apply refuses a plan whose project_root differs from cwd (59.507375ms)
 
               ℹ tests 10
 
@@ -319,7 +329,7 @@ bindings:
 
               ℹ todo 0
 
-              ℹ duration_ms 1782.384417
+              ℹ duration_ms 1997.870125
 
               '
       design:
@@ -333,7 +343,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: d807eb8044189f5cb1ef715c0a65e7ecde1d93dafbf26fc9bca9171bc63d40a0
+          artifact_sha256: 290dcc46f459c55b6b617e6f3199e17a92a499eb8ce304bc71e8fa7480106e7a
         decision: null
         evidence: []
       review:
@@ -356,11 +366,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: cli-code-standards#RULE-cli-opencode-native-001
-          executed_at: '2026-10-26T18:00:48.536197+00:00'
+          executed_at: '2026-10-27T06:24:20.811046+00:00'
           status: verified
           rule_text_sha256: 29b031afcee65ae2b761249d058a11ddaeb49ede127bee8962c28f0c8b839084
           artifact_sha256: null
-          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
           result_sha256: 3cd1ee3e105ef106eaf349c7f44dbe753eef65fb606a2a7258e3beef3f4d9ba5
           error_code: null
           details:
@@ -384,7 +394,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-007
           item_id: TASK-007
-          artifact_sha256: d807eb8044189f5cb1ef715c0a65e7ecde1d93dafbf26fc9bca9171bc63d40a0
+          artifact_sha256: 290dcc46f459c55b6b617e6f3199e17a92a499eb8ce304bc71e8fa7480106e7a
         decision: null
         evidence: []
       review:
@@ -614,11 +624,11 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
-          executed_at: '2026-10-26T18:01:11.860722+00:00'
+          executed_at: '2026-10-27T06:24:49.807520+00:00'
           status: verified
           rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
           artifact_sha256: null
-          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
           result_sha256: 364f153a289a4fd1a234ecd2f1d03cda175d67d6ba3d9223b3afbe1331a92956
           error_code: null
           details:
@@ -635,7 +645,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: d807eb8044189f5cb1ef715c0a65e7ecde1d93dafbf26fc9bca9171bc63d40a0
+          artifact_sha256: 290dcc46f459c55b6b617e6f3199e17a92a499eb8ce304bc71e8fa7480106e7a
         decision: null
         evidence: []
       review:
@@ -657,15 +667,15 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
-          executed_at: '2026-10-26T18:01:11.899606+00:00'
+          executed_at: '2026-10-27T06:24:49.848529+00:00'
           status: verified
           rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
           artifact_sha256: null
-          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
-          result_sha256: a2f48e9a5d844c4ac164b1d7b597fffb9d05d5dbe189583b9afb2d31ff62b15f
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
+          result_sha256: 9d65284a34328523843fd02f6769207b327a723d8c40c58fa7eeeab8e47d9170
           error_code: null
           details:
-            checked_files: 289
+            checked_files: 291
             violations: []
       design:
         status: pending
@@ -678,7 +688,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: d807eb8044189f5cb1ef715c0a65e7ecde1d93dafbf26fc9bca9171bc63d40a0
+          artifact_sha256: 290dcc46f459c55b6b617e6f3199e17a92a499eb8ce304bc71e8fa7480106e7a
         decision: null
         evidence: []
       review:
@@ -700,12 +710,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
-          executed_at: '2026-10-26T18:01:01.227638+00:00'
+          executed_at: '2026-10-27T06:24:37.315620+00:00'
           status: verified
           rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
           artifact_sha256: null
-          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
-          result_sha256: 14a6be73dcf7ae381cc179f3c7acd66f893332c3d2a370918ff3d57a9e275c70
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
+          result_sha256: e83b3a74225462947ed9227e4343e054535e080bb14b1cb7b7cf74d7df80926c
           error_code: null
           details:
             argv:
@@ -720,14 +730,14 @@ bindings:
             - tests/test_opencode_native.py
             - tests/test_runtime_contract.py
             exit_code: 0
-            stdout_sha256: de409cb0bd454eeca46356e101e453103d9726d1df1e2912a52e0fc12793f935
+            stdout_sha256: 26b47c440ba4414e776424b235b00583649bb7026767903ffd873a785340bf5c
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '........................................................................
               [ 94%]
 
               ....                                                                     [100%]
 
-              76 passed in 12.21s
+              76 passed in 13.33s
 
               '
       design:
@@ -741,7 +751,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: d807eb8044189f5cb1ef715c0a65e7ecde1d93dafbf26fc9bca9171bc63d40a0
+          artifact_sha256: 290dcc46f459c55b6b617e6f3199e17a92a499eb8ce304bc71e8fa7480106e7a
         decision: null
         evidence: []
       review:
@@ -763,12 +773,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
-          executed_at: '2026-10-26T18:01:11.045693+00:00'
+          executed_at: '2026-10-27T06:24:48.873113+00:00'
           status: verified
           rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
           artifact_sha256: null
-          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
-          result_sha256: 082eeca8b767e8538a69a3aecdb19b85404b4045cd89adbeb7d7d1e3403d8924
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
+          result_sha256: 2f48686ba0b90d06ff048c24436dd7081c1e9edf57aabf61e57dbf9885cca36c
           error_code: null
           details:
             argv:
@@ -780,11 +790,11 @@ bindings:
             - tests/test_cf_spec_gate.py
             - tests/test_cf_task_runtime.py
             exit_code: 0
-            stdout_sha256: c3b64fbd34c1a656005baf03a07582022fe67ae8c87b372ca4d7eec20ae46335
+            stdout_sha256: 7dc7705d21e44031c2f6e9131c24a8dc90dcb6186c7c1710ad059d530d36e820
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '..................................................................       [100%]
 
-              66 passed in 7.15s
+              66 passed in 11.37s
 
               '
       design:
@@ -798,7 +808,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: d807eb8044189f5cb1ef715c0a65e7ecde1d93dafbf26fc9bca9171bc63d40a0
+          artifact_sha256: 290dcc46f459c55b6b617e6f3199e17a92a499eb8ce304bc71e8fa7480106e7a
         decision: null
         evidence: []
       review:
@@ -820,12 +830,12 @@ bindings:
         decision: null
         evidence:
         - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
-          executed_at: '2026-10-26T18:01:11.852361+00:00'
+          executed_at: '2026-10-27T06:24:49.797691+00:00'
           status: verified
           rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
           artifact_sha256: null
-          diff_sha256: head:474e14d0adaf057edc6e543ecd4ce4ade9d12ebd
-          result_sha256: 2f2246d6d50190ecdc55752fc68cbe33e9bbf516baef567e4465e19e7eb30456
+          diff_sha256: head:d7e83c9ac05346708c4710014fa1e20a9433e888
+          result_sha256: 23b6360d2ac2f9e30ad64e823d2a5d10ecd35d07311518286bf8085a3625e34c
           error_code: null
           details:
             argv:
@@ -837,11 +847,11 @@ bindings:
             - tests/test_adapter_parity.py
             - tests/test_spec_workflow_residue.py
             exit_code: 0
-            stdout_sha256: cc6a6b7aeb9631c966eb1b55954aad276c201bee52c27f4c9a006adec21f7e65
+            stdout_sha256: e038867d0b1827030244e6d95853ffc4901dc0c83bf04534832f9efe574ba172
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: '.............................                                            [100%]
 
-              29 passed in 0.65s
+              29 passed in 0.77s
 
               '
       design:
@@ -855,7 +865,7 @@ bindings:
         - artifact: audit-followup.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: d807eb8044189f5cb1ef715c0a65e7ecde1d93dafbf26fc9bca9171bc63d40a0
+          artifact_sha256: 290dcc46f459c55b6b617e6f3199e17a92a499eb8ce304bc71e8fa7480106e7a
         decision: null
         evidence: []
       review:

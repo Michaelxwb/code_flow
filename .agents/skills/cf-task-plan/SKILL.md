@@ -232,8 +232,8 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 **Spec 责任拆解（硬约束）**：
 
 1. 先执行 Context `refresh`，读取 Design `Spec Compliance Matrix` 与每个 design-stage/plan-stage Rule 的 `verifier_ref`，继承已有 applied refs，禁止重新选择或降级。
-2. 每条 plan-stage required Rule 必须有且仅有一个责任 TASK；该 TASK 的 `Spec-Refs` 写完整 `{spec-id}#{rule-ref}`，Checklist 写具体 verifier 命令/输入，Acceptance Contract 写测试层级、不得 Mock 的真实边界和关键断言。
-3. Rule 可被其他 TASK 引用为依赖，但 Acceptance Coverage 只能有一个最终负责人。E2E 层级**不得降级**；manual 仍仅限经用户确认的外部边界。
+2. 每条 plan-stage required Rule 必须有且仅有一个责任 TASK；该 TASK 的 `Spec-Refs` 和 `Rule-Owner-Refs` 均写完整 `{spec-id}#{rule-ref}`，Checklist 写具体 verifier 命令/输入，Acceptance Contract 写测试层级、不得 Mock 的真实边界和关键断言。
+3. 其他 TASK 在 `Spec-Refs` 中保留实际适用的 Rule，可用 `Rule-Owner-Refs: N/A` 表示不承担计划责任；不能用 `Spec-Refs: N/A` 隐藏适用规则。整个任务文件均没有 `Rule-Owner-Refs` 时，旧计划只允许每条 Rule 有一个引用者。E2E 层级**不得降级**；manual 仍仅限经用户确认的外部边界。
 4. 缺 `verifier_ref`、责任 TASK 为 0/多个、Checklist/Contract 不含 Rule-specific 验证责任时，任务文件只能保留为缺口草稿，不能启动。
 
 ### 4. 生成任务文件方案
@@ -300,6 +300,7 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 - **Depends**:
 - **Source**: docs/xxx.md#§3.1 数据模型(L83-L110)
 - **Spec-Refs**: product-rules#RULE-product-001
+- **Rule-Owner-Refs**: product-rules#RULE-product-001
 - **Acceptance-Refs**: S-01, E-01, S-03, RULE-01
 - **Estimate**: 1.5d
 - **Capability**: <一句话：用户可运行/可演示的结果，例如“导入配置并看到成功摘要”>

@@ -15,7 +15,9 @@ import time
 from typing import IO, Mapping, Optional, Sequence
 
 from codeflow.cli.cf_spec_context import Decision, RuleBinding, RuleStageStatus, SpecBinding, SpecContext, load_context
-from codeflow.task.cf_task_doc import TaskDocumentError, parse_task_document
+from codeflow.task.cf_task_doc import (
+    TaskDocumentError, TaskSection, parse_task_document, task_rule_owner_refs, task_spec_refs,
+)
 from codeflow.core.cf_core import phase_timing
 
 
@@ -213,24 +215,71 @@ def validate_stage(
     return GateResult("block" if errors else "pass", tuple(errors), tuple(warnings), refs)
 
 
-def _task_sections(text: str) -> Mapping[str, str]:
-    return {task.id: task.body for task in parse_task_document(text).tasks}
+def _task_sections(text: str) -> Mapping[str, TaskSection]:
+    return {task.id: task for task in parse_task_document(text).tasks}
 
 
 def _plan_issue(code: str, binding: SpecBinding, rule: RuleBinding, message: str) -> GateIssue:
     return GateIssue(code, binding.spec_id, rule.ref, "plan", message)
 
 
+def _task_plan_issue(code: str, task: TaskSection, ref: str, message: str) -> GateIssue:
+    spec_id, _, rule_ref = ref.partition("#")
+    return GateIssue(code, spec_id, rule_ref, "plan", f"{task.id}: {message}")
+
+
+def _plan_task_refs(task: TaskSection, known: set[str]) -> tuple[tuple[str, ...], list[GateIssue]]:
+    try:
+        refs = task_spec_refs(task)
+    except ValueError as exc:
+        return (), [_task_plan_issue("plan_spec_refs_invalid", task, "", str(exc))]
+    issues = [_task_plan_issue("plan_spec_ref_unknown", task, ref, f"未绑定的 Spec-Ref: {ref}")
+              for ref in refs if ref not in known]
+    return refs, issues
+
+
+def _plan_task_owners(task: TaskSection, refs: tuple[str, ...], known: set[str]) -> tuple[tuple[str, ...], list[GateIssue]]:
+    try:
+        declared = task_rule_owner_refs(task) or ()
+    except ValueError as exc:
+        return (), [_task_plan_issue("plan_owner_refs_invalid", task, "", str(exc))]
+    owners: list[str] = []
+    issues: list[GateIssue] = []
+    for ref in declared:
+        if ref not in known:
+            issues.append(_task_plan_issue("plan_owner_ref_unknown", task, ref, f"未绑定的 owner Rule: {ref}"))
+        elif ref not in refs:
+            issues.append(_task_plan_issue("plan_owner_not_referenced", task, ref, f"owner 未引用 Rule: {ref}"))
+        else:
+            owners.append(ref)
+    return tuple(owners), issues
+
+
+def _plan_owners(sections: Mapping[str, TaskSection], context: SpecContext) -> tuple[dict[str, tuple[str, ...]], list[GateIssue]]:
+    known = {f"{binding.spec_id}#{rule.ref}" for binding in context.bindings for rule in binding.rules}
+    owners: dict[str, list[str]] = {}
+    issues: list[GateIssue] = []
+    for task in sections.values():
+        refs, ref_issues = _plan_task_refs(task, known)
+        declared, owner_issues = _plan_task_owners(task, refs, known)
+        issues.extend((*ref_issues, *owner_issues))
+        for ref in declared:
+            owners.setdefault(ref, []).append(task.id)
+    return {ref: tuple(tasks) for ref, tasks in owners.items()}, issues
+
+
 def _rule_plan_issues(
-    binding: SpecBinding, rule: RuleBinding, sections: Mapping[str, str]
+    binding: SpecBinding, rule: RuleBinding, sections: Mapping[str, TaskSection],
+    declared_owners: Optional[Mapping[str, tuple[str, ...]]] = None,
 ) -> tuple[GateIssue, ...]:
     full_ref = f"{binding.spec_id}#{rule.ref}"
-    owners = tuple(task for task, section in sections.items() if full_ref in section)
+    owners = (declared_owners.get(full_ref, ()) if declared_owners is not None
+              else tuple(task for task, section in sections.items() if full_ref in section.body))
     if not owners:
         return (_plan_issue("plan_owner_missing", binding, rule, f"{full_ref} 没有责任 TASK"),)
     if len(owners) > 1:
         return (_plan_issue("plan_owner_duplicate", binding, rule, f"{full_ref} 有多个责任 TASK"),)
-    section = sections[owners[0]]
+    section = sections[owners[0]].body
     issues: list[GateIssue] = []
     if rule.verifier_ref == "advisory:none":
         issues.append(_plan_issue("plan_verifier_missing", binding, rule, f"{full_ref} 缺 verifier"))
@@ -257,12 +306,14 @@ def validate_plan_coverage(context: SpecContext, artifact: str,
     except TaskDocumentError as exc:
         issue = GateIssue(exc.code, "", "", "plan", str(exc))
         return GateResult("block", (issue,), (), ())
-    errors: list[GateIssue] = []
+    explicit = any("Rule-Owner-Refs" in task.fields for task in sections.values())
+    declared, errors = _plan_owners(sections, context) if explicit else (None, [])
     for binding in context.bindings:
         for rule in binding.rules:
             if rule.enforcement == "required" and "plan" in rule.stage_status:
-                errors.extend(_rule_plan_issues(binding, rule, sections))
-    refs = tuple(sorted(f"{item.spec_id}#{item.rule_ref}" for item in errors))
+                errors.extend(_rule_plan_issues(binding, rule, sections, declared))
+    refs = tuple(sorted({f"{item.spec_id}#{item.rule_ref}" for item in errors
+                         if item.spec_id and item.rule_ref}))
     return GateResult("block" if errors else "pass", tuple(errors), (), refs)
 
 

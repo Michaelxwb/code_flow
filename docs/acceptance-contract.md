@@ -87,6 +87,12 @@ code-flow design lint --file order.design.md --scenarios-file order.scenarios.md
 
 这些命令检查语义和引用；计划通过还需要真实任务、冻结的 Context、manifest 和测试登记。
 
+## 规则引用与计划负责人
+
+每个 TASK 的 `Spec-Refs` 列出实际适用的规则，供该任务的 Session 投影使用。承担计划验证的 TASK 还在 `Rule-Owner-Refs` 中列出对应规则；其他任务可引用同一规则，并用 `Rule-Owner-Refs: N/A` 表示不承担该规则的计划责任。每条 required 规则必须有且仅有一个负责人，且负责人本身必须引用该规则并提供 verifier 和验收契约。
+
+当整个任务文件都没有 `Rule-Owner-Refs` 时，旧计划仍按单个引用者作为负责人的规则校验；一旦任一 TASK 声明该字段，所有 required 规则都需要显式负责人。缺失、重复、未引用或格式无效的负责人会阻断计划。
+
 ## 测试登记与收集
 
 锁定时加 `--register-checks`，工具从 pytest / Playwright 的真实收集结果登记套件、具体用例、markers 和 collect。默认收集超时 10 秒，登记总预算 60 秒；只收集，不执行测试体。登记失败会保留原锁文件并输出具体 check、命令和错误。重新锁定会保留登记设置，更改设置使旧输入指纹失效。
