@@ -96,14 +96,78 @@ def test_b01_guard_distinguishes_shims_and_package_collisions(tmp_path: Path) ->
         _script_modules(tmp_path)
 
 
-@pytest.mark.xfail(strict=True, reason="S-02 is planned for TASK-002")
-def test_s02_stop_ignores_moved_task_and_scenario_paths() -> None:
-    pytest.fail("Implement S-02: archived former task paths and scenario sources produce no stale-path warning")
+def test_s02_stop_ignores_moved_task_and_scenario_paths(tmp_path: Path) -> None:
+    import json
+    import subprocess
+
+    from codeflow.core import cf_log
+
+    flow = tmp_path / ".code-flow"
+    flow.mkdir()
+    (flow / "config.yml").write_text("quality_loop:\n  enabled: true\npath_mapping: {}\n")
+
+    def stop(sid: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(SCRIPTS / "cf_stop_hook.py")], cwd=tmp_path,
+            input=json.dumps({"session_id": sid}), text=True, capture_output=True,
+            timeout=30, check=False,
+        )
+
+    scenario = flow / "tasks/2026-01-01/demo/demo.scenarios.md"
+    scenario.parent.mkdir(parents=True)
+    scenario.write_text("## Acceptance Coverage\n## TASK-001: a\n## TASK-001: b\n")
+    assert cf_log.append_event(str(tmp_path), "edit", {"file": str(scenario.relative_to(tmp_path))}, "scenario")
+    scenario_result = stop("scenario")
+
+    original = scenario.with_name("demo.md")
+    original.write_text("# Archived task\n")
+    archive = flow / "tasks/archived/2026-01-01/demo/demo.md"
+    archive.parent.mkdir(parents=True)
+    original.rename(archive)
+    assert cf_log.append_event(str(tmp_path), "edit", {"file": str(original.relative_to(tmp_path))}, "moved")
+    moved_result = stop("moved")
+    assert archive.is_file()
+    assert (scenario_result.returncode, scenario_result.stdout, scenario_result.stderr) == (0, "", "") and (
+        moved_result.returncode, moved_result.stdout, moved_result.stderr
+    ) == (0, "", ""), f"scenario={scenario_result!r}; moved={moved_result!r}"
+
+    original.write_text("## Acceptance Coverage\n## TASK-001: a\n- **Status**: done\n")
+    assert cf_log.append_event(str(tmp_path), "edit", {"file": str(original.relative_to(tmp_path))}, "active")
+    outcome = stop("active")
+    assert outcome.returncode == 0 and json.loads(outcome.stdout)["decision"] == "block"
 
 
-@pytest.mark.xfail(strict=True, reason="E-01 is planned for TASK-002")
-def test_e01_stop_preserves_real_error_diagnostics() -> None:
-    pytest.fail("Implement E-01: active-task failures and non-ENOENT read errors retain their diagnostics")
+def test_e01_stop_preserves_real_error_diagnostics(tmp_path: Path) -> None:
+    import json
+    import subprocess
+
+    from codeflow.core import cf_log
+
+    flow = tmp_path / ".code-flow"
+    flow.mkdir()
+    (flow / "config.yml").write_text("quality_loop:\n  enabled: true\npath_mapping: {}\n")
+
+    def stop(sid: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(SCRIPTS / "cf_stop_hook.py")], cwd=tmp_path,
+            input=json.dumps({"session_id": sid}), text=True, capture_output=True,
+            timeout=30, check=False,
+        )
+
+    marker = flow / ".active-task.json"
+    marker.write_text("{")
+    invalid = stop("invalid")
+    payload = json.loads(invalid.stdout)
+    assert invalid.returncode == 0 and payload["decision"] == "block"
+    assert "SPEC_WORKFLOW_BLOCKED" in payload["reason"]
+
+    marker.unlink()
+    broken = flow / "tasks/2026-01-01/demo/unreadable.md"
+    broken.mkdir(parents=True)
+    assert cf_log.append_event(str(tmp_path), "edit", {"file": str(broken.relative_to(tmp_path))}, "io-error")
+    failure = stop("io-error")
+    assert failure.returncode == 0 and failure.stdout == ""
+    assert "task read failed" in failure.stderr and "unreadable.md" in failure.stderr
 
 
 @pytest.mark.xfail(strict=True, reason="S-03 is planned for TASK-003")

@@ -76,7 +76,7 @@ def _is_active_task_file(rel_path: str) -> bool:
     path = normalize_path(rel_path)
     if not path.startswith(".code-flow/tasks/") or "/archived/" in path:
         return False
-    return path.endswith(".md") and not path.endswith((".design.md", ".prd.md"))
+    return path.endswith(".md") and not path.endswith((".design.md", ".prd.md", ".scenarios.md"))
 
 
 def _subsection(section: str, heading: str) -> str:
@@ -136,6 +136,9 @@ def task_acceptance_failures(project_root: str, files: list) -> list:
         try:
             with open(path, "r", encoding="utf-8") as f:
                 text = f.read()
+        except FileNotFoundError:
+            # Session logs retain paths after a task has moved or been deleted.
+            continue
         except OSError as exc:
             cf_log.warn(f"cf_stop_hook task read failed: {exc}")
             continue

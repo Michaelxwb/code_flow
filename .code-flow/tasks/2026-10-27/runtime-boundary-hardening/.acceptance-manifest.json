@@ -1632,7 +1632,7 @@
       "kind": "functional",
       "boundary": "真实会话 edit 日志、临时项目文件与 Stop Hook 子进程",
       "owner": "TASK-002",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -1679,6 +1679,376 @@
       "check": "CHK-55d318482620",
       "checks": [
         "CHK-55d318482620"
+      ],
+      "revision": 2,
+      "evidence": {
+        "id": "S-02",
+        "status": "passed",
+        "check_ids": [
+          "CHK-55d318482620"
+        ],
+        "check_reused": {
+          "CHK-55d318482620": false
+        },
+        "check_results": {
+          "CHK-55d318482620": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-55d318482620": false
+        },
+        "check_configs": {
+          "CHK-55d318482620": {
+            "id": "CHK-55d318482620",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-55d318482620": "d418cb7988926b7ec598de5ea2fad0205d79e28871bb36f2a3c846559b3e1f1c"
+        },
+        "input_hash": "f7be401c8707ba469bb8e53c89f61a77a471847f8186fc3cf1c8203dc2a1823c",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-55d318482620",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py",
+            "tests/test_runtime_boundary_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "integration",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+          ],
+          "markers": []
+        },
+        "revision": 2,
+        "run_id": "1c56c06545de4f2d9072dd1794067a83",
+        "executed_at": "2026-10-27T16:26:48.172351+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "f7be401c8707ba469bb8e53c89f61a77a471847f8186fc3cf1c8203dc2a1823c"
+      },
+      "runs": [
+        {
+          "id": "S-02",
+          "status": "passed",
+          "check_ids": [
+            "CHK-55d318482620"
+          ],
+          "check_reused": {
+            "CHK-55d318482620": false
+          },
+          "check_results": {
+            "CHK-55d318482620": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-55d318482620": false
+          },
+          "check_configs": {
+            "CHK-55d318482620": {
+              "id": "CHK-55d318482620",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+              ],
+              "markers": []
+            }
+          },
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-55d318482620",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "8f3e1ae3be1f46e99f4bb5e3c12596ac",
+          "executed_at": "2026-10-27T16:26:37.697957+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-02",
+          "status": "passed",
+          "check_ids": [
+            "CHK-55d318482620"
+          ],
+          "check_reused": {
+            "CHK-55d318482620": false
+          },
+          "check_results": {
+            "CHK-55d318482620": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-55d318482620": false
+          },
+          "check_configs": {
+            "CHK-55d318482620": {
+              "id": "CHK-55d318482620",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-55d318482620": "d418cb7988926b7ec598de5ea2fad0205d79e28871bb36f2a3c846559b3e1f1c"
+          },
+          "input_hash": "f7be401c8707ba469bb8e53c89f61a77a471847f8186fc3cf1c8203dc2a1823c",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-55d318482620",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+            ],
+            "markers": []
+          },
+          "revision": 2,
+          "run_id": "1c56c06545de4f2d9072dd1794067a83",
+          "executed_at": "2026-10-27T16:26:48.172351+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "f7be401c8707ba469bb8e53c89f61a77a471847f8186fc3cf1c8203dc2a1823c"
+        }
       ]
     },
     {
@@ -1688,7 +2058,7 @@
       "kind": "functional",
       "boundary": "真实 Stop Hook、临时活动 marker 与文件系统",
       "owner": "TASK-002",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -1735,6 +2105,376 @@
       "check": "CHK-7907c924815c",
       "checks": [
         "CHK-7907c924815c"
+      ],
+      "revision": 2,
+      "evidence": {
+        "id": "E-01",
+        "status": "passed",
+        "check_ids": [
+          "CHK-7907c924815c"
+        ],
+        "check_reused": {
+          "CHK-7907c924815c": false
+        },
+        "check_results": {
+          "CHK-7907c924815c": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-7907c924815c": false
+        },
+        "check_configs": {
+          "CHK-7907c924815c": {
+            "id": "CHK-7907c924815c",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-7907c924815c": "484912fb00f45a07e2b5b648dae222d4cd9f4df5b40febbbac7c171f6c6925fa"
+        },
+        "input_hash": "c8c5609977087c2f52820ca57559519284324c3d34c08ad966b70bbf98471c29",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-7907c924815c",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py",
+            "tests/test_runtime_boundary_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "integration",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+          ],
+          "markers": []
+        },
+        "revision": 2,
+        "run_id": "1c56c06545de4f2d9072dd1794067a83",
+        "executed_at": "2026-10-27T16:26:48.172351+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "c8c5609977087c2f52820ca57559519284324c3d34c08ad966b70bbf98471c29"
+      },
+      "runs": [
+        {
+          "id": "E-01",
+          "status": "passed",
+          "check_ids": [
+            "CHK-7907c924815c"
+          ],
+          "check_reused": {
+            "CHK-7907c924815c": false
+          },
+          "check_results": {
+            "CHK-7907c924815c": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-7907c924815c": false
+          },
+          "check_configs": {
+            "CHK-7907c924815c": {
+              "id": "CHK-7907c924815c",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+              ],
+              "markers": []
+            }
+          },
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-7907c924815c",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "8f3e1ae3be1f46e99f4bb5e3c12596ac",
+          "executed_at": "2026-10-27T16:26:37.697957+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "E-01",
+          "status": "passed",
+          "check_ids": [
+            "CHK-7907c924815c"
+          ],
+          "check_reused": {
+            "CHK-7907c924815c": false
+          },
+          "check_results": {
+            "CHK-7907c924815c": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-7907c924815c": false
+          },
+          "check_configs": {
+            "CHK-7907c924815c": {
+              "id": "CHK-7907c924815c",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-7907c924815c": "484912fb00f45a07e2b5b648dae222d4cd9f4df5b40febbbac7c171f6c6925fa"
+          },
+          "input_hash": "c8c5609977087c2f52820ca57559519284324c3d34c08ad966b70bbf98471c29",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-7907c924815c",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+            ],
+            "markers": []
+          },
+          "revision": 2,
+          "run_id": "1c56c06545de4f2d9072dd1794067a83",
+          "executed_at": "2026-10-27T16:26:48.172351+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "c8c5609977087c2f52820ca57559519284324c3d34c08ad966b70bbf98471c29"
+        }
       ]
     },
     {

@@ -20,8 +20,8 @@
 |--------|---------|---------|-------------|---------|------|---------|--------|---------|------|------|--------|---------|------|
 | S-01 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 AST 扫描器与临时 Python 模块 | TASK-001 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"] | P1 | auto | none | ["tests/test_runtime_consolidation.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | B-01 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 stem 分层表、临时包结构与 SCC 计算 | TASK-001 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"] | P1 | auto | none | ["tests/test_runtime_consolidation.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| S-02 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实会话 edit 日志、临时项目文件与 Stop Hook 子进程 | TASK-002 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| E-01 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Stop Hook、临时活动 marker 与文件系统 | TASK-002 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| S-02 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实会话 edit 日志、临时项目文件与 Stop Hook 子进程 | TASK-002 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| E-01 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Stop Hook、临时活动 marker 与文件系统 | TASK-002 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-03 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 场景文件、TASK 文档、manifest 锁定与真实 AST 导入图 | TASK-003 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | E-02 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实旧版 manifest、TASK 与场景源文件 | TASK-003 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-04 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 pytest 收集、登记配置与 manifest checks | TASK-004 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
@@ -93,7 +93,7 @@
 
 ## TASK-002: 收敛 Stop 归档路径诊断
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**:
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -109,30 +109,36 @@
 
 ### Checklist
 
-- [ ] 排除 .scenarios.md；对缺失旧路径明确正常处理策略，非 ENOENT 仍诊断，活动 Context/marker 错误仍 fail-closed。
-- [ ] 保持 Stop 静默 no-op、stdout JSON、heavy validator 策略和非活动会话文件隔离。
-- [ ] [S-02][integration] 先将骨架替换为真实断言并记录 RED；边界：真实会话 edit 日志、临时项目文件与 Stop Hook 子进程；断言：场景文档不进入 TASK 校验，已移动旧路径不产生缺失文件警告，stdout 保持静默或协议 JSON。
-- [ ] [E-01][integration] 先将骨架替换为真实断言并记录 RED；边界：真实 Stop Hook、临时活动 marker 与文件系统；断言：活动 marker 损坏返回阻断，非缺失读取错误有 stderr 诊断。
-- [ ] RULE-scripts-no-print-debug-001 verifier：task finish 对修改的 Hook 执行 no-print-debug 正则。
-- [ ] RULE-scripts-hook-protocol-001 verifier：python3 -m pytest -q tests/test_hook_command_robustness.py tests/test_cf_user_prompt_hook.py tests/test_cf_post_hook.py tests/test_codex_native_hook.py tests/test_opencode_native.py tests/test_runtime_contract.py。
-- [ ] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
+- [x] 排除 .scenarios.md；对缺失旧路径明确正常处理策略，非 ENOENT 仍诊断，活动 Context/marker 错误仍 fail-closed。
+- [x] 保持 Stop 静默 no-op、stdout JSON、heavy validator 策略和非活动会话文件隔离。
+- [x] [S-02][integration] 先将骨架替换为真实断言并记录 RED；边界：真实会话 edit 日志、临时项目文件与 Stop Hook 子进程；断言：场景文档不进入 TASK 校验，已移动旧路径不产生缺失文件警告，stdout 保持静默或协议 JSON。
+- [x] [E-01][integration] 先将骨架替换为真实断言并记录 RED；边界：真实 Stop Hook、临时活动 marker 与文件系统；断言：活动 marker 损坏返回阻断，非缺失读取错误有 stderr 诊断。
+- [x] RULE-scripts-no-print-debug-001 verifier：task finish 对修改的 Hook 执行 no-print-debug 正则。
+- [x] RULE-scripts-hook-protocol-001 verifier：python3 -m pytest -q tests/test_hook_command_robustness.py tests/test_cf_user_prompt_hook.py tests/test_cf_post_hook.py tests/test_codex_native_hook.py tests/test_opencode_native.py tests/test_runtime_contract.py。
+- [x] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-02 | integration | 真实会话 edit 日志、临时项目文件与 Stop Hook 子进程 | 场景文档不进入 TASK 校验，已移动旧路径不产生缺失文件警告，stdout 保持静默或协议 JSON | tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"] | planned |
-| E-01 | integration | 真实 Stop Hook、临时活动 marker 与文件系统 | 活动 marker 损坏返回阻断，非缺失读取错误有 stderr 诊断 | tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"] | planned |
+| S-02 | integration | 真实会话 edit 日志、临时项目文件与 Stop Hook 子进程 | 场景文档不进入 TASK 校验，已移动旧路径不产生缺失文件警告，stdout 保持静默或协议 JSON | tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"] | verified |
+| E-01 | integration | 真实 Stop Hook、临时活动 marker 与文件系统 | 活动 marker 损坏返回阻断，非缺失读取错误有 stderr 诊断 | tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"] | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-02 | - | - | - | - | planned |
-| E-01 | - | - | - | - | planned |
+| S-02 | FAIL: 场景文档误阻断，旧路径产生 ENOENT stderr；命令见契约 | PASS: 验收命令通过 | tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths | 临时项目、真实 edit 日志与 Stop Hook 子进程 | verified |
+| E-01 | N/A: 保留既有行为，修改前真实子进程基线通过；命令见契约 | PASS: 验收命令通过 | tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics | 损坏 marker 与目录代替任务文件 | verified |
+- S-02: verified — automated command passed; run_id=8f3e1ae3be1f46e99f4bb5e3c12596ac (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=8f3e1ae3be1f46e99f4bb5e3c12596ac (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=1c56c06545de4f2d9072dd1794067a83 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=1c56c06545de4f2d9072dd1794067a83 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-28] started
+- [2026-10-28] completed (done)
 
 ---
 
