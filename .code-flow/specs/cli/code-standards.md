@@ -105,11 +105,11 @@ await fs.promises.readFile(srcPath);     // CLI 不需要
 - 合并策略（merge 类文件）必须保证用户自定义内容不被覆盖
 - 平台参数解析必须通过 parsePlatform() 集中处理，禁止在 runInit 内部重复解析
 - 初始化阶段的可选操作（如 legacy 清理、pyyaml 安装）失败时必须降级为 warning，不能阻塞 init 主流程
-- 0.6.0 的 Spec Workflow 是经 dry-run/prepare/apply/journal/rollback 保护的**事务 breaking migration**；运行时布局迁移（旧平铺 → `codeflow/` 包）必须由 `src/migrate/runtime.js` 的 `staleScripts()` 清理旧平铺内部模块，保留 22 个入口 shim 一个版本窗口；沿用 backup/staging/journal/rollback 与 `runtime-install.json` 校验；只有该显式迁移入口可删除旧 runtime 与 managed files，普通 init/merge 仍不得覆盖用户内容。
+- 运行时布局迁移属于**事务 breaking migration**：由 `src/migrate/runtime.js` 的 `staleScripts()` 清理旧平铺内部模块，保留 22 个入口 shim 一个版本窗口；沿用 backup/staging/journal/rollback 与 `runtime-install.json` 校验；普通 init/merge 不得覆盖用户内容。
 
 ## Patterns
 - 新增模板文件：放在 src/core/ 或 src/adapters/ 下，fileCategory() 自动分类
-- 新增平台适配器：在 runInit() 中添加独立的 `if (platform === '...')` 分支，不与其他平台逻辑交叉
+- 新增平台适配器：在 `src/adapters/install-plan.json` 声明文件、目录与合并器，`runInit` 按 plan 安装；不要新增平台 if 分支。
 - 版本对比使用 compareVersions()，支持语义版本号
 - 输出摘要按 Updated/Merged/Created/Skipped/Removed 分组
 - 清理 deprecated 目录时使用独立函数封装删除逻辑，配置 `recursive + force + retry` 以兼容 Windows 文件锁场景
@@ -120,6 +120,3 @@ await fs.promises.readFile(srcPath);     // CLI 不需要
 - 禁止在 CLI 中引入 npm 外部依赖
 - 禁止在合并逻辑中覆盖用户已有内容
 - 禁止在不同平台适配器分支（claude/codex/costrict/opencode）之间共享局部变量（各分支自包含）
-
-- `.code-flow/runtime-commands.json` 是公开命令到业务模块的唯一映射；帮助和参数验证来自实际解析器，CLI 不添加参数容错或旧入口别名。
-- 运行时迁移使用备份、暂存校验、日志、互斥锁和显式中断恢复，更新全部已安装平台；受管理文件和 Hook 定义必须通过安装清单校验，版本最后提交。

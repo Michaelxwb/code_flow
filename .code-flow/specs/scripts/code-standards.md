@@ -137,7 +137,6 @@ except:
 - Codex prompt 路径提取同时支持裸路径、`@path`、反引号路径，并在注入前做去重与噪音过滤（需至少一个斜杠或有效代码扩展名）
 - 测试 → tests/ 目录，使用 pytest，覆盖 happy path / fail-closed / 空输入
 - Claude/Costrict 编辑入口接受原生 `Edit/Write/MultiEdit`；Codex 原生入口严格接受 `apply_patch` 与 `tool_input.command`，按补丁中的每个文件操作调用共享服务；工具协议不得互相伪装。
-- 路径提取正则 `_PATH_RE` 支持裸路径/`@path`/反引号路径，需至少一个斜杠或代码扩展名（`cf_user_prompt_hook.py`）
 - 测试 fixture 模式：`_make_project() + tempfile.TemporaryDirectory() + mock stdin/stdout`（tests/test_cf_*.py）
 - 测试取 fixture 数据按名称选择而非列表索引，结构扩展不连带断（test_hook_command_robustness::_command_for）
 - TASK 段落解析唯一权威是 `cf_task_doc.parse_task_document`；其他模块不得自写 `^## TASK-` 正则。Checklist 中的场景 ID 必须属于该 TASK 的 `Acceptance-Refs`；`S-01~04` 区间要先展开；plan quality 报 checklist mismatch。
