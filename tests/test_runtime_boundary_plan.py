@@ -12,14 +12,88 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "core" / "code-flow" / "
 sys.path.insert(0, str(SCRIPTS))
 
 
-@pytest.mark.xfail(strict=True, reason="S-01 is planned for TASK-001")
-def test_s01_guard_detects_runtime_import_forms() -> None:
-    pytest.fail("Implement S-01: runtime TYPE_CHECKING else, module-private access, relative and literal dynamic imports")
+def test_s01_guard_detects_runtime_import_forms(tmp_path: Path) -> None:
+    from test_runtime_consolidation import _import_edges, _private_imports, _script_modules
+
+    package = tmp_path / "codeflow" / "spec"
+    package.mkdir(parents=True)
+    names = ("cf_type", "cf_else", "cf_peer", "cf_dynamic", "cf_builtin", "cf_dep", "cf_negative", "cf_member")
+    for name in names:
+        (package / f"{name}.py").write_text("", encoding="utf-8")
+    actor = package / "cf_actor.py"
+    actor.write_text(
+        "from typing import TYPE_CHECKING\n"
+        "if TYPE_CHECKING:\n"
+        "    from codeflow.spec.cf_type import _OnlyType\n"
+        "else:\n"
+        "    from codeflow.spec.cf_else import live\n"
+        "from . import cf_peer as peer\n"
+        "import codeflow.spec.cf_dep as dep\n"
+        "import importlib as loader\n"
+        "from importlib import import_module as load\n"
+        "import typing as t\n"
+        "if not t.TYPE_CHECKING:\n"
+        "    from .cf_negative import live\n"
+        "else:\n"
+        "    from .cf_type import _TypingOnly\n"
+        "loader.import_module('codeflow.spec.cf_dynamic')\n"
+        "loaded = load('codeflow.spec.cf_dynamic')\n"
+        "__import__('codeflow.spec.cf_builtin')\n"
+        "__import__('codeflow.spec', fromlist=['cf_member'])\n"
+        "dep._hidden()\n"
+        "peer._relative()\n"
+        "loaded._dynamic_private()\n",
+        encoding="utf-8",
+    )
+    modules = _script_modules(tmp_path)
+    edges = _import_edges(actor, modules)
+    assert edges == {("cf_actor", target) for target in names if target != "cf_type"}
+    assert _private_imports(actor, modules) == {
+        ("cf_actor", "cf_dep", "_hidden"), ("cf_actor", "cf_peer", "_relative"),
+        ("cf_actor", "cf_dynamic", "_dynamic_private"),
+    }
+
+    actor.write_text("from typing import TYPE_CHECKING\nif TYPE_CHECKING and flag:\n    from .cf_type import X\n", encoding="utf-8")
+    assert _import_edges(actor, modules) == set()
+    actor.write_text("import importlib\nimportlib.import_module(name)\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="dynamic import"):
+        _import_edges(actor, modules)
 
 
-@pytest.mark.xfail(strict=True, reason="B-01 is planned for TASK-001")
-def test_b01_guard_distinguishes_shims_and_package_collisions() -> None:
-    pytest.fail("Implement B-01: allow intentional entry shims but reject ambiguous implementation stems")
+def test_b01_guard_distinguishes_shims_and_package_collisions(tmp_path: Path) -> None:
+    from test_runtime_consolidation import (
+        _import_edges, _layer_violations, _script_files, _script_modules,
+        _strongly_connected_sizes,
+    )
+
+    core = tmp_path / "codeflow" / "core"
+    task = tmp_path / "codeflow" / "task"
+    core.mkdir(parents=True)
+    task.mkdir(parents=True)
+    (tmp_path / "cf_log.py").write_text(
+        "import sys\nfrom codeflow.core import cf_log as _impl\n"
+        "sys.modules[__name__] = _impl\n", encoding="utf-8"
+    )
+    (core / "cf_log.py").write_text("from codeflow.task import cf_task_doc\n", encoding="utf-8")
+    (task / "cf_task_doc.py").write_text("from codeflow.core import cf_log\n", encoding="utf-8")
+    modules = _script_modules(tmp_path)
+    assert modules == frozenset({"cf_log", "cf_task_doc"})
+    edges = set().union(*(_import_edges(path, modules) for path in _script_files(tmp_path)))
+    assert _layer_violations(edges) == {("cf_log", "cf_task_doc")}
+    assert _strongly_connected_sizes(edges) == [2]
+
+    shim = tmp_path / "cf_log.py"
+    good_shim = shim.read_text(encoding="utf-8")
+    shim.write_text("from codeflow.core import cf_log as _impl\nvalue = _impl\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="ambiguous.*cf_log"):
+        _script_modules(tmp_path)
+    shim.write_text(good_shim, encoding="utf-8")
+
+    extra = tmp_path / "codeflow" / "spec"
+    extra.mkdir()
+    (extra / "cf_log.py").write_text("", encoding="utf-8")
+    with pytest.raises(ValueError, match="ambiguous.*cf_log"):
+        _script_modules(tmp_path)
 
 
 @pytest.mark.xfail(strict=True, reason="S-02 is planned for TASK-002")

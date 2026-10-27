@@ -133,28 +133,122 @@ PRIVATE_SYMBOL_ALLOWLIST = frozenset({
 })
 
 
-def _type_checking_lines(tree: ast.Module) -> frozenset[int]:
-    lines: set[int] = set()
+def _rebound_names(tree: ast.Module) -> set[str]:
+    rebound: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+            rebound.add(node.id)
+        elif isinstance(node, ast.arg):
+            rebound.add(node.arg)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            rebound.add(node.name)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            rebound.add(node.name)
+        elif (isinstance(node, ast.Attribute) and node.attr == "TYPE_CHECKING"
+              and isinstance(node.ctx, (ast.Store, ast.Del)) and isinstance(node.value, ast.Name)):
+            rebound.add(node.value.id)
+        elif isinstance(node, ast.Import):
+            rebound.update(item.asname or item.name.split(".")[0] for item in node.names if item.name != "typing")
+        elif isinstance(node, ast.ImportFrom):
+            rebound.update(item.asname or item.name for item in node.names
+                           if node.module != "typing" or item.name != "TYPE_CHECKING")
+    return rebound
+
+
+def _typing_aliases(tree: ast.Module) -> tuple[set[str], set[str]]:
+    names: set[str] = set()
+    modules: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.update(item.asname or item.name for item in node.names if item.name == "typing")
+        elif isinstance(node, ast.ImportFrom) and node.module == "typing":
+            names.update(item.asname or item.name for item in node.names if item.name == "TYPE_CHECKING")
+    rebound = _rebound_names(tree)
+    return (set(), set()) if "*" in rebound else (names - rebound, modules - rebound)
+
+
+def _runtime_truth(test: ast.expr, names: set[str], modules: set[str]) -> Optional[bool]:
+    if isinstance(test, ast.Constant) and isinstance(test.value, bool):
+        return test.value
+    if isinstance(test, ast.Name) and test.id in names:
+        return False
+    if (isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING"
+            and isinstance(test.value, ast.Name) and test.value.id in modules):
+        return False
+    if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
+        value = _runtime_truth(test.operand, names, modules)
+        return None if value is None else not value
+    if isinstance(test, ast.BoolOp):
+        values = [_runtime_truth(item, names, modules) for item in test.values]
+        if isinstance(test.op, ast.And):
+            return False if False in values else (True if all(v is True for v in values) else None)
+        if isinstance(test.op, ast.Or):
+            return True if True in values else (False if all(v is False for v in values) else None)
+    return None
+
+
+def _type_only_nodes(tree: ast.Module) -> frozenset[int]:
+    """Skip branches proven unreachable from typing constants or literal booleans.
+
+    Unimported, rebound and otherwise ambiguous names are scanned on both sides.
+    """
+    names, modules = _typing_aliases(tree)
+    skipped: set[int] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.If):
             continue
-        test = node.test
-        name = test.id if isinstance(test, ast.Name) else (test.attr if isinstance(test, ast.Attribute) else "")
-        if name != "TYPE_CHECKING":
+        truth = _runtime_truth(node.test, names, modules)
+        if truth is None:
             continue
-        for child in ast.walk(node):
-            line = getattr(child, "lineno", None)
-            if isinstance(line, int):
-                lines.add(line)
-    return frozenset(lines)
+        for statement in node.orelse if truth else node.body:
+            skipped.update(id(child) for child in ast.walk(statement))
+    return frozenset(skipped)
 
 
 def _script_files(scripts: Path) -> list[Path]:
     return sorted(path for path in scripts.rglob("*.py") if path.name != "__init__.py")
 
 
+def _is_entry_shim(path: Path, implementation: Path, scripts: Path) -> bool:
+    if path.parent != scripts or implementation.relative_to(scripts).parts[0] != "codeflow":
+        return False
+    text = path.read_text(encoding="utf-8")
+    if len(text.splitlines()) > 15:
+        return False
+    tree = ast.parse(text)
+    if any(isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) for node in ast.walk(tree)):
+        return False
+    dotted = ".".join(implementation.relative_to(scripts).with_suffix("").parts)
+    package, _, stem = dotted.rpartition(".")
+    aliases = {item.asname or item.name for node in ast.walk(tree)
+               if isinstance(node, ast.ImportFrom) and node.module == package
+               for item in node.names if item.name == stem}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign) or not isinstance(node.value, ast.Name) or node.value.id not in aliases:
+            continue
+        for target in node.targets:
+            if (isinstance(target, ast.Subscript) and isinstance(target.slice, ast.Name)
+                    and target.slice.id == "__name__" and isinstance(target.value, ast.Attribute)
+                    and target.value.attr == "modules" and isinstance(target.value.value, ast.Name)
+                    and target.value.value.id == "sys"):
+                return True
+    return False
+
+
 def _script_modules(scripts: Path) -> frozenset[str]:
-    return frozenset(path.stem for path in _script_files(scripts))
+    grouped: dict[str, list[Path]] = {}
+    for path in _script_files(scripts):
+        grouped.setdefault(path.stem, []).append(path)
+    for stem, paths in grouped.items():
+        if len(paths) <= 1:
+            continue
+        implementations = [path for path in paths if path.parent != scripts]
+        if len(implementations) != 1 or any(
+            not _is_entry_shim(path, implementations[0], scripts)
+            for path in paths if path != implementations[0]
+        ):
+            raise ValueError(f"ambiguous module stem {stem}: {', '.join(map(str, paths))}")
+    return frozenset(grouped)
 
 
 def _import_target(name: str, modules: frozenset[str]) -> Optional[str]:
@@ -165,58 +259,175 @@ def _import_target(name: str, modules: frozenset[str]) -> Optional[str]:
     return None
 
 
-def _import_edges(path: Path, modules: frozenset[str]) -> set[tuple[str, str]]:
-    tree = ast.parse(path.read_text(encoding="utf-8"))
-    skip = _type_checking_lines(tree)
-    source = path.stem
-    edges: set[tuple[str, str]] = set()
+def _from_targets(node: ast.ImportFrom, modules: frozenset[str]) -> set[str]:
+    target = _import_target(node.module or "", modules)
+    if target:
+        return {target}
+    if node.level or node.module == "codeflow" or (node.module or "").startswith("codeflow."):
+        return {target for item in node.names if (target := _import_target(item.name, modules))}
+    return set()
+
+
+def _dynamic_aliases(tree: ast.Module, skip: frozenset[int]) -> tuple[set[str], set[str], set[str]]:
+    imports: set[str] = set()
+    functions: set[str] = set()
+    builtins = {"__import__"}
     for node in ast.walk(tree):
-        if getattr(node, "lineno", 0) in skip:
+        if id(node) in skip:
             continue
         if isinstance(node, ast.Import):
-            for alias in node.names:
-                target = _import_target(alias.name, modules)
-                if target and target != source:
-                    edges.add((source, target))
+            imports.update(item.asname or item.name for item in node.names if item.name == "importlib")
+        elif isinstance(node, ast.ImportFrom) and node.module == "importlib":
+            functions.update(item.asname or item.name for item in node.names if item.name == "import_module")
+        elif isinstance(node, ast.ImportFrom) and node.module == "builtins":
+            builtins.update(item.asname or item.name for item in node.names if item.name == "__import__")
+    return imports, functions, builtins
+
+
+def _dynamic_target(
+    node: ast.Call, modules: frozenset[str], imports: set[str], functions: set[str], builtins: set[str]
+) -> Optional[str]:
+    """Resolve direct importlib/builtin calls; fail on nonliteral module names."""
+    func = node.func
+    dynamic = isinstance(func, ast.Name) and func.id in functions | builtins
+    dynamic |= (isinstance(func, ast.Attribute) and func.attr == "import_module"
+                and isinstance(func.value, ast.Name) and func.value.id in imports)
+    if not dynamic:
+        return None
+    name_arg = node.args[0] if node.args else next((kw.value for kw in node.keywords if kw.arg == "name"), None)
+    if not isinstance(name_arg, ast.Constant) or not isinstance(name_arg.value, str):
+        raise ValueError(f"dynamic import at line {node.lineno} must use a literal module name")
+    name = name_arg.value
+    return _import_target(name.rsplit(".", 1)[-1] if name.startswith(".") else name, modules)
+
+
+def _builtin_fromlist(node: ast.Call) -> tuple[str, ...]:
+    argument = node.args[3] if len(node.args) > 3 else next(
+        (kw.value for kw in node.keywords if kw.arg == "fromlist"), None
+    )
+    if argument is None or (isinstance(argument, ast.Constant) and argument.value is None):
+        return ()
+    if not isinstance(argument, (ast.List, ast.Tuple)):
+        raise ValueError(f"dynamic import at line {node.lineno} must use a literal fromlist")
+    if any(not isinstance(item, ast.Constant) or not isinstance(item.value, str) or item.value == "*"
+           for item in argument.elts):
+        raise ValueError(f"dynamic import at line {node.lineno} must use a literal fromlist")
+    return tuple(item.value for item in argument.elts if isinstance(item, ast.Constant))
+
+
+def _dynamic_targets(
+    node: ast.Call, modules: frozenset[str], imports: set[str], functions: set[str], builtins: set[str]
+) -> set[str]:
+    target = _dynamic_target(node, modules, imports, functions, builtins)
+    targets = {target} if target else set()
+    if isinstance(node.func, ast.Name) and node.func.id in builtins:
+        name_arg = node.args[0] if node.args else next(kw.value for kw in node.keywords if kw.arg == "name")
+        assert isinstance(name_arg, ast.Constant) and isinstance(name_arg.value, str)
+        for item in _builtin_fromlist(node):
+            member = _import_target(f"{name_arg.value}.{item}", modules)
+            if member:
+                targets.add(member)
+    return targets
+
+
+def _import_edges(path: Path, modules: frozenset[str]) -> set[tuple[str, str]]:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    skip = _type_only_nodes(tree)
+    imports, functions, builtins = _dynamic_aliases(tree, skip)
+    edges: set[tuple[str, str]] = set()
+    for node in ast.walk(tree):
+        if id(node) in skip:
+            continue
+        targets: set[str] = set()
+        if isinstance(node, ast.Import):
+            targets = {target for item in node.names if (target := _import_target(item.name, modules))}
         elif isinstance(node, ast.ImportFrom):
-            targets: set[str] = set()
-            target = _import_target(node.module or "", modules)
-            if target:
-                targets.add(target)
-            elif (node.module or "").startswith("codeflow."):
-                for alias in node.names:
-                    alias_target = _import_target(alias.name, modules)
-                    if alias_target:
-                        targets.add(alias_target)
-            edges |= {(source, target) for target in targets if target != source}
+            targets = _from_targets(node, modules)
+        elif isinstance(node, ast.Call):
+            targets = _dynamic_targets(node, modules, imports, functions, builtins)
+        edges.update((path.stem, target) for target in targets if target != path.stem)
     return edges
+
+
+def _module_aliases(tree: ast.Module, modules: frozenset[str], skip: frozenset[int]) -> dict[str, set[str]]:
+    aliases: dict[str, set[str]] = {}
+    for node in ast.walk(tree):
+        if id(node) in skip:
+            continue
+        if isinstance(node, ast.Import):
+            for item in node.names:
+                target = _import_target(item.name, modules)
+                if target:
+                    aliases.setdefault(item.asname or item.name, set()).add(target)
+        elif isinstance(node, ast.ImportFrom) and not _import_target(node.module or "", modules):
+            if node.level or node.module == "codeflow" or (node.module or "").startswith("codeflow."):
+                for item in node.names:
+                    target = _import_target(item.name, modules)
+                    if target:
+                        aliases.setdefault(item.asname or item.name, set()).add(target)
+    imports, functions, builtins = _dynamic_aliases(tree, skip)
+    for node in ast.walk(tree):
+        if id(node) in skip or not isinstance(node, (ast.Assign, ast.AnnAssign)):
+            continue
+        if not isinstance(node.value, ast.Call):
+            continue
+        target = _dynamic_target(node.value, modules, imports, functions, builtins)
+        if isinstance(node.value.func, ast.Name) and node.value.func.id in builtins:
+            first = node.value.args[0] if node.value.args else next(
+                (kw.value for kw in node.value.keywords if kw.arg == "name"), None
+            )
+            if isinstance(first, ast.Constant) and isinstance(first.value, str) and "." in first.value:
+                target = target if _builtin_fromlist(node.value) else None
+        if target:
+            destinations = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for destination in destinations:
+                if isinstance(destination, ast.Name):
+                    aliases.setdefault(destination.id, set()).add(target)
+    return aliases
+
+
+def _dotted_name(node: ast.expr) -> str:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return f"{_dotted_name(node.value)}.{node.attr}"
+    return ""
 
 
 def _private_imports(path: Path, modules: frozenset[str]) -> set[tuple[str, str, str]]:
     tree = ast.parse(path.read_text(encoding="utf-8"))
-    source = path.stem
+    skip = _type_only_nodes(tree)
+    aliases = _module_aliases(tree, modules, skip)
     found: set[tuple[str, str, str]] = set()
     for node in ast.walk(tree):
-        if not isinstance(node, ast.ImportFrom):
+        if id(node) in skip:
             continue
-        targets: set[str] = set()
-        target = _import_target(node.module or "", modules)
-        if target:
-            targets.add(target)
-        elif (node.module or "").startswith("codeflow."):
-            for alias in node.names:
-                alias_target = _import_target(alias.name, modules)
-                if alias_target:
-                    targets.add(alias_target)
-        for target in targets - {source}:
-            for alias in node.names:
-                if alias.name.startswith("_") and not alias.name.startswith("__"):
-                    found.add((source, target, alias.name))
+        if isinstance(node, ast.ImportFrom):
+            targets = _from_targets(node, modules) - {path.stem}
+            found.update((path.stem, target, item.name) for target in targets for item in node.names
+                         if item.name.startswith("_") and not item.name.startswith("__"))
+        elif isinstance(node, ast.Attribute) and node.attr.startswith("_") and not node.attr.startswith("__"):
+            targets = aliases.get(_dotted_name(node.value), set()) - {path.stem}
+            found.update((path.stem, target, node.attr) for target in targets)
     return found
 
 
 def _layer_violations(edges: Iterable[tuple[str, str]]) -> set[tuple[str, str]]:
     return {(source, target) for source, target in edges if LAYERS[source] < LAYERS[target]}
+
+
+def test_type_checking_rebinding_is_conservative(tmp_path: Path) -> None:
+    module = tmp_path / "cf_actor.py"
+    cases = (
+        ("TYPE_CHECKING = True", "TYPE_CHECKING"),
+        ("from typing import TYPE_CHECKING\nTYPE_CHECKING = True", "TYPE_CHECKING"),
+        ("import typing as t\nt = object()", "t.TYPE_CHECKING"),
+        ("import typing as t\nt.TYPE_CHECKING = True", "t.TYPE_CHECKING"),
+        ("from typing import TYPE_CHECKING\ndef f(TYPE_CHECKING):\n    pass", "TYPE_CHECKING"),
+    )
+    for setup, condition in cases:
+        module.write_text(f"{setup}\nif {condition}:\n    from cf_other import live\n", encoding="utf-8")
+        assert _import_edges(module, frozenset({"cf_actor", "cf_other"})) == {("cf_actor", "cf_other")}
 
 
 def _expired(entries: Iterable[tuple[object, ...]], current_batch: int) -> list[tuple[object, ...]]:

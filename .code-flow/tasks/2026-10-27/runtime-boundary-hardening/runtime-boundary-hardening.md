@@ -2,7 +2,7 @@
 
 - **Source**: runtime-boundary-hardening.design.md
 - **Created**: 2026-10-27
-- **Updated**: 2026-10-27
+- **Updated**: 2026-10-28
 
 ## Proposal
 
@@ -18,8 +18,8 @@
 
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 | 优先级 | 执行方式 | 环境 | 输入 | E2E理由 | 触发路径 | 冒烟 |
 |--------|---------|---------|-------------|---------|------|---------|--------|---------|------|------|--------|---------|------|
-| S-01 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 AST 扫描器与临时 Python 模块 | TASK-001 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"] | P1 | auto | none | ["tests/test_runtime_consolidation.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| B-01 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 stem 分层表、临时包结构与 SCC 计算 | TASK-001 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"] | P1 | auto | none | ["tests/test_runtime_consolidation.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| S-01 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 AST 扫描器与临时 Python 模块 | TASK-001 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"] | P1 | auto | none | ["tests/test_runtime_consolidation.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| B-01 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 stem 分层表、临时包结构与 SCC 计算 | TASK-001 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"] | P1 | auto | none | ["tests/test_runtime_consolidation.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-02 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实会话 edit 日志、临时项目文件与 Stop Hook 子进程 | TASK-002 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | E-01 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Stop Hook、临时活动 marker 与文件系统 | TASK-002 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-03 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 场景文件、TASK 文档、manifest 锁定与真实 AST 导入图 | TASK-003 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
@@ -43,7 +43,7 @@
 
 ## TASK-001: 让依赖守卫识别真实边界
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**:
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -59,29 +59,35 @@
 
 ### Checklist
 
-- [ ] 为受支持的导入语法和不能静态解析的动态导入定义清晰策略，禁止通过重新标层级隐藏现有边。
-- [ ] 在真实图上保留现有 batch 和 allowlist，加入可复现负向测试；最终无 SCC 断言由 TASK-009 启用。
-- [ ] [S-01][unit] 先将骨架替换为真实断言并记录 RED；边界：真实 AST 扫描器与临时 Python 模块；断言：每条运行时导入和跨模块私有访问均被识别，类型专用导入不产生运行时边。
-- [ ] [B-01][unit] 先将骨架替换为真实断言并记录 RED；边界：真实 stem 分层表、临时包结构与 SCC 计算；断言：已知 shim 可映射至实现，两个不同实现的同名歧义被明确拒绝。
-- [ ] RULE-scripts-no-bare-except-001 verifier：task finish 对本任务变更 Python 文件执行 no-bare-except 正则；运行 python3 -m pytest -q tests/test_cf_spec_verify.py 验证执行器。
-- [ ] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
+- [x] 为受支持的导入语法和不能静态解析的动态导入定义清晰策略，禁止通过重新标层级隐藏现有边。
+- [x] 在真实图上保留现有 batch 和 allowlist，加入可复现负向测试；最终无 SCC 断言由 TASK-009 启用。
+- [x] [S-01][unit] 先将骨架替换为真实断言并记录 RED；边界：真实 AST 扫描器与临时 Python 模块；断言：每条运行时导入和跨模块私有访问均被识别，类型专用导入不产生运行时边。
+- [x] [B-01][unit] 先将骨架替换为真实断言并记录 RED；边界：真实 stem 分层表、临时包结构与 SCC 计算；断言：已知 shim 可映射至实现，两个不同实现的同名歧义被明确拒绝。
+- [x] RULE-scripts-no-bare-except-001 verifier：task finish 对本任务变更 Python 文件执行 no-bare-except 正则；运行 python3 -m pytest -q tests/test_cf_spec_verify.py 验证执行器。
+- [x] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-01 | unit | 真实 AST 扫描器与临时 Python 模块 | 每条运行时导入和跨模块私有访问均被识别，类型专用导入不产生运行时边 | tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"] | planned |
-| B-01 | unit | 真实 stem 分层表、临时包结构与 SCC 计算 | 已知 shim 可映射至实现，两个不同实现的同名歧义被明确拒绝 | tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"] | planned |
+| S-01 | unit | 真实 AST 扫描器与临时 Python 模块 | 每条运行时导入和跨模块私有访问均被识别，类型专用导入不产生运行时边 | tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"] | verified |
+| B-01 | unit | 真实 stem 分层表、临时包结构与 SCC 计算 | 已知 shim 可映射至实现，两个不同实现的同名歧义被明确拒绝 | tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"] | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-01 | - | - | - | - | planned |
-| B-01 | - | - | - | - | planned |
+| S-01 | FAIL: 运行时 else、相对及动态导入漏检；类型专用导入误记（执行命令见契约） | PASS: 验收及真实图回归通过 | tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms | 临时包与真实 AST 扫描器；重绑定单独回归 | verified |
+| B-01 | FAIL: 伪造入口 shim 未被拒绝（执行命令见契约） | PASS: 验收及真实图回归通过 | tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions | 临时包、分层表与 SCC 计算 | verified |
+- S-01: verified — automated command passed; run_id=8ffb936d866b4b7facee7e089ee853af (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=8ffb936d866b4b7facee7e089ee853af (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=a266a74906dd45bd94d5d268e030dc20 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=a266a74906dd45bd94d5d268e030dc20 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-28] started
+- [2026-10-28] completed (done)
 
 ---
 

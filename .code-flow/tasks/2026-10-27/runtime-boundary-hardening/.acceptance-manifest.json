@@ -780,7 +780,7 @@
       "kind": "functional",
       "boundary": "真实 AST 扫描器与临时 Python 模块",
       "owner": "TASK-001",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -827,6 +827,376 @@
       "check": "CHK-b2cad7b5ef6b",
       "checks": [
         "CHK-b2cad7b5ef6b"
+      ],
+      "revision": 2,
+      "evidence": {
+        "id": "S-01",
+        "status": "passed",
+        "check_ids": [
+          "CHK-b2cad7b5ef6b"
+        ],
+        "check_reused": {
+          "CHK-b2cad7b5ef6b": false
+        },
+        "check_results": {
+          "CHK-b2cad7b5ef6b": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-b2cad7b5ef6b": false
+        },
+        "check_configs": {
+          "CHK-b2cad7b5ef6b": {
+            "id": "CHK-b2cad7b5ef6b",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/test_runtime_consolidation.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "unit",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-b2cad7b5ef6b": "72d4c608df8ab542429e6b8c1bb99520a050813d885d974f0e81c249a760bdfa"
+        },
+        "input_hash": "e6aaea6340dc7c1ffce6b687b977720f16f2ab384d1c2aba75faace4177dc806",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-b2cad7b5ef6b",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/test_runtime_consolidation.py",
+            "tests/test_runtime_boundary_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "unit",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+          ],
+          "markers": []
+        },
+        "revision": 2,
+        "run_id": "a266a74906dd45bd94d5d268e030dc20",
+        "executed_at": "2026-10-27T16:23:56.883015+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "e6aaea6340dc7c1ffce6b687b977720f16f2ab384d1c2aba75faace4177dc806"
+      },
+      "runs": [
+        {
+          "id": "S-01",
+          "status": "passed",
+          "check_ids": [
+            "CHK-b2cad7b5ef6b"
+          ],
+          "check_reused": {
+            "CHK-b2cad7b5ef6b": false
+          },
+          "check_results": {
+            "CHK-b2cad7b5ef6b": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-b2cad7b5ef6b": false
+          },
+          "check_configs": {
+            "CHK-b2cad7b5ef6b": {
+              "id": "CHK-b2cad7b5ef6b",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "markers": []
+            }
+          },
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-b2cad7b5ef6b",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/test_runtime_consolidation.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "unit",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "8ffb936d866b4b7facee7e089ee853af",
+          "executed_at": "2026-10-27T16:23:50.464539+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-01",
+          "status": "passed",
+          "check_ids": [
+            "CHK-b2cad7b5ef6b"
+          ],
+          "check_reused": {
+            "CHK-b2cad7b5ef6b": false
+          },
+          "check_results": {
+            "CHK-b2cad7b5ef6b": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-b2cad7b5ef6b": false
+          },
+          "check_configs": {
+            "CHK-b2cad7b5ef6b": {
+              "id": "CHK-b2cad7b5ef6b",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-b2cad7b5ef6b": "72d4c608df8ab542429e6b8c1bb99520a050813d885d974f0e81c249a760bdfa"
+          },
+          "input_hash": "e6aaea6340dc7c1ffce6b687b977720f16f2ab384d1c2aba75faace4177dc806",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-b2cad7b5ef6b",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/test_runtime_consolidation.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "unit",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+            ],
+            "markers": []
+          },
+          "revision": 2,
+          "run_id": "a266a74906dd45bd94d5d268e030dc20",
+          "executed_at": "2026-10-27T16:23:56.883015+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "e6aaea6340dc7c1ffce6b687b977720f16f2ab384d1c2aba75faace4177dc806"
+        }
       ]
     },
     {
@@ -836,7 +1206,7 @@
       "kind": "functional",
       "boundary": "真实 stem 分层表、临时包结构与 SCC 计算",
       "owner": "TASK-001",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -883,6 +1253,376 @@
       "check": "CHK-aad161ddf787",
       "checks": [
         "CHK-aad161ddf787"
+      ],
+      "revision": 2,
+      "evidence": {
+        "id": "B-01",
+        "status": "passed",
+        "check_ids": [
+          "CHK-aad161ddf787"
+        ],
+        "check_reused": {
+          "CHK-aad161ddf787": false
+        },
+        "check_results": {
+          "CHK-aad161ddf787": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-aad161ddf787": false
+        },
+        "check_configs": {
+          "CHK-aad161ddf787": {
+            "id": "CHK-aad161ddf787",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/test_runtime_consolidation.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "unit",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-aad161ddf787": "ab2252533e73a74a29d319efcbedc003fa4fea2265a399dfd6750cac566338ae"
+        },
+        "input_hash": "0d6e71aa254d0ed282419bd0ea9bfc5aec13e8b256b5a9fd7e9a81659b1dfb5a",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-aad161ddf787",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "tests/test_runtime_consolidation.py",
+            "tests/test_runtime_boundary_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "unit",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+          ],
+          "markers": []
+        },
+        "revision": 2,
+        "run_id": "a266a74906dd45bd94d5d268e030dc20",
+        "executed_at": "2026-10-27T16:23:56.883015+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "0d6e71aa254d0ed282419bd0ea9bfc5aec13e8b256b5a9fd7e9a81659b1dfb5a"
+      },
+      "runs": [
+        {
+          "id": "B-01",
+          "status": "passed",
+          "check_ids": [
+            "CHK-aad161ddf787"
+          ],
+          "check_reused": {
+            "CHK-aad161ddf787": false
+          },
+          "check_results": {
+            "CHK-aad161ddf787": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-aad161ddf787": false
+          },
+          "check_configs": {
+            "CHK-aad161ddf787": {
+              "id": "CHK-aad161ddf787",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "markers": []
+            }
+          },
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-aad161ddf787",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/test_runtime_consolidation.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "unit",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "8ffb936d866b4b7facee7e089ee853af",
+          "executed_at": "2026-10-27T16:23:50.464539+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "B-01",
+          "status": "passed",
+          "check_ids": [
+            "CHK-aad161ddf787"
+          ],
+          "check_reused": {
+            "CHK-aad161ddf787": false
+          },
+          "check_results": {
+            "CHK-aad161ddf787": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-aad161ddf787": false
+          },
+          "check_configs": {
+            "CHK-aad161ddf787": {
+              "id": "CHK-aad161ddf787",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-aad161ddf787": "ab2252533e73a74a29d319efcbedc003fa4fea2265a399dfd6750cac566338ae"
+          },
+          "input_hash": "0d6e71aa254d0ed282419bd0ea9bfc5aec13e8b256b5a9fd7e9a81659b1dfb5a",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-aad161ddf787",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "tests/test_runtime_consolidation.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "unit",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+            ],
+            "markers": []
+          },
+          "revision": 2,
+          "run_id": "a266a74906dd45bd94d5d268e030dc20",
+          "executed_at": "2026-10-27T16:23:56.883015+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "0d6e71aa254d0ed282419bd0ea9bfc5aec13e8b256b5a9fd7e9a81659b1dfb5a"
+        }
       ]
     },
     {
