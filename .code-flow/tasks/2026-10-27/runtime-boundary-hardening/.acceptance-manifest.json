@@ -2484,7 +2484,7 @@
       "kind": "functional",
       "boundary": "场景文件、TASK 文档、manifest 锁定与真实 AST 导入图",
       "owner": "TASK-003",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -2532,6 +2532,382 @@
       "check": "CHK-d55dabdd9c27",
       "checks": [
         "CHK-d55dabdd9c27"
+      ],
+      "revision": 2,
+      "evidence": {
+        "id": "S-03",
+        "status": "passed",
+        "check_ids": [
+          "CHK-d55dabdd9c27"
+        ],
+        "check_reused": {
+          "CHK-d55dabdd9c27": false
+        },
+        "check_results": {
+          "CHK-d55dabdd9c27": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-d55dabdd9c27": false
+        },
+        "check_configs": {
+          "CHK-d55dabdd9c27": {
+            "id": "CHK-d55dabdd9c27",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-d55dabdd9c27": "0cc6911530559d02229c8adb6f38288f54ee8e604ad0896eed4f04ce3c413b83"
+        },
+        "input_hash": "0a82cf1eeb3e2661f90864806684d08109363fe83504f6a20450f07a7d2fea5d",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-d55dabdd9c27",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py",
+            "tests/test_runtime_boundary_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "integration",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+          ],
+          "markers": []
+        },
+        "revision": 2,
+        "run_id": "b1e9936f122b4541b4b67637e0d3eac2",
+        "executed_at": "2026-10-27T16:33:39.383205+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "0a82cf1eeb3e2661f90864806684d08109363fe83504f6a20450f07a7d2fea5d"
+      },
+      "runs": [
+        {
+          "id": "S-03",
+          "status": "passed",
+          "check_ids": [
+            "CHK-d55dabdd9c27"
+          ],
+          "check_reused": {
+            "CHK-d55dabdd9c27": false
+          },
+          "check_results": {
+            "CHK-d55dabdd9c27": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-d55dabdd9c27": false
+          },
+          "check_configs": {
+            "CHK-d55dabdd9c27": {
+              "id": "CHK-d55dabdd9c27",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+              ],
+              "markers": []
+            }
+          },
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-d55dabdd9c27",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "72d7855e916b4fc7a735631721501f8e",
+          "executed_at": "2026-10-27T16:33:25.145961+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-03",
+          "status": "passed",
+          "check_ids": [
+            "CHK-d55dabdd9c27"
+          ],
+          "check_reused": {
+            "CHK-d55dabdd9c27": false
+          },
+          "check_results": {
+            "CHK-d55dabdd9c27": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-d55dabdd9c27": false
+          },
+          "check_configs": {
+            "CHK-d55dabdd9c27": {
+              "id": "CHK-d55dabdd9c27",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-d55dabdd9c27": "0cc6911530559d02229c8adb6f38288f54ee8e604ad0896eed4f04ce3c413b83"
+          },
+          "input_hash": "0a82cf1eeb3e2661f90864806684d08109363fe83504f6a20450f07a7d2fea5d",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-d55dabdd9c27",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+            ],
+            "markers": []
+          },
+          "revision": 2,
+          "run_id": "b1e9936f122b4541b4b67637e0d3eac2",
+          "executed_at": "2026-10-27T16:33:39.383205+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "0a82cf1eeb3e2661f90864806684d08109363fe83504f6a20450f07a7d2fea5d"
+        }
       ]
     },
     {
@@ -2541,7 +2917,7 @@
       "kind": "functional",
       "boundary": "真实旧版 manifest、TASK 与场景源文件",
       "owner": "TASK-003",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -2589,6 +2965,382 @@
       "check": "CHK-dd658f0fa13b",
       "checks": [
         "CHK-dd658f0fa13b"
+      ],
+      "revision": 2,
+      "evidence": {
+        "id": "E-02",
+        "status": "passed",
+        "check_ids": [
+          "CHK-dd658f0fa13b"
+        ],
+        "check_reused": {
+          "CHK-dd658f0fa13b": false
+        },
+        "check_results": {
+          "CHK-dd658f0fa13b": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-dd658f0fa13b": false
+        },
+        "check_configs": {
+          "CHK-dd658f0fa13b": {
+            "id": "CHK-dd658f0fa13b",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-dd658f0fa13b": "662b257e6a1aaa7478128bc255a0fca95b86f32c337a1f78520f949aa7ebf66e"
+        },
+        "input_hash": "0c8c56293acc793dc98b758efd58955fe13ff1d9e9b86859d95b0949c5c14215",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-dd658f0fa13b",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py",
+            "tests/test_runtime_boundary_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "integration",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+          ],
+          "markers": []
+        },
+        "revision": 2,
+        "run_id": "b1e9936f122b4541b4b67637e0d3eac2",
+        "executed_at": "2026-10-27T16:33:39.383205+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "0c8c56293acc793dc98b758efd58955fe13ff1d9e9b86859d95b0949c5c14215"
+      },
+      "runs": [
+        {
+          "id": "E-02",
+          "status": "passed",
+          "check_ids": [
+            "CHK-dd658f0fa13b"
+          ],
+          "check_reused": {
+            "CHK-dd658f0fa13b": false
+          },
+          "check_results": {
+            "CHK-dd658f0fa13b": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-dd658f0fa13b": false
+          },
+          "check_configs": {
+            "CHK-dd658f0fa13b": {
+              "id": "CHK-dd658f0fa13b",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+              ],
+              "markers": []
+            }
+          },
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-dd658f0fa13b",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "72d7855e916b4fc7a735631721501f8e",
+          "executed_at": "2026-10-27T16:33:25.145961+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "E-02",
+          "status": "passed",
+          "check_ids": [
+            "CHK-dd658f0fa13b"
+          ],
+          "check_reused": {
+            "CHK-dd658f0fa13b": false
+          },
+          "check_results": {
+            "CHK-dd658f0fa13b": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-dd658f0fa13b": false
+          },
+          "check_configs": {
+            "CHK-dd658f0fa13b": {
+              "id": "CHK-dd658f0fa13b",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-dd658f0fa13b": "662b257e6a1aaa7478128bc255a0fca95b86f32c337a1f78520f949aa7ebf66e"
+          },
+          "input_hash": "0c8c56293acc793dc98b758efd58955fe13ff1d9e9b86859d95b0949c5c14215",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-dd658f0fa13b",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+            ],
+            "markers": []
+          },
+          "revision": 2,
+          "run_id": "b1e9936f122b4541b4b67637e0d3eac2",
+          "executed_at": "2026-10-27T16:33:39.383205+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "0c8c56293acc793dc98b758efd58955fe13ff1d9e9b86859d95b0949c5c14215"
+        }
       ]
     },
     {

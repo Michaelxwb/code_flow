@@ -73,6 +73,7 @@ LAYERS: dict[str, int] = {
     "cf_pre_tool_hook": 3,
     "cf_rule_readiness": 1,
     "cf_runtime_install": 0,
+    "cf_scenario_source": 1,
     "cf_scan": 3,
     "cf_scenario_quality": 1,
     "cf_scenarios": 1,

@@ -12,7 +12,8 @@ import re
 from pathlib import Path
 from typing import Mapping
 
-from codeflow.acceptance.cf_acceptance_schema import load_manifest, scenario_check_ids, validate_execution_baseline
+from codeflow.acceptance.cf_acceptance_manifest_core import validate_execution_baseline
+from codeflow.acceptance.cf_acceptance_schema import load_manifest, scenario_check_ids
 
 _PLACEHOLDERS = frozenset(("", "-", "n/a", "na", "none", "无", "todo", "tbd", "待定"))
 

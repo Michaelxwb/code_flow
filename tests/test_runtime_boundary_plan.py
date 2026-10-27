@@ -170,14 +170,107 @@ def test_e01_stop_preserves_real_error_diagnostics(tmp_path: Path) -> None:
     assert "task read failed" in failure.stderr and "unreadable.md" in failure.stderr
 
 
-@pytest.mark.xfail(strict=True, reason="S-03 is planned for TASK-003")
-def test_s03_manifest_scenario_and_schema_dependencies_are_acyclic() -> None:
-    pytest.fail("Implement S-03: scenario parsing, manifest extraction and schema validation form a directed graph")
+def _manifest_fixture(directory: Path, level: str = "integration") -> tuple[Path, Path, Path]:
+    task = directory / "demo.md"
+    source = directory / "demo.scenarios.md"
+    manifest = directory / ".acceptance-manifest.json"
+    task.write_text(
+        "# Tasks\n\n## Acceptance Coverage\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n"
+        "|--------|---------|---------|-------------|---------|------|---------|\n"
+        f'| S-01 | design#1 | {level} | service -> store | TASK-001 | planned | ["python3", "-c", "pass"] |\n'
+        f'| S-02 | design#1 | {level} | service -> store | TASK-001 | planned | ["python3", "-c", "pass"] |\n\n'
+        "## TASK-001: Demo\n- **Status**: draft\n- **Acceptance-Refs**: S-01, S-02\n",
+        encoding="utf-8",
+    )
+    source.write_text(
+        "---\nschema: 1\nrequirement: demo\nscenarios:\n"
+        "- id: S-01\n  priority: P1\n  level: integration\n  boundary: service -> store\n"
+        "- id: S-02\n  priority: P1\n  level: integration\n  boundary: service -> store\n---\n",
+        encoding="utf-8",
+    )
+    return task, source, manifest
 
 
-@pytest.mark.xfail(strict=True, reason="E-02 is planned for TASK-003")
-def test_e02_manifest_legacy_healing_and_drift_behavior() -> None:
-    pytest.fail("Implement E-02: real legacy lock healing and malformed or changed inputs keep their outcomes")
+def _reachable(edges: set[tuple[str, str]], start: str, end: str) -> bool:
+    pending, seen = [start], set()
+    while pending:
+        node = pending.pop()
+        if node == end:
+            return True
+        if node not in seen:
+            seen.add(node)
+            pending.extend(target for source, target in edges if source == node)
+    return False
+
+
+def test_s03_manifest_scenario_and_schema_dependencies_are_acyclic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import json
+    import subprocess
+
+    from cf_acceptance_manifest import validate_manifest, write_manifest
+    from cf_scenarios import parse_scenarios
+    from test_runtime_consolidation import _import_edges, _script_files, _script_modules
+
+    task, source, manifest = _manifest_fixture(tmp_path)
+    source_reads = [0]
+    original_read = Path.read_text
+
+    def observe_read(path: Path, *args: object, **kwargs: object) -> str:
+        if path == source:
+            source_reads[0] += 1
+        return original_read(path, *args, **kwargs)
+
+    with monkeypatch.context() as observer:
+        observer.setattr(Path, "read_text", observe_read)
+        locked = write_manifest(str(task), str(manifest), str(source))
+    assert 0 < source_reads[0] <= 3, "locking must not add scenario-source reads"
+    parsed = parse_scenarios(source)
+    assert {item["id"] for item in parsed["scenarios"]} == {"S-01", "S-02"}
+    checks = {item["id"]: item["check"] for item in locked["scenarios"]}
+    assert checks["S-01"] == checks["S-02"] == locked["checks"][0]["id"]
+    assert validate_manifest(str(task), str(manifest)) == (True, "")
+    migrated = subprocess.run(
+        [sys.executable, str(SCRIPTS / "cf_scenarios.py"), "migrate", "--task-file", str(task)],
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    assert migrated.returncode == 0, migrated.stderr
+    assert {row["id"] for row in json.loads(migrated.stdout)["scenarios"]} == {"S-01", "S-02"}
+
+    modules = _script_modules(SCRIPTS)
+    edges = set().union(*(_import_edges(path, modules) for path in _script_files(SCRIPTS)))
+    owners = ("cf_acceptance_manifest_core", "cf_acceptance_schema", "cf_scenarios")
+    for index, left in enumerate(owners):
+        for right in owners[index + 1:]:
+            assert not (_reachable(edges, left, right) and _reachable(edges, right, left)), (left, right)
+
+
+def test_e02_manifest_legacy_healing_and_drift_behavior(tmp_path: Path) -> None:
+    import json
+
+    from cf_acceptance_manifest import _legacy_kind, extract_manifest, validate_manifest
+
+    task, source, manifest = _manifest_fixture(tmp_path, "E2E（Playwright）")
+    original = task.read_text(encoding="utf-8")
+    legacy = extract_manifest(str(task), _legacy_kind, contract_fallback=False, merge_source=False)
+    legacy["task_file"] = task.name
+    legacy["scenarios_file"] = source.name
+    legacy["e2e_gate"] = 1
+    legacy["scenarios"][0]["evidence"] = {"status": "passed", "exit_code": 0}
+    manifest.write_text(json.dumps(legacy, ensure_ascii=False), encoding="utf-8")
+    assert validate_manifest(str(task), str(manifest)) == (True, "")
+    healed = json.loads(manifest.read_text(encoding="utf-8"))
+    assert healed["scenarios"][0]["evidence"]["exit_code"] == 0
+    assert healed["task_sha256"] != legacy["task_sha256"]
+
+    task.write_text(original.replace("design#1", "design#changed"), encoding="utf-8")
+    assert validate_manifest(str(task), str(manifest)) == (False, "acceptance_manifest_drift")
+    task.write_text(original, encoding="utf-8")
+    source.write_text("---\nscenarios: [\n---\n", encoding="utf-8")
+    valid, reason = validate_manifest(str(task), str(manifest))
+    assert not valid and reason.startswith("acceptance_manifest_invalid: scenario_source_invalid:")
 
 
 @pytest.mark.xfail(strict=True, reason="S-04 is planned for TASK-004")

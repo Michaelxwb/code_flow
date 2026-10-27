@@ -370,7 +370,7 @@ _SCENARIO_SOURCE_FIELDS = ("why_e2e", "trigger_paths", "smoke", "components", "s
 def _source_contract(scenarios_file: str,
                      text: Optional[str] = None) -> tuple[dict[str, object], dict[str, set[str]]]:
     import yaml
-    from codeflow.cli.cf_scenarios import ScenarioError, parse_scenarios
+    from codeflow.acceptance.cf_scenario_source import ScenarioError, parse_scenarios
 
     try:
         source = parse_scenarios(scenarios_file, text=text)
@@ -641,3 +641,18 @@ def validate_manifest(task_file: str, manifest_file: str,
         if not refs or scenario["id"] not in re.findall(r"\b[SEB]-\d+\b", refs.group(1)):
             return False, "acceptance_manifest_owner_missing"
     return True, ""
+
+
+def validate_execution_baseline(path: Path, data: Mapping[str, object]) -> None:
+    """Legacy standalone manifests remain usable; locked plans must match."""
+    task_name = data.get("task_file")
+    if not isinstance(task_name, str) or not task_name:
+        return
+    task = Path(task_name)
+    task = task if task.is_absolute() else path.parent / task
+    if not task.is_file():
+        raise ValueError(f"acceptance task file missing: {task}")
+    if "## Acceptance Coverage" in task.read_text(encoding="utf-8"):
+        valid, reason = validate_manifest(str(task), str(path))
+        if not valid:
+            raise ValueError(reason)

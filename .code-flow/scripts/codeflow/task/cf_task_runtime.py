@@ -32,7 +32,8 @@ from codeflow.spec.cf_spec_resolver import resolve_candidates, SpecCandidate
 from codeflow.cli.cf_spec_session import context_sha256
 from codeflow.spec.cf_spec_verify import VerificationEvidence, VerificationScope, run_all_verifiers, store_verification_evidence
 from codeflow.core.cf_core import load_config, phase_timing, resolve_quality_loop
-from codeflow.acceptance.cf_acceptance_schema import load_manifest, validate_execution_baseline
+from codeflow.acceptance.cf_acceptance_manifest_core import validate_execution_baseline
+from codeflow.acceptance.cf_acceptance_schema import load_manifest
 from codeflow.core.cf_exec_base import execution_session
 from codeflow.core.cf_validators import (
     PARSE_ERROR,

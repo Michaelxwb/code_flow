@@ -33,8 +33,9 @@ from codeflow.core.cf_exec_base import (
 )
 from codeflow.acceptance.cf_check_inputs import check_input_hashes, match_path
 from codeflow.acceptance.cf_acceptance_risk import accepted_risk as _accepted_risk
+from codeflow.acceptance.cf_acceptance_manifest_core import validate_execution_baseline
 from codeflow.acceptance.cf_acceptance_schema import (check_outcome, load_manifest, recorded_check_hash,
-                                  scenario_check_ids, validate_execution_baseline)
+                                  scenario_check_ids)
 from codeflow.acceptance.cf_acceptance_evidence import persist_results
 from codeflow.evidence.cf_evidence_store import EvidenceStore
 from codeflow.core.cf_worktree_env import (

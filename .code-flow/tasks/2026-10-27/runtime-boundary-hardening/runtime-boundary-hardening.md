@@ -22,8 +22,8 @@
 | B-01 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 stem 分层表、临时包结构与 SCC 计算 | TASK-001 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"] | P1 | auto | none | ["tests/test_runtime_consolidation.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-02 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实会话 edit 日志、临时项目文件与 Stop Hook 子进程 | TASK-002 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s02_stop_ignores_moved_task_and_scenario_paths"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | E-01 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Stop Hook、临时活动 marker 与文件系统 | TASK-002 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| S-03 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 场景文件、TASK 文档、manifest 锁定与真实 AST 导入图 | TASK-003 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| E-02 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实旧版 manifest、TASK 与场景源文件 | TASK-003 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| S-03 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 场景文件、TASK 文档、manifest 锁定与真实 AST 导入图 | TASK-003 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| E-02 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实旧版 manifest、TASK 与场景源文件 | TASK-003 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-04 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 pytest 收集、登记配置与 manifest checks | TASK-004 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-05 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 manifest、acceptance runner 与需求验证选择 | TASK-004 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-06 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实临时 Git worktree、任务文档、Spec Context 与 manifest | TASK-005 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s06_parallel_conflicts_and_spec_scope_share_owner"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/task/*.py","src/core/code-flow/scripts/codeflow/spec/cf_workflow_service.py","src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
@@ -144,7 +144,7 @@
 
 ## TASK-003: 拆开 manifest 与场景解析环
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-001
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -160,28 +160,34 @@
 
 ### Checklist
 
-- [ ] 处理 schema → manifest 基线与 manifest → scenarios CLI 两条回边，并更新所有调用方，保持入口兼容。
-- [ ] 保留旧 schema 自愈、数据写回、错误码、快照漂移判断和场景解析次数；新增模块必须具备明确职责。
-- [ ] [S-03][integration] 先将骨架替换为真实断言并记录 RED；边界：场景文件、TASK 文档、manifest 锁定与真实 AST 导入图；断言：场景与检查映射一致，manifest schema 和 scenarios 之间不存在多模块 SCC。
-- [ ] [E-02][integration] 先将骨架替换为真实断言并记录 RED；边界：真实旧版 manifest、TASK 与场景源文件；断言：旧锁按既有规则自愈，正文漂移和损坏场景源返回阻断及原有错误类别。
-- [ ] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
+- [x] 处理 schema → manifest 基线与 manifest → scenarios CLI 两条回边，并更新所有调用方，保持入口兼容。
+- [x] 保留旧 schema 自愈、数据写回、错误码、快照漂移判断和场景解析次数；新增模块必须具备明确职责。
+- [x] [S-03][integration] 先将骨架替换为真实断言并记录 RED；边界：场景文件、TASK 文档、manifest 锁定与真实 AST 导入图；断言：场景与检查映射一致，manifest schema 和 scenarios 之间不存在多模块 SCC。
+- [x] [E-02][integration] 先将骨架替换为真实断言并记录 RED；边界：真实旧版 manifest、TASK 与场景源文件；断言：旧锁按既有规则自愈，正文漂移和损坏场景源返回阻断及原有错误类别。
+- [x] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-03 | integration | 场景文件、TASK 文档、manifest 锁定与真实 AST 导入图 | 场景与检查映射一致，manifest schema 和 scenarios 之间不存在多模块 SCC | tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"] | planned |
-| E-02 | integration | 真实旧版 manifest、TASK 与场景源文件 | 旧锁按既有规则自愈，正文漂移和损坏场景源返回阻断及原有错误类别 | tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"] | planned |
+| S-03 | integration | 场景文件、TASK 文档、manifest 锁定与真实 AST 导入图 | 场景与检查映射一致，manifest schema 和 scenarios 之间不存在多模块 SCC | tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"] | verified |
+| E-02 | integration | 真实旧版 manifest、TASK 与场景源文件 | 旧锁按既有规则自愈，正文漂移和损坏场景源返回阻断及原有错误类别 | tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"] | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-03 | - | - | - | - | planned |
-| E-02 | - | - | - | - | planned |
+| S-03 | FAIL: manifest core 与 schema 在真实导入图中互相可达；命令见契约 | PASS: 验收命令和读次数检查通过 | tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic | 真实场景源、TASK、manifest、CLI 子进程和 AST 导入图 | verified |
+| E-02 | N/A: 重构保护现有行为；旧锁自愈、漂移和损坏源基线通过 | PASS: 验收命令通过 | tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior | 真实旧锁、TASK 和场景源 | verified |
+- S-03: verified — automated command passed; run_id=72d7855e916b4fc7a735631721501f8e (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=72d7855e916b4fc7a735631721501f8e (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=b1e9936f122b4541b4b67637e0d3eac2 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=b1e9936f122b4541b4b67637e0d3eac2 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-28] started
+- [2026-10-28] completed (done)
 
 ---
 

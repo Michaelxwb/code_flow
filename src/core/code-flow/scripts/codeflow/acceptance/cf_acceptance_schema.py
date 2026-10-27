@@ -256,19 +256,3 @@ def load_manifest(path: Path, *, text: Optional[str] = None) -> dict[str, object
     if "task_file" in data and not isinstance(data["task_file"], str):
         raise ValueError("invalid acceptance manifest: task_file")
     return data
-
-
-def validate_execution_baseline(path: Path, data: Mapping[str, object]) -> None:
-    """Legacy standalone manifests remain usable; locked plans must match."""
-    task_name = data.get("task_file")
-    if not isinstance(task_name, str) or not task_name:
-        return
-    task = Path(task_name)
-    task = task if task.is_absolute() else path.parent / task
-    if not task.is_file():
-        raise ValueError(f"acceptance task file missing: {task}")
-    if "## Acceptance Coverage" in task.read_text(encoding="utf-8"):
-        from codeflow.acceptance.cf_acceptance_manifest_core import validate_manifest
-        valid, reason = validate_manifest(str(task), str(path))
-        if not valid:
-            raise ValueError(reason)

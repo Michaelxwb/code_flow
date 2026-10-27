@@ -15,7 +15,8 @@ import time
 
 from codeflow.cli.cf_acceptance_manifest import record_manual_evidence
 from codeflow.cli.cf_acceptance_runner import run_manifest
-from codeflow.acceptance.cf_acceptance_schema import load_manifest, scenario_check_ids, validate_execution_baseline, verified_evidence
+from codeflow.acceptance.cf_acceptance_manifest_core import validate_execution_baseline
+from codeflow.acceptance.cf_acceptance_schema import load_manifest, scenario_check_ids, verified_evidence
 from codeflow.core.cf_exec_base import execution_session
 from codeflow.core import cf_git
 from codeflow.cli.cf_spec_context import (ContextError, DEFAULT_ACTIVE_EXCLUDES, Decision, SpecContext,

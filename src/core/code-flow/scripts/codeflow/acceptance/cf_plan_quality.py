@@ -49,7 +49,7 @@ def _read_snapshot(path: Path) -> FileSnapshot:
 def load_plan_snapshot(directory: str, task_file: str,
                        require_scenarios: bool = False) -> PlanSnapshot:
     """Read TASK, manifest and scenario source at most once for one operation."""
-    from codeflow.cli.cf_scenarios import ScenarioError
+    from codeflow.acceptance.cf_scenario_source import ScenarioError
     base = Path(directory)
     manifest = _read_snapshot(base / ".acceptance-manifest.json")
     task = _read_snapshot(Path(task_file))
@@ -71,7 +71,7 @@ def _root(directory: Path) -> Path:
 
 
 def _source(directory: Path, manifest: Mapping[str, object], required: bool) -> str:
-    from codeflow.cli.cf_scenarios import require_source
+    from codeflow.acceptance.cf_scenario_source import require_source
     named = manifest.get("scenarios_file")
     if isinstance(named, str) and named:
         return str(directory / named)
@@ -147,7 +147,7 @@ def verify_plan(directory: str, task_file: str, require_scenarios: bool = False,
     from codeflow.acceptance.cf_acceptance_schema import load_manifest
     from codeflow.acceptance.cf_check_registration import validate_registration
     from codeflow.cli.cf_design_lint import lint_requirement
-    from codeflow.cli.cf_scenarios import parse_scenarios, validate_e2e_quality
+    from codeflow.acceptance.cf_scenario_source import parse_scenarios, validate_e2e_quality
     from codeflow.spec.cf_spec_context_model import load_context
     from codeflow.cli.cf_spec_gate import result_to_data, validate_plan_coverage, validate_stage
     base = Path(directory)
