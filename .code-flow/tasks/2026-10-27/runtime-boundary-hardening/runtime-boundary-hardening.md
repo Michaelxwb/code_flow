@@ -24,8 +24,8 @@
 | E-01 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Stop Hook、临时活动 marker 与文件系统 | TASK-002 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e01_stop_preserves_real_error_diagnostics"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/hooks/cf_stop_hook.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-03 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 场景文件、TASK 文档、manifest 锁定与真实 AST 导入图 | TASK-003 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s03_manifest_scenario_and_schema_dependencies_are_acyclic"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | E-02 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实旧版 manifest、TASK 与场景源文件 | TASK-003 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e02_manifest_legacy_healing_and_drift_behavior"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_scenarios.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| S-04 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 pytest 收集、登记配置与 manifest checks | TASK-004 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| S-05 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 manifest、acceptance runner 与需求验证选择 | TASK-004 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| S-04 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 pytest 收集、登记配置与 manifest checks | TASK-004 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| S-05 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 manifest、acceptance runner 与需求验证选择 | TASK-004 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-06 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实临时 Git worktree、任务文档、Spec Context 与 manifest | TASK-005 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s06_parallel_conflicts_and_spec_scope_share_owner"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/task/*.py","src/core/code-flow/scripts/codeflow/spec/cf_workflow_service.py","src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | E-03 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Context Evidence、active marker 与 TASK 文件 | TASK-005 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e03_evidence_and_task_transitions_preserve_guards"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/task/*.py","src/core/code-flow/scripts/codeflow/spec/cf_workflow_service.py","src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-07 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Context、Gate 判定、Session 投影及 AST 导入图 | TASK-006 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
@@ -193,7 +193,7 @@
 
 ## TASK-004: 收口验收登记、场景选择和风险接口
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-003
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -209,28 +209,34 @@
 
 ### Checklist
 
-- [ ] 处理登记的 _collected、_execution_argv、_pytest_markers、_registration_issues、_requirements 引用，避免机械公开细碎 helper。
-- [ ] 统一 _owned、_select_profile 的语义与调用方；风险判断直接使用现有 acceptance owner，保留依赖裁剪与多 owner 行为。
-- [ ] [S-04][integration] 先将骨架替换为真实断言并记录 RED；边界：真实 pytest 收集、登记配置与 manifest checks；断言：登记的 test ID 和 marker 与实际收集结果一致，选择不匹配时阻断。
-- [ ] [S-05][integration] 先将骨架替换为真实断言并记录 RED；边界：真实 manifest、acceptance runner 与需求验证选择；断言：两处消费者选择相同场景与依赖，风险只适用于授权 owner 和检查。
-- [ ] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
+- [x] 处理登记的 _collected、_execution_argv、_pytest_markers、_registration_issues、_requirements 引用，避免机械公开细碎 helper。
+- [x] 统一 _owned、_select_profile 的语义与调用方；风险判断直接使用现有 acceptance owner，保留依赖裁剪与多 owner 行为。
+- [x] [S-04][integration] 先将骨架替换为真实断言并记录 RED；边界：真实 pytest 收集、登记配置与 manifest checks；断言：登记的 test ID 和 marker 与实际收集结果一致，选择不匹配时阻断。
+- [x] [S-05][integration] 先将骨架替换为真实断言并记录 RED；边界：真实 manifest、acceptance runner 与需求验证选择；断言：两处消费者选择相同场景与依赖，风险只适用于授权 owner 和检查。
+- [x] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-04 | integration | 真实 pytest 收集、登记配置与 manifest checks | 登记的 test ID 和 marker 与实际收集结果一致，选择不匹配时阻断 | tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"] | planned |
-| S-05 | integration | 真实 manifest、acceptance runner 与需求验证选择 | 两处消费者选择相同场景与依赖，风险只适用于授权 owner 和检查 | tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"] | planned |
+| S-04 | integration | 真实 pytest 收集、登记配置与 manifest checks | 登记的 test ID 和 marker 与实际收集结果一致，选择不匹配时阻断 | tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"] | verified |
+| S-05 | integration | 真实 manifest、acceptance runner 与需求验证选择 | 两处消费者选择相同场景与依赖，风险只适用于授权 owner 和检查 | tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"] | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-04 | - | - | - | - | planned |
-| S-05 | - | - | - | - | planned |
+| S-04 | FAIL: 登记模块跨边界引用五个私有符号；真实收集与选择不匹配基线通过 | PASS: 验收命令通过 | tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract | 临时 pytest、真实收集和登记配置 | verified |
+| S-05 | FAIL: smoke 先按 owner 过滤会使需求预检与 runner 选择不一致；工作流还跨边界引用 runner 三个私有符号 | PASS: 验收命令通过 | tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent | 真实 manifest、runner、需求验证与风险授权 | verified |
+- S-04: verified — automated command passed; run_id=efa2b50a992541fe934e458bbad1713e (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=efa2b50a992541fe934e458bbad1713e (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=9cefeddcc5954c728df6223c8926521a (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=9cefeddcc5954c728df6223c8926521a (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-28] started
+- [2026-10-28] completed (done)
 
 ---
 

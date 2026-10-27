@@ -69,7 +69,7 @@ def test_untracked_artifact_does_not_invalidate_acceptance_cache(tmp_path: Path)
 
 
 def test_profile_smoke_selects_p0_only(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(runner, "_changed_paths", lambda root: set())
+    monkeypatch.setattr("codeflow.acceptance.cf_acceptance_selection.changed_paths", lambda root: set())
     data = {
         "schema": 3,
         "checks": [
@@ -97,7 +97,7 @@ def test_profile_changed_filters_by_inputs(monkeypatch: pytest.MonkeyPatch) -> N
             {"id": "S-02", "kind": "functional", "check": "CHK-B", "priority": "P1"},
         ],
     }
-    monkeypatch.setattr(runner, "_changed_paths", lambda root: {"src/a.py"})
+    monkeypatch.setattr("codeflow.acceptance.cf_acceptance_selection.changed_paths", lambda root: {"src/a.py"})
     selected = runner._select_profile(data, "/tmp", "changed")
     assert [item["id"] for item in selected["scenarios"]] == ["S-01"]
 
@@ -240,7 +240,7 @@ def test_profile_run_does_not_truncate_manifest(tmp_path: Path, monkeypatch: pyt
              "command": command, "cwd": ".", "timeout": 30, "status": "planned"},
         ],
     }), encoding="utf-8")
-    monkeypatch.setattr(runner, "_changed_paths", lambda root: set())
+    monkeypatch.setattr("codeflow.acceptance.cf_acceptance_selection.changed_paths", lambda root: set())
     result = runner.run_manifest(str(manifest), str(root), write_evidence=True, profile="smoke")
     assert result["decision"] == "pass"
     saved = json.loads(manifest.read_text(encoding="utf-8"))
@@ -295,7 +295,7 @@ def test_functional_only_stale_full_reruns_and_blocks(tmp_path: Path) -> None:
 
 
 def test_smoke_selection_includes_e2e_even_with_p0_functional(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(runner, "_changed_paths", lambda root: set())
+    monkeypatch.setattr("codeflow.acceptance.cf_acceptance_selection.changed_paths", lambda root: set())
     data = {
         "schema": 3,
         "checks": [

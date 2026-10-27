@@ -273,14 +273,90 @@ def test_e02_manifest_legacy_healing_and_drift_behavior(tmp_path: Path) -> None:
     assert not valid and reason.startswith("acceptance_manifest_invalid: scenario_source_invalid:")
 
 
-@pytest.mark.xfail(strict=True, reason="S-04 is planned for TASK-004")
-def test_s04_check_registration_uses_shared_public_contract() -> None:
-    pytest.fail("Implement S-04: real pytest collection and registration use the same check semantics")
+def test_s04_check_registration_uses_shared_public_contract(tmp_path: Path) -> None:
+    import json
+
+    from codeflow.acceptance.cf_acceptance_registration import RegistrationError, register_checks
+    from codeflow.acceptance.cf_check_registration import validate_registration
+    from test_runtime_consolidation import _private_imports, _script_modules
+
+    (tmp_path / "pytest.ini").write_text("[pytest]\nmarkers =\n    smoke: smoke test\n", encoding="utf-8")
+    (tmp_path / "test_sample.py").write_text(
+        "import pytest\n@pytest.mark.smoke\ndef test_selected(): pass\n"
+        "@pytest.mark.smoke\ndef test_other(): pass\n", encoding="utf-8",
+    )
+    check = {"id": "CHK-1", "command": [sys.executable, "-m", "pytest", "-q",
+                                        "test_sample.py::test_selected", "-m", "smoke"]}
+    row = {"id": "S-01", "kind": "functional", "smoke": True, "check": "CHK-1"}
+    manifest = {"checks": [check], "scenarios": [row]}
+    assert register_checks(manifest, str(tmp_path))["ok"]
+    assert check["test_ids"] == ["test_sample.py::test_selected"] and "smoke" in check["markers"]
+    assert validate_registration(str(tmp_path), [row], [check])["ok"]
+
+    override = tmp_path / "registration.json"
+    override.write_text(json.dumps({"checks": {"CHK-1": {
+        "test_ids": ["test_sample.py::test_other"],
+        "collect": {"argv": [sys.executable, "-m", "pytest", "--collect-only", "--verbosity=-1",
+                               "test_sample.py", "-m", "smoke"], "format": "pytest", "timeout": 10},
+    }}}), encoding="utf-8")
+    wrong = {"checks": [{"id": "CHK-1", "command": check["command"]}], "scenarios": [row]}
+    with pytest.raises(RegistrationError) as error:
+        register_checks(wrong, str(tmp_path), str(override))
+    assert "check_execution_selection_mismatch" in str(error.value.report)
+
+    imports = _private_imports(SCRIPTS / "codeflow/acceptance/cf_acceptance_registration.py", _script_modules(SCRIPTS))
+    assert not {entry for entry in imports if entry[1] == "cf_check_registration"}
 
 
-@pytest.mark.xfail(strict=True, reason="S-05 is planned for TASK-004")
-def test_s05_acceptance_selection_and_risk_are_consistent() -> None:
-    pytest.fail("Implement S-05: owner and profile selection and accepted risk agree across consumers")
+def _selection_manifest_fixture(directory: Path) -> tuple[Path, Path]:
+    import json
+
+    task = directory / "demo.md"
+    task.write_text("# Legacy tasks\n## TASK-001: One\n## TASK-002: Two\n", encoding="utf-8")
+    manifest = directory / ".acceptance-manifest.json"
+    check = {"id": "CHK-1", "command": [sys.executable, "-c", "raise SystemExit(1)"],
+             "cwd": ".", "timeout": 30}
+    rows = [
+        {"id": "S-01", "kind": "functional", "owner": "TASK-001", "check": "CHK-1",
+         "depends_on": ["S-02"], "status": "accepted_risk"},
+        {"id": "S-02", "kind": "functional", "owner": "TASK-002", "check": "CHK-1",
+         "status": "accepted_risk"},
+    ]
+    manifest.write_text(json.dumps({"schema": 3, "task_file": task.name,
+                                    "checks": [check], "scenarios": rows}), encoding="utf-8")
+    return task, manifest
+
+
+def test_s05_acceptance_selection_and_risk_are_consistent(tmp_path: Path) -> None:
+    import json
+
+    from cf_acceptance_manifest import record_accepted_risk
+    from cf_acceptance_runner import _prepare_manifest, run_manifest
+    from cf_task_workflow import _e2e_preflight
+    from test_runtime_consolidation import _private_imports, _script_modules
+
+    task, manifest = _selection_manifest_fixture(tmp_path)
+    record_accepted_risk(str(manifest), "CHK-1", "TASK-001", "known failure",
+                         "2999-01-01", "user", "confirmed in fixture")
+    for profile in ("smoke", "changed", "full"):
+        _, _, runner_rows, _ = _prepare_manifest(str(manifest), str(tmp_path), profile, (), "TASK-001")
+        workflow, failure = _e2e_preflight(manifest, [(task, "TASK-001", "done")], True, profile, str(tmp_path))
+        assert failure is None and workflow is not None
+        assert [row["id"] for row in runner_rows] == [row["id"] for row in workflow["scenarios"]] == ["S-01"]
+        assert runner_rows[0]["depends_on"] == workflow["scenarios"][0]["depends_on"] == []
+    assert run_manifest(str(manifest), str(tmp_path), owner="TASK-001")["results"][0]["status"] == "accepted_risk"
+    assert run_manifest(str(manifest), str(tmp_path), owner="TASK-002")["results"][0]["status"] == "failed"
+    _, _, both, _ = _prepare_manifest(str(manifest), str(tmp_path), "full", (), "TASK-001,TASK-002")
+    assert [row["id"] for row in both] == ["S-01", "S-02"] and both[0]["depends_on"] == ["S-02"]
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["scenarios"][0]["status"] = "planned"
+    data["scenarios"][1]["priority"] = "P1"
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    _, _, smoke_rows, _ = _prepare_manifest(str(manifest), str(tmp_path), "smoke", (), "TASK-001")
+    _, failure = _e2e_preflight(manifest, [(task, "TASK-001", "done")], True, "smoke", str(tmp_path))
+    assert smoke_rows == [] and failure is None, "preflight must use the same manifest-wide profile"
+    imports = _private_imports(SCRIPTS / "codeflow/cli/cf_task_workflow.py", _script_modules(SCRIPTS))
+    assert not {entry for entry in imports if entry[1] == "cf_acceptance_runner"}
 
 
 @pytest.mark.xfail(strict=True, reason="S-06 is planned for TASK-005")

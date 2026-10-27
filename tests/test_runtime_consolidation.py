@@ -46,6 +46,7 @@ LAYERS: dict[str, int] = {
     "cf_acceptance_risk": 1,
     "cf_acceptance_runner": 2,
     "cf_acceptance_schema": 1,
+    "cf_acceptance_selection": 1,
     "cf_active_task": 1,
     "cf_audit": 3,
     "cf_check_inputs": 1,
@@ -116,16 +117,8 @@ DEPENDENCY_EDGE_ALLOWLIST = frozenset({
 
 # (importer, source module, private symbol, batch after which it must be gone)
 PRIVATE_SYMBOL_ALLOWLIST = frozenset({
-    ("cf_acceptance_registration", "cf_check_registration", "_collected", 6),
-    ("cf_acceptance_registration", "cf_check_registration", "_execution_argv", 6),
-    ("cf_acceptance_registration", "cf_check_registration", "_pytest_markers", 6),
-    ("cf_acceptance_registration", "cf_check_registration", "_registration_issues", 6),
-    ("cf_acceptance_registration", "cf_check_registration", "_requirements", 6),
     ("cf_task_parallel", "cf_task_merge", "_check_conflicts", 6),
     ("cf_task_parallel", "cf_task_runtime", "_task_scope_specs", 6),
-    ("cf_task_workflow", "cf_acceptance_runner", "_accepted_risk", 6),
-    ("cf_task_workflow", "cf_acceptance_runner", "_owned", 6),
-    ("cf_task_workflow", "cf_acceptance_runner", "_select_profile", 6),
     ("cf_task_workflow", "cf_task_runtime", "_NON_EXECUTION_ERRORS", 6),
     ("cf_task_workflow", "cf_task_runtime", "_apply_evidence", 6),
     ("cf_task_workflow", "cf_task_runtime", "_evidence_data", 6),

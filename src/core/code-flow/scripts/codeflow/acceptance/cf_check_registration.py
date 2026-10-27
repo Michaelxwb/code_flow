@@ -8,7 +8,7 @@ import shlex
 import time
 from typing import Mapping, Sequence
 
-from codeflow.acceptance.cf_acceptance_schema import scenario_check_ids
+from codeflow.acceptance.cf_acceptance_schema import scenario_check_ids, validate_checks
 from codeflow.core.cf_exec_base import run_command
 
 
@@ -205,6 +205,50 @@ def _requirements(row: Mapping[str, object]) -> tuple[bool, set[str]]:
     if row.get("level") == "capacity" or "capacity" in row.get("tags", []):
         markers.add("capacity")
     return browser, markers
+
+
+def registration_required(row: Mapping[str, object]) -> bool:
+    """Return whether a scenario needs collection-backed registration."""
+    browser, markers = _requirements(row)
+    return bool(browser or markers)
+
+
+def _collection_config(root: str, check: Mapping[str, object], markers: set[str]) -> dict[str, object]:
+    argv = _execution_argv(root, check)
+    if any(Path(value).name in ("pytest", "py.test") for value in argv):
+        if "-k" in argv:
+            raise ValueError("check_execution_selection_mismatch: use concrete pytest node IDs")
+        selected_markers = set(_pytest_markers(argv)) | markers
+        argv = [value for value in argv if not re.fullmatch(r"-q+|--quiet", value)]
+        argv += ["--collect-only", "--verbosity=-1"]
+        if selected_markers:
+            argv += ["-m", " and ".join(sorted(selected_markers))]
+        return {"argv": argv, "format": "pytest", "timeout": 10}
+    if any(Path(value).name == "playwright" for value in argv):
+        return {"argv": argv + ["--list", "--reporter=json"], "format": "playwright", "timeout": 10}
+    raise ValueError("check_collection_inference_unsupported: supply --registration-file")
+
+
+def register_check(root: str, check: dict[str, object], rows: Sequence[Mapping[str, object]],
+                   deadline: float) -> list[dict[str, str]]:
+    """Collect, populate and validate one check against all of its scenarios."""
+    validate_checks([check])
+    requirements = [_requirements(row) for row in rows]
+    browser = any(item[0] for item in requirements)
+    markers = set().union(*(item[1] for item in requirements))
+    if "collect" not in check:
+        check["collect"] = _collection_config(root, check, markers | ({"browser"} if browser else set()))
+    collected = _collected(root, check, deadline)
+    if not collected:
+        raise ValueError("check_collection_empty")
+    check.setdefault("test_ids", sorted(collected))
+    selected = [collected[value] for value in check["test_ids"] if value in collected]
+    actual_markers = set.intersection(*(set(item.get("markers", [])) for item in selected)) if selected else set()
+    check.setdefault("markers", sorted(actual_markers))
+    if browser and selected and all("browser" in item.get("capabilities", []) for item in selected):
+        check.setdefault("suite", "browser")
+    validate_checks([check])
+    return [issue for row in rows for issue in _registration_issues(root, row, check, collected)]
 
 
 def _registration_issues(root: str, row: Mapping[str, object], check: Mapping[str, object],

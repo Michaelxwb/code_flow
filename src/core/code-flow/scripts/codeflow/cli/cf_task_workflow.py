@@ -16,7 +16,9 @@ import time
 from codeflow.cli.cf_acceptance_manifest import record_manual_evidence
 from codeflow.cli.cf_acceptance_runner import run_manifest
 from codeflow.acceptance.cf_acceptance_manifest_core import validate_execution_baseline
+from codeflow.acceptance.cf_acceptance_risk import accepted_risk
 from codeflow.acceptance.cf_acceptance_schema import load_manifest, scenario_check_ids, verified_evidence
+from codeflow.acceptance.cf_acceptance_selection import select_owned, select_profile
 from codeflow.core.cf_exec_base import execution_session
 from codeflow.core import cf_git
 from codeflow.cli.cf_spec_context import (ContextError, DEFAULT_ACTIVE_EXCLUDES, Decision, SpecContext,
@@ -799,19 +801,16 @@ def _e2e_preflight(manifest: Path, tasks: Sequence[tuple[Path, str, str]],
     bound_task = (manifest.parent / str(data.get("task_file", ""))).resolve()
     if {task.resolve() for task, _, _ in tasks} != {bound_task}:
         return None, _layer_result("block", reason="acceptance_manifest_task_mismatch")
-    from codeflow.cli.cf_acceptance_runner import _owned
-    data = {**data, "scenarios": _owned(data["scenarios"], ",".join(task for _, task, _ in tasks))}
+    owner = ",".join(task for _, task, _ in tasks)
+    selected_ids: Optional[set[str]] = None
+    if requirement_gate and root and profile != "full":
+        selected = select_profile(data, root, profile)["scenarios"]
+        selected_ids = {str(item.get("id")) for item in select_owned(selected, owner)}
+    data = {**data, "scenarios": select_owned(data["scenarios"], owner)}
     if not requirement_gate:
         if not any(row.get("kind") == "e2e" or row.get("exec") == "deferred" for row in data["scenarios"]):
             return None, _nothing_to_verify()
         return data, None
-    selected_ids: Optional[set[str]] = None
-    if root and profile != "full":
-        from codeflow.cli.cf_acceptance_runner import _select_profile
-        selected_ids = {
-            str(item.get("id")) for item in _select_profile(data, root, profile)["scenarios"]
-            if isinstance(item, Mapping)
-        }
     functional_required, manual_scenarios = _pending_scenario_rows(data, selected_ids)
     if functional_required:
         return None, _layer_result("block", reason="functional_or_manual_evidence_missing",
@@ -832,7 +831,6 @@ def _pending_scenario_rows(data: Mapping[str, object], selected_ids: Optional[se
         str(item.get("id")): item for item in data.get("checks", [])
         if isinstance(item, Mapping) and item.get("id")
     }
-    from codeflow.acceptance.cf_acceptance_risk import accepted_risk as _accepted_risk
     for row in data["scenarios"]:
         if row.get("exec") == "aspirational":
             continue
@@ -846,7 +844,7 @@ def _pending_scenario_rows(data: Mapping[str, object], selected_ids: Optional[se
             continue
         if row.get("status") == "accepted_risk":
             check_ids = scenario_check_ids(row)
-            if check_ids and any(_accepted_risk(checks.get(check_id), row) is not None for check_id in check_ids):
+            if check_ids and any(accepted_risk(checks.get(check_id), row) is not None for check_id in check_ids):
                 continue
         if row.get("kind") == "manual" or row.get("exec") == "manual":
             manual_scenarios.append({
@@ -887,7 +885,6 @@ def _unverified_functional_rows(data: Mapping[str, object]) -> list[str]:
         str(item.get("id")): item for item in data.get("checks", [])
         if isinstance(item, Mapping) and item.get("id")
     }
-    from codeflow.cli.cf_acceptance_runner import _accepted_risk
     rows: list[str] = []
     for row in data.get("scenarios", []) or []:
         if not isinstance(row, Mapping):
@@ -896,7 +893,7 @@ def _unverified_functional_rows(data: Mapping[str, object]) -> list[str]:
             continue
         if row.get("status") == "accepted_risk":
             check_ids = scenario_check_ids(row)
-            if any(_accepted_risk(checks.get(check_id), row) is not None for check_id in check_ids):
+            if any(accepted_risk(checks.get(check_id), row) is not None for check_id in check_ids):
                 continue
         if not verified_evidence(row):
             rows.append(str(row.get("id")))

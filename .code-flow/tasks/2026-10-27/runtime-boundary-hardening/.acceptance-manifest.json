@@ -3350,7 +3350,7 @@
       "kind": "functional",
       "boundary": "真实 pytest 收集、登记配置与 manifest checks",
       "owner": "TASK-004",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -3399,6 +3399,388 @@
       "check": "CHK-3c77f13118a8",
       "checks": [
         "CHK-3c77f13118a8"
+      ],
+      "revision": 2,
+      "evidence": {
+        "id": "S-04",
+        "status": "passed",
+        "check_ids": [
+          "CHK-3c77f13118a8"
+        ],
+        "check_reused": {
+          "CHK-3c77f13118a8": false
+        },
+        "check_results": {
+          "CHK-3c77f13118a8": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-3c77f13118a8": false
+        },
+        "check_configs": {
+          "CHK-3c77f13118a8": {
+            "id": "CHK-3c77f13118a8",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-3c77f13118a8": "b818cb819c624941d57404a8f7c2555c8eed3046e9cb4e520f3e9359529247e8"
+        },
+        "input_hash": "379e325c4ecf2e0f048db68f5705fbb25db72d8314731480f71ecd911aa11d11",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-3c77f13118a8",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py",
+            "tests/test_runtime_boundary_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "integration",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+          ],
+          "markers": []
+        },
+        "revision": 2,
+        "run_id": "9cefeddcc5954c728df6223c8926521a",
+        "executed_at": "2026-10-27T16:42:14.903154+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "379e325c4ecf2e0f048db68f5705fbb25db72d8314731480f71ecd911aa11d11"
+      },
+      "runs": [
+        {
+          "id": "S-04",
+          "status": "passed",
+          "check_ids": [
+            "CHK-3c77f13118a8"
+          ],
+          "check_reused": {
+            "CHK-3c77f13118a8": false
+          },
+          "check_results": {
+            "CHK-3c77f13118a8": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-3c77f13118a8": false
+          },
+          "check_configs": {
+            "CHK-3c77f13118a8": {
+              "id": "CHK-3c77f13118a8",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+              ],
+              "markers": []
+            }
+          },
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-3c77f13118a8",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "efa2b50a992541fe934e458bbad1713e",
+          "executed_at": "2026-10-27T16:41:57.767579+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-04",
+          "status": "passed",
+          "check_ids": [
+            "CHK-3c77f13118a8"
+          ],
+          "check_reused": {
+            "CHK-3c77f13118a8": false
+          },
+          "check_results": {
+            "CHK-3c77f13118a8": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-3c77f13118a8": false
+          },
+          "check_configs": {
+            "CHK-3c77f13118a8": {
+              "id": "CHK-3c77f13118a8",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-3c77f13118a8": "b818cb819c624941d57404a8f7c2555c8eed3046e9cb4e520f3e9359529247e8"
+          },
+          "input_hash": "379e325c4ecf2e0f048db68f5705fbb25db72d8314731480f71ecd911aa11d11",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-3c77f13118a8",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+            ],
+            "markers": []
+          },
+          "revision": 2,
+          "run_id": "9cefeddcc5954c728df6223c8926521a",
+          "executed_at": "2026-10-27T16:42:14.903154+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s04_check_registration_uses_shared_public_contract"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "379e325c4ecf2e0f048db68f5705fbb25db72d8314731480f71ecd911aa11d11"
+        }
       ]
     },
     {
@@ -3408,7 +3790,7 @@
       "kind": "functional",
       "boundary": "真实 manifest、acceptance runner 与需求验证选择",
       "owner": "TASK-004",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -3457,6 +3839,388 @@
       "check": "CHK-2d9c08da4eb3",
       "checks": [
         "CHK-2d9c08da4eb3"
+      ],
+      "revision": 2,
+      "evidence": {
+        "id": "S-05",
+        "status": "passed",
+        "check_ids": [
+          "CHK-2d9c08da4eb3"
+        ],
+        "check_reused": {
+          "CHK-2d9c08da4eb3": false
+        },
+        "check_results": {
+          "CHK-2d9c08da4eb3": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-2d9c08da4eb3": false
+        },
+        "check_configs": {
+          "CHK-2d9c08da4eb3": {
+            "id": "CHK-2d9c08da4eb3",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-2d9c08da4eb3": "f755a61aa73b1eb23368242e199fdf66bbc911f7cbcc65d2b9d07c2bc084acf3"
+        },
+        "input_hash": "33a4afa0eda05be82459e456c4ba737165bb9bf2ccc131d99341954d881574de",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-2d9c08da4eb3",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py",
+            "tests/test_runtime_boundary_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "integration",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+          ],
+          "markers": []
+        },
+        "revision": 2,
+        "run_id": "9cefeddcc5954c728df6223c8926521a",
+        "executed_at": "2026-10-27T16:42:14.903154+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "33a4afa0eda05be82459e456c4ba737165bb9bf2ccc131d99341954d881574de"
+      },
+      "runs": [
+        {
+          "id": "S-05",
+          "status": "passed",
+          "check_ids": [
+            "CHK-2d9c08da4eb3"
+          ],
+          "check_reused": {
+            "CHK-2d9c08da4eb3": false
+          },
+          "check_results": {
+            "CHK-2d9c08da4eb3": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-2d9c08da4eb3": false
+          },
+          "check_configs": {
+            "CHK-2d9c08da4eb3": {
+              "id": "CHK-2d9c08da4eb3",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+              ],
+              "markers": []
+            }
+          },
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-2d9c08da4eb3",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "efa2b50a992541fe934e458bbad1713e",
+          "executed_at": "2026-10-27T16:41:57.767579+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-05",
+          "status": "passed",
+          "check_ids": [
+            "CHK-2d9c08da4eb3"
+          ],
+          "check_reused": {
+            "CHK-2d9c08da4eb3": false
+          },
+          "check_results": {
+            "CHK-2d9c08da4eb3": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-2d9c08da4eb3": false
+          },
+          "check_configs": {
+            "CHK-2d9c08da4eb3": {
+              "id": "CHK-2d9c08da4eb3",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-2d9c08da4eb3": "f755a61aa73b1eb23368242e199fdf66bbc911f7cbcc65d2b9d07c2bc084acf3"
+          },
+          "input_hash": "33a4afa0eda05be82459e456c4ba737165bb9bf2ccc131d99341954d881574de",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-2d9c08da4eb3",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/acceptance/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+            ],
+            "markers": []
+          },
+          "revision": 2,
+          "run_id": "9cefeddcc5954c728df6223c8926521a",
+          "executed_at": "2026-10-27T16:42:14.903154+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "33a4afa0eda05be82459e456c4ba737165bb9bf2ccc131d99341954d881574de"
+        }
       ]
     },
     {

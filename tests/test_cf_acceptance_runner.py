@@ -1118,14 +1118,14 @@ def test_select_profile_full_returns_manifest_unchanged() -> None:
 
 
 def test_profile_selection_helpers_stay_under_fifty_lines() -> None:
-    source = (SCRIPTS / "codeflow/cli/cf_acceptance_runner.py").read_text(encoding="utf-8")
+    source = (SCRIPTS / "codeflow/acceptance/cf_acceptance_selection.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     spans = {
         node.name: node.end_lineno - node.lineno + 1
         for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
     }
     required = {
-        "_select_profile", "_select_scenarios", "_scenario_selected",
+        "select_profile", "select_scenarios", "_scenario_selected",
         "_scenario_facts", "_apply_rule_table",
     }
     assert required <= set(spans), f"missing helpers: {sorted(required - set(spans))}"

@@ -515,7 +515,7 @@ def test_changed_profile_scopes_e2e_by_trigger_paths(monkeypatch) -> None:
             {"id": "S-02", "kind": "e2e", "check": "CHK-B", "priority": "P0"},
         ],
     }
-    monkeypatch.setattr("cf_acceptance_runner._changed_paths", lambda root: {"src/frontend/a/View.tsx"})
+    monkeypatch.setattr("codeflow.acceptance.cf_acceptance_selection.changed_paths", lambda root: {"src/frontend/a/View.tsx"})
     selected = _select_profile(data, "/tmp", "changed")
     assert [item["id"] for item in selected["scenarios"]] == ["S-01"]
 
@@ -549,7 +549,7 @@ def test_changed_profile_uses_scenario_trigger_paths_even_if_check_has_none(monk
              "trigger_paths": ["src/frontend/b/**"]},
         ],
     }
-    monkeypatch.setattr("cf_acceptance_runner._changed_paths", lambda root: {"src/frontend/a/View.tsx"})
+    monkeypatch.setattr("codeflow.acceptance.cf_acceptance_selection.changed_paths", lambda root: {"src/frontend/a/View.tsx"})
     selected = _select_profile(data, "/tmp", "changed")
     assert [item["id"] for item in selected["scenarios"]] == ["S-01"]
 
@@ -574,7 +574,7 @@ def test_changed_preflight_ignores_unaffected_unverified_functional(
     data = write_manifest(str(task), str(manifest))
     data["checks"][0]["inputs"] = ["src/a.py"]
     manifest.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    monkeypatch.setattr("cf_acceptance_runner._changed_paths", lambda root: {"docs/unrelated.md"})
+    monkeypatch.setattr("codeflow.acceptance.cf_acceptance_selection.changed_paths", lambda root: {"docs/unrelated.md"})
 
     loaded, failure = _e2e_preflight(
         manifest, [(task, "TASK-001", "done")], True, "changed", str(tmp_path)
@@ -598,7 +598,7 @@ def test_changed_profile_with_no_matching_scenario_is_a_clean_noop(
             "trigger_paths": ["src/frontend/a/**"],
         }],
     }), encoding="utf-8")
-    monkeypatch.setattr("cf_acceptance_runner._changed_paths", lambda root: {"docs/unrelated.md"})
+    monkeypatch.setattr("codeflow.acceptance.cf_acceptance_selection.changed_paths", lambda root: {"docs/unrelated.md"})
     result = run_manifest(str(manifest), str(tmp_path), profile="changed")
     assert result["decision"] == "pass"
     assert result["reason"] == "no_affected_scenarios"
