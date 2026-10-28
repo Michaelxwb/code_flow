@@ -117,13 +117,6 @@ DEPENDENCY_EDGE_ALLOWLIST = frozenset({
 
 # (importer, source module, private symbol, batch after which it must be gone)
 PRIVATE_SYMBOL_ALLOWLIST = frozenset({
-    ("cf_task_parallel", "cf_task_merge", "_check_conflicts", 6),
-    ("cf_task_parallel", "cf_task_runtime", "_task_scope_specs", 6),
-    ("cf_task_workflow", "cf_task_runtime", "_NON_EXECUTION_ERRORS", 6),
-    ("cf_task_workflow", "cf_task_runtime", "_apply_evidence", 6),
-    ("cf_task_workflow", "cf_task_runtime", "_evidence_data", 6),
-    ("cf_task_workflow", "cf_workflow_service", "_require_marker_task", 7),
-    ("cf_task_workflow", "cf_workflow_service", "_sync_markdown", 7),
 })
 
 

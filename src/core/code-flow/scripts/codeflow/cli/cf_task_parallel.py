@@ -533,12 +533,12 @@ def _require_evidence(task: str, path: Path, task_file: str, files: Sequence[str
     if context_path.is_file():
         from codeflow.cli.cf_spec_context import load_context
         from codeflow.spec.cf_workflow_service import task_truth_issues
-        from codeflow.task.cf_task_runtime import _task_scope_specs
+        from codeflow.task.cf_task_runtime import task_spec_scope
         context = load_context(str(context_path))
         issues = task_truth_issues(str(path / task_file), task, context)
         if issues:
             try:
-                scope = _task_scope_specs(str(path), str(context_path.parent), task, tuple(files))
+                scope = task_spec_scope(str(path), str(context_path.parent), task, tuple(files))
             except ValueError as exc:
                 raise ParallelError("task_scope_invalid", f"{task}: {exc}") from exc
             issues = task_truth_issues(str(path / task_file), task, context, spec_ids=scope)
@@ -783,8 +783,8 @@ def _merge_one(root: Path, main_branch: str, entry: dict, task_file: str) -> dic
     main_manifest = _task_manifest(root, task_file)
     worktree_manifest = _task_manifest(path, task_file)
     if main_manifest is not None and worktree_manifest is not None:
-        from codeflow.task.cf_task_merge import _check_conflicts
-        conflicts = _check_conflicts(main_manifest.get("checks"), worktree_manifest.get("checks"))
+        from codeflow.task.cf_task_merge import compare_manifest_checks
+        conflicts = compare_manifest_checks(main_manifest, worktree_manifest)
         if conflicts:
             detail = ", ".join(f"{item['check_id']}({','.join(item['fields'])})" for item in conflicts)
             raise ParallelError("check_conflict", f"{task}: check 配置冲突: {detail}",

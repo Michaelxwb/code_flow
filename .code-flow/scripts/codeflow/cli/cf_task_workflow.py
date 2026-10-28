@@ -27,14 +27,15 @@ from codeflow.cli.cf_spec_context import (ContextError, DEFAULT_ACTIVE_EXCLUDES,
 from codeflow.cli.cf_spec_gate import evidence_deferral_kind, validate_stage
 from codeflow.spec.cf_spec_metadata import load_spec_metadata
 from codeflow.cli.cf_spec_session import context_sha256
-from codeflow.spec.cf_spec_verify import (VerificationScope, run_all_verifiers, store_verification_evidence)
+from codeflow.spec.cf_spec_verify import (VerificationEvidence, VerificationScope, run_all_verifiers,
+                                          store_verification_evidence)
 from codeflow.core.cf_exec_base import worktree_fingerprint
 from codeflow.task.cf_task_doc import TaskDocumentError, parse_task_document
 from codeflow.cli.cf_task_index import project_task_nodes
-from codeflow.task.cf_task_runtime import (_NON_EXECUTION_ERRORS, _apply_evidence, _evidence_data,
-                             run_done_gate)
-from codeflow.spec.cf_workflow_service import (FINISHED_STATUSES, _require_marker_task,
-                                 _sync_markdown, block_task, check_startable,
+from codeflow.task.cf_task_runtime import (integrate_verification_evidence, is_non_execution_error,
+                                           run_done_gate)
+from codeflow.spec.cf_workflow_service import (FINISHED_STATUSES, require_active_task,
+                                 block_task, check_startable, complete_requirement_verification,
                                  cleanup_session_projections, complete_task,
                                  locate_task_file, provisional_task, read_task_section,
                                  remove_session_projection, resume_task, task_truth_issues)
@@ -42,7 +43,7 @@ from codeflow.spec.cf_workflow_transaction import recover_transition
 
 
 def finish_task(root: str, directory: str, task_file: str, task_id: str) -> dict[str, object]:
-    _require_marker_task(root, task_id, directory, task_file)
+    require_active_task(root, task_id, directory, task_file)
     gate = run_done_gate(root, directory, task_id=task_id)
     if gate.decision == "provisional":
         transition = provisional_task(root, directory, task_file, task_id, gate.message)
@@ -197,7 +198,7 @@ def _task_evidence_counts(evidence: Sequence[Mapping[str, object]]) -> tuple[int
     for item in evidence:
         if evidence_deferral_kind(item) in ("review_stage", "heavy"):
             continue
-        if item.get("error_code") in _NON_EXECUTION_ERRORS:
+        if is_non_execution_error(item.get("error_code")):
             continue
         details = item.get("details")
         details = details if isinstance(details, Mapping) else {}
@@ -310,7 +311,7 @@ def _aggregate_batch_checks(
                 entry["tasks"].append(task)
             if item.get("status") != "verified":
                 entry["status"] = "failed"
-            if item.get("error_code") in _NON_EXECUTION_ERRORS:
+            if is_non_execution_error(item.get("error_code")):
                 continue
             if entry["executions"] == 0:
                 entry["executions"] = 1
@@ -545,7 +546,7 @@ def _run_requirement_verifiers(
     failures: list[str] = []
     summaries: list[dict[str, object]] = []
     context_paths: set[Path] = set()
-    evidence_by_context: dict[Path, list[Mapping[str, object]]] = {}
+    evidence_by_context: dict[Path, list[VerificationEvidence]] = {}
     scope = _review_scope(root)
     for spec_id in sorted(targets):
         info = targets[spec_id]
@@ -558,7 +559,7 @@ def _run_requirement_verifiers(
             )
         except (OSError, ValueError) as exc:
             sys.stderr.write(f"cf_task_workflow: verifier evidence sidecar failed: {exc}\n")
-        by_rule: dict[str, object] = {}
+        by_rule: dict[str, VerificationEvidence] = {}
         for evidence in result.evidence:
             rule_ref = evidence.verifier_ref.split("#", 1)[-1]
             by_rule[rule_ref] = evidence
@@ -582,16 +583,15 @@ def _run_requirement_verifiers(
             evidence = by_rule.get(rule_ref)
             if evidence is None:
                 continue
-            payload = _evidence_data(evidence)
             for ctx_path, _context in entries:
                 context_paths.add(ctx_path)
-                evidence_by_context.setdefault(ctx_path, []).append(payload)
+                evidence_by_context.setdefault(ctx_path, []).append(evidence)
     # 同一 context 常绑定多个 spec：必须加载一次、合并全部证据后写回一次。
     # 逐 spec 从收集时的旧 context 存盘会互相覆盖（历史缺陷：verify-e2e 报 pass
     # 但只有最后一个 spec 的 status 翻牌）。
     for ctx_path in sorted(evidence_by_context, key=str):
         context = load_context(str(ctx_path))
-        updated = _apply_evidence(context, tuple(evidence_by_context[ctx_path]))
+        updated, _ = integrate_verification_evidence(context, evidence_by_context[ctx_path])
         if updated != context:
             save_context(str(ctx_path), updated)
     for ctx_path in sorted(context_paths):
@@ -1011,38 +1011,10 @@ def _aggregate_layers(layer_results: Mapping[str, Mapping[str, object]], profile
     return result
 
 
-def _promote_verified(tasks: Sequence[tuple[Path, str, str]]) -> None:
-    for task_file, task_id, _ in tasks:
-        _sync_markdown(str(task_file), task_id, "verified")
-
-
-def _compact_requirement_contexts(root: str, directory: str) -> None:
-    """Keep spec-context bounded after a full requirement gate passes."""
-    from codeflow.evidence.cf_evidence_store import compact_context_file, requirement_key
-    for path in sorted(Path(directory).rglob("spec-context.yml")):
-        try:
-            compact_context_file(path, root=root, requirement=requirement_key(directory))
-        except (OSError, ValueError) as exc:
-            sys.stderr.write(f"cf_task_workflow: context compaction failed: {exc}\n")
-
-
 def _complete_requirement_verification(root: str, directory: str,
                                        tasks: Sequence[tuple[Path, str, str]],
                                        result: dict[str, object]) -> dict[str, object]:
-    context_path = Path(directory) / "spec-context.yml"
-    if context_path.is_file():
-        context = load_context(str(context_path))
-        mismatches = [
-            {"task": task_id, "issues": list(issues)}
-            for task_file, task_id, _ in tasks
-            for issues in (task_truth_issues(str(task_file), task_id, context),)
-            if issues
-        ]
-        if mismatches:
-            return {**result, "decision": "block", "reason": "task_status_truth_mismatch", "tasks": mismatches}
-    _compact_requirement_contexts(root, directory)
-    _promote_verified(tasks)
-    return result
+    return complete_requirement_verification(root, directory, tasks, result)
 
 
 def verify_layers(root: str, directory: str, layers: Optional[str] = None,

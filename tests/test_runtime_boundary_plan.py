@@ -359,14 +359,155 @@ def test_s05_acceptance_selection_and_risk_are_consistent(tmp_path: Path) -> Non
     assert not {entry for entry in imports if entry[1] == "cf_acceptance_runner"}
 
 
-@pytest.mark.xfail(strict=True, reason="S-06 is planned for TASK-005")
-def test_s06_parallel_conflicts_and_spec_scope_share_owner() -> None:
-    pytest.fail("Implement S-06: merge conflicts and Spec-Refs plus path-mapping scope stay consistent")
+def _real_check_conflict(directory: Path) -> None:
+    import json
+
+    from cf_task_parallel import merge, prepare
+    from test_cf_task_merge import _REPO_TASK_FILE, _commit, _git, _manifest_path, _merge_repo, _set_status
+
+    root = _merge_repo(directory)
+    manifest = _manifest_path(root)
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["checks"][0]["id"] = "CHK-01"
+    for row in data["scenarios"]:
+        row["check"] = "CHK-01"
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "normalize check")
+    prepared = prepare(root, _REPO_TASK_FILE, ["TASK-001", "TASK-002"], "conflict")
+    assert prepared["ok"]
+    for item, command in zip(prepared["worktrees"], (["pytest", "-q"], ["pytest", "-x"])):
+        worktree = Path(item["path"])
+        path = _manifest_path(worktree)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["checks"][0]["command"] = command
+        path.write_text(json.dumps(data), encoding="utf-8")
+        _set_status(worktree, item["task"], "done")
+        _commit(worktree, "change check")
+    result = merge(root, "conflict", None)
+    failure = result["results"][-1]
+    assert not result["ok"] and failure["code"] == "check_conflict"
+    assert failure["conflicts"][0]["check_id"] == "CHK-01"
+    assert "command" in failure["conflicts"][0]["fields"]
 
 
-@pytest.mark.xfail(strict=True, reason="E-03 is planned for TASK-005")
-def test_e03_evidence_and_task_transitions_preserve_guards() -> None:
-    pytest.fail("Implement E-03: evidence updates and marker mismatches cannot promote an unverified TASK")
+def test_s06_parallel_conflicts_and_spec_scope_share_owner(tmp_path: Path) -> None:
+    from codeflow.task.cf_task_runtime import task_spec_scope
+    from test_cf_task_runtime import _repo
+    from test_runtime_consolidation import _private_imports, _script_modules
+
+    _real_check_conflict(tmp_path)
+    scope_path = tmp_path / "scope"
+    scope_path.mkdir()
+    root, task_dir = _repo(scope_path, activate=False)
+    (task_dir / "demo.md").write_text(
+        "# Tasks\n## TASK-001: Demo\n- **Status**: draft\n"
+        "- **Spec-Refs**: db-runtime#RULE-db-001\n", encoding="utf-8",
+    )
+    assert task_spec_scope(str(root), str(task_dir), "TASK-001", ("src/app.py",)) == {
+        "app-runtime", "db-runtime",
+    }
+    task_file = task_dir / "demo.md"
+    task_file.write_text(task_file.read_text(encoding="utf-8").replace(
+        "db-runtime#RULE-db-001", "TBD, db-runtime#RULE-db-001"), encoding="utf-8")
+    with pytest.raises(ValueError, match="spec_refs_unresolved"):
+        task_spec_scope(str(root), str(task_dir), "TASK-001", ("src/app.py",))
+    imports = _private_imports(SCRIPTS / "codeflow/cli/cf_task_parallel.py", _script_modules(SCRIPTS))
+    assert not {entry for entry in imports if entry[1] in {"cf_task_merge", "cf_task_runtime"}}
+
+
+def _assert_promotion_requires_acceptance(
+    root: Path, task_dir: Path, task: Path, tasks: list[tuple[Path, str, str]], result: dict[str, object],
+) -> None:
+    import json
+
+    from cf_acceptance_runner import run_manifest
+    from cf_task_workflow import _complete_requirement_verification
+
+    manifest = task_dir / ".acceptance-manifest.json"
+    data = {
+        "schema": 3, "task_file": task.name,
+        "checks": [{"id": "CHK-1", "command": [sys.executable, "-c", "pass"], "cwd": ".", "timeout": 30,
+                    "inputs": ["src/app.py"]}],
+        "scenarios": [{"id": "S-01", "owner": "TASK-001", "kind": "functional", "check": "CHK-1",
+                       "command": [sys.executable, "-c", "pass"],
+                       "status": "verified", "evidence": {"status": "failed", "exit_code": 1}}],
+    }
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    blocked = _complete_requirement_verification(str(root), str(task_dir), tasks, result)
+    assert blocked["reason"] == "requirement_acceptance_unverified"
+    assert "**Status**: verified" not in task.read_text(encoding="utf-8")
+    wrong_owner = {**data["scenarios"][0], "owner": "TASK-002",
+                   "evidence": {"status": "passed", "exit_code": 0}}
+    for scenarios in ([], [wrong_owner]):
+        manifest.write_text(json.dumps({**data, "scenarios": scenarios}), encoding="utf-8")
+        missing = _complete_requirement_verification(str(root), str(task_dir), tasks, result)
+        assert missing["reason"] == "requirement_acceptance_unverified"
+        assert any("TASK-001" in issue and "S-01" in issue for issue in missing["issues"])
+        assert "**Status**: verified" not in task.read_text(encoding="utf-8")
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    executed = run_manifest(str(manifest), str(root), owner="TASK-001", write_evidence=True)
+    assert executed["decision"] == "pass", executed
+    app = root / "src/app.py"
+    original = app.read_text(encoding="utf-8")
+    app.write_text("VALUE = 3\n", encoding="utf-8")
+    stale = _complete_requirement_verification(str(root), str(task_dir), tasks, result)
+    assert stale["reason"] == "requirement_acceptance_unverified"
+    assert "**Status**: verified" not in task.read_text(encoding="utf-8")
+    app.write_text(original, encoding="utf-8")
+    passed = _complete_requirement_verification(str(root), str(task_dir), tasks, result)
+    assert passed["decision"] == "pass"
+    assert task.read_text(encoding="utf-8").count("**Status**: verified") == 2
+
+
+def test_e03_evidence_and_task_transitions_preserve_guards(tmp_path: Path) -> None:
+    from cf_spec_context import complete_active_task, load_context, start_active_task
+    from cf_spec_session import context_sha256
+    from cf_task_workflow import _complete_requirement_verification
+    from codeflow.spec.cf_workflow_service import WorkflowError, complete_task
+    from codeflow.task.cf_task_runtime import run_done_gate
+    from test_cf_task_runtime import _git, _repo
+    from test_runtime_consolidation import _private_imports, _script_modules
+
+    root, task_dir = _repo(tmp_path, activate=False)
+    task = task_dir / "demo.md"
+    task.write_text(
+        "# Tasks\n## TASK-001: One\n- **Status**: done\n"
+        "- **Spec-Refs**: app-runtime#RULE-app-001\n"
+        "## TASK-002: Two\n- **Status**: done\n", encoding="utf-8",
+    )
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "task fixture")
+    context = load_context(str(task_dir / "spec-context.yml"))
+    start_active_task(str(root), str(task_dir), "TASK-001", context_sha256(context))
+    (root / "src/app.py").write_text("print('bad')\n", encoding="utf-8")
+    result = run_done_gate(str(root), str(task_dir))
+    assert result.decision == "block" and result.evidence[0]["error_code"] == "regex_violation"
+    with pytest.raises(WorkflowError, match="active_mismatch"):
+        complete_task(str(root), str(task_dir), str(task), "TASK-002", True)
+    (root / ".code-flow/.active-task.json").unlink()
+    layers = {name: {"decision": "pass"} for name in ("validators", "review", "e2e")}
+    forged = {"decision": "pass", "profile": "full", "selected_layers": list(layers), "layers": layers}
+    tasks = [(task, "TASK-001", "done"), (task, "TASK-002", "done")]
+    verified = _complete_requirement_verification(str(root), str(task_dir), tasks, forged)
+    assert verified["reason"] == "task_status_truth_mismatch"
+    assert "**Status**: done" in task.read_text(encoding="utf-8")
+
+    current = load_context(str(task_dir / "spec-context.yml"))
+    start_active_task(str(root), str(task_dir), "TASK-001", context_sha256(current), ("src/app.py",))
+    (root / "src/app.py").write_text("VALUE = 2\n", encoding="utf-8")
+    passed = run_done_gate(str(root), str(task_dir))
+    assert passed.decision == "pass"
+    complete_active_task(str(root), passed.decision == "pass")
+    task.write_text(task.read_text(encoding="utf-8").replace(
+        "- **Spec-Refs**: app-runtime#RULE-app-001", "- **Acceptance-Refs**: S-01\n- **Spec-Refs**: app-runtime#RULE-app-001"
+    ), encoding="utf-8")
+    verified = _complete_requirement_verification(str(root), str(task_dir), tasks, forged)
+    assert verified["reason"] == "requirement_acceptance_unverified"
+    assert "**Status**: verified" not in task.read_text(encoding="utf-8")
+    _assert_promotion_requires_acceptance(root, task_dir, task, tasks, forged)
+    imports = _private_imports(SCRIPTS / "codeflow/cli/cf_task_workflow.py", _script_modules(SCRIPTS))
+    assert not {entry for entry in imports if entry[1] in {"cf_task_runtime", "cf_workflow_service"}}
 
 
 @pytest.mark.xfail(strict=True, reason="S-07 is planned for TASK-006")

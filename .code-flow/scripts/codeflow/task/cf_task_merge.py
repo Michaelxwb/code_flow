@@ -489,6 +489,11 @@ def _check_conflicts(main: object, branch: object) -> list[dict[str, object]]:
     return conflicts
 
 
+def compare_manifest_checks(main: Mapping[str, object], branch: Mapping[str, object]) -> list[dict[str, object]]:
+    """Report conflicting check contracts before merging two locked manifests."""
+    return _check_conflicts(main.get("checks"), branch.get("checks"))
+
+
 def _merge_checks(main: object, branch: object) -> list[dict]:
     main_rows = _as_dicts(main)
     branch_by = _keyed(_as_dicts(branch), "id")
