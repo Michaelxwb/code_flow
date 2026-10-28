@@ -53,6 +53,9 @@
     },
     "CHK-4557f6777cd3": {
       "suite": "system"
+    },
+    "CHK-00c21177da28": {
+      "suite": "integration"
     }
   }
 }

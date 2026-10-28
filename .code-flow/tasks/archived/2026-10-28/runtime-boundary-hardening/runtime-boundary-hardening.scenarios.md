@@ -506,4 +506,32 @@ scenarios:
   - FEAT-09
   checks:
   - CHK-4557f6777cd3
+- id: S-12
+  title: 旧工作流入口保留需求绑定公开导入
+  priority: P1
+  level: integration
+  exec: auto
+  env: none
+  components:
+  - codeflow
+  - pytest
+  boundary: 真实固定入口 shim、共享需求验证模块与临时 Context 文件
+  preconditions:
+  - 通过 canonical 与部署副本的固定入口分别导入旧公开函数
+  steps:
+  - 从旧入口读取空需求目录的绑定，并读取损坏的 Context 文件
+  expected:
+  - 空目录返回空绑定，损坏 Context 明确报错，两个入口均保留旧导入
+  expected_refs:
+  - expected: 1
+    steps:
+    - 1
+  design_refs:
+  - runtime-boundary-hardening.design.md#2.5 验收条件
+  rules:
+  - RULE-06
+  features:
+  - FEAT-09
+  checks:
+  - CHK-00c21177da28
 ---

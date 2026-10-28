@@ -5,9 +5,9 @@ design_template: full
 # 运行时边界收敛设计
 
 - 基线：`main@d7e83c9`；设计根据本次会话的代码审计与用户要求整理。
-- 状态：设计草案，具体执行计划和门禁结果以同目录任务文件与 Context 为准。
-- 来源：[代码收敛审计](../../archived/2026-10-27/audit-followup/codebase-consolidation-audit.md)及当前依赖图、Stop 日志和回归测试复验。
-- 计划前置条件：`plan-rule-ownership` 需求须先修复共享 Spec 引用被计为重复负责人；完成前本需求只能作为草案审阅，不能启动 TASK。
+- 状态：设计已实施，具体执行计划和门禁结果以同目录任务文件与 Context 为准。
+- 来源：[代码收敛审计](../../2026-10-27/audit-followup/codebase-consolidation-audit.md)及当前依赖图、Stop 日志和回归测试复验。
+- 计划前置条件：`plan-rule-ownership` 需求已完成，修复了共享 Spec 引用被计为重复负责人的问题。
 
 ## 1. 文档控制
 
@@ -51,7 +51,7 @@ design_template: full
 | FEAT-06 | Gate 与 Session 使用领域模型及统一判定 | P1 | S-07, E-04 |
 | FEAT-07 | Context 刷新与工作流编排解除回边 | P1 | S-08, E-05 |
 | FEAT-08 | 并行批次复用共享验证能力 | P1 | S-09, E-06 |
-| FEAT-09 | 最终棘轮、安装和部署副本一致 | P1 | S-10, S-11 |
+| FEAT-09 | 最终棘轮、安装和部署副本一致 | P1 | S-10, S-11, S-12 |
 
 ### 2.4 范围与边界
 
@@ -73,7 +73,7 @@ design_template: full
 | RULE-03 | 同一领域能力有明确 owner；保留基线校验、风险、证据和范围语义 | S-03, E-02, S-04, S-05, S-06, E-03 |
 | RULE-04 | Gate、Context 和工作流保持 fail-closed 与原有状态迁移 | S-07, E-04, S-08, E-05 |
 | RULE-05 | 批次 smoke 只验证已合并 owner，失败时保留现场 | S-09, E-06 |
-| RULE-06 | 最终两类 allowlist 为空、batch 为 7、静态图无多模块 SCC，且真实入口与部署副本可用 | S-10, S-11 |
+| RULE-06 | 最终两类 allowlist 为空、batch 为 7、静态图无多模块 SCC，且真实入口与部署副本可用 | S-10, S-11, S-12 |
 
 #### 2.5.2 功能验收场景
 

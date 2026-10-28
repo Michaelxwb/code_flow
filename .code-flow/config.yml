@@ -10,7 +10,7 @@ spec_workflow:
 budget:
   total: 2500
   l0_max: 800
-  l1_max: 1700
+  l1_max: 2700
   map_max: 400
   catalog_max: 200
 quality_loop:

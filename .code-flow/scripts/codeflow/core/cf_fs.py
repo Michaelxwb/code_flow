@@ -25,10 +25,11 @@ def write_text(path: PathLike, text: str) -> None:
 
 
 def atomic_write_text(path: PathLike, text: str) -> None:
-    """Replace path with text via a temp file and os.replace.
+    """Replace path with exact UTF-8 text via a temp file and os.replace.
 
     On any failure the target keeps its previous content and the temp file is
-    removed before the original exception propagates.
+    removed before the original exception propagates. Disable native newline
+    translation so transaction snapshots also round-trip unchanged on Windows.
     """
     target = Path(path)
     temporary = ""
@@ -36,6 +37,7 @@ def atomic_write_text(path: PathLike, text: str) -> None:
         with tempfile.NamedTemporaryFile(
             "w",
             encoding="utf-8",
+            newline="",
             dir=str(target.parent),
             prefix=f".{target.name}.",
             suffix=".tmp",

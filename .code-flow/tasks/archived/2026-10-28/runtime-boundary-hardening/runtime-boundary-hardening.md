@@ -8,11 +8,11 @@
 
 以实际调用链和现有验收契约为基线，分批修复导入守卫、Stop 旧路径、共享 owner、两个 SCC 与并行 smoke 反向边。每批先替换可收集的测试骨架并记录 RED，避免把结构指标当作行为通过。
 
-**计划状态：草案。** 本文件保留真实适用的 Spec-Refs，使用 Rule-Owner-Refs 单独声明唯一负责人。前置需求 plan-rule-ownership 完成且本计划通过完整 verify-plan 后，方可启动主计划任务。
+前置需求 plan-rule-ownership 已完成，本计划已通过完整 verify-plan；各任务保留实际适用的 Spec-Refs，并用 Rule-Owner-Refs 单独声明唯一负责人。
 
 预计工时为拆解估算，并非交付承诺。TASK-001 和 TASK-002 的产品路径独立，但共享测试骨架文件；并行执行时必须先协调文件归属或拆分测试文件。
 
-严格 xfail 的测试骨架只用于收集；以下验收命令显式使用 --runxfail，在真实断言实现前必须失败。场景及 TASK 状态均为 planned/draft。
+计划阶段的严格 xfail 测试骨架已替换为真实断言；验收命令保留 --runxfail，任务和场景的实际状态见下表及各任务段落。
 
 ## Acceptance Coverage
 
@@ -32,18 +32,19 @@
 | E-04 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 Gate deferral 分类与 Rule Evidence | TASK-006 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-08 | runtime-boundary-hardening.design.md#2.5 验收条件 | system | 真实临时 Git 项目、CLI、Context、marker 与 Session 投影 | TASK-007 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | E-05 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Context 文件、marker 与启动前置门禁 | TASK-007 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| S-09 | runtime-boundary-hardening.design.md#2.5 验收条件 | system | 真实 Git worktree、并行 merge 与共享验收检查 | TASK-008 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s09_parallel_smoke_uses_shared_verification"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","src/core/code-flow/scripts/codeflow/task/*.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| E-06 | runtime-boundary-hardening.design.md#2.5 验收条件 | system | 真实 Git worktree、并行 run ledger 与失败检查 | TASK-008 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e06_failed_parallel_smoke_preserves_worktrees"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","src/core/code-flow/scripts/codeflow/task/*.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| S-10 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 canonical AST 导入图、allowlist 与合成反向边 | TASK-009 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s10_final_dependency_ratchet_rejects_new_cycles"] | P1 | auto | none | ["src/core/code-flow/scripts/**/*.py","src/cli.js","tests/test_runtime_consolidation.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| S-11 | runtime-boundary-hardening.design.md#2.5 验收条件 | system | 真实 npm pack、临时项目 init、入口 shim 与同步检查 | TASK-009 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s11_packaged_runtime_and_canonical_copies_match"] | P1 | auto | none | ["src/core/code-flow/scripts/**/*.py","src/cli.js","tests/test_runtime_consolidation.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| S-09 | runtime-boundary-hardening.design.md#2.5 验收条件 | system | 真实 Git worktree、并行 merge 与共享验收检查 | TASK-008 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s09_parallel_smoke_uses_shared_verification"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","src/core/code-flow/scripts/codeflow/task/*.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| E-06 | runtime-boundary-hardening.design.md#2.5 验收条件 | system | 真实 Git worktree、并行 run ledger 与失败检查 | TASK-008 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e06_failed_parallel_smoke_preserves_worktrees"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","src/core/code-flow/scripts/codeflow/task/*.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| S-10 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 canonical AST 导入图、allowlist 与合成反向边 | TASK-009 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s10_final_dependency_ratchet_rejects_new_cycles"] | P1 | auto | none | ["src/core/code-flow/scripts/**/*.py","src/cli.js","tests/test_runtime_consolidation.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| S-11 | runtime-boundary-hardening.design.md#2.5 验收条件 | system | 真实 npm pack、临时项目 init、入口 shim 与同步检查 | TASK-009 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s11_packaged_runtime_and_canonical_copies_match"] | P1 | auto | none | ["src/core/code-flow/scripts/**/*.py","src/cli.js","tests/test_runtime_consolidation.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| S-12 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实固定入口 shim、共享需求验证模块与临时 Context 文件 | TASK-010 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s12_workflow_shim_preserves_bindings_import"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","src/core/code-flow/scripts/codeflow/task/*.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 
-> 场景源为同目录 .scenarios.md；全部 18 个场景各有唯一负责人。无需浏览器 E2E。
+> 场景源为同目录 .scenarios.md；全部 19 个场景各有唯一负责人。无需浏览器 E2E。
 
 ---
 
 ## TASK-001: 让依赖守卫识别真实边界
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**:
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -83,6 +84,10 @@
 - B-01: verified — automated command passed; run_id=8ffb936d866b4b7facee7e089ee853af (confirmed_by: runner)
 - S-01: verified — automated command passed; run_id=a266a74906dd45bd94d5d268e030dc20 (confirmed_by: runner)
 - B-01: verified — automated command passed; run_id=a266a74906dd45bd94d5d268e030dc20 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -93,7 +98,7 @@
 
 ## TASK-002: 收敛 Stop 归档路径诊断
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**:
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -134,6 +139,10 @@
 - E-01: verified — automated command passed; run_id=8f3e1ae3be1f46e99f4bb5e3c12596ac (confirmed_by: runner)
 - S-02: verified — automated command passed; run_id=1c56c06545de4f2d9072dd1794067a83 (confirmed_by: runner)
 - E-01: verified — automated command passed; run_id=1c56c06545de4f2d9072dd1794067a83 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -144,7 +153,7 @@
 
 ## TASK-003: 拆开 manifest 与场景解析环
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-001
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -183,6 +192,11 @@
 - E-02: verified — automated command passed; run_id=72d7855e916b4fc7a735631721501f8e (confirmed_by: runner)
 - S-03: verified — automated command passed; run_id=b1e9936f122b4541b4b67637e0d3eac2 (confirmed_by: runner)
 - E-02: verified — automated command passed; run_id=b1e9936f122b4541b4b67637e0d3eac2 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
+- 非功能复核：对同一 `tests/test_runtime_boundary_plan.py::_manifest_fixture` 输入，分别运行 `git archive d7e83c9` 基线与当前 canonical 的 `write_manifest`；通过 `Path.read_text` 观察场景源读取，前后均为 3 次。manifest 场景字段、检查数量与 `cf_scenarios.py parse` JSON 输出一致。
 
 ### Log
 - [2026-10-27] created (draft)
@@ -193,7 +207,7 @@
 
 ## TASK-004: 收口验收登记、场景选择和风险接口
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-003
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -232,6 +246,10 @@
 - S-05: verified — automated command passed; run_id=efa2b50a992541fe934e458bbad1713e (confirmed_by: runner)
 - S-04: verified — automated command passed; run_id=9cefeddcc5954c728df6223c8926521a (confirmed_by: runner)
 - S-05: verified — automated command passed; run_id=9cefeddcc5954c728df6223c8926521a (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -242,7 +260,7 @@
 
 ## TASK-005: 收口 TASK 范围、证据和状态操作
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-004
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -279,6 +297,10 @@
 | E-03 | FAIL: 工作流引用私有符号；场景缺失时可错误提升 verified（执行命令见契约） | PASS: 证据、归属、时效和 marker 阻断通过 | tests/test_runtime_boundary_plan.py::test_e03_evidence_and_task_transitions_preserve_guards | 真实 Context Evidence、active marker、TASK、manifest 与实际测试输入 | verified |
 - S-06: verified — automated command passed; run_id=8c562c8fb6814eb6a925072286f5c682 (confirmed_by: runner)
 - E-03: verified — automated command passed; run_id=8c562c8fb6814eb6a925072286f5c682 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -289,7 +311,7 @@
 
 ## TASK-006: 下沉 Gate 和 Session 共享判定
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-003, TASK-005
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -326,6 +348,10 @@
 | E-04 | 既有行为补测，重构前已通过；不伪造 RED（执行命令见契约） | PASS: 四类延后、冲突声明及未知类型的阻断断言通过 | tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy | 真实 Gate 判定及四类 Rule Evidence | verified |
 - S-07: verified — automated command passed; run_id=40798fc461cb40aa91ccb40f5f94facf (confirmed_by: runner)
 - E-04: verified — automated command passed; run_id=40798fc461cb40aa91ccb40f5f94facf (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -336,7 +362,7 @@
 
 ## TASK-007: 解除 Context 与工作流生命周期回边
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-006
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -374,6 +400,10 @@
 | E-05 | FAIL: 投影失败及锁冲突时提前保存刷新后的 Context（执行命令见契约） | PASS: manifest、投影、输出路径、归属和锁冲突均保持原状态；三文件事务可恢复 | tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker | 真实 Context、marker、TASK、manifest、投影与锁 | verified |
 - S-08: verified — automated command passed; run_id=e0f0e35e121a40288331c45d3d48b463 (confirmed_by: runner)
 - E-05: verified — automated command passed; run_id=e0f0e35e121a40288331c45d3d48b463 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
@@ -384,7 +414,7 @@
 
 ## TASK-008: 共享并行批次与需求级验证
 
-- **Status**: draft
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-005, TASK-007
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -400,34 +430,42 @@
 
 ### Checklist
 
-- [ ] 确定共享验证用例的 owner，保留只执行本批已合并 TASK、共享检查去重、环境锁和证据语义。
-- [ ] 保留失败状态、非强制 cleanup 拒绝和现场恢复，不改并行登记与 merge 策略。
-- [ ] [S-09][system] 先将骨架替换为真实断言并记录 RED；边界：真实 Git worktree、并行 merge 与共享验收检查；断言：只选择已合并 TASK 的场景，共享检查执行一次。
-- [ ] [E-06][system] 先将骨架替换为真实断言并记录 RED；边界：真实 Git worktree、并行 run ledger 与失败检查；断言：批次状态为 blocked，cleanup 被阻止，工作树和分支保留。
-- [ ] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
+- [x] 确定共享验证用例的 owner，保留只执行本批已合并 TASK、共享检查去重、环境锁和证据语义。
+- [x] 保留失败状态、非强制 cleanup 拒绝和现场恢复，不改并行登记与 merge 策略。
+- [x] [S-09][system] 先将骨架替换为真实断言并记录 RED；边界：真实 Git worktree、并行 merge 与共享验收检查；断言：只选择已合并 TASK 的场景，共享检查执行一次。
+- [x] [E-06][system] 先将骨架替换为真实断言并记录 RED；边界：真实 Git worktree、并行 run ledger 与失败检查；断言：批次状态为 blocked，cleanup 被阻止，工作树和分支保留。
+- [x] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-09 | system | 真实 Git worktree、并行 merge 与共享验收检查 | 只选择已合并 TASK 的场景，共享检查执行一次 | tests/test_runtime_boundary_plan.py::test_s09_parallel_smoke_uses_shared_verification | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s09_parallel_smoke_uses_shared_verification"] | planned |
-| E-06 | system | 真实 Git worktree、并行 run ledger 与失败检查 | 批次状态为 blocked，cleanup 被阻止，工作树和分支保留 | tests/test_runtime_boundary_plan.py::test_e06_failed_parallel_smoke_preserves_worktrees | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e06_failed_parallel_smoke_preserves_worktrees"] | planned |
+| S-09 | system | 真实 Git worktree、并行 merge 与共享验收检查 | 只选择已合并 TASK 的场景，共享检查执行一次 | tests/test_runtime_boundary_plan.py::test_s09_parallel_smoke_uses_shared_verification | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s09_parallel_smoke_uses_shared_verification"] | verified |
+| E-06 | system | 真实 Git worktree、并行 run ledger 与失败检查 | 批次状态为 blocked，cleanup 被阻止，工作树和分支保留 | tests/test_runtime_boundary_plan.py::test_e06_failed_parallel_smoke_preserves_worktrees | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e06_failed_parallel_smoke_preserves_worktrees"] | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-09 | - | - | - | - | planned |
-| E-06 | - | - | - | - | planned |
+| S-09 | FAIL: 验收命令确认 cf_task_parallel 仍反向依赖 cf_task_workflow；真实共享检查及 owner 过滤已通过 | PASS: 验收与共享环境锁回归通过 | tests/test_runtime_boundary_plan.py::test_s09_parallel_smoke_uses_shared_verification | 临时 Git 项目、真实 worktree/merge、manifest 和共享检查；第三个 draft owner 未执行 | verified |
+| E-06 | N/A: 纯重构保留现有行为，验收命令在修改前通过 | PASS: 验收与并行回归通过 | tests/test_runtime_boundary_plan.py::test_e06_failed_parallel_smoke_preserves_worktrees | 临时 Git 项目、真实 worktree、失败检查、run ledger 和非强制 cleanup | verified |
+- S-09: verified — automated command passed; run_id=e9cad76e8105455490eb5086291333ad (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=e9cad76e8105455490eb5086291333ad (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=fbf27b257f994ce9b4648ec10c918538 (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-28] started
+- [2026-10-28] completed (done)
 
 ---
 
 ## TASK-009: 锁定最终棘轮与安装兼容
 
-- **Status**: draft
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-001, TASK-002, TASK-003, TASK-004, TASK-005, TASK-006, TASK-007, TASK-008
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -443,27 +481,78 @@
 
 ### Checklist
 
-- [ ] 验证 2 条登记反向边和 15 条私有导入都由真实 owner 收敛；以合成违规确认新的守卫会失败。
-- [ ] 对新增或迁移的运行时模块走既有 runtime 安装清单与同步流程，验证 npm 产物和固定入口；记录新增模块与依赖收益。
-- [ ] [S-10][unit] 先将骨架替换为真实断言并记录 RED；边界：真实 canonical AST 导入图、allowlist 与合成反向边；断言：两类 allowlist 为空、真实图无多模块 SCC，任一合成违规使对应守卫失败。
-- [ ] [S-11][system] 先将骨架替换为真实断言并记录 RED；边界：真实 npm pack、临时项目 init、入口 shim 与同步检查；断言：四平台入口可调用且部署内容与 canonical 一致，未增加运行时依赖。
-- [ ] RULE-scripts-canonical-parity-001 verifier：python3 -m pytest -q tests/test_spec_workflow_templates.py tests/test_adapter_parity.py tests/test_spec_workflow_residue.py；node src/cli.js sync check。
-- [ ] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
+- [x] 验证 2 条登记反向边和 15 条私有导入都由真实 owner 收敛；以合成违规确认新的守卫会失败。
+- [x] 对新增或迁移的运行时模块走既有 runtime 安装清单与同步流程，验证 npm 产物和固定入口；记录新增模块与依赖收益。
+- [x] [S-10][unit] 先将骨架替换为真实断言并记录 RED；边界：真实 canonical AST 导入图、allowlist 与合成反向边；断言：两类 allowlist 为空、真实图无多模块 SCC，任一合成违规使对应守卫失败。
+- [x] [S-11][system] 先将骨架替换为真实断言并记录 RED；边界：真实 npm pack、临时项目 init、入口 shim 与同步检查；断言：四平台入口可调用且部署内容与 canonical 一致，未增加运行时依赖。
+- [x] RULE-scripts-canonical-parity-001 verifier：python3 -m pytest -q tests/test_spec_workflow_templates.py tests/test_adapter_parity.py tests/test_spec_workflow_residue.py；node src/cli.js sync check。
+- [x] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
+
+新增 `cf_requirement_verification` 统一普通需求验证与批次 smoke；新增 `cf_validation_service` 提供共享验证器执行，避免共享用例反向依赖 CLI。两个模块均已登记进真实安装清单并同步部署。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-10 | unit | 真实 canonical AST 导入图、allowlist 与合成反向边 | 两类 allowlist 为空、真实图无多模块 SCC，任一合成违规使对应守卫失败 | tests/test_runtime_boundary_plan.py::test_s10_final_dependency_ratchet_rejects_new_cycles | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s10_final_dependency_ratchet_rejects_new_cycles"] | planned |
-| S-11 | system | 真实 npm pack、临时项目 init、入口 shim 与同步检查 | 四平台入口可调用且部署内容与 canonical 一致，未增加运行时依赖 | tests/test_runtime_boundary_plan.py::test_s11_packaged_runtime_and_canonical_copies_match | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s11_packaged_runtime_and_canonical_copies_match"] | planned |
+| S-10 | unit | 真实 canonical AST 导入图、allowlist 与合成反向边 | 两类 allowlist 为空、真实图无多模块 SCC，任一合成违规使对应守卫失败 | tests/test_runtime_boundary_plan.py::test_s10_final_dependency_ratchet_rejects_new_cycles | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s10_final_dependency_ratchet_rejects_new_cycles"] | verified |
+| S-11 | system | 真实 npm pack、临时项目 init、入口 shim 与同步检查 | 四平台入口可调用且部署内容与 canonical 一致，未增加运行时依赖 | tests/test_runtime_boundary_plan.py::test_s11_packaged_runtime_and_canonical_copies_match | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s11_packaged_runtime_and_canonical_copies_match"] | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-10 | - | - | - | - | planned |
-| S-11 | - | - | - | - | planned |
+| S-10 | FAIL: 棘轮仍为 batch 4；推进 batch 后，旧 SCC 守卫未拒绝两个模块的合成环 | PASS: batch 7、真实图和四类合成反例通过 | tests/test_runtime_boundary_plan.py::test_s10_final_dependency_ratchet_rejects_new_cycles | 真实 canonical AST 导入图、allowlist 与临时模块反例 | verified |
+| S-11 | N/A: 补测既有安装兼容行为，修改前真实打包验收通过 | PASS: 四平台真实打包安装与同步检查通过 | tests/test_runtime_boundary_plan.py::test_s11_packaged_runtime_and_canonical_copies_match | 真实 npm pack、四平台临时安装、全部固定 shim、manifest 与同步检查 | verified |
+- S-10: verified — automated command passed; run_id=d53899d89d5a47f0ac2ffacd70a3893c (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=d53899d89d5a47f0ac2ffacd70a3893c (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=abf1857f0eb04ef8b95c1292ba3981a7 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-28] started
+- [2026-10-28] completed (done)
+- [2026-10-28] verified (verified)
+
+---
+
+## TASK-010: 保留工作流公开导入兼容
+
+- **Status**: verified
+- **Priority**: P1
+- **Depends**: TASK-008, TASK-009
+- **Source**: runtime-boundary-hardening.design.md#3.4 接口设计, runtime-boundary-hardening.design.md#4.1 部署架构
+- **Spec-Refs**: scripts-code-standards#RULE-scripts-no-bare-except-001, scripts-code-standards#RULE-scripts-canonical-parity-001
+- **Rule-Owner-Refs**: N/A
+- **Acceptance-Refs**: S-12
+- **Estimate**: 0.25d
+- **Capability**: 通过 canonical 和部署副本的固定工作流入口继续导入需求绑定收集函数。
+
+### Description
+
+补回共享验证迁移遗漏的公开导入；使用真实入口与 Context 文件验证旧 API 和 fail-closed 行为。
+
+### Checklist
+
+- [x] [S-12][integration] 为 canonical 和部署入口编写真实导入与 Context 读取断言，并记录 RED。
+- [x] 从旧工作流入口重新导出共享 owner 的公开函数，保持双副本和安装清单一致。
+- [x] 运行验收命令及相关回归，记录 GREEN 和真实边界。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-12 | integration | 真实固定入口 shim、共享需求验证模块与临时 Context 文件 | 空目录返回空绑定，损坏 Context 明确报错，两个入口均保留旧导入 | tests/test_runtime_boundary_plan.py::test_s12_workflow_shim_preserves_bindings_import | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s12_workflow_shim_preserves_bindings_import"] | verified |
+
+### Acceptance Evidence
+
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-12 | FAIL: 真实 canonical 固定入口导入 collect_requirement_bindings 抛 ImportError；命令见契约 | PASS: 两个入口的导入、空输入与损坏 Context 诊断均通过 | tests/test_runtime_boundary_plan.py::test_s12_workflow_shim_preserves_bindings_import | 独立 Python 进程、canonical/部署 shim、空目录与损坏 Context 文件 | verified |
+- S-12: verified — automated command passed; run_id=15d97d26347f4f15a967483414bf285c (confirmed_by: runner)
+
+### Log
+- [2026-10-28] created (draft)
+- [2026-10-28] started
+- [2026-10-28] completed (done)
 

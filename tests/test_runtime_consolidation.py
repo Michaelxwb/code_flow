@@ -35,7 +35,7 @@ RUNTIME_IGNORE_END = "# <<< code-flow:runtime schema=1"
 RUNTIME_IGNORE_ENTRIES = 20
 sys.path.insert(0, str(SCRIPTS))
 
-CURRENT_BATCH = 4
+CURRENT_BATCH = 7
 
 LAYERS: dict[str, int] = {
     "cf_acceptance_evidence": 1,
@@ -74,6 +74,7 @@ LAYERS: dict[str, int] = {
     "cf_post_hook": 3,
     "cf_pre_tool_hook": 3,
     "cf_rule_readiness": 1,
+    "cf_requirement_verification": 2,
     "cf_runtime_install": 0,
     "cf_scenario_source": 1,
     "cf_scan": 3,
@@ -106,6 +107,7 @@ LAYERS: dict[str, int] = {
     "cf_traceability": 3,
     "cf_user_prompt_hook": 3,
     "cf_validation": 3,
+    "cf_validation_service": 1,
     "cf_validators": 1,
     "cf_workflow_service": 2,
     "cf_workflow_transaction": 2,
@@ -114,7 +116,6 @@ LAYERS: dict[str, int] = {
 
 # (importer, imported module, batch after which the edge must be gone)
 DEPENDENCY_EDGE_ALLOWLIST = frozenset({
-    ("cf_task_parallel", "cf_task_workflow", 6),
 })
 
 # (importer, source module, private symbol, batch after which it must be gone)
@@ -557,13 +558,13 @@ def _strongly_connected_sizes(edges: set[tuple[str, str]]) -> list[int]:
 
 
 def test_scc_budget() -> None:
-    """[S-07] batch-4 边清零后最大 SCC 不超过 7 个模块，重引反向边必须失败。"""
+    """[S-10] Any multi-module import cycle violates the final ratchet."""
     modules = _script_modules(SCRIPTS)
     edges: set[tuple[str, str]] = set()
     for path in _script_files(SCRIPTS):
         edges |= _import_edges(path, modules)
     sizes = _strongly_connected_sizes(edges)
-    assert max(sizes, default=1) <= 7, f"dependency SCCs must stay <= 7: {sorted(sizes, reverse=True)}"
+    assert not sizes, f"dependency SCCs must be empty: {sorted(sizes, reverse=True)}"
     synthetic = {("cf_context_cache", "cf_spec_context")}
     assert _layer_violations(synthetic) == synthetic, "reintroducing a batch-4 edge must fail"
 

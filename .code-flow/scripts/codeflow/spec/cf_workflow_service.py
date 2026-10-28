@@ -36,18 +36,16 @@ class WorkflowError(ValueError):
 def locate_task_file(task_dir: str, task_id: str) -> Optional[Path]:
     """Find the unique task file containing the TASK section."""
     matches: list[Path] = []
-    try:
-        files = sorted(Path(task_dir).glob("*.md"))
-    except OSError:
-        return None
-    for path in files:
-        if path.name.endswith((".prd.md", ".design.md")):
+    for path in sorted(Path(task_dir).glob("*.md")):
+        if path.name.endswith((".prd.md", ".design.md", ".scenarios.md")):
             continue
         try:
-            content = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeError):
-            continue
-        if f"## {task_id}:" in content:
+            document = _task_document(str(path))
+        except WorkflowError as exc:
+            if exc.code == "task_document_empty":
+                continue
+            raise
+        if any(task.id == task_id for task in document.tasks):
             matches.append(path)
     return matches[0] if len(matches) == 1 else None
 
@@ -397,7 +395,7 @@ def _commit_state(root: str, task_file: str, task_id: str, status: str, previous
                   context_change: Optional[tuple[Path, str, str]] = None) -> str:
     from codeflow.spec.cf_workflow_transaction import commit_transition
     marker = Path(root) / ".code-flow/.active-task.json"
-    marker_before = marker.read_text(encoding="utf-8") if marker.exists() else None
+    marker_before = marker.read_bytes().decode("utf-8") if marker.exists() else None
     actual = json.loads(marker_before) if marker_before is not None else None
     expected = active_data(previous) if previous is not None else None
     if actual != expected:

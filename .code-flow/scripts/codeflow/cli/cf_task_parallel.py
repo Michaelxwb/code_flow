@@ -901,7 +901,7 @@ def _smoke_summary(result: Mapping[str, object]) -> dict[str, object]:
 def _run_batch_smoke(root: Path, run_id: str, task_file: str,
                      task_ids: Sequence[str]) -> dict[str, object]:
     """One post-merge smoke for the whole batch, reusing the layer runner."""
-    from codeflow.cli.cf_task_workflow import verify_layers
+    from codeflow.task.cf_requirement_verification import verify_layers
 
     directory = root / Path(task_file).parent
     try:

@@ -696,21 +696,220 @@ def test_e05_failed_start_preserves_context_and_marker(tmp_path: Path) -> None:
         assert "**Status**: draft" in task.read_text(encoding="utf-8")
 
 
-@pytest.mark.xfail(strict=True, reason="S-09 is planned for TASK-008")
-def test_s09_parallel_smoke_uses_shared_verification() -> None:
-    pytest.fail("Implement S-09: batch smoke selects merged owners and executes a shared check once")
+def _parallel_smoke_repo(tmp_path: Path, command: list[str]) -> tuple[Path, list[str]]:
+    import json
+
+    from cf_acceptance_manifest import write_manifest
+    from test_cf_task_parallel import BATCH_TASK_FILE, _batch_repo, _git, _shared_marker_command
+
+    tasks = ["TASK-001", "TASK-002", "TASK-003"]
+    root = _batch_repo(tmp_path, tasks, command)
+    task_file = root / BATCH_TASK_FILE
+    text = task_file.read_text(encoding="utf-8")
+    draft_command = _shared_marker_command(tmp_path / "draft-check.log")
+    rows = (
+        f"| E-02 | demo.design.md#2.5 | e2e | 真实 shared env | TASK-002 | planned | {json.dumps(command)} |\n"
+        f"| E-03 | demo.design.md#2.5 | e2e | 真实 shared env | TASK-003 | planned | {json.dumps(draft_command)} |"
+    )
+    text = text.replace("\n\n---\n\n## TASK-001", f"\n{rows}\n\n---\n\n## TASK-001", 1)
+    text = text.replace("**Acceptance-Refs**: S-02", "**Acceptance-Refs**: S-02, E-02", 1)
+    text = text.replace("**Acceptance-Refs**: S-03", "**Acceptance-Refs**: S-03, E-03", 1)
+    task_file.write_text(text, encoding="utf-8")
+    write_manifest(str(task_file), str(task_file.parent / ".acceptance-manifest.json"))
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "register shared and draft checks")
+    return root, tasks[:2]
 
 
-@pytest.mark.xfail(strict=True, reason="E-06 is planned for TASK-008")
-def test_e06_failed_parallel_smoke_preserves_worktrees() -> None:
-    pytest.fail("Implement E-06: a real failed batch smoke blocks cleanup and preserves worktrees")
+def _prepare_smoke_batch(root: Path, tasks: list[str], run_id: str) -> dict[str, object]:
+    from cf_task_parallel import collect, prepare
+    from test_cf_task_parallel import BATCH_TASK_FILE, _run_batch_worker
+
+    prepared = prepare(root, BATCH_TASK_FILE, tasks, run_id)
+    assert prepared["ok"] is True, prepared
+    for task in tasks:
+        outcome = _run_batch_worker(root, run_id, task)
+        assert outcome["decision"] == "pass", outcome
+    collected = collect(root, run_id, None)
+    assert collected["ok"] is True and collected["batch_smoke"] == "pending", collected
+    return prepared
 
 
-@pytest.mark.xfail(strict=True, reason="S-10 is planned for TASK-009")
-def test_s10_final_dependency_ratchet_rejects_new_cycles() -> None:
-    pytest.fail("Implement S-10: batch seven has no allowed reverse edges, private imports or multi-module SCC")
+def test_s09_parallel_smoke_uses_shared_verification(tmp_path: Path) -> None:
+    import json
+
+    from cf_task_parallel import merge
+    from test_cf_task_parallel import BATCH_TASK_FILE, _shared_marker_command
+    from test_runtime_consolidation import _import_edges, _script_modules
+
+    marker = tmp_path / "shared-check.log"
+    root, tasks = _parallel_smoke_repo(tmp_path, _shared_marker_command(marker))
+    _prepare_smoke_batch(root, tasks, "shared-smoke")
+    merged = merge(root, "shared-smoke", None)
+    assert merged["ok"] is True, merged
+    assert [item["status"] for item in merged["results"]] == ["merged", "merged"]
+    assert merged["batch_smoke"]["status"] == "passed"
+    assert marker.read_text(encoding="utf-8") == "x", "shared check must execute once"
+    assert not (tmp_path / "draft-check.log").exists(), "draft owner's check must not run"
+    data = json.loads((root / Path(BATCH_TASK_FILE).parent / ".acceptance-manifest.json").read_text())
+    rows = {row["id"]: row for row in data["scenarios"]}
+    assert rows["E-01"]["status"] == rows["E-02"]["status"] == "verified"
+    assert rows["E-03"]["status"] == "planned"
+    edges = _import_edges(SCRIPTS / "codeflow/cli/cf_task_parallel.py", _script_modules(SCRIPTS))
+    assert ("cf_task_parallel", "cf_task_workflow") not in edges
 
 
-@pytest.mark.xfail(strict=True, reason="S-11 is planned for TASK-009")
-def test_s11_packaged_runtime_and_canonical_copies_match() -> None:
-    pytest.fail("Implement S-11: real package installation and canonical/deployed runtime contracts agree")
+def test_e06_failed_parallel_smoke_preserves_worktrees(tmp_path: Path) -> None:
+    import json
+
+    from cf_task_parallel import cleanup, merge
+    from test_cf_task_parallel import _git
+
+    root, tasks = _parallel_smoke_repo(tmp_path, [sys.executable, "-c", "raise SystemExit(3)"])
+    prepared = _prepare_smoke_batch(root, tasks, "failed-smoke")
+    merged = merge(root, "failed-smoke", None)
+    assert merged["ok"] is False and merged["code"] == "batch_smoke_failed", merged
+    assert merged["batch_smoke"]["status"] == "failed"
+    ledger = json.loads((root / ".code-flow/worktrees/failed-smoke/run.json").read_text())
+    assert ledger["merge"]["status"] == "blocked"
+    cleaned = cleanup(root, "failed-smoke", force=False)
+    assert cleaned["ok"] is False
+    assert {item["code"] for item in cleaned["results"]} == {"batch_smoke_failed"}
+    for entry in prepared["worktrees"]:
+        assert Path(entry["path"]).is_dir()
+        assert entry["branch"] in _git(root, "branch", "--list", entry["branch"])
+
+
+def _synthetic_graph(tmp_path: Path, modules: dict[str, str]) -> Path:
+    package = tmp_path / "codeflow" / "task"
+    package.mkdir(parents=True)
+    for name, source in modules.items():
+        (package / f"{name}.py").write_text(source, encoding="utf-8")
+    return tmp_path
+
+
+def test_s10_final_dependency_ratchet_rejects_new_cycles(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import test_runtime_consolidation as guard
+
+    assert guard.CURRENT_BATCH == 7
+    assert not guard.DEPENDENCY_EDGE_ALLOWLIST and not guard.PRIVATE_SYMBOL_ALLOWLIST
+    guard.test_dependency_direction()
+    guard.test_private_symbol_guard()
+    guard.test_allowlist_ratchet()
+    guard.test_scc_budget()
+    modules = guard._script_modules(SCRIPTS)
+    edges = set().union(*(guard._import_edges(path, modules) for path in guard._script_files(SCRIPTS)))
+    assert guard._strongly_connected_sizes(edges) == []
+
+    reverse = _synthetic_graph(tmp_path / "reverse", {
+        "cf_log": "from codeflow.spec import cf_spec_context\n", "cf_spec_context": "",
+    })
+    monkeypatch.setattr(guard, "SCRIPTS", reverse)
+    with pytest.raises(AssertionError, match="new reverse dependencies"):
+        guard.test_dependency_direction()
+    private = _synthetic_graph(tmp_path / "private", {
+        "cf_log": "from codeflow.task.cf_task_doc import _hidden\n", "cf_task_doc": "",
+    })
+    monkeypatch.setattr(guard, "SCRIPTS", private)
+    with pytest.raises(AssertionError, match="new private cross-module imports"):
+        guard.test_private_symbol_guard()
+    cycle = _synthetic_graph(tmp_path / "cycle", {
+        "cf_task_doc": "from codeflow.task import cf_task_plan\n",
+        "cf_task_plan": "from codeflow.task import cf_task_doc\n",
+    })
+    monkeypatch.setattr(guard, "SCRIPTS", cycle)
+    with pytest.raises(AssertionError, match="dependency SCC"):
+        guard.test_scc_budget()
+    monkeypatch.setattr(guard, "DEPENDENCY_EDGE_ALLOWLIST", frozenset({("cf_log", "cf_task_doc", 7)}))
+    with pytest.raises(AssertionError, match="past their cleanup batch"):
+        guard.test_allowlist_ratchet()
+
+
+def _assert_packed_platform(cli: Path, project: Path, platform: str) -> None:
+    import json
+    import subprocess
+
+    from test_runtime_consolidation import _flat_entry_modules, _hook_probe, _script_py_files
+
+    project.mkdir()
+    result = subprocess.run(["node", str(cli), "init", f"--platform={platform}"], cwd=project,
+                            text=True, capture_output=True, timeout=120, check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
+    scripts = project / ".code-flow/scripts"
+    canonical = _script_py_files(SCRIPTS)
+    assert _script_py_files(scripts) == canonical
+    for relative in canonical:
+        assert (scripts / relative).read_bytes() == (SCRIPTS / relative).read_bytes(), relative
+    manifest = json.loads((project / ".code-flow/.runtime-install.json").read_text())
+    for relative in canonical:
+        assert f".code-flow/scripts/{relative}" in manifest["files"], relative
+    modules = sorted(_flat_entry_modules())
+    probe = ("import importlib, sys\n"
+             f"sys.path.insert(0, {str(scripts)!r})\n"
+             f"[importlib.import_module(name) for name in {modules!r}]\n")
+    loaded = subprocess.run([sys.executable, "-c", probe], cwd=project, text=True,
+                            capture_output=True, timeout=120, check=False)
+    assert loaded.returncode == 0, loaded.stderr
+    verify = subprocess.run(["node", str(cli), "task", "verify", "--help"], cwd=project,
+                            text=True, capture_output=True, timeout=120, check=False)
+    assert verify.returncode == 0, verify.stdout + verify.stderr
+    _hook_probe(project, "cf_stop_hook.py", {"session_id": "s11", "hook_event_name": "Stop"})
+    if platform == "codex":
+        _hook_probe(project, "cf_codex_hook.py", {"cwd": str(project), "session_id": "s11",
+                    "hook_event_name": "UserPromptSubmit", "prompt": "explain the architecture"})
+    if platform == "opencode":
+        _hook_probe(project, "cf_opencode_event.py", {"kind": "session.prompt", "directory": str(project),
+                    "event": {"sessionID": "s11", "prompt": {"text": "explain the architecture"}}})
+
+
+def test_s11_packaged_runtime_and_canonical_copies_match(tmp_path: Path) -> None:
+    import json
+    import subprocess
+
+    from test_runtime_consolidation import PLATFORMS, ROOT, _extract_tarball
+
+    packed = subprocess.run(["npm", "pack", "--pack-destination", str(tmp_path), "--silent"], cwd=ROOT,
+                            text=True, capture_output=True, timeout=180, check=False)
+    assert packed.returncode == 0, packed.stdout + packed.stderr
+    tarballs = list(tmp_path.glob("*.tgz"))
+    assert len(tarballs) == 1
+    extracted = tmp_path / "extracted"
+    _extract_tarball(tarballs[0], extracted)
+    package = extracted / "package"
+    source = json.loads((ROOT / "package.json").read_text())
+    packed_config = json.loads((package / "package.json").read_text())
+    assert packed_config.get("dependencies", {}) == source.get("dependencies", {})
+    assert set(source.get("dependencies", {})) == {"@ccusage/codex"}
+    for platform in PLATFORMS:
+        _assert_packed_platform(package / "src/cli.js", tmp_path / platform, platform)
+    synced = subprocess.run(["node", str(ROOT / "src/cli.js"), "sync", "check"], cwd=ROOT,
+                            text=True, capture_output=True, timeout=120, check=False)
+    assert synced.returncode == 0, synced.stdout + synced.stderr
+
+
+def test_s12_workflow_shim_preserves_bindings_import(tmp_path: Path) -> None:
+    import subprocess
+
+    empty = tmp_path / "empty"
+    corrupt = tmp_path / "corrupt"
+    empty.mkdir()
+    corrupt.mkdir()
+    (corrupt / "spec-context.yml").write_text("invalid: [\n", encoding="utf-8")
+    probe = (
+        "import sys\n"
+        "from pathlib import Path\n"
+        "sys.path.insert(0, sys.argv[1])\n"
+        "from cf_task_workflow import collect_requirement_bindings\n"
+        "assert collect_requirement_bindings(Path(sys.argv[2])) == {}\n"
+        "try:\n"
+        "    collect_requirement_bindings(Path(sys.argv[3]))\n"
+        "except ValueError as exc:\n"
+        "    assert 'review_context_unreadable' in str(exc)\n"
+        "else:\n"
+        "    raise AssertionError('corrupt context was silently accepted')\n"
+    )
+    deployed = Path(__file__).resolve().parents[1] / ".code-flow/scripts"
+    for scripts in (SCRIPTS, deployed):
+        result = subprocess.run([sys.executable, "-c", probe, str(scripts), str(empty), str(corrupt)],
+                                cwd=tmp_path, text=True, capture_output=True, timeout=30, check=False)
+        assert result.returncode == 0, f"{scripts}: {result.stderr}"
