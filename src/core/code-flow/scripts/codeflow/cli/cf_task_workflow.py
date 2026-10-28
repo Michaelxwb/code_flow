@@ -24,9 +24,9 @@ from codeflow.core import cf_git
 from codeflow.cli.cf_spec_context import (ContextError, DEFAULT_ACTIVE_EXCLUDES, Decision, SpecContext,
                              apply_decision, load_active_task, load_context, save_context,
                              start_active_task)
-from codeflow.cli.cf_spec_gate import evidence_deferral_kind, validate_stage
+from codeflow.spec.cf_stage_gate import evidence_deferral_kind, validate_stage
 from codeflow.spec.cf_spec_metadata import load_spec_metadata
-from codeflow.cli.cf_spec_session import context_sha256
+from codeflow.spec.cf_spec_context_model import context_sha256
 from codeflow.spec.cf_spec_verify import (VerificationEvidence, VerificationScope, run_all_verifiers,
                                           store_verification_evidence)
 from codeflow.core.cf_exec_base import worktree_fingerprint

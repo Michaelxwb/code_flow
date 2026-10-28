@@ -7,7 +7,7 @@ import re
 from typing import Mapping, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from codeflow.cli.cf_spec_context import SpecContext
+    from codeflow.spec.cf_spec_context_model import SpecContext
 
 _UNRESOLVED = re.compile(r"\b(?:TBD|TODO)\b|待同步|待确认|待定|需同步\s*spec\s*文本", re.I)
 

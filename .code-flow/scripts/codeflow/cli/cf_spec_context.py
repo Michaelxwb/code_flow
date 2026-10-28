@@ -786,7 +786,7 @@ def _start_command(args: argparse.Namespace, payload: Mapping[str, object]) -> d
 
 def _status_command(args: argparse.Namespace) -> dict[str, object]:
     """Human-readable Spec Context status: task, marker health, gate, rules."""
-    from codeflow.cli.cf_spec_gate import result_to_data, validate_stage  # local import avoids module cycle
+    from codeflow.spec.cf_stage_gate import result_to_data, validate_stage
 
     context_path = Path(args.task_dir) / "spec-context.yml"
     context = load_context(str(context_path))
@@ -1116,7 +1116,7 @@ def _doctor_command(args: argparse.Namespace) -> dict[str, object]:
     findings.extend(_doctor_migrations(root))
     findings.extend(_doctor_legacy(root))
     from codeflow.spec.cf_rule_readiness import applied_findings, convention_findings
-    from codeflow.cli.cf_spec_gate import result_to_data, validate_stage
+    from codeflow.spec.cf_stage_gate import result_to_data, validate_stage
     findings.extend(applied_findings(context, str(root), task_dir=str(task_dir)))
     findings.extend(convention_findings(str(root), [binding.path for binding in context.bindings]))
     report = _doctor_report(context.task, sha, marker, runtime, findings)

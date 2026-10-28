@@ -28,8 +28,8 @@
 | S-05 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 manifest、acceptance runner 与需求验证选择 | TASK-004 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s05_acceptance_selection_and_risk_are_consistent"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/acceptance/*.py","src/core/code-flow/scripts/codeflow/cli/cf_acceptance_runner.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-06 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实临时 Git worktree、任务文档、Spec Context 与 manifest | TASK-005 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s06_parallel_conflicts_and_spec_scope_share_owner"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/task/*.py","src/core/code-flow/scripts/codeflow/spec/cf_workflow_service.py","src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | E-03 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Context Evidence、active marker 与 TASK 文件 | TASK-005 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e03_evidence_and_task_transitions_preserve_guards"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/task/*.py","src/core/code-flow/scripts/codeflow/spec/cf_workflow_service.py","src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| S-07 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Context、Gate 判定、Session 投影及 AST 导入图 | TASK-006 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| E-04 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 Gate deferral 分类与 Rule Evidence | TASK-006 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| S-07 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Context、Gate 判定、Session 投影及 AST 导入图 | TASK-006 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| E-04 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 Gate deferral 分类与 Rule Evidence | TASK-006 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-08 | runtime-boundary-hardening.design.md#2.5 验收条件 | system | 真实临时 Git 项目、CLI、Context、marker 与 Session 投影 | TASK-007 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | E-05 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Context 文件、marker 与启动前置门禁 | TASK-007 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-09 | runtime-boundary-hardening.design.md#2.5 验收条件 | system | 真实 Git worktree、并行 merge 与共享验收检查 | TASK-008 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s09_parallel_smoke_uses_shared_verification"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","src/core/code-flow/scripts/codeflow/task/*.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
@@ -289,7 +289,7 @@
 
 ## TASK-006: 下沉 Gate 和 Session 共享判定
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-003, TASK-005
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -305,28 +305,32 @@
 
 ### Checklist
 
-- [ ] gate/session 的模型从已有 Context model 获取，plan quality 与 workflow service 不再依赖 Gate CLI 的业务函数。
-- [ ] 区分 review/heavy 延后和 budget/env 未执行；保留 required/advisory、waiver 和 artifact readiness。
-- [ ] [S-07][integration] 先将骨架替换为真实断言并记录 RED；边界：真实 Context、Gate 判定、Session 投影及 AST 导入图；断言：判定与投影保持一致，plan quality 不再反向导入 Gate CLI。
-- [ ] [E-04][unit] 先将骨架替换为真实断言并记录 RED；边界：真实 Gate deferral 分类与 Rule Evidence；断言：允许延后时仅 review 和 heavy 可放行，budget 和 env 始终阻断。
-- [ ] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
+- [x] gate/session 的模型从已有 Context model 获取，plan quality 与 workflow service 不再依赖 Gate CLI 的业务函数。
+- [x] 区分 review/heavy 延后和 budget/env 未执行；保留 required/advisory、waiver 和 artifact readiness。
+- [x] [S-07][integration] 先将骨架替换为真实断言并记录 RED；边界：真实 Context、Gate 判定、Session 投影及 AST 导入图；断言：判定与投影保持一致，plan quality 不再反向导入 Gate CLI。
+- [x] [E-04][unit] 先将骨架替换为真实断言并记录 RED；边界：真实 Gate deferral 分类与 Rule Evidence；断言：允许延后时仅 review 和 heavy 可放行，budget 和 env 始终阻断。
+- [x] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-07 | integration | 真实 Context、Gate 判定、Session 投影及 AST 导入图 | 判定与投影保持一致，plan quality 不再反向导入 Gate CLI | tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"] | planned |
-| E-04 | unit | 真实 Gate deferral 分类与 Rule Evidence | 允许延后时仅 review 和 heavy 可放行，budget 和 env 始终阻断 | tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"] | planned |
+| S-07 | integration | 真实 Context、Gate 判定、Session 投影及 AST 导入图 | 判定与投影保持一致，plan quality 不再反向导入 Gate CLI | tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"] | verified |
+| E-04 | unit | 真实 Gate deferral 分类与 Rule Evidence | 允许延后时仅 review 和 heavy 可放行，budget 和 env 始终阻断 | tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"] | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-07 | - | - | - | - | planned |
-| E-04 | - | - | - | - | planned |
+| S-07 | FAIL: plan quality 仍反向导入 Gate CLI；Context、Gate 和投影基线通过（执行命令见契约） | PASS: Gate、投影和领域层依赖断言通过 | tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners | 真实 Context、Gate、Session 投影和 AST 导入图 | verified |
+| E-04 | 既有行为补测，重构前已通过；不伪造 RED（执行命令见契约） | PASS: 四类延后、冲突声明及未知类型的阻断断言通过 | tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy | 真实 Gate 判定及四类 Rule Evidence | verified |
+- S-07: verified — automated command passed; run_id=40798fc461cb40aa91ccb40f5f94facf (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=40798fc461cb40aa91ccb40f5f94facf (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-28] started
+- [2026-10-28] completed (done)
 
 ---
 

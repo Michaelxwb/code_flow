@@ -96,7 +96,7 @@ def task_truth_issues(task_file: str, task_id: str, context: SpecContext,
             stage_status = rule.stage_status.get(rule.verifier_stage)
             actual = stage_status.status if stage_status is not None else "missing"
             if status == "done" and spec_ids is not None and actual == "unverified":
-                from codeflow.cli.cf_spec_gate import evidence_deferral_kind
+                from codeflow.spec.cf_stage_gate import evidence_deferral_kind
                 latest = stage_status.evidence[-1] if stage_status.evidence else None
                 deferred = evidence_deferral_kind(latest)
                 if deferred == "heavy" or (deferred == "review_stage" and binding.spec_id not in spec_ids):
@@ -376,7 +376,7 @@ def complete_requirement_verification(root: str, directory: str, tasks: Sequence
     if mismatches:
         return {**result, "decision": "block", "reason": "task_status_truth_mismatch", "tasks": mismatches}
     if context is not None:
-        from codeflow.cli.cf_spec_gate import validate_stage
+        from codeflow.spec.cf_stage_gate import validate_stage
         issues = [item.message for stage in ("code", "review") for item in validate_stage(context, stage).errors]
         if issues:
             return {**result, "decision": "block", "reason": "requirement_spec_unverified", "issues": issues}
@@ -435,7 +435,7 @@ def _validate_start_manifest(directory: Path, candidate: Path) -> None:
 
 def _write_projection(root: str, candidate: Path, context: SpecContext, task_id: str, session_output: str) -> Path:
     from codeflow.core.cf_fs import atomic_write_text
-    from codeflow.cli.cf_spec_session import project_task_session
+    from codeflow.spec.cf_task_projection import project_task_session
     try:
         projection = project_task_session(context, str(candidate), task_id)
     except ValueError as exc:
@@ -553,7 +553,7 @@ def start_task(
     view flips to in-progress in the same call."""
     from codeflow.cli.cf_spec_context import load_context, refresh_context, save_context
     from codeflow.spec.cf_active_task import new_active
-    from codeflow.cli.cf_spec_session import context_sha256
+    from codeflow.spec.cf_spec_context_model import context_sha256
 
     recover_transition(root)
     directory, candidate = _resolve_paths(root, task_dir, task_file)

@@ -26,10 +26,10 @@ from codeflow.cli.cf_spec_context import (
     resync_active_hash,
     save_context,
 )
-from codeflow.cli.cf_spec_gate import evidence_deferral_kind, validate_stage
+from codeflow.spec.cf_stage_gate import evidence_deferral_kind, validate_stage
 from codeflow.spec.cf_spec_metadata import SpecMetadata, load_spec_metadata
 from codeflow.spec.cf_spec_resolver import resolve_candidates, SpecCandidate
-from codeflow.cli.cf_spec_session import context_sha256
+from codeflow.spec.cf_spec_context_model import context_sha256
 from codeflow.spec.cf_spec_verify import VerificationEvidence, VerificationScope, run_all_verifiers, store_verification_evidence
 from codeflow.core.cf_core import load_config, phase_timing, resolve_quality_loop
 from codeflow.acceptance.cf_acceptance_manifest_core import validate_execution_baseline

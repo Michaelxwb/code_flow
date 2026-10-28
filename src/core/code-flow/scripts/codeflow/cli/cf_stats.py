@@ -378,7 +378,7 @@ def _runtime_manifest_counts(manifest: Path) -> dict[str, int]:
 
 def _deferred_rule_count(context: Path) -> int:
     from codeflow.cli.cf_spec_context import ContextError, load_context
-    from codeflow.cli.cf_spec_gate import evidence_deferral_kind
+    from codeflow.spec.cf_stage_gate import evidence_deferral_kind
     if not context.is_file():
         return 0
     try:

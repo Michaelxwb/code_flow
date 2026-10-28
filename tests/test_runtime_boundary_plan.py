@@ -510,14 +510,57 @@ def test_e03_evidence_and_task_transitions_preserve_guards(tmp_path: Path) -> No
     assert not {entry for entry in imports if entry[1] in {"cf_task_runtime", "cf_workflow_service"}}
 
 
-@pytest.mark.xfail(strict=True, reason="S-07 is planned for TASK-006")
-def test_s07_gate_and_session_use_domain_owners() -> None:
-    pytest.fail("Implement S-07: gate and session share model and policy owners without CLI back edges")
+def test_s07_gate_and_session_use_domain_owners(tmp_path: Path) -> None:
+    from cf_spec_context import load_context
+    from cf_spec_gate import validate_stage
+    from cf_spec_session import project_task_session
+    from test_cf_spec_session import _project
+    from test_runtime_consolidation import _import_edges, _script_modules
+
+    task_dir, task_file, _ = _project(tmp_path, 2)
+    context = load_context(str(task_dir / "spec-context.yml"))
+    projection = project_task_session(context, str(task_file), "TASK-001")
+    plan = validate_stage(context, "plan")
+    code = validate_stage(context, "code")
+    refs = {f"session-rules#RULE-session-{index:03d}" for index in (1, 2)}
+    assert plan.decision == "pass" and code.decision == "block"
+    assert set(code.affected_refs) == refs
+    assert projection.included_rules == projection.total_rules == len(refs)
+    assert all(ref in projection.text for ref in refs)
+    assert validate_stage.__module__ == "codeflow.spec.cf_stage_gate"
+    assert type(projection).__module__ == "codeflow.spec.cf_task_projection"
+    modules = _script_modules(SCRIPTS)
+    for relative in ("acceptance/cf_plan_quality.py", "spec/cf_workflow_service.py"):
+        edges = _import_edges(SCRIPTS / "codeflow" / relative, modules)
+        assert not {edge for edge in edges if edge[1] == "cf_spec_gate"}
+    for relative in ("cli/cf_spec_gate.py", "cli/cf_spec_session.py"):
+        edges = _import_edges(SCRIPTS / "codeflow" / relative, modules)
+        assert not {edge for edge in edges if edge[1] == "cf_spec_context"}
+    service_edges = _import_edges(SCRIPTS / "codeflow/spec/cf_workflow_service.py", modules)
+    assert ("cf_workflow_service", "cf_spec_session") not in service_edges
 
 
-@pytest.mark.xfail(strict=True, reason="E-04 is planned for TASK-006")
 def test_e04_gate_deferral_kinds_keep_fail_closed_policy() -> None:
-    pytest.fail("Implement E-04: review and heavy deferrals differ from budget and environment failures")
+    from cf_spec_gate import evidence_deferral_kind, validate_stage
+    from test_cf_spec_gate import _context
+
+    for kind, error in (("review_stage", "deferred_to_review"), ("heavy", "deferred_to_review"),
+                        ("budget", "verifier_budget_exhausted"), ("env", "env_blocked")):
+        evidence = {"status": "unverified", "error_code": error, "details": {"deferral_kind": kind}}
+        context = _context("unverified", evidence=(evidence,))
+        assert evidence_deferral_kind(evidence) == kind
+        assert validate_stage(context, "design").decision == "block"
+        allowed = validate_stage(context, "design", allow_deferred_skips=True)
+        assert allowed.decision == ("pass" if kind in {"review_stage", "heavy"} else "block")
+    for error, expected in (("verifier_budget_exhausted", "budget"), ("env_blocked", "env")):
+        evidence = {"error_code": error, "details": {"deferral_kind": "review_stage"}}
+        assert evidence_deferral_kind(evidence) == expected
+        assert validate_stage(_context("unverified", evidence=(evidence,)), "design",
+                              allow_deferred_skips=True).decision == "block"
+    unknown = {"error_code": "deferred_to_review"}
+    assert evidence_deferral_kind(unknown) == "unknown"
+    assert validate_stage(_context("unverified", evidence=(unknown,)), "design",
+                          allow_deferred_skips=True).decision == "block"
 
 
 @pytest.mark.xfail(strict=True, reason="S-08 is planned for TASK-007")

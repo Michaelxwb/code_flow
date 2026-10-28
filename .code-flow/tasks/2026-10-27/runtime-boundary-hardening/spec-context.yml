@@ -1,7 +1,7 @@
 version: 1
 task: runtime-boundary-hardening
 enforcement: required
-updated_at: '2026-10-28T04:58:25.297981+00:00'
+updated_at: '2026-10-28T05:05:17.106540+00:00'
 sources:
 - type: cli
   ref: bind
@@ -45,7 +45,7 @@ bindings:
         - artifact: runtime-boundary-hardening.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 128033a0a49a8e627ea4993bf636c0f9320c3ddffff753f519ea1100e99bd55e
+          artifact_sha256: c2550eb3f91c784e3fa305bca03bf1347e6e30ae0cf9bf6d60c8d67eb4bbd882
         decision: null
         evidence: []
       code:
@@ -108,6 +108,17 @@ bindings:
           details:
             checked_files: 0
             violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-print-debug-001
+          executed_at: '2026-10-28T05:04:59.772270+00:00'
+          status: verified
+          rule_text_sha256: f50a25a1d2eaa1ce1358d8156d159c228ebcfbae25810f698f623d7103c7e589
+          artifact_sha256: null
+          diff_sha256: 066fbd6c9196a99af4835d5d1e7b9c443add69b0424bd1ce4605e853238e0363
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
       review:
         status: pending
         refs: []
@@ -136,7 +147,7 @@ bindings:
         - artifact: runtime-boundary-hardening.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 128033a0a49a8e627ea4993bf636c0f9320c3ddffff753f519ea1100e99bd55e
+          artifact_sha256: c2550eb3f91c784e3fa305bca03bf1347e6e30ae0cf9bf6d60c8d67eb4bbd882
         decision: null
         evidence: []
       code:
@@ -199,6 +210,17 @@ bindings:
           details:
             checked_files: 12
             violations: []
+        - verifier_ref: scripts-code-standards#RULE-scripts-no-bare-except-001
+          executed_at: '2026-10-28T05:04:59.778148+00:00'
+          status: verified
+          rule_text_sha256: c08d7e395f6def6e5bf5613334d8fdac6dfc8eab9317907f2a17bb83263a2cab
+          artifact_sha256: null
+          diff_sha256: 066fbd6c9196a99af4835d5d1e7b9c443add69b0424bd1ce4605e853238e0363
+          result_sha256: d9ea287efc330bbca6594544add79e9db3e7a0776baade9545ad44c269e12eb4
+          error_code: null
+          details:
+            checked_files: 26
+            violations: []
       review:
         status: pending
         refs: []
@@ -227,7 +249,7 @@ bindings:
         - artifact: runtime-boundary-hardening.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 128033a0a49a8e627ea4993bf636c0f9320c3ddffff753f519ea1100e99bd55e
+          artifact_sha256: c2550eb3f91c784e3fa305bca03bf1347e6e30ae0cf9bf6d60c8d67eb4bbd882
         decision: null
         evidence: []
       code:
@@ -390,6 +412,37 @@ bindings:
               76 passed in 19.48s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-hook-protocol-001
+          executed_at: '2026-10-28T05:04:50.442325+00:00'
+          status: verified
+          rule_text_sha256: a1e49335ca412c57f7c2c935cdf4b48ed7bdf30b188fdb6a439ecac1730bb446
+          artifact_sha256: null
+          diff_sha256: 066fbd6c9196a99af4835d5d1e7b9c443add69b0424bd1ce4605e853238e0363
+          result_sha256: 0fd0b0419415dbaf97ab5455ddf4dc01f03de52316fc236898ea9ee93d7ac217
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_hook_command_robustness.py
+            - tests/test_cf_user_prompt_hook.py
+            - tests/test_cf_post_hook.py
+            - tests/test_codex_native_hook.py
+            - tests/test_opencode_native.py
+            - tests/test_runtime_contract.py
+            exit_code: 0
+            stdout_sha256: 823acf3ec677994ee66d5f8bf51846abce95c3059ea190577116e2ec5b1f67d1
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '........................................................................
+              [ 94%]
+
+              ....                                                                     [100%]
+
+              76 passed in 13.85s
+
+              '
       review:
         status: pending
         refs: []
@@ -418,7 +471,7 @@ bindings:
         - artifact: runtime-boundary-hardening.md
           section_id: TASK-007
           item_id: TASK-007
-          artifact_sha256: 128033a0a49a8e627ea4993bf636c0f9320c3ddffff753f519ea1100e99bd55e
+          artifact_sha256: c2550eb3f91c784e3fa305bca03bf1347e6e30ae0cf9bf6d60c8d67eb4bbd882
         decision: null
         evidence: []
       code:
@@ -551,6 +604,31 @@ bindings:
               66 passed in 9.12s
 
               '
+        - verifier_ref: scripts-code-standards#RULE-scripts-context-gate-001
+          executed_at: '2026-10-28T05:04:58.982292+00:00'
+          status: verified
+          rule_text_sha256: ff1bee0e845ecac0ffb9c60782de3069f8f6312731f895019b5f5601c7bc6e88
+          artifact_sha256: null
+          diff_sha256: 066fbd6c9196a99af4835d5d1e7b9c443add69b0424bd1ce4605e853238e0363
+          result_sha256: c84a32fb741a926f5bd18978b4950ffbc9e5296fee4fbf1432b0d5380190ad0b
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_cf_spec_context.py
+            - tests/test_cf_spec_gate.py
+            - tests/test_cf_task_runtime.py
+            exit_code: 0
+            stdout_sha256: b72051e23971318285d8ae4aaf739ef9158173a0bb880ba04792c4dbaaec0238
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '..................................................................       [100%]
+
+              66 passed in 8.41s
+
+              '
       review:
         status: pending
         refs: []
@@ -579,7 +657,7 @@ bindings:
         - artifact: runtime-boundary-hardening.md
           section_id: TASK-009
           item_id: TASK-009
-          artifact_sha256: 128033a0a49a8e627ea4993bf636c0f9320c3ddffff753f519ea1100e99bd55e
+          artifact_sha256: c2550eb3f91c784e3fa305bca03bf1347e6e30ae0cf9bf6d60c8d67eb4bbd882
         decision: null
         evidence: []
       code:
@@ -710,6 +788,31 @@ bindings:
             output: '.............................                                            [100%]
 
               29 passed in 0.72s
+
+              '
+        - verifier_ref: scripts-code-standards#RULE-scripts-canonical-parity-001
+          executed_at: '2026-10-28T05:04:59.771785+00:00'
+          status: verified
+          rule_text_sha256: a6c4ad194b50ce3e453ba8abc22b01c0006cbfbb1228dd6132c7e1cde33df486
+          artifact_sha256: null
+          diff_sha256: 066fbd6c9196a99af4835d5d1e7b9c443add69b0424bd1ce4605e853238e0363
+          result_sha256: 5694430a88b9c394e47bfcda76df5e53970896c5150ab8119e85935726a73a1c
+          error_code: null
+          details:
+            argv:
+            - python3
+            - -m
+            - pytest
+            - -q
+            - tests/test_spec_workflow_templates.py
+            - tests/test_adapter_parity.py
+            - tests/test_spec_workflow_residue.py
+            exit_code: 0
+            stdout_sha256: 633c15a7c317191d78cd2a6c5602aa9fa926de92972daeef9b9332982d2a355f
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: '.............................                                            [100%]
+
+              29 passed in 0.66s
 
               '
       review:

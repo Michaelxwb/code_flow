@@ -4874,7 +4874,7 @@
       "kind": "functional",
       "boundary": "真实 Context、Gate 判定、Session 投影及 AST 导入图",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -4924,6 +4924,269 @@
       "check": "CHK-492475b44676",
       "checks": [
         "CHK-492475b44676"
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "S-07",
+        "status": "passed",
+        "check_ids": [
+          "CHK-492475b44676"
+        ],
+        "check_reused": {
+          "CHK-492475b44676": false
+        },
+        "check_results": {
+          "CHK-492475b44676": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-492475b44676": false
+        },
+        "check_configs": {
+          "CHK-492475b44676": {
+            "id": "CHK-492475b44676",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/spec/*.py",
+              "src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-492475b44676": "647b0833a838b147773be982ecc0df1db453fda3685f5bc7f2bfb7d20f79d422"
+        },
+        "input_hash": "4edd223296549e23770144d8ee258139e67a8f55f746cc6f196affcf7e110aee",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-492475b44676",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "src/core/code-flow/scripts/codeflow/spec/*.py",
+            "src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+            "tests/test_runtime_boundary_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "integration",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"
+          ],
+          "markers": []
+        },
+        "revision": 1,
+        "run_id": "40798fc461cb40aa91ccb40f5f94facf",
+        "executed_at": "2026-10-28T05:04:36.244557+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "4edd223296549e23770144d8ee258139e67a8f55f746cc6f196affcf7e110aee"
+      },
+      "runs": [
+        {
+          "id": "S-07",
+          "status": "passed",
+          "check_ids": [
+            "CHK-492475b44676"
+          ],
+          "check_reused": {
+            "CHK-492475b44676": false
+          },
+          "check_results": {
+            "CHK-492475b44676": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-492475b44676": false
+          },
+          "check_configs": {
+            "CHK-492475b44676": {
+              "id": "CHK-492475b44676",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/spec/*.py",
+                "src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-492475b44676": "647b0833a838b147773be982ecc0df1db453fda3685f5bc7f2bfb7d20f79d422"
+          },
+          "input_hash": "4edd223296549e23770144d8ee258139e67a8f55f746cc6f196affcf7e110aee",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-492475b44676",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/spec/*.py",
+              "src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "40798fc461cb40aa91ccb40f5f94facf",
+          "executed_at": "2026-10-28T05:04:36.244557+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4edd223296549e23770144d8ee258139e67a8f55f746cc6f196affcf7e110aee"
+        }
       ]
     },
     {
@@ -4933,7 +5196,7 @@
       "kind": "functional",
       "boundary": "真实 Gate deferral 分类与 Rule Evidence",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -4983,6 +5246,269 @@
       "check": "CHK-ddfa92004f07",
       "checks": [
         "CHK-ddfa92004f07"
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "E-04",
+        "status": "passed",
+        "check_ids": [
+          "CHK-ddfa92004f07"
+        ],
+        "check_reused": {
+          "CHK-ddfa92004f07": false
+        },
+        "check_results": {
+          "CHK-ddfa92004f07": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-ddfa92004f07": false
+        },
+        "check_configs": {
+          "CHK-ddfa92004f07": {
+            "id": "CHK-ddfa92004f07",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/spec/*.py",
+              "src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "unit",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-ddfa92004f07": "37f4a0d4c1b0b39808e9ead353696e581d5cd54db547f1e90c9d28607f10e172"
+        },
+        "input_hash": "98c8af2005c7e449b6ec255c8a4d2ffd482e9f431e35ae5aa96d35e8d8d9f65f",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-ddfa92004f07",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "src/core/code-flow/scripts/codeflow/spec/*.py",
+            "src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+            "tests/test_runtime_boundary_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "unit",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"
+          ],
+          "markers": []
+        },
+        "revision": 1,
+        "run_id": "40798fc461cb40aa91ccb40f5f94facf",
+        "executed_at": "2026-10-28T05:04:36.244557+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "98c8af2005c7e449b6ec255c8a4d2ffd482e9f431e35ae5aa96d35e8d8d9f65f"
+      },
+      "runs": [
+        {
+          "id": "E-04",
+          "status": "passed",
+          "check_ids": [
+            "CHK-ddfa92004f07"
+          ],
+          "check_reused": {
+            "CHK-ddfa92004f07": false
+          },
+          "check_results": {
+            "CHK-ddfa92004f07": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-ddfa92004f07": false
+          },
+          "check_configs": {
+            "CHK-ddfa92004f07": {
+              "id": "CHK-ddfa92004f07",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/spec/*.py",
+                "src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-ddfa92004f07": "37f4a0d4c1b0b39808e9ead353696e581d5cd54db547f1e90c9d28607f10e172"
+          },
+          "input_hash": "98c8af2005c7e449b6ec255c8a4d2ffd482e9f431e35ae5aa96d35e8d8d9f65f",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-ddfa92004f07",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/spec/*.py",
+              "src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "unit",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "40798fc461cb40aa91ccb40f5f94facf",
+          "executed_at": "2026-10-28T05:04:36.244557+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "98c8af2005c7e449b6ec255c8a4d2ffd482e9f431e35ae5aa96d35e8d8d9f65f"
+        }
       ]
     },
     {

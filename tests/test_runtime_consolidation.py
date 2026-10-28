@@ -89,6 +89,7 @@ LAYERS: dict[str, int] = {
     "cf_spec_session": 2,
     "cf_spec_verify": 2,
     "cf_stats": 3,
+    "cf_stage_gate": 1,
     "cf_stop_guard": 0,
     "cf_stop_hook": 3,
     "cf_sync": 3,
@@ -97,6 +98,7 @@ LAYERS: dict[str, int] = {
     "cf_task_merge": 2,
     "cf_task_parallel": 2,
     "cf_task_plan": 1,
+    "cf_task_projection": 1,
     "cf_task_runtime": 2,
     "cf_task_state": 0,
     "cf_task_workflow": 3,
@@ -111,7 +113,6 @@ LAYERS: dict[str, int] = {
 
 # (importer, imported module, batch after which the edge must be gone)
 DEPENDENCY_EDGE_ALLOWLIST = frozenset({
-    ("cf_plan_quality", "cf_spec_gate", 6),
     ("cf_task_parallel", "cf_task_workflow", 6),
 })
 

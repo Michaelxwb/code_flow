@@ -27,7 +27,8 @@ from codeflow.core.cf_log import warn
 from codeflow.cli.cf_spec_context import ContextError, SpecContext, load_active_task, load_context
 from codeflow.core.cf_context_cache import load_snapshot
 from codeflow.spec.cf_spec_resolver import resolve_candidate_headers, resolve_candidates
-from codeflow.cli.cf_spec_session import context_sha256, project_task_session
+from codeflow.spec.cf_spec_context_model import context_sha256
+from codeflow.spec.cf_task_projection import project_task_session
 
 
 _PROJECTION_CACHE_PATH = ".code-flow/.task-projection-state.json"
