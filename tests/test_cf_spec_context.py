@@ -114,6 +114,18 @@ def test_artifact_hash_cache_invalidates_on_inode_change(tmp_path: Path) -> None
     assert _file_sha256(artifact) != first
 
 
+def test_corrupt_artifact_hash_cache_is_reported_and_rebuilt(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    flow = tmp_path / ".code-flow"
+    flow.mkdir()
+    (flow / ".artifact-hash-cache.json").write_text("not json", encoding="utf-8")
+    artifact = flow / "task.md"
+    artifact.write_text("actual content\n", encoding="utf-8")
+
+    assert _file_sha256(artifact) == hashlib.sha256(artifact.read_bytes()).hexdigest()
+    assert "artifact hash cache" in capsys.readouterr().err
+    assert json.loads((flow / ".artifact-hash-cache.json").read_text(encoding="utf-8"))
+
+
 def test_runtime_cache_files_are_excluded_from_business_changes(tmp_path: Path) -> None:
     _git(tmp_path, "init", "-q")
     _git(tmp_path, "config", "user.email", "test@example.com")

@@ -30,8 +30,8 @@
 | E-03 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Context Evidence、active marker 与 TASK 文件 | TASK-005 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e03_evidence_and_task_transitions_preserve_guards"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/task/*.py","src/core/code-flow/scripts/codeflow/spec/cf_workflow_service.py","src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-07 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Context、Gate 判定、Session 投影及 AST 导入图 | TASK-006 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s07_gate_and_session_use_domain_owners"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | E-04 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 Gate deferral 分类与 Rule Evidence | TASK-006 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e04_gate_deferral_kinds_keep_fail_closed_policy"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/acceptance/cf_plan_quality.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_gate.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| S-08 | runtime-boundary-hardening.design.md#2.5 验收条件 | system | 真实临时 Git 项目、CLI、Context、marker 与 Session 投影 | TASK-007 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
-| E-05 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Context 文件、marker 与启动前置门禁 | TASK-007 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| S-08 | runtime-boundary-hardening.design.md#2.5 验收条件 | system | 真实临时 Git 项目、CLI、Context、marker 与 Session 投影 | TASK-007 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
+| E-05 | runtime-boundary-hardening.design.md#2.5 验收条件 | integration | 真实 Context 文件、marker 与启动前置门禁 | TASK-007 | verified | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/spec/*.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py","src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-09 | runtime-boundary-hardening.design.md#2.5 验收条件 | system | 真实 Git worktree、并行 merge 与共享验收检查 | TASK-008 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s09_parallel_smoke_uses_shared_verification"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","src/core/code-flow/scripts/codeflow/task/*.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | E-06 | runtime-boundary-hardening.design.md#2.5 验收条件 | system | 真实 Git worktree、并行 run ledger 与失败检查 | TASK-008 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e06_failed_parallel_smoke_preserves_worktrees"] | P1 | auto | none | ["src/core/code-flow/scripts/codeflow/cli/cf_task_parallel.py","src/core/code-flow/scripts/codeflow/cli/cf_task_workflow.py","src/core/code-flow/scripts/codeflow/task/*.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
 | S-10 | runtime-boundary-hardening.design.md#2.5 验收条件 | unit | 真实 canonical AST 导入图、allowlist 与合成反向边 | TASK-009 | planned | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s10_final_dependency_ratchet_rejects_new_cycles"] | P1 | auto | none | ["src/core/code-flow/scripts/**/*.py","src/cli.js","tests/test_runtime_consolidation.py","tests/test_runtime_boundary_plan.py"] | - | - | no |
@@ -336,7 +336,7 @@
 
 ## TASK-007: 解除 Context 与工作流生命周期回边
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-006
 - **Source**: runtime-boundary-hardening.design.md#3.2 架构设计, runtime-boundary-hardening.design.md#3.5 质量实现方案, runtime-boundary-hardening.design.md#Spec Compliance Matrix
@@ -352,29 +352,33 @@
 
 ### Checklist
 
-- [ ] 保持刷新后、全部启动门禁通过再保存 Context 的次序，保留 marker 与 TASK 的事务和恢复逻辑。
-- [ ] 验证 required Scope、投影预算、marker 错误、artifact stale 与错误码；保持 schema 和入口兼容。
-- [ ] [S-08][system] 先将骨架替换为真实断言并记录 RED；边界：真实临时 Git 项目、CLI、Context、marker 与 Session 投影；断言：命令保持原有状态与输出语义，Context 与 workflow service 不再属于同一多模块 SCC。
-- [ ] [E-05][integration] 先将骨架替换为真实断言并记录 RED；边界：真实 Context 文件、marker 与启动前置门禁；断言：start 返回阻断，Context 与 marker 保持启动前状态。
-- [ ] RULE-scripts-context-gate-001 verifier：python3 -m pytest -q tests/test_cf_spec_context.py tests/test_cf_spec_gate.py tests/test_cf_task_runtime.py。
-- [ ] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
+- [x] 保持刷新后、全部启动门禁通过再保存 Context 的次序，保留 marker 与 TASK 的事务和恢复逻辑。
+- [x] 验证 required Scope、投影预算、marker 错误、artifact stale 与错误码；保持 schema 和入口兼容。
+- [x] [S-08][system] 先将骨架替换为真实断言并记录 RED；边界：真实临时 Git 项目、CLI、Context、marker 与 Session 投影；断言：命令保持原有状态与输出语义，Context 与 workflow service 不再属于同一多模块 SCC。
+- [x] [E-05][integration] 先将骨架替换为真实断言并记录 RED；边界：真实 Context 文件、marker 与启动前置门禁；断言：start 返回阻断，Context 与 marker 保持启动前状态。
+- [x] RULE-scripts-context-gate-001 verifier：python3 -m pytest -q tests/test_cf_spec_context.py tests/test_cf_spec_gate.py tests/test_cf_task_runtime.py。
+- [x] 运行本任务验收命令和相关回归，记录 RED/GREEN、断言位置及真实边界证据。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-08 | system | 真实临时 Git 项目、CLI、Context、marker 与 Session 投影 | 命令保持原有状态与输出语义，Context 与 workflow service 不再属于同一多模块 SCC | tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"] | planned |
-| E-05 | integration | 真实 Context 文件、marker 与启动前置门禁 | start 返回阻断，Context 与 marker 保持启动前状态 | tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"] | planned |
+| S-08 | system | 真实临时 Git 项目、CLI、Context、marker 与 Session 投影 | 命令保持原有状态与输出语义，Context 与 workflow service 不再属于同一多模块 SCC | tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"] | verified |
+| E-05 | integration | 真实 Context 文件、marker 与启动前置门禁 | start 返回阻断，Context 与 marker 保持启动前状态 | tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker | ["python3","-m","pytest","-q","--runxfail","tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"] | verified |
 
 ### Acceptance Evidence
 
 | 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
 |--------|-----|-------|---------|-------------|------|
-| S-08 | - | - | - | - | planned |
-| E-05 | - | - | - | - | planned |
+| S-08 | FAIL: 完整 CLI 生命周期通过，但 Context 与 workflow service 仍处于同一 SCC（执行命令见契约） | PASS: 完整生命周期与无循环依赖断言通过 | tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle | 临时 Git 项目、真实 CLI、Context、marker、manifest 与 Session 投影 | verified |
+| E-05 | FAIL: 投影失败及锁冲突时提前保存刷新后的 Context（执行命令见契约） | PASS: manifest、投影、输出路径、归属和锁冲突均保持原状态；三文件事务可恢复 | tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker | 真实 Context、marker、TASK、manifest、投影与锁 | verified |
+- S-08: verified — automated command passed; run_id=e0f0e35e121a40288331c45d3d48b463 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=e0f0e35e121a40288331c45d3d48b463 (confirmed_by: runner)
 
 ### Log
 - [2026-10-27] created (draft)
+- [2026-10-28] started
+- [2026-10-28] completed (done)
 
 ---
 

@@ -83,6 +83,44 @@ def test_recovery_preserves_concurrent_user_edit(tmp_path: Path) -> None:
     assert (marker.parent / ".workflow-transition.json").exists()
 
 
+def test_interrupted_start_recovers_context_task_and_marker(tmp_path: Path) -> None:
+    task, marker = _transition_files(tmp_path)
+    marker.unlink()
+    context = task.parent / "spec-context.yml"
+    context.write_text("new context", encoding="utf-8")
+    journal = marker.parent / ".workflow-transition.json"
+    journal.write_text(json.dumps({"version": 2, "files": [
+        {"path": str(context), "before": "old context", "after": "new context"},
+        {"path": str(task), "before": "in-progress", "after": "started"},
+        {"path": str(marker), "before": None, "after": "active"},
+    ]}), encoding="utf-8")
+
+    assert recover_transition(str(tmp_path))
+    assert context.read_text(encoding="utf-8") == "new context"
+    assert task.read_text(encoding="utf-8") == "started"
+    assert marker.read_text(encoding="utf-8") == "active"
+    assert not journal.exists()
+
+
+def test_start_recovery_rejects_context_outside_task_directory(tmp_path: Path) -> None:
+    task, marker = _transition_files(tmp_path)
+    other = tmp_path / "other/spec-context.yml"
+    other.parent.mkdir()
+    other.write_text("old", encoding="utf-8")
+    journal = marker.parent / ".workflow-transition.json"
+    journal.write_text(json.dumps({"version": 2, "files": [
+        {"path": str(other), "before": "old", "after": "new"},
+        {"path": str(task), "before": "in-progress", "after": "done"},
+        {"path": str(marker), "before": "active", "after": None},
+    ]}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="out-of-scope|invalid Context"):
+        recover_transition(str(tmp_path))
+    assert other.read_text(encoding="utf-8") == "old"
+    assert task.read_text(encoding="utf-8") == "in-progress"
+    assert marker.read_text(encoding="utf-8") == "active"
+
+
 def test_finish_cli_blocks_then_finishes_and_unlocks_next_task(tmp_path: Path) -> None:
     root, directory = _repo(tmp_path)
     task = directory / "work.md"

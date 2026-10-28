@@ -393,7 +393,8 @@ def complete_requirement_verification(root: str, directory: str, tasks: Sequence
 
 
 def _commit_state(root: str, task_file: str, task_id: str, status: str, previous: Optional[ActiveTask],
-                  updated: Optional[ActiveTask], log_line: str = "", prepend: str = "") -> str:
+                  updated: Optional[ActiveTask], log_line: str = "", prepend: str = "", *,
+                  context_change: Optional[tuple[Path, str, str]] = None) -> str:
     from codeflow.spec.cf_workflow_transaction import commit_transition
     marker = Path(root) / ".code-flow/.active-task.json"
     marker_before = marker.read_text(encoding="utf-8") if marker.exists() else None
@@ -403,10 +404,10 @@ def _commit_state(root: str, task_file: str, task_id: str, status: str, previous
         raise WorkflowError("active_mismatch", "active task changed before commit")
     marker_after = json.dumps(active_data(updated), ensure_ascii=False, indent=2) + "\n" if updated is not None else None
     task = Path(task_file)
-    before = task.read_text(encoding="utf-8")
+    before = task.read_bytes().decode("utf-8")
     after = _render_markdown(before, task_id, status, log_line, prepend)
     try:
-        commit_transition(root, task, before, after, marker_before, marker_after)
+        commit_transition(root, task, before, after, marker_before, marker_after, context_change=context_change)
     except (OSError, ValueError) as exc:
         raise WorkflowError("transition_failed", str(exc)) from exc
     return "synced"
@@ -427,7 +428,7 @@ def _validate_start_manifest(directory: Path, candidate: Path) -> None:
     manifest_file = directory / ".acceptance-manifest.json"
     if not manifest_file.is_file():
         raise WorkflowError("acceptance_manifest_missing", str(manifest_file), ("run plan verification and lock the manifest",))
-    from codeflow.cli.cf_acceptance_manifest import validate_manifest
+    from codeflow.acceptance.cf_acceptance_manifest_core import validate_manifest
     valid, reason = validate_manifest(str(candidate), str(manifest_file))
     if not valid:
         raise WorkflowError(reason or "acceptance_manifest_invalid", str(manifest_file), ("run plan verification before coding",))
@@ -540,21 +541,7 @@ def _worktree_registration_issue(root: str, task_id: str) -> str:
     return f"{task_id} is not registered in {meta_path}"
 
 
-def start_task(
-    root: str,
-    task_dir: str,
-    task_file: str,
-    task_id: str,
-    owned_paths: Sequence[str] = (),
-    session_output: str = "",
-) -> dict[str, object]:
-    """Full Start Gate: hard preconditions first, then the guarded pipeline
-    (refresh → manifest check → projection → activation), then the Markdown
-    view flips to in-progress in the same call."""
-    from codeflow.cli.cf_spec_context import load_context, refresh_context, save_context
-    from codeflow.spec.cf_active_task import new_active
-    from codeflow.spec.cf_spec_context_model import context_sha256
-
+def _start_paths(root: str, task_dir: str, task_file: str, task_id: str) -> tuple[Path, Path, Path]:
     recover_transition(root)
     directory, candidate = _resolve_paths(root, task_dir, task_file)
     registration = _worktree_registration_issue(root, task_id)
@@ -574,11 +561,10 @@ def start_task(
             str(context_path),
             ("run cf-task:plan (bind --stage plan) or cf-spec refresh to create spec-context.yml before start",),
         )
-    refreshed = refresh_context(load_context(str(context_path)), root, artifact_root=str(directory))
-    # No marker exists at this point (active_exists raised above), so no
-    # re-sync is needed before activation below.
-    current_hash = context_sha256(refreshed.context)
-    owned = tuple(item for item in owned_paths if isinstance(item, str))
+    return directory, candidate, context_path
+
+
+def _start_e2e_plan(directory: Path, candidate: Path, task_id: str) -> dict[str, object]:
     _validate_start_manifest(directory, candidate)
     from codeflow.acceptance.cf_acceptance_plan import build_e2e_plan
     try:
@@ -595,15 +581,48 @@ def start_task(
             for item in errors[:5] if isinstance(item, Mapping)
         )
         raise WorkflowError("e2e_plan_invalid", task_id, details or ("E2E plan quality gate failed",))
-    # Persist the refreshed Context only after every start gate passed. A
-    # manifest/E2E failure must not leave a half-updated Context behind.
-    save_context(str(context_path), refreshed.context)
+    return e2e_plan
+
+
+def _start_active(root: str, directory: Path, task_id: str, current_hash: str,
+                  owned_paths: Sequence[str]) -> ActiveTask:
+    from codeflow.spec.cf_active_task import new_active
+    if any(not isinstance(item, str) for item in owned_paths):
+        raise WorkflowError("invalid_owned_paths", "owned_paths must contain only strings")
+    try:
+        return replace(new_active(root, str(directory), task_id, current_hash, tuple(owned_paths)), status="active")
+    except (OSError, ValueError) as exc:
+        code = getattr(exc, "code", "activation_failed")
+        raise WorkflowError(str(code), str(exc)) from exc
+
+
+def start_task(
+    root: str,
+    task_dir: str,
+    task_file: str,
+    task_id: str,
+    owned_paths: Sequence[str] = (),
+    session_output: str = "",
+) -> dict[str, object]:
+    """Run the Start Gate before persisting the Context, marker and TASK view."""
+    from codeflow.spec.cf_context_refresh import refresh_context
+    from codeflow.spec.cf_spec_context_model import context_sha256, serialize_context
+
+    directory, candidate, context_path = _start_paths(root, task_dir, task_file, task_id)
+    context_bytes = context_path.read_bytes()
+    refreshed = refresh_context(load_context(str(context_path), source=context_bytes), root, artifact_root=str(directory))
+    current_hash = context_sha256(refreshed.context)
+    e2e_plan = _start_e2e_plan(directory, candidate, task_id)
+    active = _start_active(root, directory, task_id, current_hash, owned_paths)
+    # Check and write the bounded projection before saving a refreshed Context;
+    # invalid refs, an output error, or unowned changes must leave it untouched.
     output = _write_projection(root, candidate, refreshed.context, task_id, session_output)
     try:
-        active = replace(new_active(root, str(directory), task_id, current_hash, owned), status="active")
-        markdown = _commit_state(root, str(candidate), task_id, "in-progress", None, active, f"- [{_today()}] started")
-    except Exception as exc:
-        code = getattr(exc, "code", "activation_failed") if isinstance(exc, ValueError) else "activation_failed"
+        context_change = (context_path, context_bytes.decode("utf-8"), serialize_context(refreshed.context))
+        markdown = _commit_state(root, str(candidate), task_id, "in-progress", None, active,
+                                 f"- [{_today()}] started", context_change=context_change)
+    except (OSError, ValueError) as exc:
+        code = getattr(exc, "code", "activation_failed")
         raise WorkflowError(str(code), str(exc)) from exc
 
     return {

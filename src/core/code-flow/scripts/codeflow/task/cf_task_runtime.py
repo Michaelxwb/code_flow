@@ -83,7 +83,7 @@ def _acceptance_baseline_issue(task_dir: str, owner: str) -> str:
             return "acceptance_manifest_missing" if requires else ""
         data = load_manifest(path)
         if requires:
-            from codeflow.cli.cf_acceptance_manifest import validate_manifest
+            from codeflow.acceptance.cf_acceptance_manifest_core import validate_manifest
             valid, reason = validate_manifest(str(task), str(path))
             if not valid:
                 return reason

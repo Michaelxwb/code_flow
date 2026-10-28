@@ -563,14 +563,137 @@ def test_e04_gate_deferral_kinds_keep_fail_closed_policy() -> None:
                           allow_deferred_skips=True).decision == "block"
 
 
-@pytest.mark.xfail(strict=True, reason="S-08 is planned for TASK-007")
-def test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle() -> None:
-    pytest.fail("Implement S-08: Context refresh, marker, TASK and session projection preserve lifecycle behavior")
+def _lifecycle_project(root: Path) -> tuple[Path, Path]:
+    import json
+    import subprocess
+
+    import yaml
+
+    from cf_acceptance_manifest import write_manifest
+    from test_cf_task_runtime import _git, _repo
+
+    root, directory = _repo(root, activate=False)
+    initialized = subprocess.run(("node", str(SCRIPTS.parents[2] / "cli.js"), "init", "--platform=codex"),
+                                 cwd=root, text=True, capture_output=True, check=False)
+    assert initialized.returncode == 0, initialized.stderr
+    config_path = root / ".code-flow/config.yml"
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    specs = root / ".code-flow/specs"
+    config["path_mapping"]["shared"] = {"specs": [
+        {"path": path.relative_to(specs).as_posix(), "tags": []} for path in (specs / "shared").rglob("*.md")
+    ]}
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    test_file = root / "tests/test_demo.py"
+    test_file.parent.mkdir()
+    test_file.write_text("from pathlib import Path\n\ndef test_app_value():\n"
+                         "    assert 'VALUE' in (Path(__file__).parents[1] / 'src/app.py').read_text()\n",
+                         encoding="utf-8")
+    task = directory / "demo.md"
+    command = json.dumps([sys.executable, "-c", "pass"])
+    task.write_text(
+        "# Tasks\n\n## Acceptance Coverage\n\n"
+        "| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |\n"
+        "|--------|---------|---------|-------------|---------|------|---------|\n"
+        f"| S-01 | demo.design.md#2 | integration | real process | TASK-001 | planned | {command} |\n\n"
+        "## TASK-001: Demo\n- **Status**: draft\n- **Spec-Refs**: app-runtime#RULE-app-001\n"
+        "- **Acceptance-Refs**: S-01\n### Checklist\n- [x] Verify the real boundary\n"
+        "### Acceptance Contract\n| S-01 | integration | real process | succeeds | planned |\n"
+        "### Acceptance Evidence\n\n### Log\n- [2026-01-01] created (draft)\n", encoding="utf-8",
+    )
+    write_manifest(str(task), str(directory / ".acceptance-manifest.json"))
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "lifecycle fixture")
+    return directory, task
 
 
-@pytest.mark.xfail(strict=True, reason="E-05 is planned for TASK-007")
-def test_e05_failed_start_preserves_context_and_marker() -> None:
-    pytest.fail("Implement E-05: real failed start checks leave Context and active marker in their prior states")
+def _lifecycle_cli(root: Path, *args: str) -> dict[str, object]:
+    import json
+    import subprocess
+
+    result = subprocess.run(("node", str(SCRIPTS.parents[2] / "cli.js"), *args), cwd=root,
+                            input='{"owned_paths":[]}', text=True, capture_output=True, timeout=60, check=False)
+    assert result.returncode == 0, result.stderr + result.stdout
+    return json.loads(result.stdout)
+
+
+def _reachable(edges: set[tuple[str, str]], source: str, target: str) -> bool:
+    pending, seen = [source], set()
+    while pending:
+        node = pending.pop()
+        if node == target:
+            return True
+        if node not in seen:
+            seen.add(node)
+            pending.extend(to for start, to in edges if start == node and to not in seen)
+    return False
+
+
+def test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle(tmp_path: Path) -> None:
+    from test_runtime_consolidation import _import_edges, _script_files, _script_modules
+
+    directory, task = _lifecycle_project(tmp_path)
+    refresh = _lifecycle_cli(tmp_path, "spec", "refresh", "--task-dir", str(directory), "--root", str(tmp_path), "--json")
+    assert refresh["ok"]
+    started = _lifecycle_cli(tmp_path, "task", "start", "--task-dir", str(directory), "--task-file", str(task),
+                             "--task", "TASK-001", "--root", str(tmp_path), "--json")
+    assert started["active"]["status"] == "active"
+    assert "RULE-app-001" in Path(started["session_output"]).read_text(encoding="utf-8")
+    (tmp_path / "src/app.py").write_text("VALUE = 2\n", encoding="utf-8")
+    finished = _lifecycle_cli(tmp_path, "task", "finish", "--task-dir", str(directory),
+                              "--task", "TASK-001", "--root", str(tmp_path), "--json")
+    assert finished["decision"] == "pass" and not (tmp_path / ".code-flow/.active-task.json").exists()
+    verified = _lifecycle_cli(tmp_path, "task", "verify", "--task-dir", str(directory),
+                              "--profile", "full", "--root", str(tmp_path), "--json")
+    assert verified["decision"] == "pass" and "**Status**: verified" in task.read_text(encoding="utf-8")
+    modules = _script_modules(SCRIPTS)
+    edges = set().union(*(_import_edges(path, modules) for path in _script_files(SCRIPTS)))
+    assert not (_reachable(edges, "cf_spec_context", "cf_workflow_service")
+                and _reachable(edges, "cf_workflow_service", "cf_spec_context"))
+
+
+def test_e05_failed_start_preserves_context_and_marker(tmp_path: Path) -> None:
+    from codeflow.spec.cf_active_task import acquire_active_lock, release_active_lock
+    from codeflow.spec.cf_workflow_service import WorkflowError, start_task
+    from test_cf_task_runtime import _git, _repo
+
+    for name, refs, coverage in (("manifest", "app-runtime#RULE-app-001", "## Acceptance Coverage\n"),
+                                 ("projection", "missing#RULE-missing-001", ""),
+                                 ("output", "app-runtime#RULE-app-001", ""),
+                                 ("invalid_owned", "app-runtime#RULE-app-001", ""),
+                                 ("lock", "app-runtime#RULE-app-001", ""),
+                                 ("unowned", "app-runtime#RULE-app-001", "")):
+        root = tmp_path / name
+        root.mkdir()
+        root, directory = _repo(root, activate=False)
+        task = directory / "demo.md"
+        task.write_text(f"# Tasks\n{coverage}\n## TASK-001: Demo\n- **Status**: draft\n"
+                        f"- **Spec-Refs**: {refs}\n### Acceptance Contract\n| S-01 | integration | real | pass |\n",
+                        encoding="utf-8")
+        spec = root / ".code-flow/specs/app/rules.md"
+        spec.write_text(spec.read_text(encoding="utf-8").replace("Runtime constraint.", "Updated constraint."), encoding="utf-8")
+        _git(root, "add", ".code-flow/specs/app/rules.md")
+        _git(root, "commit", "-qm", "change spec without refreshing context")
+        if name == "unowned":
+            (root / "src/app.py").write_text("VALUE = 9\n", encoding="utf-8")
+        context = directory / "spec-context.yml"
+        before = context.read_bytes()
+        output = str(root / "src/app.py/session.md") if name == "output" else ""
+        owned = (123,) if name == "invalid_owned" else ()
+        lock = acquire_active_lock(str(root)) if name == "lock" else None
+        try:
+            with pytest.raises(WorkflowError) as error:
+                start_task(str(root), str(directory), str(task), "TASK-001", owned_paths=owned,  # type: ignore[arg-type]
+                           session_output=output)
+        finally:
+            if lock is not None:
+                release_active_lock(lock)
+        assert error.value.code == {"manifest": "acceptance_manifest_missing", "projection": "task_projection_failed",
+                                    "output": "session_write_failed", "invalid_owned": "invalid_owned_paths",
+                                    "lock": "transition_failed",
+                                    "unowned": "unowned_changes"}[name]
+        assert context.read_bytes() == before
+        assert not (root / ".code-flow/.active-task.json").exists()
+        assert "**Status**: draft" in task.read_text(encoding="utf-8")
 
 
 @pytest.mark.xfail(strict=True, reason="S-09 is planned for TASK-008")

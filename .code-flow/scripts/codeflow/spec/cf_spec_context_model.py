@@ -462,11 +462,15 @@ def context_from_data(loaded: object, path: str) -> SpecContext:
     )
 
 
-def save_context(path: str, context: SpecContext) -> None:
+def serialize_context(context: SpecContext) -> str:
     import yaml
+    return yaml.safe_dump(context_to_data(context), sort_keys=False, allow_unicode=True)
+
+
+def save_context(path: str, context: SpecContext) -> None:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    text = yaml.safe_dump(context_to_data(context), sort_keys=False, allow_unicode=True)
+    text = serialize_context(context)
     try:
         atomic_text(target, text)
     except ContextError as exc:

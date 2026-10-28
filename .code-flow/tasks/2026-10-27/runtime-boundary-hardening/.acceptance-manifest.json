@@ -5518,7 +5518,7 @@
       "kind": "functional",
       "boundary": "真实临时 Git 项目、CLI、Context、marker 与 Session 投影",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -5567,6 +5567,265 @@
       "check": "CHK-522b648cd656",
       "checks": [
         "CHK-522b648cd656"
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "S-08",
+        "status": "passed",
+        "check_ids": [
+          "CHK-522b648cd656"
+        ],
+        "check_reused": {
+          "CHK-522b648cd656": false
+        },
+        "check_results": {
+          "CHK-522b648cd656": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-522b648cd656": false
+        },
+        "check_configs": {
+          "CHK-522b648cd656": {
+            "id": "CHK-522b648cd656",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/spec/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "system",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-522b648cd656": "b19ecdda2e0272a32c238fee73a0265dc946854bc6ed6d4ff8b2bd0dadab03a8"
+        },
+        "input_hash": "ed23ad918e99450e8ff53b5138a9d5fd12921e3dc13c6c82b9c5db76c1da0246",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-522b648cd656",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "src/core/code-flow/scripts/codeflow/spec/*.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+            "tests/test_runtime_boundary_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "system",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"
+          ],
+          "markers": []
+        },
+        "revision": 1,
+        "run_id": "e0f0e35e121a40288331c45d3d48b463",
+        "executed_at": "2026-10-28T06:55:36.831723+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "ed23ad918e99450e8ff53b5138a9d5fd12921e3dc13c6c82b9c5db76c1da0246"
+      },
+      "runs": [
+        {
+          "id": "S-08",
+          "status": "passed",
+          "check_ids": [
+            "CHK-522b648cd656"
+          ],
+          "check_reused": {
+            "CHK-522b648cd656": false
+          },
+          "check_results": {
+            "CHK-522b648cd656": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-522b648cd656": false
+          },
+          "check_configs": {
+            "CHK-522b648cd656": {
+              "id": "CHK-522b648cd656",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/spec/*.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "system",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-522b648cd656": "b19ecdda2e0272a32c238fee73a0265dc946854bc6ed6d4ff8b2bd0dadab03a8"
+          },
+          "input_hash": "ed23ad918e99450e8ff53b5138a9d5fd12921e3dc13c6c82b9c5db76c1da0246",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-522b648cd656",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/spec/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "system",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "e0f0e35e121a40288331c45d3d48b463",
+          "executed_at": "2026-10-28T06:55:36.831723+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_s08_context_and_workflow_are_acyclic_and_preserve_lifecycle"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "ed23ad918e99450e8ff53b5138a9d5fd12921e3dc13c6c82b9c5db76c1da0246"
+        }
       ]
     },
     {
@@ -5576,7 +5835,7 @@
       "kind": "functional",
       "boundary": "真实 Context 文件、marker 与启动前置门禁",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -5625,6 +5884,265 @@
       "check": "CHK-2493448fb268",
       "checks": [
         "CHK-2493448fb268"
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "E-05",
+        "status": "passed",
+        "check_ids": [
+          "CHK-2493448fb268"
+        ],
+        "check_reused": {
+          "CHK-2493448fb268": false
+        },
+        "check_results": {
+          "CHK-2493448fb268": {
+            "status": "passed",
+            "exit_code": 0
+          }
+        },
+        "checkpoint_reused_checks": {
+          "CHK-2493448fb268": false
+        },
+        "check_configs": {
+          "CHK-2493448fb268": {
+            "id": "CHK-2493448fb268",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/spec/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"
+            ],
+            "markers": []
+          }
+        },
+        "check_hashes": {
+          "CHK-2493448fb268": "559d3d6c33598e799d5200e3b0ec0a68e4676a5a46911d2e5b9eb8d6d541394b"
+        },
+        "input_hash": "1aac2a6cf9526f739dc88fabc51f52deed7fecafca5e71caee6b0f40aa12ba72",
+        "cache_reused": false,
+        "checkpoint_reused": false,
+        "exit_code": 0,
+        "check_config": {
+          "id": "CHK-2493448fb268",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "env": "none",
+          "env_scope": "shared",
+          "parallel_safe": false,
+          "profile": "changed",
+          "inputs": [
+            "src/core/code-flow/scripts/codeflow/spec/*.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py",
+            "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+            "tests/test_runtime_boundary_plan.py"
+          ],
+          "preflight": [],
+          "paths": [],
+          "suite": "integration",
+          "collect": {
+            "argv": [
+              "python3",
+              "-m",
+              "pytest",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker",
+              "--collect-only",
+              "--verbosity=-1"
+            ],
+            "format": "pytest",
+            "timeout": 10
+          },
+          "test_ids": [
+            "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"
+          ],
+          "markers": []
+        },
+        "revision": 1,
+        "run_id": "e0f0e35e121a40288331c45d3d48b463",
+        "executed_at": "2026-10-28T06:55:36.831723+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "--runxfail",
+          "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "1aac2a6cf9526f739dc88fabc51f52deed7fecafca5e71caee6b0f40aa12ba72"
+      },
+      "runs": [
+        {
+          "id": "E-05",
+          "status": "passed",
+          "check_ids": [
+            "CHK-2493448fb268"
+          ],
+          "check_reused": {
+            "CHK-2493448fb268": false
+          },
+          "check_results": {
+            "CHK-2493448fb268": {
+              "status": "passed",
+              "exit_code": 0
+            }
+          },
+          "checkpoint_reused_checks": {
+            "CHK-2493448fb268": false
+          },
+          "check_configs": {
+            "CHK-2493448fb268": {
+              "id": "CHK-2493448fb268",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "src/core/code-flow/scripts/codeflow/spec/*.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py",
+                "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "integration",
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              },
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"
+              ],
+              "markers": []
+            }
+          },
+          "check_hashes": {
+            "CHK-2493448fb268": "559d3d6c33598e799d5200e3b0ec0a68e4676a5a46911d2e5b9eb8d6d541394b"
+          },
+          "input_hash": "1aac2a6cf9526f739dc88fabc51f52deed7fecafca5e71caee6b0f40aa12ba72",
+          "cache_reused": false,
+          "checkpoint_reused": false,
+          "exit_code": 0,
+          "check_config": {
+            "id": "CHK-2493448fb268",
+            "command": [
+              "python3",
+              "-m",
+              "pytest",
+              "-q",
+              "--runxfail",
+              "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"
+            ],
+            "cwd": ".",
+            "timeout": 60.0,
+            "env": "none",
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "profile": "changed",
+            "inputs": [
+              "src/core/code-flow/scripts/codeflow/spec/*.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_context.py",
+              "src/core/code-flow/scripts/codeflow/cli/cf_spec_session.py",
+              "tests/test_runtime_boundary_plan.py"
+            ],
+            "preflight": [],
+            "paths": [],
+            "suite": "integration",
+            "collect": {
+              "argv": [
+                "python3",
+                "-m",
+                "pytest",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker",
+                "--collect-only",
+                "--verbosity=-1"
+              ],
+              "format": "pytest",
+              "timeout": 10
+            },
+            "test_ids": [
+              "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"
+            ],
+            "markers": []
+          },
+          "revision": 1,
+          "run_id": "e0f0e35e121a40288331c45d3d48b463",
+          "executed_at": "2026-10-28T06:55:36.831723+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "--runxfail",
+            "tests/test_runtime_boundary_plan.py::test_e05_failed_start_preserves_context_and_marker"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "1aac2a6cf9526f739dc88fabc51f52deed7fecafca5e71caee6b0f40aa12ba72"
+        }
       ]
     },
     {

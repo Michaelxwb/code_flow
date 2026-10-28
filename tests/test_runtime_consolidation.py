@@ -54,6 +54,7 @@ LAYERS: dict[str, int] = {
     "cf_checks": 1,
     "cf_codex_hook": 3,
     "cf_context_cache": 1,
+    "cf_context_refresh": 1,
     "cf_core": 1,
     "cf_design_lint": 1,
     "cf_edit_service": 2,
