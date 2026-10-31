@@ -72,3 +72,6 @@ code-flow evidence import --format junit --file "/tmp/junit.xml" \
 - CI 证据写入 git common dir；worktree 不提交 evidence 目录。
 - 不同 checkout 需通过合法导入形成自己的证据；同一仓库 worktree 才共享 common dir。验收仍会检查当前输入指纹，更改 command/inputs/登记配置后旧证据失效。
 - browser/smoke/capacity 的测试登记和收集仍由 verify-plan 检查，测试必须在声明的真实环境执行；不要通过改 marker 或汇总数字伪造结果。
+# 环境身份与时效
+
+外部环境 check 可登记 `environment_revision` 和正数 `evidence_ttl_seconds`。缺少可证明环境身份时不跨运行复用；有效期到期、环境或输入变化、较新失败和 skipped/超时都会使旧通过结果失效。环境值只进入摘要，不写入证据明文。

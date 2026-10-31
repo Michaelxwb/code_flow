@@ -6,7 +6,7 @@ from typing import Mapping, Sequence
 
 ENVIRONMENTS = ("none", "local", "local-api", "browser", "external", "staging", "capacity", "ci", "production")
 TARGET_PHASES = ("plan", "code", "review", "ci", "release")
-EXTRA_FIELDS = ("expected_refs", "assertions", "defer_reason", "owner", "target_phase", "features", "tags")
+EXTRA_FIELDS = ("expected_refs", "expected_checks", "assertions", "defer_reason", "owner", "target_phase", "features", "tags")
 _PLACEHOLDERS = frozenset(("", "-", "n/a", "na", "none", "无", "todo", "tbd", "待定"))
 _VAGUE = re.compile(r"可观|不回归|表现良好|符合预期|适当提升|as expected|significant improvement", re.I)
 
@@ -19,11 +19,36 @@ def issue(code: str, row: Mapping[str, object], field: str, message: str) -> dic
     return {"code": code, "scenario": str(row.get("id", "")), "field": field, "message": message}
 
 
+def validate_expected_checks(row: Mapping[str, object]) -> list[dict[str, object]]:
+    """Validate explicit composition without weakening the scenario's checks."""
+    links = row.get("expected_checks")
+    expected, checks = row.get("expected", []), row.get("checks", [])
+    if not isinstance(links, list) or not links or not isinstance(expected, list) or not isinstance(checks, list):
+        raise ValueError("expected_checks 需要非空映射、expected 与 checks 列表")
+    seen: set[int] = set()
+    for link in links:
+        if not isinstance(link, Mapping):
+            raise ValueError("expected_checks 成员必须是映射")
+        index, members = link.get("expected"), link.get("checks")
+        if type(index) is not int or not 1 <= index <= len(expected) or index in seen:
+            raise ValueError("expected_checks 的 expected 索引无效或重复")
+        if (not isinstance(members, list) or not members
+                or not all(isinstance(member, str) and member in checks for member in members)
+                or len(set(members)) != len(members)):
+            raise ValueError("expected_checks 引用了无效 check")
+        seen.add(index)
+    if seen != set(range(1, len(expected) + 1)):
+        raise ValueError("expected_checks 必须覆盖所有 expected")
+    return [dict(link) for link in links]
+
+
 def validate_extensions(row: Mapping[str, object]) -> dict[str, object]:
     env = str(row.get("env", "none")).lower()
     if env not in ENVIRONMENTS:
         raise ValueError(f"env 非法: {env!r}; allowed: {', '.join(ENVIRONMENTS)}")
     result: dict[str, object] = {"env": env}
+    if "expected_checks" in row:
+        result["expected_checks"] = validate_expected_checks(row)
     for field in ("features", "tags", "assertions"):
         values = row.get(field, [])
         if not isinstance(values, list) or not all(isinstance(value, str) and value.strip() for value in values):

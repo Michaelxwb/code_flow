@@ -1,0 +1,3947 @@
+{
+  "source": "code-flow-real-requirement",
+  "phase": "new",
+  "commit": "e3bda2516c1d4c20257ea665225034e05746b39a",
+  "input_sha256": {
+    "tests/test_runtime_boundary_plan.py": "f50edc610622038fbee5c41380dbbac029e4ba1952b1703ac0b8ad34abb9067f",
+    "tests/test_runtime_consolidation.py": "46d98f4411275993c8940f55383478a578ee2b0939f21a5820b726a23840d91d"
+  },
+  "manifest_sha256": "36277b6095c5ebeeb708d3c64ccdab9e87f380224775365dd12852b03f767b49",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "python": "3.9.6 (default, Aug 25 2026, 21:26:21) \n[Clang 21.0.0 (clang-2100.3.34.2)]",
+  "runs": [
+    {
+      "mode": "forced",
+      "repeat": 1,
+      "argv": [
+        "python3",
+        "/Users/jahan/workspace/code_flow/.code-flow/scripts/cf_acceptance_runner.py",
+        "--manifest",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-task-pilot-mxvjscfl/requirement/.acceptance-manifest.json",
+        "--root",
+        "/Users/jahan/workspace/code_flow",
+        "--owner",
+        "TASK-001",
+        "--write-evidence",
+        "--no-cache"
+      ],
+      "elapsed_ms": 522.501,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "results": [
+          {
+            "id": "S-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-b2cad7b5ef6b"
+            ],
+            "check_reused": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_results": {
+              "CHK-b2cad7b5ef6b": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_configs": {
+              "CHK-b2cad7b5ef6b": {
+                "id": "CHK-b2cad7b5ef6b",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "cache_reused": false,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-b2cad7b5ef6b",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          },
+          {
+            "id": "B-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-aad161ddf787"
+            ],
+            "check_reused": {
+              "CHK-aad161ddf787": false
+            },
+            "check_results": {
+              "CHK-aad161ddf787": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-aad161ddf787": false
+            },
+            "check_configs": {
+              "CHK-aad161ddf787": {
+                "id": "CHK-aad161ddf787",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "cache_reused": false,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-aad161ddf787",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          }
+        ],
+        "executed": 2,
+        "reused": 0,
+        "incomplete": 0,
+        "failed": [],
+        "checks": [
+          {
+            "id": "CHK-b2cad7b5ef6b",
+            "status": "passed",
+            "scenarios": [
+              "S-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-aad161ddf787",
+            "status": "passed",
+            "scenarios": [
+              "B-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-55d318482620",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-7907c924815c",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-d55dabdd9c27",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-dd658f0fa13b",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-3c77f13118a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-2d9c08da4eb3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-8c89e458dbe7",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-bc2f501cf8a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-492475b44676",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-ddfa92004f07",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-522b648cd656",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-2493448fb268",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-a2b62c44ccc6",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-886cc98bf17e",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-6ce4a1cc8b64",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-4557f6777cd3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-00c21177da28",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          }
+        ],
+        "env_blocked": 0,
+        "selection_reason": "profile_and_owner",
+        "scope": {
+          "profile": "full",
+          "owner": "TASK-001"
+        },
+        "reuse_reason": "no_reused_results",
+        "summary": "acceptance: executed 2, reused 0",
+        "execution_identities": [
+          "3ea167c0c86b5fdddc29a2aa9add69dd31ef2e4352a7a3985551fd0576e9ab94",
+          "7afa5246e852db89400862c0f2eb1175757fa45b444103df3be9af8f4dc42558"
+        ],
+        "selected_check_ids": [
+          "CHK-aad161ddf787",
+          "CHK-b2cad7b5ef6b"
+        ],
+        "timings": {
+          "planning_ms": 45.056709,
+          "preflight_ms": 36.96279100000001,
+          "execution_ms": 256.697667,
+          "evidence_ms": 107.54091600000004,
+          "elapsed_ms": 464.10175
+        },
+        "input_change_category": {
+          "CHK-aad161ddf787": "unproven",
+          "CHK-b2cad7b5ef6b": "unproven"
+        }
+      },
+      "stderr": ""
+    },
+    {
+      "mode": "prime",
+      "repeat": 1,
+      "argv": [
+        "python3",
+        "/Users/jahan/workspace/code_flow/.code-flow/scripts/cf_acceptance_runner.py",
+        "--manifest",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-task-pilot-mxvjscfl/requirement/.acceptance-manifest.json",
+        "--root",
+        "/Users/jahan/workspace/code_flow",
+        "--owner",
+        "TASK-001",
+        "--write-evidence"
+      ],
+      "elapsed_ms": 1247.19,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "results": [
+          {
+            "id": "S-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-b2cad7b5ef6b"
+            ],
+            "check_reused": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_results": {
+              "CHK-b2cad7b5ef6b": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_configs": {
+              "CHK-b2cad7b5ef6b": {
+                "id": "CHK-b2cad7b5ef6b",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "check_hashes": {
+              "CHK-b2cad7b5ef6b": "0a588a9a28078acd8f3bb640271e4e11beec4b155ef0d0765f75de6a3cbc0a44"
+            },
+            "input_hash": "7e540f7c960b241d505ecf8a2025d33ed0b20f96d3573ef9cab126367730320e",
+            "cache_reused": false,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-b2cad7b5ef6b",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          },
+          {
+            "id": "B-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-aad161ddf787"
+            ],
+            "check_reused": {
+              "CHK-aad161ddf787": false
+            },
+            "check_results": {
+              "CHK-aad161ddf787": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-aad161ddf787": false
+            },
+            "check_configs": {
+              "CHK-aad161ddf787": {
+                "id": "CHK-aad161ddf787",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "check_hashes": {
+              "CHK-aad161ddf787": "8baad985d94575da5bffa3a396b432e4200aece6beac3b5b7f44c88ade25c189"
+            },
+            "input_hash": "33b97bba1b0af9162d45d9f494cce7ee454658dd32b037d6c7c225e985493ef4",
+            "cache_reused": false,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-aad161ddf787",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          }
+        ],
+        "executed": 2,
+        "reused": 0,
+        "incomplete": 0,
+        "failed": [],
+        "checks": [
+          {
+            "id": "CHK-b2cad7b5ef6b",
+            "status": "passed",
+            "scenarios": [
+              "S-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "0a588a9a28078acd8f3bb640271e4e11beec4b155ef0d0765f75de6a3cbc0a44",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-aad161ddf787",
+            "status": "passed",
+            "scenarios": [
+              "B-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "8baad985d94575da5bffa3a396b432e4200aece6beac3b5b7f44c88ade25c189",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-55d318482620",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "f59aec5c6edffe026f22cb579184700977e3ad9fef1bd02f884447bc9669b4b9",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-7907c924815c",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "d0f61ce34a40dd6fd4061244f4a1880572aeab516c0c420a967373422b9fbb13",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-d55dabdd9c27",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "1471090c2502e19cd459c2d7ee15d7444611cc222a22e87ea52c55ab44d4ccd0",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-dd658f0fa13b",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "ef54777a8ca5619562734288ed6e363a1d3ffaf10c25517c1c318bdbb5282d1e",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-3c77f13118a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "53844c492e69fef12fd50eadd1033b3bc77768c90ba32ee266f8f98d269f7336",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-2d9c08da4eb3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3e48d9fb54943b34b4790dfb30f0108a840ba68865a9d3731a3853a359f8f1b0",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-8c89e458dbe7",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "606ef3fc2e12064a4d36f18b1c9698a5d4a068bc32bc363d7cc81a88e3e5bcea",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-bc2f501cf8a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "dcd7d050958276d27cb2906da1ed6667d6c7c9b2deca9680dc5240639b2dd418",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-492475b44676",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "939ea19257aef8b142039e8eb9296d3523cbf7bc8662f262a5c3942ec9a93ae6",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-ddfa92004f07",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "2899d46c120167e004fde76f0582c932ed68767f329f34419f6add53346bd6be",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-522b648cd656",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "7b67cd3e6d11dffef8fecb34b6dc76bf1db725788a1c92f60d43b08340486132",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-2493448fb268",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "879392a0158e1be09a085834a75285a81a51572964dcb47bedf007bba81ea33c",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-a2b62c44ccc6",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "5cb252ca1af014df0bcb96b410172d224400baccfd0784da38a3530612fe70bd",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-886cc98bf17e",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "ccb2e7c8c76867efbf21556eceea9381a2cc20992deb275e5d097e32bc1e2611",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-6ce4a1cc8b64",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3e59904e0c6c47263d5c6d05da924d4a16fa0743fa3049ca7d39fca8f62130a8",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-4557f6777cd3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "4cdde3b8e45dddd4b8cc031295cc5d130ec42822798f5c3e64a717923c52641f",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-00c21177da28",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3bde0454b2bf0b8bbbeb3208424e47d9ed698f245da00a7430c5f0e481dcac9f",
+            "input_scope": "inputs"
+          }
+        ],
+        "env_blocked": 0,
+        "selection_reason": "profile_and_owner",
+        "scope": {
+          "profile": "full",
+          "owner": "TASK-001"
+        },
+        "reuse_reason": "no_reused_results",
+        "summary": "acceptance: executed 2, reused 0",
+        "execution_identities": [
+          "3d37866ba7fb28d39063dfca0a18cee4a77bdc9cd8e8eb9314f5eb85b0af39ad",
+          "57e033cb822ba5bb2c286ce147319caa709c97544fbbc98281cb91ed25515a4e"
+        ],
+        "selected_check_ids": [
+          "CHK-aad161ddf787",
+          "CHK-b2cad7b5ef6b"
+        ],
+        "timings": {
+          "planning_ms": 41.705417000000004,
+          "preflight_ms": 796.919583,
+          "execution_ms": 229.3130419999999,
+          "evidence_ms": 109.74645799999982,
+          "elapsed_ms": 1195.4855
+        },
+        "input_change_category": {
+          "CHK-aad161ddf787": "no_baseline",
+          "CHK-b2cad7b5ef6b": "no_baseline"
+        }
+      },
+      "stderr": ""
+    },
+    {
+      "mode": "reuse",
+      "repeat": 1,
+      "argv": [
+        "python3",
+        "/Users/jahan/workspace/code_flow/.code-flow/scripts/cf_acceptance_runner.py",
+        "--manifest",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-task-pilot-mxvjscfl/requirement/.acceptance-manifest.json",
+        "--root",
+        "/Users/jahan/workspace/code_flow",
+        "--owner",
+        "TASK-001",
+        "--write-evidence"
+      ],
+      "elapsed_ms": 927.62,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "results": [
+          {
+            "id": "S-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-b2cad7b5ef6b"
+            ],
+            "check_reused": {
+              "CHK-b2cad7b5ef6b": true
+            },
+            "check_results": {
+              "CHK-b2cad7b5ef6b": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_configs": {
+              "CHK-b2cad7b5ef6b": {
+                "id": "CHK-b2cad7b5ef6b",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "check_hashes": {
+              "CHK-b2cad7b5ef6b": "0a588a9a28078acd8f3bb640271e4e11beec4b155ef0d0765f75de6a3cbc0a44"
+            },
+            "input_hash": "7e540f7c960b241d505ecf8a2025d33ed0b20f96d3573ef9cab126367730320e",
+            "cache_reused": true,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-b2cad7b5ef6b",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          },
+          {
+            "id": "B-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-aad161ddf787"
+            ],
+            "check_reused": {
+              "CHK-aad161ddf787": true
+            },
+            "check_results": {
+              "CHK-aad161ddf787": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-aad161ddf787": false
+            },
+            "check_configs": {
+              "CHK-aad161ddf787": {
+                "id": "CHK-aad161ddf787",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "check_hashes": {
+              "CHK-aad161ddf787": "8baad985d94575da5bffa3a396b432e4200aece6beac3b5b7f44c88ade25c189"
+            },
+            "input_hash": "33b97bba1b0af9162d45d9f494cce7ee454658dd32b037d6c7c225e985493ef4",
+            "cache_reused": true,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-aad161ddf787",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          }
+        ],
+        "executed": 0,
+        "reused": 2,
+        "incomplete": 0,
+        "failed": [],
+        "checks": [
+          {
+            "id": "CHK-b2cad7b5ef6b",
+            "status": "passed",
+            "scenarios": [
+              "S-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "0a588a9a28078acd8f3bb640271e4e11beec4b155ef0d0765f75de6a3cbc0a44",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-aad161ddf787",
+            "status": "passed",
+            "scenarios": [
+              "B-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "8baad985d94575da5bffa3a396b432e4200aece6beac3b5b7f44c88ade25c189",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-55d318482620",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "f59aec5c6edffe026f22cb579184700977e3ad9fef1bd02f884447bc9669b4b9",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-7907c924815c",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "d0f61ce34a40dd6fd4061244f4a1880572aeab516c0c420a967373422b9fbb13",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-d55dabdd9c27",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "1471090c2502e19cd459c2d7ee15d7444611cc222a22e87ea52c55ab44d4ccd0",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-dd658f0fa13b",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "ef54777a8ca5619562734288ed6e363a1d3ffaf10c25517c1c318bdbb5282d1e",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-3c77f13118a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "53844c492e69fef12fd50eadd1033b3bc77768c90ba32ee266f8f98d269f7336",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-2d9c08da4eb3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3e48d9fb54943b34b4790dfb30f0108a840ba68865a9d3731a3853a359f8f1b0",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-8c89e458dbe7",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "606ef3fc2e12064a4d36f18b1c9698a5d4a068bc32bc363d7cc81a88e3e5bcea",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-bc2f501cf8a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "dcd7d050958276d27cb2906da1ed6667d6c7c9b2deca9680dc5240639b2dd418",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-492475b44676",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "939ea19257aef8b142039e8eb9296d3523cbf7bc8662f262a5c3942ec9a93ae6",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-ddfa92004f07",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "2899d46c120167e004fde76f0582c932ed68767f329f34419f6add53346bd6be",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-522b648cd656",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "7b67cd3e6d11dffef8fecb34b6dc76bf1db725788a1c92f60d43b08340486132",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-2493448fb268",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "879392a0158e1be09a085834a75285a81a51572964dcb47bedf007bba81ea33c",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-a2b62c44ccc6",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "5cb252ca1af014df0bcb96b410172d224400baccfd0784da38a3530612fe70bd",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-886cc98bf17e",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "ccb2e7c8c76867efbf21556eceea9381a2cc20992deb275e5d097e32bc1e2611",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-6ce4a1cc8b64",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3e59904e0c6c47263d5c6d05da924d4a16fa0743fa3049ca7d39fca8f62130a8",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-4557f6777cd3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "4cdde3b8e45dddd4b8cc031295cc5d130ec42822798f5c3e64a717923c52641f",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-00c21177da28",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3bde0454b2bf0b8bbbeb3208424e47d9ed698f245da00a7430c5f0e481dcac9f",
+            "input_scope": "inputs"
+          }
+        ],
+        "env_blocked": 0,
+        "selection_reason": "profile_and_owner",
+        "scope": {
+          "profile": "full",
+          "owner": "TASK-001"
+        },
+        "reuse_reason": "matching_evidence",
+        "summary": "acceptance: executed 0, reused 2",
+        "execution_identities": [],
+        "selected_check_ids": [
+          "CHK-aad161ddf787",
+          "CHK-b2cad7b5ef6b"
+        ],
+        "timings": {
+          "planning_ms": 42.36825,
+          "preflight_ms": 759.673333,
+          "execution_ms": 0.0,
+          "evidence_ms": 72.24908299999998,
+          "elapsed_ms": 874.793625
+        },
+        "input_change_category": {
+          "CHK-aad161ddf787": "unchanged",
+          "CHK-b2cad7b5ef6b": "unchanged"
+        }
+      },
+      "stderr": ""
+    },
+    {
+      "mode": "forced",
+      "repeat": 2,
+      "argv": [
+        "python3",
+        "/Users/jahan/workspace/code_flow/.code-flow/scripts/cf_acceptance_runner.py",
+        "--manifest",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-task-pilot-hyggbvfw/requirement/.acceptance-manifest.json",
+        "--root",
+        "/Users/jahan/workspace/code_flow",
+        "--owner",
+        "TASK-001",
+        "--write-evidence",
+        "--no-cache"
+      ],
+      "elapsed_ms": 481.726,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "results": [
+          {
+            "id": "S-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-b2cad7b5ef6b"
+            ],
+            "check_reused": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_results": {
+              "CHK-b2cad7b5ef6b": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_configs": {
+              "CHK-b2cad7b5ef6b": {
+                "id": "CHK-b2cad7b5ef6b",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "cache_reused": false,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-b2cad7b5ef6b",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          },
+          {
+            "id": "B-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-aad161ddf787"
+            ],
+            "check_reused": {
+              "CHK-aad161ddf787": false
+            },
+            "check_results": {
+              "CHK-aad161ddf787": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-aad161ddf787": false
+            },
+            "check_configs": {
+              "CHK-aad161ddf787": {
+                "id": "CHK-aad161ddf787",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "cache_reused": false,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-aad161ddf787",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          }
+        ],
+        "executed": 2,
+        "reused": 0,
+        "incomplete": 0,
+        "failed": [],
+        "checks": [
+          {
+            "id": "CHK-b2cad7b5ef6b",
+            "status": "passed",
+            "scenarios": [
+              "S-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-aad161ddf787",
+            "status": "passed",
+            "scenarios": [
+              "B-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-55d318482620",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-7907c924815c",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-d55dabdd9c27",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-dd658f0fa13b",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-3c77f13118a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-2d9c08da4eb3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-8c89e458dbe7",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-bc2f501cf8a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-492475b44676",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-ddfa92004f07",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-522b648cd656",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-2493448fb268",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-a2b62c44ccc6",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-886cc98bf17e",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-6ce4a1cc8b64",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-4557f6777cd3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-00c21177da28",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          }
+        ],
+        "env_blocked": 0,
+        "selection_reason": "profile_and_owner",
+        "scope": {
+          "profile": "full",
+          "owner": "TASK-001"
+        },
+        "reuse_reason": "no_reused_results",
+        "summary": "acceptance: executed 2, reused 0",
+        "execution_identities": [
+          "3ea167c0c86b5fdddc29a2aa9add69dd31ef2e4352a7a3985551fd0576e9ab94",
+          "7afa5246e852db89400862c0f2eb1175757fa45b444103df3be9af8f4dc42558"
+        ],
+        "selected_check_ids": [
+          "CHK-aad161ddf787",
+          "CHK-b2cad7b5ef6b"
+        ],
+        "timings": {
+          "planning_ms": 45.282917,
+          "preflight_ms": 37.633666999999996,
+          "execution_ms": 227.481291,
+          "evidence_ms": 102.74491600000002,
+          "elapsed_ms": 430.516375
+        },
+        "input_change_category": {
+          "CHK-aad161ddf787": "unproven",
+          "CHK-b2cad7b5ef6b": "unproven"
+        }
+      },
+      "stderr": ""
+    },
+    {
+      "mode": "prime",
+      "repeat": 2,
+      "argv": [
+        "python3",
+        "/Users/jahan/workspace/code_flow/.code-flow/scripts/cf_acceptance_runner.py",
+        "--manifest",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-task-pilot-hyggbvfw/requirement/.acceptance-manifest.json",
+        "--root",
+        "/Users/jahan/workspace/code_flow",
+        "--owner",
+        "TASK-001",
+        "--write-evidence"
+      ],
+      "elapsed_ms": 1183.888,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "results": [
+          {
+            "id": "S-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-b2cad7b5ef6b"
+            ],
+            "check_reused": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_results": {
+              "CHK-b2cad7b5ef6b": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_configs": {
+              "CHK-b2cad7b5ef6b": {
+                "id": "CHK-b2cad7b5ef6b",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "check_hashes": {
+              "CHK-b2cad7b5ef6b": "0a588a9a28078acd8f3bb640271e4e11beec4b155ef0d0765f75de6a3cbc0a44"
+            },
+            "input_hash": "7e540f7c960b241d505ecf8a2025d33ed0b20f96d3573ef9cab126367730320e",
+            "cache_reused": false,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-b2cad7b5ef6b",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          },
+          {
+            "id": "B-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-aad161ddf787"
+            ],
+            "check_reused": {
+              "CHK-aad161ddf787": false
+            },
+            "check_results": {
+              "CHK-aad161ddf787": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-aad161ddf787": false
+            },
+            "check_configs": {
+              "CHK-aad161ddf787": {
+                "id": "CHK-aad161ddf787",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "check_hashes": {
+              "CHK-aad161ddf787": "8baad985d94575da5bffa3a396b432e4200aece6beac3b5b7f44c88ade25c189"
+            },
+            "input_hash": "33b97bba1b0af9162d45d9f494cce7ee454658dd32b037d6c7c225e985493ef4",
+            "cache_reused": false,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-aad161ddf787",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          }
+        ],
+        "executed": 2,
+        "reused": 0,
+        "incomplete": 0,
+        "failed": [],
+        "checks": [
+          {
+            "id": "CHK-b2cad7b5ef6b",
+            "status": "passed",
+            "scenarios": [
+              "S-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "0a588a9a28078acd8f3bb640271e4e11beec4b155ef0d0765f75de6a3cbc0a44",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-aad161ddf787",
+            "status": "passed",
+            "scenarios": [
+              "B-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "8baad985d94575da5bffa3a396b432e4200aece6beac3b5b7f44c88ade25c189",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-55d318482620",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "f59aec5c6edffe026f22cb579184700977e3ad9fef1bd02f884447bc9669b4b9",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-7907c924815c",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "d0f61ce34a40dd6fd4061244f4a1880572aeab516c0c420a967373422b9fbb13",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-d55dabdd9c27",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "1471090c2502e19cd459c2d7ee15d7444611cc222a22e87ea52c55ab44d4ccd0",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-dd658f0fa13b",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "ef54777a8ca5619562734288ed6e363a1d3ffaf10c25517c1c318bdbb5282d1e",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-3c77f13118a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "53844c492e69fef12fd50eadd1033b3bc77768c90ba32ee266f8f98d269f7336",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-2d9c08da4eb3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3e48d9fb54943b34b4790dfb30f0108a840ba68865a9d3731a3853a359f8f1b0",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-8c89e458dbe7",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "606ef3fc2e12064a4d36f18b1c9698a5d4a068bc32bc363d7cc81a88e3e5bcea",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-bc2f501cf8a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "dcd7d050958276d27cb2906da1ed6667d6c7c9b2deca9680dc5240639b2dd418",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-492475b44676",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "939ea19257aef8b142039e8eb9296d3523cbf7bc8662f262a5c3942ec9a93ae6",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-ddfa92004f07",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "2899d46c120167e004fde76f0582c932ed68767f329f34419f6add53346bd6be",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-522b648cd656",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "7b67cd3e6d11dffef8fecb34b6dc76bf1db725788a1c92f60d43b08340486132",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-2493448fb268",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "879392a0158e1be09a085834a75285a81a51572964dcb47bedf007bba81ea33c",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-a2b62c44ccc6",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "5cb252ca1af014df0bcb96b410172d224400baccfd0784da38a3530612fe70bd",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-886cc98bf17e",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "ccb2e7c8c76867efbf21556eceea9381a2cc20992deb275e5d097e32bc1e2611",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-6ce4a1cc8b64",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3e59904e0c6c47263d5c6d05da924d4a16fa0743fa3049ca7d39fca8f62130a8",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-4557f6777cd3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "4cdde3b8e45dddd4b8cc031295cc5d130ec42822798f5c3e64a717923c52641f",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-00c21177da28",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3bde0454b2bf0b8bbbeb3208424e47d9ed698f245da00a7430c5f0e481dcac9f",
+            "input_scope": "inputs"
+          }
+        ],
+        "env_blocked": 0,
+        "selection_reason": "profile_and_owner",
+        "scope": {
+          "profile": "full",
+          "owner": "TASK-001"
+        },
+        "reuse_reason": "no_reused_results",
+        "summary": "acceptance: executed 2, reused 0",
+        "execution_identities": [
+          "3d37866ba7fb28d39063dfca0a18cee4a77bdc9cd8e8eb9314f5eb85b0af39ad",
+          "57e033cb822ba5bb2c286ce147319caa709c97544fbbc98281cb91ed25515a4e"
+        ],
+        "selected_check_ids": [
+          "CHK-aad161ddf787",
+          "CHK-b2cad7b5ef6b"
+        ],
+        "timings": {
+          "planning_ms": 41.824459000000004,
+          "preflight_ms": 745.2576660000001,
+          "execution_ms": 227.08612399999996,
+          "evidence_ms": 100.93708400000013,
+          "elapsed_ms": 1133.138209
+        },
+        "input_change_category": {
+          "CHK-aad161ddf787": "no_baseline",
+          "CHK-b2cad7b5ef6b": "no_baseline"
+        }
+      },
+      "stderr": ""
+    },
+    {
+      "mode": "reuse",
+      "repeat": 2,
+      "argv": [
+        "python3",
+        "/Users/jahan/workspace/code_flow/.code-flow/scripts/cf_acceptance_runner.py",
+        "--manifest",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-task-pilot-hyggbvfw/requirement/.acceptance-manifest.json",
+        "--root",
+        "/Users/jahan/workspace/code_flow",
+        "--owner",
+        "TASK-001",
+        "--write-evidence"
+      ],
+      "elapsed_ms": 898.548,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "results": [
+          {
+            "id": "S-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-b2cad7b5ef6b"
+            ],
+            "check_reused": {
+              "CHK-b2cad7b5ef6b": true
+            },
+            "check_results": {
+              "CHK-b2cad7b5ef6b": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_configs": {
+              "CHK-b2cad7b5ef6b": {
+                "id": "CHK-b2cad7b5ef6b",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "check_hashes": {
+              "CHK-b2cad7b5ef6b": "0a588a9a28078acd8f3bb640271e4e11beec4b155ef0d0765f75de6a3cbc0a44"
+            },
+            "input_hash": "7e540f7c960b241d505ecf8a2025d33ed0b20f96d3573ef9cab126367730320e",
+            "cache_reused": true,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-b2cad7b5ef6b",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          },
+          {
+            "id": "B-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-aad161ddf787"
+            ],
+            "check_reused": {
+              "CHK-aad161ddf787": true
+            },
+            "check_results": {
+              "CHK-aad161ddf787": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-aad161ddf787": false
+            },
+            "check_configs": {
+              "CHK-aad161ddf787": {
+                "id": "CHK-aad161ddf787",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "check_hashes": {
+              "CHK-aad161ddf787": "8baad985d94575da5bffa3a396b432e4200aece6beac3b5b7f44c88ade25c189"
+            },
+            "input_hash": "33b97bba1b0af9162d45d9f494cce7ee454658dd32b037d6c7c225e985493ef4",
+            "cache_reused": true,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-aad161ddf787",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          }
+        ],
+        "executed": 0,
+        "reused": 2,
+        "incomplete": 0,
+        "failed": [],
+        "checks": [
+          {
+            "id": "CHK-b2cad7b5ef6b",
+            "status": "passed",
+            "scenarios": [
+              "S-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "0a588a9a28078acd8f3bb640271e4e11beec4b155ef0d0765f75de6a3cbc0a44",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-aad161ddf787",
+            "status": "passed",
+            "scenarios": [
+              "B-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "8baad985d94575da5bffa3a396b432e4200aece6beac3b5b7f44c88ade25c189",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-55d318482620",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "f59aec5c6edffe026f22cb579184700977e3ad9fef1bd02f884447bc9669b4b9",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-7907c924815c",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "d0f61ce34a40dd6fd4061244f4a1880572aeab516c0c420a967373422b9fbb13",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-d55dabdd9c27",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "1471090c2502e19cd459c2d7ee15d7444611cc222a22e87ea52c55ab44d4ccd0",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-dd658f0fa13b",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "ef54777a8ca5619562734288ed6e363a1d3ffaf10c25517c1c318bdbb5282d1e",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-3c77f13118a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "53844c492e69fef12fd50eadd1033b3bc77768c90ba32ee266f8f98d269f7336",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-2d9c08da4eb3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3e48d9fb54943b34b4790dfb30f0108a840ba68865a9d3731a3853a359f8f1b0",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-8c89e458dbe7",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "606ef3fc2e12064a4d36f18b1c9698a5d4a068bc32bc363d7cc81a88e3e5bcea",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-bc2f501cf8a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "dcd7d050958276d27cb2906da1ed6667d6c7c9b2deca9680dc5240639b2dd418",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-492475b44676",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "939ea19257aef8b142039e8eb9296d3523cbf7bc8662f262a5c3942ec9a93ae6",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-ddfa92004f07",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "2899d46c120167e004fde76f0582c932ed68767f329f34419f6add53346bd6be",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-522b648cd656",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "7b67cd3e6d11dffef8fecb34b6dc76bf1db725788a1c92f60d43b08340486132",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-2493448fb268",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "879392a0158e1be09a085834a75285a81a51572964dcb47bedf007bba81ea33c",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-a2b62c44ccc6",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "5cb252ca1af014df0bcb96b410172d224400baccfd0784da38a3530612fe70bd",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-886cc98bf17e",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "ccb2e7c8c76867efbf21556eceea9381a2cc20992deb275e5d097e32bc1e2611",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-6ce4a1cc8b64",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3e59904e0c6c47263d5c6d05da924d4a16fa0743fa3049ca7d39fca8f62130a8",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-4557f6777cd3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "4cdde3b8e45dddd4b8cc031295cc5d130ec42822798f5c3e64a717923c52641f",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-00c21177da28",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3bde0454b2bf0b8bbbeb3208424e47d9ed698f245da00a7430c5f0e481dcac9f",
+            "input_scope": "inputs"
+          }
+        ],
+        "env_blocked": 0,
+        "selection_reason": "profile_and_owner",
+        "scope": {
+          "profile": "full",
+          "owner": "TASK-001"
+        },
+        "reuse_reason": "matching_evidence",
+        "summary": "acceptance: executed 0, reused 2",
+        "execution_identities": [],
+        "selected_check_ids": [
+          "CHK-aad161ddf787",
+          "CHK-b2cad7b5ef6b"
+        ],
+        "timings": {
+          "planning_ms": 42.009167,
+          "preflight_ms": 761.5223329999999,
+          "execution_ms": 0.0,
+          "evidence_ms": 44.24091699999999,
+          "elapsed_ms": 848.194875
+        },
+        "input_change_category": {
+          "CHK-aad161ddf787": "unchanged",
+          "CHK-b2cad7b5ef6b": "unchanged"
+        }
+      },
+      "stderr": ""
+    },
+    {
+      "mode": "forced",
+      "repeat": 3,
+      "argv": [
+        "python3",
+        "/Users/jahan/workspace/code_flow/.code-flow/scripts/cf_acceptance_runner.py",
+        "--manifest",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-task-pilot-eb79dsur/requirement/.acceptance-manifest.json",
+        "--root",
+        "/Users/jahan/workspace/code_flow",
+        "--owner",
+        "TASK-001",
+        "--write-evidence",
+        "--no-cache"
+      ],
+      "elapsed_ms": 486.908,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "results": [
+          {
+            "id": "S-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-b2cad7b5ef6b"
+            ],
+            "check_reused": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_results": {
+              "CHK-b2cad7b5ef6b": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_configs": {
+              "CHK-b2cad7b5ef6b": {
+                "id": "CHK-b2cad7b5ef6b",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "cache_reused": false,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-b2cad7b5ef6b",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          },
+          {
+            "id": "B-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-aad161ddf787"
+            ],
+            "check_reused": {
+              "CHK-aad161ddf787": false
+            },
+            "check_results": {
+              "CHK-aad161ddf787": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-aad161ddf787": false
+            },
+            "check_configs": {
+              "CHK-aad161ddf787": {
+                "id": "CHK-aad161ddf787",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "cache_reused": false,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-aad161ddf787",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          }
+        ],
+        "executed": 2,
+        "reused": 0,
+        "incomplete": 0,
+        "failed": [],
+        "checks": [
+          {
+            "id": "CHK-b2cad7b5ef6b",
+            "status": "passed",
+            "scenarios": [
+              "S-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-aad161ddf787",
+            "status": "passed",
+            "scenarios": [
+              "B-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-55d318482620",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-7907c924815c",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-d55dabdd9c27",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-dd658f0fa13b",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-3c77f13118a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-2d9c08da4eb3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-8c89e458dbe7",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-bc2f501cf8a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-492475b44676",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-ddfa92004f07",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-522b648cd656",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-2493448fb268",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-a2b62c44ccc6",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-886cc98bf17e",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-6ce4a1cc8b64",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-4557f6777cd3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          },
+          {
+            "id": "CHK-00c21177da28",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false
+          }
+        ],
+        "env_blocked": 0,
+        "selection_reason": "profile_and_owner",
+        "scope": {
+          "profile": "full",
+          "owner": "TASK-001"
+        },
+        "reuse_reason": "no_reused_results",
+        "summary": "acceptance: executed 2, reused 0",
+        "execution_identities": [
+          "3ea167c0c86b5fdddc29a2aa9add69dd31ef2e4352a7a3985551fd0576e9ab94",
+          "7afa5246e852db89400862c0f2eb1175757fa45b444103df3be9af8f4dc42558"
+        ],
+        "selected_check_ids": [
+          "CHK-aad161ddf787",
+          "CHK-b2cad7b5ef6b"
+        ],
+        "timings": {
+          "planning_ms": 41.67808300000001,
+          "preflight_ms": 35.967583999999995,
+          "execution_ms": 228.38937600000003,
+          "evidence_ms": 115.11908399999999,
+          "elapsed_ms": 438.02654199999995
+        },
+        "input_change_category": {
+          "CHK-aad161ddf787": "unproven",
+          "CHK-b2cad7b5ef6b": "unproven"
+        }
+      },
+      "stderr": ""
+    },
+    {
+      "mode": "prime",
+      "repeat": 3,
+      "argv": [
+        "python3",
+        "/Users/jahan/workspace/code_flow/.code-flow/scripts/cf_acceptance_runner.py",
+        "--manifest",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-task-pilot-eb79dsur/requirement/.acceptance-manifest.json",
+        "--root",
+        "/Users/jahan/workspace/code_flow",
+        "--owner",
+        "TASK-001",
+        "--write-evidence"
+      ],
+      "elapsed_ms": 1206.841,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "results": [
+          {
+            "id": "S-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-b2cad7b5ef6b"
+            ],
+            "check_reused": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_results": {
+              "CHK-b2cad7b5ef6b": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_configs": {
+              "CHK-b2cad7b5ef6b": {
+                "id": "CHK-b2cad7b5ef6b",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "check_hashes": {
+              "CHK-b2cad7b5ef6b": "0a588a9a28078acd8f3bb640271e4e11beec4b155ef0d0765f75de6a3cbc0a44"
+            },
+            "input_hash": "7e540f7c960b241d505ecf8a2025d33ed0b20f96d3573ef9cab126367730320e",
+            "cache_reused": false,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-b2cad7b5ef6b",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          },
+          {
+            "id": "B-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-aad161ddf787"
+            ],
+            "check_reused": {
+              "CHK-aad161ddf787": false
+            },
+            "check_results": {
+              "CHK-aad161ddf787": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-aad161ddf787": false
+            },
+            "check_configs": {
+              "CHK-aad161ddf787": {
+                "id": "CHK-aad161ddf787",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "check_hashes": {
+              "CHK-aad161ddf787": "8baad985d94575da5bffa3a396b432e4200aece6beac3b5b7f44c88ade25c189"
+            },
+            "input_hash": "33b97bba1b0af9162d45d9f494cce7ee454658dd32b037d6c7c225e985493ef4",
+            "cache_reused": false,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-aad161ddf787",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          }
+        ],
+        "executed": 2,
+        "reused": 0,
+        "incomplete": 0,
+        "failed": [],
+        "checks": [
+          {
+            "id": "CHK-b2cad7b5ef6b",
+            "status": "passed",
+            "scenarios": [
+              "S-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "0a588a9a28078acd8f3bb640271e4e11beec4b155ef0d0765f75de6a3cbc0a44",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-aad161ddf787",
+            "status": "passed",
+            "scenarios": [
+              "B-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "8baad985d94575da5bffa3a396b432e4200aece6beac3b5b7f44c88ade25c189",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-55d318482620",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "f59aec5c6edffe026f22cb579184700977e3ad9fef1bd02f884447bc9669b4b9",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-7907c924815c",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "d0f61ce34a40dd6fd4061244f4a1880572aeab516c0c420a967373422b9fbb13",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-d55dabdd9c27",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "1471090c2502e19cd459c2d7ee15d7444611cc222a22e87ea52c55ab44d4ccd0",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-dd658f0fa13b",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "ef54777a8ca5619562734288ed6e363a1d3ffaf10c25517c1c318bdbb5282d1e",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-3c77f13118a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "53844c492e69fef12fd50eadd1033b3bc77768c90ba32ee266f8f98d269f7336",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-2d9c08da4eb3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3e48d9fb54943b34b4790dfb30f0108a840ba68865a9d3731a3853a359f8f1b0",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-8c89e458dbe7",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "606ef3fc2e12064a4d36f18b1c9698a5d4a068bc32bc363d7cc81a88e3e5bcea",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-bc2f501cf8a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "dcd7d050958276d27cb2906da1ed6667d6c7c9b2deca9680dc5240639b2dd418",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-492475b44676",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "939ea19257aef8b142039e8eb9296d3523cbf7bc8662f262a5c3942ec9a93ae6",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-ddfa92004f07",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "2899d46c120167e004fde76f0582c932ed68767f329f34419f6add53346bd6be",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-522b648cd656",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "7b67cd3e6d11dffef8fecb34b6dc76bf1db725788a1c92f60d43b08340486132",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-2493448fb268",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "879392a0158e1be09a085834a75285a81a51572964dcb47bedf007bba81ea33c",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-a2b62c44ccc6",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "5cb252ca1af014df0bcb96b410172d224400baccfd0784da38a3530612fe70bd",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-886cc98bf17e",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "ccb2e7c8c76867efbf21556eceea9381a2cc20992deb275e5d097e32bc1e2611",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-6ce4a1cc8b64",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3e59904e0c6c47263d5c6d05da924d4a16fa0743fa3049ca7d39fca8f62130a8",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-4557f6777cd3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "4cdde3b8e45dddd4b8cc031295cc5d130ec42822798f5c3e64a717923c52641f",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-00c21177da28",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3bde0454b2bf0b8bbbeb3208424e47d9ed698f245da00a7430c5f0e481dcac9f",
+            "input_scope": "inputs"
+          }
+        ],
+        "env_blocked": 0,
+        "selection_reason": "profile_and_owner",
+        "scope": {
+          "profile": "full",
+          "owner": "TASK-001"
+        },
+        "reuse_reason": "no_reused_results",
+        "summary": "acceptance: executed 2, reused 0",
+        "execution_identities": [
+          "3d37866ba7fb28d39063dfca0a18cee4a77bdc9cd8e8eb9314f5eb85b0af39ad",
+          "57e033cb822ba5bb2c286ce147319caa709c97544fbbc98281cb91ed25515a4e"
+        ],
+        "selected_check_ids": [
+          "CHK-aad161ddf787",
+          "CHK-b2cad7b5ef6b"
+        ],
+        "timings": {
+          "planning_ms": 42.820583000000006,
+          "preflight_ms": 764.625917,
+          "execution_ms": 228.77045800000008,
+          "evidence_ms": 100.79245799999993,
+          "elapsed_ms": 1155.338125
+        },
+        "input_change_category": {
+          "CHK-aad161ddf787": "no_baseline",
+          "CHK-b2cad7b5ef6b": "no_baseline"
+        }
+      },
+      "stderr": ""
+    },
+    {
+      "mode": "reuse",
+      "repeat": 3,
+      "argv": [
+        "python3",
+        "/Users/jahan/workspace/code_flow/.code-flow/scripts/cf_acceptance_runner.py",
+        "--manifest",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-task-pilot-eb79dsur/requirement/.acceptance-manifest.json",
+        "--root",
+        "/Users/jahan/workspace/code_flow",
+        "--owner",
+        "TASK-001",
+        "--write-evidence"
+      ],
+      "elapsed_ms": 899.705,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "results": [
+          {
+            "id": "S-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-b2cad7b5ef6b"
+            ],
+            "check_reused": {
+              "CHK-b2cad7b5ef6b": true
+            },
+            "check_results": {
+              "CHK-b2cad7b5ef6b": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-b2cad7b5ef6b": false
+            },
+            "check_configs": {
+              "CHK-b2cad7b5ef6b": {
+                "id": "CHK-b2cad7b5ef6b",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "check_hashes": {
+              "CHK-b2cad7b5ef6b": "0a588a9a28078acd8f3bb640271e4e11beec4b155ef0d0765f75de6a3cbc0a44"
+            },
+            "input_hash": "7e540f7c960b241d505ecf8a2025d33ed0b20f96d3573ef9cab126367730320e",
+            "cache_reused": true,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-b2cad7b5ef6b",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_s01_guard_detects_runtime_import_forms",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          },
+          {
+            "id": "B-01",
+            "status": "passed",
+            "check_ids": [
+              "CHK-aad161ddf787"
+            ],
+            "check_reused": {
+              "CHK-aad161ddf787": true
+            },
+            "check_results": {
+              "CHK-aad161ddf787": {
+                "status": "passed",
+                "exit_code": 0,
+                "environment_hash": "71c5b3552542b11ccd48042534392dfd6e216f3a62411f2f178f5a146622c477"
+              }
+            },
+            "checkpoint_reused_checks": {
+              "CHK-aad161ddf787": false
+            },
+            "check_configs": {
+              "CHK-aad161ddf787": {
+                "id": "CHK-aad161ddf787",
+                "command": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "-q",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "cwd": ".",
+                "timeout": 60.0,
+                "env": "none",
+                "env_scope": "shared",
+                "parallel_safe": false,
+                "profile": "changed",
+                "inputs": [
+                  "tests/test_runtime_consolidation.py",
+                  "tests/test_runtime_boundary_plan.py"
+                ],
+                "preflight": [],
+                "paths": [],
+                "suite": "unit",
+                "test_ids": [
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+                ],
+                "markers": [],
+                "collect": {
+                  "argv": [
+                    "python3",
+                    "-m",
+                    "pytest",
+                    "--runxfail",
+                    "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                    "--collect-only",
+                    "--verbosity=-1"
+                  ],
+                  "format": "pytest",
+                  "timeout": 10
+                }
+              }
+            },
+            "check_hashes": {
+              "CHK-aad161ddf787": "8baad985d94575da5bffa3a396b432e4200aece6beac3b5b7f44c88ade25c189"
+            },
+            "input_hash": "33b97bba1b0af9162d45d9f494cce7ee454658dd32b037d6c7c225e985493ef4",
+            "cache_reused": true,
+            "checkpoint_reused": false,
+            "exit_code": 0,
+            "check_config": {
+              "id": "CHK-aad161ddf787",
+              "command": [
+                "python3",
+                "-m",
+                "pytest",
+                "-q",
+                "--runxfail",
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "cwd": ".",
+              "timeout": 60.0,
+              "env": "none",
+              "env_scope": "shared",
+              "parallel_safe": false,
+              "profile": "changed",
+              "inputs": [
+                "tests/test_runtime_consolidation.py",
+                "tests/test_runtime_boundary_plan.py"
+              ],
+              "preflight": [],
+              "paths": [],
+              "suite": "unit",
+              "test_ids": [
+                "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions"
+              ],
+              "markers": [],
+              "collect": {
+                "argv": [
+                  "python3",
+                  "-m",
+                  "pytest",
+                  "--runxfail",
+                  "tests/test_runtime_boundary_plan.py::test_b01_guard_distinguishes_shims_and_package_collisions",
+                  "--collect-only",
+                  "--verbosity=-1"
+                ],
+                "format": "pytest",
+                "timeout": 10
+              }
+            }
+          }
+        ],
+        "executed": 0,
+        "reused": 2,
+        "incomplete": 0,
+        "failed": [],
+        "checks": [
+          {
+            "id": "CHK-b2cad7b5ef6b",
+            "status": "passed",
+            "scenarios": [
+              "S-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "0a588a9a28078acd8f3bb640271e4e11beec4b155ef0d0765f75de6a3cbc0a44",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-aad161ddf787",
+            "status": "passed",
+            "scenarios": [
+              "B-01"
+            ],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "8baad985d94575da5bffa3a396b432e4200aece6beac3b5b7f44c88ade25c189",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-55d318482620",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "f59aec5c6edffe026f22cb579184700977e3ad9fef1bd02f884447bc9669b4b9",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-7907c924815c",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "d0f61ce34a40dd6fd4061244f4a1880572aeab516c0c420a967373422b9fbb13",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-d55dabdd9c27",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "1471090c2502e19cd459c2d7ee15d7444611cc222a22e87ea52c55ab44d4ccd0",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-dd658f0fa13b",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "ef54777a8ca5619562734288ed6e363a1d3ffaf10c25517c1c318bdbb5282d1e",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-3c77f13118a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "53844c492e69fef12fd50eadd1033b3bc77768c90ba32ee266f8f98d269f7336",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-2d9c08da4eb3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3e48d9fb54943b34b4790dfb30f0108a840ba68865a9d3731a3853a359f8f1b0",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-8c89e458dbe7",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "606ef3fc2e12064a4d36f18b1c9698a5d4a068bc32bc363d7cc81a88e3e5bcea",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-bc2f501cf8a8",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "dcd7d050958276d27cb2906da1ed6667d6c7c9b2deca9680dc5240639b2dd418",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-492475b44676",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "939ea19257aef8b142039e8eb9296d3523cbf7bc8662f262a5c3942ec9a93ae6",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-ddfa92004f07",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "2899d46c120167e004fde76f0582c932ed68767f329f34419f6add53346bd6be",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-522b648cd656",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "7b67cd3e6d11dffef8fecb34b6dc76bf1db725788a1c92f60d43b08340486132",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-2493448fb268",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "879392a0158e1be09a085834a75285a81a51572964dcb47bedf007bba81ea33c",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-a2b62c44ccc6",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "5cb252ca1af014df0bcb96b410172d224400baccfd0784da38a3530612fe70bd",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-886cc98bf17e",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "ccb2e7c8c76867efbf21556eceea9381a2cc20992deb275e5d097e32bc1e2611",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-6ce4a1cc8b64",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3e59904e0c6c47263d5c6d05da924d4a16fa0743fa3049ca7d39fca8f62130a8",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-4557f6777cd3",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "4cdde3b8e45dddd4b8cc031295cc5d130ec42822798f5c3e64a717923c52641f",
+            "input_scope": "inputs"
+          },
+          {
+            "id": "CHK-00c21177da28",
+            "status": "not_included",
+            "scenarios": [],
+            "env_scope": "shared",
+            "parallel_safe": false,
+            "input_hash": "3bde0454b2bf0b8bbbeb3208424e47d9ed698f245da00a7430c5f0e481dcac9f",
+            "input_scope": "inputs"
+          }
+        ],
+        "env_blocked": 0,
+        "selection_reason": "profile_and_owner",
+        "scope": {
+          "profile": "full",
+          "owner": "TASK-001"
+        },
+        "reuse_reason": "matching_evidence",
+        "summary": "acceptance: executed 0, reused 2",
+        "execution_identities": [],
+        "selected_check_ids": [
+          "CHK-aad161ddf787",
+          "CHK-b2cad7b5ef6b"
+        ],
+        "timings": {
+          "planning_ms": 42.7145,
+          "preflight_ms": 757.32425,
+          "execution_ms": 0.0,
+          "evidence_ms": 49.58141599999999,
+          "elapsed_ms": 850.0045829999999
+        },
+        "input_change_category": {
+          "CHK-aad161ddf787": "unchanged",
+          "CHK-b2cad7b5ef6b": "unchanged"
+        }
+      },
+      "stderr": ""
+    }
+  ]
+}

@@ -10,7 +10,7 @@ from codeflow.spec.cf_injection import injection_output, pre_tool_payload
 from codeflow.hooks.cf_stop_hook import process_stop
 from codeflow.hooks.cf_user_prompt_hook import process_prompt
 from codeflow.core.cf_runtime_install import verify_install
-from codeflow.core.cf_exec_base import execution_session
+from codeflow.core.cf_exec_base import execution_session, redact_sensitive_text
 from codeflow.core import cf_log
 from codeflow.core.cf_patch import parse_patch
 from codeflow.core.cf_native_paths import project_root, validated_paths
@@ -83,8 +83,9 @@ def main() -> None:
                 dispatch(data)
                 sys.stdout.flush()
     except Exception as exc:
-        cf_log.warn(f"cf_codex_hook error: {exc}")
-        message = f"code-flow Codex hook failed: {exc}. Run code-flow migrate --runtime --dry-run, then --apply."
+        detail = redact_sensitive_text(str(exc))
+        cf_log.warn(f"cf_codex_hook error: {detail}")
+        message = f"code-flow Codex hook failed: {detail}. Run code-flow migrate --runtime --dry-run, then --apply."
         payload = ({"decision": "block", "reason": message} if isinstance(data, dict) and data.get("hook_event_name") == "Stop"
                    else {"systemMessage": message})
         if isinstance(data, dict) and data.get("hook_event_name") == "PreToolUse":

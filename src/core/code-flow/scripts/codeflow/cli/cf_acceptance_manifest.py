@@ -21,13 +21,13 @@ from codeflow.acceptance.cf_acceptance_manifest_core import (
     legacy_kind as _legacy_kind,
     validate_manifest,
 )
-from codeflow.acceptance.cf_acceptance_schema import load_manifest, scenario_check_ids
+from codeflow.acceptance.cf_acceptance_schema import load_manifest, scenario_check_ids, validate_check_levels
 
 
-_RUNTIME_SCENARIO_FIELDS = ("status", "revision", "evidence", "runs", "stale_checks")
+_RUNTIME_SCENARIO_FIELDS = ("status", "revision", "evidence", "runs", "stale_checks", "stale_reason")
 
 _CHECK_CONFIG_FIELDS = ("env", "env_scope", "parallel_safe", "profile", "inputs", "preflight", "accepted_risk",
-                        "suite", "test_ids", "markers", "collect")
+                        "suite", "test_ids", "markers", "collect", "level", "environment_revision", "evidence_ttl_seconds")
 
 
 def _manifest_source(task_file: str, output: str, scenarios_file: str) -> str:
@@ -86,6 +86,7 @@ def write_manifest(task_file: str, output: str, scenarios_file: str = "", *,
         from codeflow.evidence.cf_evidence_store import discover_project_root
         root = discover_project_root(task_file)
         manifest["registration"] = configure(manifest, str(root), registration_file)
+    validate_check_levels(manifest["scenarios"], manifest["checks"])
     _preserve_runtime_state(task_file, target, manifest)
     for scenario in manifest.get("scenarios", []):
         if isinstance(scenario, dict) and scenario.get("status") in ("verified", "failed") and not scenario.get("evidence"):
@@ -217,6 +218,7 @@ def _preserve_runtime_state(task_file: str, target: Path, manifest: dict[str, ob
         if changed and any(key in old for key in ("evidence", "runs")):
             item["status"] = "stale"
             item["stale_checks"] = scenario_check_ids(item)
+            item["stale_reason"] = "scenario_or_check_contract_changed"
             report["stale"].append(item["id"])
         else:
             report["preserved"].append(item["id"])

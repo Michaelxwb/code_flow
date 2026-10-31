@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import fnmatch
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -15,7 +16,7 @@ import time
 
 from codeflow.cli.cf_acceptance_manifest import record_manual_evidence
 from codeflow.acceptance.cf_acceptance_schema import load_manifest, verified_evidence
-from codeflow.core.cf_exec_base import execution_session
+from codeflow.core.cf_exec_base import execution_session, redact_sensitive_payload, report_session, worktree_fingerprint
 from codeflow.core import cf_git
 from codeflow.cli.cf_spec_context import (ContextError, DEFAULT_ACTIVE_EXCLUDES, Decision, SpecContext,
                              apply_decision, load_active_task, load_context, save_context,
@@ -37,7 +38,7 @@ from codeflow.spec.cf_workflow_service import (FINISHED_STATUSES, require_active
 from codeflow.spec.cf_workflow_transaction import recover_transition
 
 
-def finish_task(root: str, directory: str, task_file: str, task_id: str) -> dict[str, object]:
+def _finish_task(root: str, directory: str, task_file: str, task_id: str) -> dict[str, object]:
     require_active_task(root, task_id, directory, task_file)
     gate = run_done_gate(root, directory, task_id=task_id)
     if gate.decision == "provisional":
@@ -77,6 +78,46 @@ def finish_task(root: str, directory: str, task_file: str, task_id: str) -> dict
         hints.append(f"{gate.deferred_heavy} heavy validator(s) deferred; archive / cf-validate runs them")
     if hints:
         result["deferred_hint"] = " | ".join(hints)
+    return result
+
+
+def _finish_report(reports: Sequence[Mapping[str, object]], started: float) -> dict[str, object]:
+    acceptance = next((item for item in reports if item.get("kind") == "acceptance"), {})
+    timings = {key: 0.0 for key in ("planning_ms", "preflight_ms", "execution_ms", "evidence_ms")}
+    for report in reports:
+        values = report.get("timings") or {}
+        for key in timings:
+            timings[key] += float(values.get(key, 0))
+        if report.get("kind") == "spec_check":
+            timings["execution_ms"] += float(report.get("execution_ms", 0))
+    timings["elapsed_ms"] = (time.monotonic() - started) * 1000
+    scopes = list(dict.fromkeys("spec" if r.get("kind") in ("spec_check", "spec_phases")
+                                else str(r.get("kind")) for r in reports))
+    identities = [str(identity) for report in reports for identity in report.get("execution_identities", [])]
+    identities.extend(str(report["identity"]) for report in reports if report.get("kind") == "spec_check" and report.get("identity"))
+    identities.sort()
+    reused = sum(int(report.get("reused", 0)) for report in reports)
+    executed = sum(int(report.get("executed", 0)) for report in reports if report.get("kind") == "acceptance")
+    executed += sum(max(0, int(report.get("selected", 0)) - int(report.get("reused", 0)))
+                    for report in reports if report.get("kind") == "validators")
+    executed += sum(1 for report in reports if report.get("kind") == "spec_check" and not report.get("reused"))
+    return {"selection_reason": acceptance.get("selection_reason", "validator_triggers"),
+            "scope": {"task": acceptance.get("scope", {}), "layers": [r.get("kind") for r in reports]},
+            "reuse_reason": "evidence_reused" if reused else "no_reused_results", "executed": executed,
+            "reused": reused, "execution_identities": identities,
+            "input_change_categories": [{"layer": r.get("kind"), "categories": r["input_change_category"]}
+                                        for r in reports if "input_change_category" in r],
+            "summary": f"finish checks: executed {executed}, reused {reused}",
+            "timings": timings, "timings_scope": scopes, "layers": list(reports)}
+
+
+def finish_task(root: str, directory: str, task_file: str, task_id: str) -> dict[str, object]:
+    started = time.monotonic()
+    with report_session() as reports:
+        result = _finish_task(root, directory, task_file, task_id)
+    if reports:
+        result["verification"] = _finish_report(reports, started)
+        result.update(_verification_reporting(result["verification"], started))
     return result
 
 
@@ -392,7 +433,16 @@ def finish_batch(root: str, directory: str, tasks: Sequence[str] = (),
         }
     # The active TASK must be consumed before any transient marker is opened.
     selected.sort(key=lambda item: 0 if item[1] == active_id else 1)
-    return _batch_payload(_run_batch_tasks(root, directory, selected), selected, mode, capability)
+    results = _run_batch_tasks(root, directory, selected)
+    payload = _batch_payload(results, selected, mode, capability)
+    completed = [str(item["task"]) for item in results if item.get("decision") == "pass"]
+    if completed and (Path(directory) / ".acceptance-manifest.json").is_file():
+        smoke = verify_layers(root, directory, layers="validators,e2e", profile="smoke", only_tasks=completed)
+        payload["batch_smoke"] = smoke
+        if smoke.get("decision") != "pass":
+            payload["decision"] = "block"
+            payload["reason"] = "batch_smoke_failed"
+    return payload
 
 
 def _complete_requirement_verification(root: str, directory: str,
@@ -450,15 +500,68 @@ def _archived_risks(directory: Path) -> list[dict[str, object]]:
     return risks
 
 
+def _verification_reporting(verification: Mapping[str, object], started: float) -> dict[str, object]:
+    fields = ("selection_reason", "selection_reasons", "reuse_reason", "scope", "summary", "executed", "reused",
+              "execution_identities", "input_change_category", "input_change_categories", "timings_scope")
+    report = {key: verification[key] for key in fields if key in verification}
+    if isinstance(verification.get("timings"), Mapping):
+        report["timings"] = {**verification["timings"], "elapsed_ms": (time.monotonic() - started) * 1000}
+    return report
+
+
+def _archive_documents(root: str, directory: Path) -> dict[str, str]:
+    """Include workflow inputs that the worktree fingerprint intentionally omits."""
+    base = Path(root)
+    spec_root = base / ".code-flow/specs"
+    candidates = [base / ".code-flow/config.yml", base / ".code-flow/validation.yml"]
+    candidates.extend(path for path in spec_root.rglob("*.md") if "_session" not in path.parts)
+    candidates.extend(path for path in directory.rglob("*.md")
+                      if path.name.endswith((".design.md", ".prd.md", ".scenarios.md")))
+    return {str(path.relative_to(base)): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted(candidates) if path.is_file()}
+
+
+def _archive_snapshot(root: str, directory: Path) -> str:
+    """Capture immutable plan identity and worktree inputs before moving."""
+    from codeflow.acceptance.cf_acceptance_manifest_core import IMMUTABLE_SCENARIO_FIELDS, validate_execution_baseline
+    fingerprint = worktree_fingerprint(root)
+    if not fingerprint or not directory.is_dir():
+        raise ValueError("archive_snapshot_unavailable")
+    contexts = {str(path.relative_to(directory)): context_sha256(load_context(str(path)))
+                for path in sorted(directory.rglob("spec-context.yml"))}
+    manifest = directory / ".acceptance-manifest.json"
+    plan: object = None
+    if manifest.is_file():
+        data = load_manifest(manifest)
+        validate_execution_baseline(manifest, data)
+        plan = {"task_sha256": data.get("task_sha256"), "checks": data.get("checks"),
+                "scenarios": [{key: row.get(key) for key in IMMUTABLE_SCENARIO_FIELDS}
+                              for row in data["scenarios"]]}
+    payload = json.dumps([fingerprint, contexts, plan, _archive_documents(root, directory)],
+                         ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def archive_requirement(root: str, directory: str) -> dict[str, object]:
     """Runtime archive gate: full verify first, then move the requirement dir."""
     from datetime import date
     from pathlib import Path as _Path
 
+    started = time.monotonic()
+    try:
+        snapshot = _archive_snapshot(root, Path(directory))
+    except (OSError, ValueError) as exc:
+        return {"decision": "block", "reason": "archive_snapshot_unavailable", "detail": str(exc)}
     result = verify_layers(root, directory, layers=",".join(VERIFY_LAYERS), profile="full")
     if result.get("decision") != "pass":
-        return {"decision": "block", "reason": "archive_verify_failed", "verify": result}
+        return {"decision": "block", "reason": "archive_verify_failed", "verify": result,
+                **_verification_reporting(result, started)}
     source = _Path(directory)
+    try:
+        if snapshot != _archive_snapshot(root, source):
+            return {"decision": "block", "reason": "archive_snapshot_changed", "verify": result}
+    except (OSError, ValueError) as exc:
+        return {"decision": "block", "reason": "archive_snapshot_unavailable", "detail": str(exc), "verify": result}
     accepted_risks = _archived_risks(source)
     base = _Path(root) / ".code-flow/tasks/archived" / date.today().isoformat()
     target = base / source.name
@@ -468,7 +571,8 @@ def archive_requirement(root: str, directory: str) -> dict[str, object]:
         suffix += 1
     base.mkdir(parents=True, exist_ok=True)
     shutil.move(str(source), str(target))
-    result = {"decision": "pass", "archived_to": str(target)}
+    result = {"decision": "pass", "archived_to": str(target), "verify": result,
+              **_verification_reporting(result, started)}
     if accepted_risks:
         result["accepted_risks"] = accepted_risks
     return result
@@ -556,6 +660,8 @@ def _verification_arguments(parser: argparse.ArgumentParser, action: str) -> Non
     parser.add_argument("--max-failures", type=int, default=0, help="stop after N failed checks (0 = unlimited)")
     parser.add_argument("--fail-fast", action="store_true", default=False, help="stop after the first failed check")
     parser.add_argument("--jobs", type=int, default=0, help="parallel check workers (0 = automatic)")
+    if action == "verify":
+        parser.add_argument("--tasks", default="", help="verify selected completed TASKs, comma-separated")
 
 
 def _workflow_parser() -> argparse.ArgumentParser:
@@ -586,7 +692,11 @@ def _workflow_parser() -> argparse.ArgumentParser:
 def _verify_from_arguments(args: argparse.Namespace, root: str, directory: str) -> dict[str, object]:
     layers = _verify_layers_argument(args.layers, args.checks)
     verify = verify_e2e if args.action == "verify-e2e" else verify_layers
-    return verify(root, directory, layers, args.profile or None, resume=args.resume,
+    tasks = [item.strip() for item in getattr(args, "tasks", "").split(",") if item.strip()]
+    if tasks and (len(set(tasks)) != len(tasks) or any(not re.fullmatch(r"TASK-\d+", task) for task in tasks)):
+        raise ValueError("--tasks must contain distinct TASK IDs")
+    scope = {"only_tasks": tasks} if tasks else {}
+    return verify(root, directory, layers, args.profile or None, **scope, resume=args.resume,
                   deadline=(time.monotonic() + args.deadline) if args.deadline else None,
                   max_failures=args.max_failures, fail_fast=args.fail_fast, jobs=args.jobs)
 
@@ -625,8 +735,8 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
             raise ValueError("task directory outside project")
         recover_transition(root)
         result = _dispatch_action(args, root, directory)
-        stdout.write(json.dumps(result, ensure_ascii=False))
+        stdout.write(json.dumps(redact_sensitive_payload(result), ensure_ascii=False))
         return 3 if result.get("decision") in ("block", "provisional") else 0
     except (OSError, ValueError) as exc:
-        stdout.write(json.dumps({"decision": "block", "error": str(exc)}, ensure_ascii=False))
+        stdout.write(json.dumps(redact_sensitive_payload({"decision": "block", "error": str(exc)}), ensure_ascii=False))
         return 2

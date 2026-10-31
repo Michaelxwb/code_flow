@@ -1,0 +1,48 @@
+{
+  "kind": "current-code-flow-tests-only",
+  "comparison": false,
+  "input_scope": "canonical Python scripts and selected test files only",
+  "input_sha256": "7ef53a1bd0dfbc4e07c58f0fad28ff6620b7a3b77f85d03d394629e8ce954dac",
+  "git_head": "e3bda2516c1d4c20257ea665225034e05746b39a",
+  "python": "3.9.6 (default, Aug 25 2026, 21:26:21) \n[Clang 21.0.0 (clang-2100.3.34.2)]",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "machine": "arm64",
+  "argv": [
+    "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "-m",
+    "pytest",
+    "-q",
+    "--runxfail",
+    "tests/test_verification_efficiency_03.py::test_s05_shared_dependency_expands_scope",
+    "tests/test_verification_efficiency_03.py::test_e03_unknown_inputs_remain_conservative",
+    "tests/test_verification_efficiency_04.py::test_e04_identity_and_failure_invalidate_reuse",
+    "tests/test_verification_efficiency_05.py::test_s08_archive_reuses_complete_evidence",
+    "tests/test_verification_efficiency_05.py::test_e05_archive_reruns_only_missing_evidence",
+    "tests/test_verification_efficiency_05.py::test_b01_archive_detects_input_change_before_move",
+    "tests/test_verification_efficiency_06.py::test_s09_selected_batch_verifies_before_requirement_done",
+    "tests/test_verification_efficiency_06.py::test_e06_partial_failure_never_promotes_requirement"
+  ],
+  "runs": [
+    {
+      "repeat": 1,
+      "elapsed_ms": 15734.11,
+      "exit_code": 0,
+      "stdout": "........                                                                 [100%]\n8 passed in 15.61s\n",
+      "stderr": ""
+    },
+    {
+      "repeat": 2,
+      "elapsed_ms": 15700.732,
+      "exit_code": 0,
+      "stdout": "........                                                                 [100%]\n8 passed in 15.60s\n",
+      "stderr": ""
+    },
+    {
+      "repeat": 3,
+      "elapsed_ms": 15600.25,
+      "exit_code": 0,
+      "stdout": "........                                                                 [100%]\n8 passed in 15.50s\n",
+      "stderr": ""
+    }
+  ]
+}

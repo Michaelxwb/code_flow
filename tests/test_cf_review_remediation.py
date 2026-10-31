@@ -85,7 +85,13 @@ def test_profile_smoke_selects_p0_only(monkeypatch: pytest.MonkeyPatch) -> None:
     assert [item["id"] for item in selected["scenarios"]] == ["S-01"]
 
 
-def test_profile_changed_filters_by_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_profile_changed_filters_by_inputs(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    (root / "src/a.py").write_text("A = 1\n", encoding="utf-8")
+    (root / "src/b.py").write_text("B = 1\n", encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "inputs")
+    (root / "src/a.py").write_text("A = 2\n", encoding="utf-8")
     data = {
         "schema": 3,
         "checks": [
@@ -97,8 +103,7 @@ def test_profile_changed_filters_by_inputs(monkeypatch: pytest.MonkeyPatch) -> N
             {"id": "S-02", "kind": "functional", "check": "CHK-B", "priority": "P1"},
         ],
     }
-    monkeypatch.setattr("codeflow.acceptance.cf_acceptance_selection.changed_paths", lambda root: {"src/a.py"})
-    selected = runner._select_profile(data, "/tmp", "changed")
+    selected = runner._select_profile(data, str(root), "changed")
     assert [item["id"] for item in selected["scenarios"]] == ["S-01"]
 
 
@@ -319,14 +324,25 @@ def test_archive_runtime_moves_only_after_pass(tmp_path: Path, monkeypatch: pyte
     source = root / ".code-flow/tasks/2026-10-22/demo"
     source.mkdir(parents=True)
     (source / "demo.md").write_text("# Demo\n", encoding="utf-8")
+    _git(root, "init", "-q")
+    _git(root, "config", "user.email", "t@t")
+    _git(root, "config", "user.name", "t")
+    (root / ".gitignore").write_text(".code-flow/\n", encoding="utf-8")
+    _git(root, "add", ".gitignore")
+    _git(root, "commit", "-qm", "baseline")
 
     monkeypatch.setattr(workflow, "verify_layers", lambda *args, **kwargs: {"decision": "block"})
     blocked = archive_requirement(str(root), str(source))
     assert blocked["decision"] == "block"
     assert source.is_dir()
 
-    monkeypatch.setattr(workflow, "verify_layers", lambda *args, **kwargs: {"decision": "pass"})
+    monkeypatch.setattr(workflow, "verify_layers", lambda *args, **kwargs: {
+        "decision": "pass", "executed": 0, "reused": 1, "selection_reason": "full",
+        "timings": {"elapsed_ms": 1.0}})
     passed = archive_requirement(str(root), str(source))
     assert passed["decision"] == "pass"
+    assert passed["verify"]["reused"] == 1 and passed["verify"]["selection_reason"] == "full"
+    assert passed["reused"] == 1 and passed["selection_reason"] == "full"
+    assert passed["timings"]["elapsed_ms"] >= 0
     assert not source.exists()
     assert Path(passed["archived_to"]).is_dir()

@@ -1,0 +1,22 @@
+{
+  "source": "code-flow-real-requirement",
+  "purpose": "preflight; not a performance sample",
+  "command": [
+    "node",
+    "src/cli.js",
+    "task",
+    "archive",
+    "--root",
+    "<isolated-new-copy>",
+    "--task-dir",
+    ".code-flow/tasks/2026-10-30/runtime-boundary-hardening",
+    "--json"
+  ],
+  "decision": "pass",
+  "archived_to": "/Users/jahan/workspace/code_flow/.code-flow/worktrees/verification-efficiency-code-flow-new/.code-flow/tasks/archived/2026-10-31/runtime-boundary-hardening",
+  "verify_decision": "pass",
+  "limitations": [
+    "concurrent external test activity",
+    "old and new test workloads have not been shown equivalent"
+  ]
+}

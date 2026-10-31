@@ -43,6 +43,12 @@ scenarios:
 > `contract`；鉴权/事务/模块边界/进程内 API → `integration`；API/CLI/后台全链路 →
 > `system`；容量 → `capacity` 或 capacity 标签；只有真实浏览器 +
 > 真实后端 + 真实 DB/鉴权的关键旅程才用 `E2E`。E2E 不是“用户可见结果”的默认层。
+
+> CAS 409 示例：contract 检查冲突响应，component 检查表单保留，integration 用真实存储验证并发写入；分别登记 check，按 expected 映射必要成员。低层覆盖完整时可以不新增 E2E；仅为剩余跨边界接线风险选择 E2E，说明独特故障、已有低层覆盖及剩余风险，由设计评审判断理由。
+>
+> ✅ CAS 用 contract + component + 真实存储 integration；聚合补零用数据 contract + component；关系绑定用真实存储 integration。Cookie 身份隔离与 SSE 断线恢复仍可保留针对性的浏览器 E2E，验证低层无法证明的跨边界接线。
+>
+> ❌ 因用户看得到结果就为每个表单、聚合或关系操作新增一条 E2E；也不要只改旧 E2E 的层级后继承历史通过证据。
 >
 > **质量门禁**：E2E 必须声明浏览器 env/组件、匹配的 boundary、why_e2e、步骤和具体预期；非 smoke 必须有 trigger_paths。每个 expected 必须引用存在的步骤或断言，deferred 必须有原因、owner 与 target_phase。
 >

@@ -39,7 +39,8 @@ def register_checks(manifest: dict[str, object], root: str, file: str = "") -> d
     for check in checks:
         check_id = str(check["id"])
         rows = [row for row in manifest["scenarios"] if check_id in scenario_check_ids(row)
-                and (registration_required(row) or check_id in overrides)]
+                and (registration_required({**row, "level": check.get("level", row.get("level"))})
+                     or registration_required(row) or check_id in overrides)]
         if not rows:
             continue
         check.update(overrides.get(check_id, {}))

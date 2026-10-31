@@ -182,6 +182,7 @@ CLI 场景：
 - 怎么判断做完了？正常 / 异常场景各列至少一条
 - 可验证、可转为自动化测试断言的条件（明确输入与可观测输出）；场景 ID（S-/E-/B-）即测试用例来源
 - 为每个场景指定测试层级（unit / component / contract / integration / E2E / manual）和关键真实边界；按最低可覆盖层选择：UI/表单/布局用 component，DTO/错误码用 contract，鉴权/事务/模块边界用 integration，只有真实浏览器 + 真实后端 + 鉴权/DB 才能暴露的 P0/P1 关键旅程才用 E2E
+- ✅ CAS 冲突由 contract + component + 真实存储 integration 共同证明；聚合补零用数据 contract + component，关系绑定用真实存储 integration。Cookie 身份隔离和 SSE 恢复可保留对应关键 E2E。❌ 按用户可见结果机械增加 E2E 或用固定比例决定层级；描述独特故障、低层覆盖和剩余接线风险，由设计评审判断。
 - E2E 场景必须同时给出 `why_e2e`（低层为什么不够）、`trigger_paths`（哪些源码变化触发）和 `smoke`（是否发布冒烟）；缺少时不得进入 plan
 - RULE 与高影响 RISK 必须映射到至少一个 S/E/B 场景；manual 仅限无法自动化的外部条件，必须写明原因
 

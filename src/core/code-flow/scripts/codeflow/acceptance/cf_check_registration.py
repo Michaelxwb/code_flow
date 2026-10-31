@@ -12,7 +12,7 @@ from codeflow.acceptance.cf_acceptance_schema import scenario_check_ids, validat
 from codeflow.core.cf_exec_base import run_command
 
 
-REGISTRATION_FIELDS = ("suite", "test_ids", "markers", "collect")
+REGISTRATION_FIELDS = ("suite", "test_ids", "markers", "collect", "level", "environment_revision", "evidence_ttl_seconds")
 
 
 class CollectionError(ValueError):
@@ -233,7 +233,8 @@ def register_check(root: str, check: dict[str, object], rows: Sequence[Mapping[s
                    deadline: float) -> list[dict[str, str]]:
     """Collect, populate and validate one check against all of its scenarios."""
     validate_checks([check])
-    requirements = [_requirements(row) for row in rows]
+    effective_rows = [{**row, "level": check.get("level", row.get("level"))} for row in rows]
+    requirements = [_requirements(row) for row in effective_rows]
     browser = any(item[0] for item in requirements)
     markers = set().union(*(item[1] for item in requirements))
     if "collect" not in check:
@@ -248,7 +249,7 @@ def register_check(root: str, check: dict[str, object], rows: Sequence[Mapping[s
     if browser and selected and all("browser" in item.get("capabilities", []) for item in selected):
         check.setdefault("suite", "browser")
     validate_checks([check])
-    return [issue for row in rows for issue in _registration_issues(root, row, check, collected)]
+    return [issue for row in effective_rows for issue in _registration_issues(root, row, check, collected)]
 
 
 def _registration_issues(root: str, row: Mapping[str, object], check: Mapping[str, object],
@@ -272,6 +273,10 @@ def _registration_issues(root: str, row: Mapping[str, object], check: Mapping[st
                                "实际执行命令必须选择登记用例；不可验证的 grep/-k 过滤请改用具体测试 ID"))
     if browser and (check.get("suite") != "browser" or any("browser" not in item.get("capabilities", []) for item in selected)):
         errors.append(_finding("e2e_check_not_browser", scenario, check_id, "E2E check 必须属于 browser 套件并收集到浏览器能力用例"))
+    if check.get("level") and check.get("level") != "e2e" and any(
+        "browser" in item.get("capabilities", []) for item in selected
+    ):
+        errors.append(_finding("check_level_browser_mismatch", scenario, check_id, "浏览器用例必须声明 e2e 层级"))
     for marker in sorted(markers):
         if marker not in check.get("markers", []) or any(marker not in item.get("markers", []) for item in selected):
             code = "capacity_check_not_marked" if marker == "capacity" else "smoke_check_not_registered"
@@ -288,9 +293,10 @@ def validate_registration(root: str, scenarios: Sequence[Mapping[str, object]],
     runnable_smoke = runnable_browser = 0
     for row in scenarios:
         browser, markers = _requirements(row)
-        if not browser and not markers:
-            continue
         ids = scenario_check_ids(row)
+        has_browser_check = any(by_id.get(check_id, {}).get("level") == "e2e" for check_id in ids)
+        if not browser and not markers and not has_browser_check:
+            continue
         row_errors: list[dict[str, object]] = []
         if not ids:
             row_errors.append(_finding("scenario_check_missing", str(row["id"]), "", "需要可执行 check 绑定"))
@@ -298,6 +304,9 @@ def validate_registration(root: str, scenarios: Sequence[Mapping[str, object]],
             check = by_id.get(check_id)
             if check is None:
                 row_errors.append(_finding("unknown_check", str(row["id"]), check_id, "引用的 check 不存在"))
+                continue
+            effective = {**row, "level": check.get("level", row.get("level"))}
+            if not registration_required(effective):
                 continue
             if check_id not in cache:
                 try:
@@ -309,7 +318,7 @@ def validate_registration(root: str, scenarios: Sequence[Mapping[str, object]],
                 detail = collected.details if isinstance(collected, CollectionError) else {}
                 row_errors.append({**_finding(str(collected), str(row["id"]), check_id, "无法验证测试收集与套件登记"), **detail})
             else:
-                row_errors.extend(_registration_issues(root, row, check, collected))
+                row_errors.extend(_registration_issues(root, effective, check, collected))
         errors.extend(row_errors)
         runnable_smoke += int(bool(row.get("smoke")) and not row_errors)
         runnable_browser += int(browser and not row_errors)

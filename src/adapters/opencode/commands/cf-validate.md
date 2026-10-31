@@ -98,7 +98,7 @@ code-flow validate --root "$PWD" --json
 运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
 
 ```bash
-code-flow task verify --task-dir "<需求目录>" --layers validators,review,e2e --profile changed --root "$PWD" --json
+code-flow task verify --task-dir "<需求目录>" --tasks TASK-001,TASK-002 --layers validators,e2e --profile smoke --root "$PWD" --json
 code-flow validate --root "$PWD" --json
 ```
 

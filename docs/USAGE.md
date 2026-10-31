@@ -450,6 +450,7 @@ E2E 只用于 P0/P1 关键用户旅程，且必须证明低层测试覆盖不了
 - env 使用 none/local/local-api/browser/external/staging/capacity/ci/production；components 使用稳定标识符。数据库属于组件，不使用 env=db。
 - `code-flow scenarios parse --file <需求>.scenarios.md --quality --json` 和 `code-flow acceptance manifest --verify-plan --require-scenarios ...` 会失败关闭。
 - `code-flow task start` 返回 `e2e_plan`：当前 TASK 的 owned E2E 和全局 smoke E2E 中，只有非 deferred 场景进入 scheduled。显式 deferred 仍显示归属并留到需求终验。
+- 相关批次完成后可运行 `code-flow task verify --tasks TASK-001,TASK-002 --layers validators,e2e --profile smoke`；仅执行关联且已就绪的关键 smoke，结果标为部分范围。普通 task 不默认启动全域浏览器或容量检查，完整需求终验按证据缺口补验。
 - 旧 manifest 没有 e2e_gate 时返回 legacy_e2e_plan 警告；缺 quality_schema: 2 时保留原门禁并提示 legacy_quality_schema。新锁文件启用当前质量校验，完整 verify-plan 始终严格检查。
 - `task verify --profile changed` 只跑 `trigger_paths` 命中当前 diff 的 E2E；没有 `trigger_paths` 的 smoke E2E 不会在 changed 中顺跑。`--profile smoke` 只跑 smoke E2E（旧计划无 smoke 标记时才回退全量）。
 - 不要把“全量 E2E 通过”作为每个小 PR 的硬门禁；全量 E2E 放 nightly / release，PR 用受影响的 component/contract/integration + 少量 smoke。

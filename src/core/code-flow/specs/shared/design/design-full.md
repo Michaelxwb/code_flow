@@ -148,6 +148,8 @@
 > **场景唯一源**：验收场景定义在 `<需求>.scenarios.md`。设计文档只引用全局场景 ID，并说明设计影响，不复制完整场景字段；优先级、执行方式、环境、输入等执行元数据以 scenarios 源为准；没有可执行命令的场景必须显式标为 aspirational；plan 阶段投影到 manifest check；测试层级（unit / component / contract / integration / system / capacity / E2E / manual）与关键真实边界定义在 scenarios 源中。
 >
 > **E2E 精度**：E2E 只用于 P0/P1 关键用户旅程，且必须有 `why_e2e`（低层测试为什么不够）、非 smoke 的 `trigger_paths`（哪些源码变化才触发）和可观察结果。UI 布局/文案/字段顺序用 component，DTO/错误码用 contract，鉴权/事务/模块边界用 integration；不要用 E2E 覆盖所有用户可见结果。
+>
+> ✅ CAS 409：contract 验响应、component 验表单保留、integration 用真实存储验并发；聚合补零与关系绑定同样优先采用相应低层组合。Cookie 隔离和 SSE 恢复保留必要的跨边界关键验证。❌ 设固定 E2E 数量或比例；比例和任务耗时仅作诊断，零 E2E 的完整覆盖合法。
 
 | 场景ID | 设计影响 / 备注 |
 |--------|----------------|

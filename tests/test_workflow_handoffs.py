@@ -157,12 +157,11 @@ def test_final_e2e_cli_requires_functional_evidence_and_promotes_only_on_success
     manifest = directory / ".acceptance-manifest.json"
     write_manifest(str(task), str(manifest))
     args = ("verify-e2e", "--task-dir", str(directory), "--json")
-    missing = _cli(root, "cf_task_workflow.py", *args)
-    assert json.loads(missing.stdout)["reason"] == "functional_or_manual_evidence_missing"
-    from cf_acceptance_runner import run_manifest
-    assert run_manifest(str(manifest), str(root), write_evidence=True)["decision"] == "pass"
     failed = _cli(root, "cf_task_workflow.py", *args)
     assert failed.returncode == 3, failed.stderr + failed.stdout
+    assert json.loads(failed.stdout)["reason"] == "e2e_failed"
+    scenarios = json.loads(manifest.read_text())["scenarios"]
+    assert all(row["status"] == "verified" for row in scenarios if row["kind"] == "functional")
     assert "**Status**: verified" not in task.read_text()
     (root / "ready").touch()
     passed = _cli(root, "cf_task_workflow.py", *args)

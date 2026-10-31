@@ -1,0 +1,376 @@
+{
+  "source": "code-flow-real-cli-synthetic-fixture",
+  "phase": "old",
+  "test_sha256": "abb5f2164a96ab8b6ba3f833bcf0be8b270993d99664a2eb50ebdb2995122eaf",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "python": "3.9.6 (default, Aug 25 2026, 21:26:21) \n[Clang 21.0.0 (clang-2100.3.34.2)]",
+  "limitations": [
+    "temporary fixture rather than real requirement",
+    "old version does not report total executed/reused"
+  ],
+  "runs": [
+    {
+      "mode": "missing",
+      "repeat": 1,
+      "argv": [
+        "node",
+        "/Users/jahan/workspace/code_flow/.code-flow/worktrees/verification-efficiency-code-flow-old/src/cli.js",
+        "task",
+        "archive",
+        "--root",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-3tob9slq",
+        "--task-dir",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-3tob9slq/.code-flow/tasks/demo",
+        "--json"
+      ],
+      "elapsed_ms": 115.899,
+      "exit_code": 3,
+      "result": {
+        "decision": "block",
+        "reason": "archive_verify_failed",
+        "verify": {
+          "decision": "block",
+          "reason": "functional_or_manual_evidence_missing",
+          "profile": "full",
+          "selected_layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "layers": {
+            "validators": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 0,
+              "reused": 1,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [],
+              "validation": {
+                "decision": "pass",
+                "reason": "",
+                "reused": 1,
+                "failures": []
+              }
+            },
+            "review": {
+              "decision": "pass",
+              "reason": "nothing_to_verify",
+              "executed": 0,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": []
+            },
+            "e2e": {
+              "decision": "block",
+              "reason": "functional_or_manual_evidence_missing",
+              "executed": 0,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [],
+              "scenarios": [
+                "S-01",
+                "S-02"
+              ]
+            }
+          },
+          "executed": 0,
+          "reused": 1,
+          "failed": [],
+          "env_blocked": 0,
+          "incomplete": 0,
+          "evidence": [],
+          "env_blocked_details": [],
+          "scenarios": [
+            "S-01",
+            "S-02"
+          ]
+        }
+      },
+      "check_count_before": [
+        1,
+        1
+      ],
+      "check_count_after": [
+        1,
+        1
+      ]
+    },
+    {
+      "mode": "missing",
+      "repeat": 2,
+      "argv": [
+        "node",
+        "/Users/jahan/workspace/code_flow/.code-flow/worktrees/verification-efficiency-code-flow-old/src/cli.js",
+        "task",
+        "archive",
+        "--root",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-mv149wdj",
+        "--task-dir",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-mv149wdj/.code-flow/tasks/demo",
+        "--json"
+      ],
+      "elapsed_ms": 131.738,
+      "exit_code": 3,
+      "result": {
+        "decision": "block",
+        "reason": "archive_verify_failed",
+        "verify": {
+          "decision": "block",
+          "reason": "functional_or_manual_evidence_missing",
+          "profile": "full",
+          "selected_layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "layers": {
+            "validators": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 0,
+              "reused": 1,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [],
+              "validation": {
+                "decision": "pass",
+                "reason": "",
+                "reused": 1,
+                "failures": []
+              }
+            },
+            "review": {
+              "decision": "pass",
+              "reason": "nothing_to_verify",
+              "executed": 0,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": []
+            },
+            "e2e": {
+              "decision": "block",
+              "reason": "functional_or_manual_evidence_missing",
+              "executed": 0,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [],
+              "scenarios": [
+                "S-01",
+                "S-02"
+              ]
+            }
+          },
+          "executed": 0,
+          "reused": 1,
+          "failed": [],
+          "env_blocked": 0,
+          "incomplete": 0,
+          "evidence": [],
+          "env_blocked_details": [],
+          "scenarios": [
+            "S-01",
+            "S-02"
+          ]
+        }
+      },
+      "check_count_before": [
+        1,
+        1
+      ],
+      "check_count_after": [
+        1,
+        1
+      ]
+    },
+    {
+      "mode": "missing",
+      "repeat": 3,
+      "argv": [
+        "node",
+        "/Users/jahan/workspace/code_flow/.code-flow/worktrees/verification-efficiency-code-flow-old/src/cli.js",
+        "task",
+        "archive",
+        "--root",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-rjpj1ouq",
+        "--task-dir",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-rjpj1ouq/.code-flow/tasks/demo",
+        "--json"
+      ],
+      "elapsed_ms": 138.209,
+      "exit_code": 3,
+      "result": {
+        "decision": "block",
+        "reason": "archive_verify_failed",
+        "verify": {
+          "decision": "block",
+          "reason": "functional_or_manual_evidence_missing",
+          "profile": "full",
+          "selected_layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "layers": {
+            "validators": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 0,
+              "reused": 1,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [],
+              "validation": {
+                "decision": "pass",
+                "reason": "",
+                "reused": 1,
+                "failures": []
+              }
+            },
+            "review": {
+              "decision": "pass",
+              "reason": "nothing_to_verify",
+              "executed": 0,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": []
+            },
+            "e2e": {
+              "decision": "block",
+              "reason": "functional_or_manual_evidence_missing",
+              "executed": 0,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [],
+              "scenarios": [
+                "S-01",
+                "S-02"
+              ]
+            }
+          },
+          "executed": 0,
+          "reused": 1,
+          "failed": [],
+          "env_blocked": 0,
+          "incomplete": 0,
+          "evidence": [],
+          "env_blocked_details": [],
+          "scenarios": [
+            "S-01",
+            "S-02"
+          ]
+        }
+      },
+      "check_count_before": [
+        1,
+        1
+      ],
+      "check_count_after": [
+        1,
+        1
+      ]
+    },
+    {
+      "mode": "reuse",
+      "repeat": 1,
+      "argv": [
+        "node",
+        "/Users/jahan/workspace/code_flow/.code-flow/worktrees/verification-efficiency-code-flow-old/src/cli.js",
+        "task",
+        "archive",
+        "--root",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-vgi4pn5r",
+        "--task-dir",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-vgi4pn5r/.code-flow/tasks/demo",
+        "--json"
+      ],
+      "elapsed_ms": 644.739,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "archived_to": "/private/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-vgi4pn5r/.code-flow/tasks/archived/2026-10-30/demo"
+      },
+      "check_count_before": [
+        1,
+        1
+      ],
+      "check_count_after": [
+        1,
+        1
+      ]
+    },
+    {
+      "mode": "reuse",
+      "repeat": 2,
+      "argv": [
+        "node",
+        "/Users/jahan/workspace/code_flow/.code-flow/worktrees/verification-efficiency-code-flow-old/src/cli.js",
+        "task",
+        "archive",
+        "--root",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-7hkbucxt",
+        "--task-dir",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-7hkbucxt/.code-flow/tasks/demo",
+        "--json"
+      ],
+      "elapsed_ms": 359.512,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "archived_to": "/private/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-7hkbucxt/.code-flow/tasks/archived/2026-10-30/demo"
+      },
+      "check_count_before": [
+        1,
+        1
+      ],
+      "check_count_after": [
+        1,
+        1
+      ]
+    },
+    {
+      "mode": "reuse",
+      "repeat": 3,
+      "argv": [
+        "node",
+        "/Users/jahan/workspace/code_flow/.code-flow/worktrees/verification-efficiency-code-flow-old/src/cli.js",
+        "task",
+        "archive",
+        "--root",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-a87d6z1v",
+        "--task-dir",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-a87d6z1v/.code-flow/tasks/demo",
+        "--json"
+      ],
+      "elapsed_ms": 386.824,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "archived_to": "/private/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-a87d6z1v/.code-flow/tasks/archived/2026-10-30/demo"
+      },
+      "check_count_before": [
+        1,
+        1
+      ],
+      "check_count_after": [
+        1,
+        1
+      ]
+    }
+  ]
+}

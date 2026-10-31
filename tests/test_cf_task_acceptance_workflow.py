@@ -69,14 +69,14 @@ def test_archive_blocks_traceability_gaps_and_cleans_empty_date_dir() -> None:
     for path in _task_docs("archive"):
         text = _read(path)
         for phrase in (
-            "执行四维校验",
+            "静态四维校验",
             "**验收追溯**",
             "layers.validators",
             "layers.e2e",
-            "check_results",
+            "逐 check 证据",
             "archived_to",
             "code-flow task archive",
-            "--verify-plan",
+            "archive 内置 full verify",
             "归档后统一收尾（布局 A/B 都必须执行）",
             'rmdir "$source_date_dir"',
             "如果源日期目录仍存在但为空，视为归档未完成",
@@ -143,7 +143,7 @@ def test_s_04_review_gate_blocks_archive_until_verification(tmp_path: Path) -> N
     """S-04: review 未验证时归档前置门禁阻断；verify-e2e 终验后放行。"""
     for path in _task_docs("archive"):
         text = _read(path)
-        assert "--stage review" in text, f"{path}: archive 缺少 review 门禁"
+        assert "archive 一次执行 required verifier" in text, f"{path}: archive 缺少需求级 verifier"
         assert "verify-e2e" in text, f"{path}: archive 缺少终验入口"
     for path in _task_docs("verify-e2e"):
         text = _read(path)

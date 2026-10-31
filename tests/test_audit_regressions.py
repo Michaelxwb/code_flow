@@ -189,14 +189,21 @@ def test_document_cache_invalidates_when_artifact_changes(tmp_path: Path) -> Non
 
 
 def test_duplicate_verifier_commands_run_once_per_gate(tmp_path: Path) -> None:
-    command = [sys.executable, "-c", "from pathlib import Path; p=Path('count'); p.write_text(p.read_text()+'x' if p.exists() else 'x')"]
+    root = tmp_path / "repo"
+    root.mkdir()
+    counter = tmp_path / "count"
+    command = [sys.executable, "-c", f"from pathlib import Path; p=Path({str(counter)!r}); p.write_text(p.read_text()+'x' if p.exists() else 'x')"]
     rules = [(f"RULE-verify-{i:03d}", "Same suite") for i in range(1, 4)]
-    metadata = _metadata(tmp_path, [{"rule": rule, "type": "test", "config": {"argv": command}} for rule, _ in rules], rules)
-    scope = VerificationScope(str(tmp_path), (), "a" * 64)
+    metadata = _metadata(root, [{"rule": rule, "type": "test", "config": {"argv": command}} for rule, _ in rules], rules)
+    for args in (("init", "-q"), ("config", "user.name", "Test"),
+                 ("config", "user.email", "test@example.invalid"), ("add", "."),
+                 ("commit", "-qm", "baseline")):
+        subprocess.run(("git", *args), cwd=root, check=True, capture_output=True)
+    scope = VerificationScope(str(root), (), "a" * 64)
     assert run_all_verifiers(metadata, scope).passed
-    assert (tmp_path / "count").read_text() == "x"
+    assert counter.read_text() == "x"
     assert run_all_verifiers(metadata, scope).passed
-    assert (tmp_path / "count").read_text() == "xx", "do not cache commands across runs"
+    assert counter.read_text() == "xx", "do not cache commands across runs"
 
 
 def test_oversized_acceptance_without_rules_reports_truncation(tmp_path: Path) -> None:

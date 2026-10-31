@@ -28,6 +28,8 @@ from codeflow.spec.cf_spec_resolver import resolve_candidates  # noqa: E402
 from cf_spec_session import context_sha256  # noqa: E402
 from codeflow.task.cf_task_runtime import run_done_gate  # noqa: E402
 from codeflow.spec.cf_workflow_service import complete_task, start_task  # noqa: E402
+from codeflow.cli.cf_task_workflow import finish_task  # noqa: E402
+from codeflow.task.cf_requirement_verification import verify_layers  # noqa: E402
 
 
 def _git(root: Path, *args: str) -> None:
@@ -112,8 +114,54 @@ def test_dual_task_mainline_start_commit_complete_switch_done(tmp_path: Path) ->
     version_b = injection_version(str(root), "s-main", started_b["context_sha256"])
     assert version_b != version_a, "切 TASK 必须产生新注入版本"
 
+    (root / "src" / "app.py").write_text("VALUE = 1\n# second task\n", encoding="utf-8")
     done_b = run_done_gate(str(root), str(task_dir), task_id="TASK-002")
     assert done_b.decision == "pass", done_b.message
     text = Path(work).read_text(encoding="utf-8")
     assert "S-01: verified" in text and "S-02: verified" in text
     assert validate_manifest(work, str(task_dir / ".acceptance-manifest.json")) == (True, "")
+
+
+def test_finish_reports_real_acceptance_work(tmp_path: Path) -> None:
+    root, task_dir = _repo(tmp_path)
+    work = str(task_dir / "work.md")
+    assert start_task(str(root), str(task_dir), work, "TASK-001", ())["ok"]
+    config_path = root / ".code-flow/config.yml"
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    config["quality_loop"] = {"enabled": True, "finish_check": True}
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    (root / ".code-flow/validation.yml").write_text(
+        f'validators:\n  - name: check\n    trigger: "*.py"\n    command: "{sys.executable} -c pass"\n    timeout: 30000\n',
+        encoding="utf-8")
+    (root / "src/app.py").write_text("VALUE = 1\n# changed\n", encoding="utf-8")
+    result = finish_task(str(root), str(task_dir), work, "TASK-001")
+    assert result["decision"] == "pass", result
+    assert result["verification"]["selection_reason"] == "profile_and_owner"
+    assert result["verification"]["timings"]["execution_ms"] > 0
+    assert set(result["verification"]["timings_scope"]) == {"acceptance", "spec", "validators"}
+    assert any(item.get("kind") == "spec_check" for item in result["verification"]["layers"])
+    assert result["verification"]["executed"] > 0
+    assert result["verification"]["execution_identities"]
+    assert "finish checks" in result["verification"]["summary"]
+    assert result["executed"] == result["verification"]["executed"]
+    assert result["timings"]["elapsed_ms"] >= 0
+    phases = [item["timings"] for item in result["verification"]["layers"] if item.get("kind") == "spec_phases"]
+    assert all(any(row.get(key, 0) > 0 for row in phases)
+               for key in ("planning_ms", "preflight_ms", "evidence_ms"))
+
+
+def test_review_reports_real_spec_execution(tmp_path: Path) -> None:
+    root, task_dir = _repo(tmp_path)
+    work = str(task_dir / "work.md")
+    assert start_task(str(root), str(task_dir), work, "TASK-001", ())["ok"]
+    (root / "src/app.py").write_text("VALUE = 1\n# changed\n", encoding="utf-8")
+    assert finish_task(str(root), str(task_dir), work, "TASK-001")["decision"] == "pass"
+    result = verify_layers(str(root), str(task_dir), layers="review", only_tasks=["TASK-001"])
+    assert result["decision"] == "pass", result
+    assert "spec" in result["timings_scope"]
+    assert result["timings"]["execution_ms"] >= 0
+    assert result["timings"]["planning_ms"] > 0
+    assert result["timings"]["preflight_ms"] > 0
+    assert result["timings"]["evidence_ms"] > 0
+    assert result["spec_checks"]
+    assert result["executed"] + result["reused"] == len(result["spec_checks"])

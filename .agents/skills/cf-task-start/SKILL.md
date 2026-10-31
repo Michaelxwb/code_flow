@@ -43,7 +43,7 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 - 旧 task 没有覆盖表但来源 design 含结构化验收场景时，先从 design 回填覆盖表与契约；回填完成前不得修改生产代码
 - 非行为类任务可显式写 `Acceptance-Refs: N/A`；不得用 N/A 跳过已有设计场景
 - E2E 必须已通过 plan 精度门禁：P0/P1、`why_e2e`、`boundary`、非 smoke 的 `trigger_paths` 缺一不可；`start` 会在 `e2e_plan.quality.ok=false` 时阻断，不要手工改 manifest 绕过
-- 有 canonical 场景源时，start 同时复核浏览器边界、expected_refs 和延后责任信息。沿用 plan 已登记的可收集测试骨架；按当前 TASK 补齐断言并执行 functional RED/GREEN，浏览器 E2E 留到需求终验运行。
+- 有 canonical 场景源时，start 同时复核浏览器边界、expected_refs 和延后责任信息。沿用 plan 已登记的可收集测试骨架；按当前 TASK 补齐断言并执行 functional RED/GREEN；关键 E2E 可在相关批次完成后验证，剩余缺口由需求终验核对。
 - 显式 `exec: deferred` 保留在 owned/smoke 提示中，但不进入 scheduled，也不在 Start 收集。旧锁文件缺少 `quality_schema: 2` 时保留原门禁并提示 `legacy_quality_schema`；按提示补字段、重锁和验证计划，不宣称新质量检查已通过。Done 阶段的显式延期场景允许 e2e_deferred，verified 仍须完整验收。
 
 ### 2. 加载详设上下文
@@ -68,9 +68,9 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 1. 调用 `code-flow task start --task-dir ... --root ... --task ... --task-file ... --json`，由单个进程按 refresh → active start → session 顺序执行 Start Gate；stdin JSON 的 `owned_paths` 只填启动前已存在的未提交改动（逐路径确认归属），不是计划要改的文件；干净工作区传空数组（提交后的改动由基线并集自动纳入）。stale/conflict、依赖未闭合、已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。前置硬门禁（blocked / #NOTES / 依赖）由 workflow service 在改状态前强制执行。用户已确认内容时，Design/Plan 的 pending 不单独阻止激活；不新增阶段状态门禁。
 2. 从命令返回值读取 refresh 后的 Context hash、active 状态和 session 输出路径；该命令只根据当前 TASK 的 `Spec-Refs`、Source 与 Acceptance Contract 覆盖写入 `.code-flow/specs/_session/task-<name>.md`，禁止重新 catalog 或猜测规则。
 3. Start 返回成功时，workflow service 已通过可恢复事务同步 Status、started log 和 active marker；不要再手动改状态。失败保留原状态，按返回原因恢复。
-4. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令（E2E 只登记，不在本阶段执行）
-5. 先编写验收测试（E2E 只编写并登记）。从 `start` 返回的 `e2e_plan` 读取范围：只编写 `owned` 中的 E2E；`smoke` 由需求级 verify 运行，不在本 TASK 重写；`deferred` 中的 E2E 不得顺手补。E2E 必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
-6. E2E 只断言用户可观察结果和真实链路；禁止断言源码字符串、CSS、组件宽度、字段顺序、文案顺序。UI 布局/交互细节应下沉到 component 测试。E2E 不执行 RED，登记为 e2e_deferred 留给 verify-e2e。新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因；纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败
+4. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令（E2E 先登记真实边界与执行方式）
+5. 先编写验收测试（E2E 编写并登记真实边界）。从 `start` 返回的 `e2e_plan` 读取范围：只编写 `owned` 中的 E2E；`smoke` 由相关批次或需求级 verify 运行，不在本 TASK 重写；`deferred` 中的 E2E 不得顺手补。E2E 必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
+6. E2E 只断言用户可观察结果和真实链路；禁止断言源码字符串、CSS、组件宽度、字段顺序、文案顺序。UI 布局/交互细节应下沉到 component 测试。关键 E2E 可随相关批次运行；未运行者登记为 e2e_deferred，终验检查剩余证据。新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因；纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败
 
 RED 证据写入 `Acceptance Evidence`：
 
@@ -88,7 +88,7 @@ RED 证据写入 `Acceptance Evidence`：
 
 ### 3.2 GREEN 与验收证据
 
-1. 执行 functional 验收和受影响范围的回归测试；E2E 只登记场景、断言、真实边界和命令，RED/GREEN 都不在编码阶段执行，统一留给 verify-e2e；manual 场景只登记 `manual_pending`（原因、边界、验收方式），人工确认统一留给 verify-e2e。
+1. 执行 functional 验收和受影响范围的回归测试；登记 E2E 场景、断言、真实边界和命令；按已就绪的相关批次运行关键 smoke，其余留作终验证据缺口；manual 场景只登记 `manual_pending`（原因、边界、验收方式），人工确认统一留给 verify-e2e。
 2. 对每个预期结果记录断言位置与 fixture/构造路径；环境未就绪的错误不得冒充有效 RED，明确记录尚未验证。
 3. 由 runner 写入最新状态和运行历史；不要覆盖原契约、RED 证据或历史失败。functional 必须 verified，已登记的 E2E 在实现阶段允许 e2e_deferred。
 4. 测试未收集、命令未实际执行或缺少关键断言，都不算验证完成。失败重跑必须使旧 verified 失效。
@@ -111,9 +111,11 @@ RED 证据写入 `Acceptance Evidence`：
 - 所有 checklist 项均为 `[x]`
 - functional 在契约、证据和覆盖表中均为 `verified`；E2E 可为 `e2e_deferred`，`manual` 场景与 review 层 manual 规则延后到需求级终验由用户确认，仍不得遗留未登记的 `planned` / `pending` / `TBD`
 - 测试层级未低于 design，关键真实边界没有被 mock 绕过
-- E2E 只登记了 `e2e_plan.owned`，没有把 `deferred` 场景补成本任务测试；新增 E2E 必须回到 plan 重新过质量门禁
-- 每个预期结果都有具体断言位置，functional 验收命令和回归测试均已实际通过；E2E 留到终验执行
+- E2E 按 `e2e_plan.owned` 登记，没有把 `deferred` 场景补成本任务测试；新增 E2E 必须回到 plan 重新过质量门禁
+- 每个预期结果都有具体断言位置，functional 验收命令和回归测试均已实际通过；相关批次关键 E2E 可先验证，终验补足证据缺口
 - 显式 `stage: code` 的 manual 规则已有用户确认和可复核记录；默认 review 层的 manual 规则与 manual 场景在 verify-e2e 一次性确认
+
+普通 task 完成后，相关批次可执行 `code-flow task verify --task-dir "<需求目录>" --tasks TASK-001 --layers validators,e2e --profile smoke --root "$PWD" --json`。只选择依赖已就绪的关联 smoke；`not_ready` 或失败保留真实状态，不阻断无关任务。不要将全域浏览器或容量检查作为每个普通 task 的默认工作。
 
 满足后，执行唯一收尾入口：
 
@@ -211,7 +213,7 @@ code-flow task parallel prepare --root "$PWD" \
 若当前平台提供子 agent/Task 派发能力，为本批次每个 TASK 各派发一个子 agent（同一批并发不超过 3，超出时按 TASK 顺序拆成多轮）。子 agent prompt 必须包含 worktree 绝对路径、TASK-ID、任务文件相对路径，并声明以下硬性要求：
 
 1. 进入 worktree：所有命令 `cd <worktree>` 执行，文件读写使用该 worktree 内路径。
-2. 按本命令"单任务模式"步骤 1-4 完成该 TASK：`code-flow task start` → functional RED → 实现 → functional GREEN（E2E 只登记）→ `code-flow task finish --root "<worktree>"`。
+2. 按本命令"单任务模式"步骤 1-4 完成该 TASK：`code-flow task start` → functional RED → 实现 → functional GREEN（E2E 按计划登记并在相关批次验证）→ `code-flow task finish --root "<worktree>"`。
 3. 平台 hook 注入绑定主工作区；子 agent 必须显式读取 Spec Session（路径取 start 返回的 `session_output`，默认 `.code-flow/specs/_session/task-<任务文件stem>.md`）与详设章节，不得依赖自动注入。
 4. 完成时在 worktree 内提交全部改动（含任务文件 Checklist/Evidence/Status 更新），提交信息 `cf-task(<TASK-ID>): <标题>`。
 5. `finish` 返回 `decision: block` 时不得提交：保留现场，原样回报阻断原因（如 scope expansion 新增 required Spec、验收失败）与 `code-flow spec status --json` 输出，由主 agent 决定局部 Plan/Align、修复后重派或接管；不得自行 resume 绕过门禁。
@@ -258,7 +260,7 @@ code-flow task parallel merge --root "$PWD" --run-id <run_id> --json
 - `code_conflict`：代码文件冲突无法程序化合并（返回冲突文件列表，rebase 已中止、主工作区未受影响）。人工读取冲突现场 + 本任务详设章节与 Acceptance Contract，合并双方意图（不是二选一）；无法调和（设计要求互斥）→ 保留现场与分支，列出矛盾点叫停交用户决策，不得擅自删除一方实现。解决后重跑 merge。
 - 状态文件冲突（任务 md 覆盖状态列 / `spec-context.yml` / `.acceptance-manifest.json`）由 merge 自动按确定性并集规则处理，无需手工编辑：覆盖状态列两边各自 verified 的行均保留；`spec-context.yml` 取证据并集、verified 优先；manifest 按 verified/revision 合并。
 - merge 成功后自动执行 `refresh` 并在结果中返回 `pass` / `block: ...`；随后重跑合并双方的 functional 验收与 `cf_spec_gate --stage code --json`，失败则记录合并前 HEAD 并 `git reset --hard <合并前HEAD>`（分支与 worktree 原样保留），回到 4.2 让对应子 agent 修复后重新 collect / merge。
-- E2E 验收留给 verify-e2e，不在本步骤执行。
+- merge 运行关联批次 smoke；其他 E2E 由需求终验按证据缺口补验。
 
 全部任务合并完成后进入 4.5 清理。
 
@@ -309,6 +311,7 @@ code-flow spec status --task-dir "<需求目录>" --root "$PWD" --json
 code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
 code-flow task start --task-dir "<需求目录>" --task-file "<任务文件>" --task TASK-001 --root "$PWD" --json
 code-flow task finish --task-dir "<需求目录>" --task TASK-001 --root "$PWD" --json
+code-flow task verify --task-dir "<需求目录>" --tasks TASK-001,TASK-002 --layers validators,e2e --profile smoke --root "$PWD" --json
 code-flow task parallel --help
 ```
 

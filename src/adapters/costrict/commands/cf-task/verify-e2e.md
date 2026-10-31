@@ -62,7 +62,7 @@ code-flow task verify \
   --layers validators,review,e2e --profile full --json
 ```
 
-日常增量验证使用 `--profile changed`，明确只跑 smoke 时使用 `--profile smoke`；不要把增量请求升级成全量。`code-flow task verify-e2e` 保留为默认全层 full 的兼容入口。仅检查代码时使用 `code-flow task verify --checks --task-dir "<需求目录>" --root "$PWD" --json`。
+相关批次使用 `code-flow task verify --tasks TASK-001,TASK-002 --layers validators,e2e --profile smoke`；部分通过仅表示所选范围通过，不提升整个需求。日常增量验证使用 `--profile changed`，明确只跑 smoke 时使用 `--profile smoke`；不要把增量请求升级成全量。`code-flow task verify-e2e` 保留为默认全层 full 的兼容入口。仅检查代码时使用 `code-flow task verify --checks --task-dir "<需求目录>" --root "$PWD" --json`。
 
 全量终验重新检查所有 TASK、锁定 manifest 与 functional/manual 最新证据，执行全量 validation（含 heavy）和 code+review verifier（含 deferred 项）。runner 按范围执行 acceptance：仅 E2E 的路径使用 `--only-e2e`，full 或 functional 证据过期时同时复验所需 functional。只有全层 full 通过才将任务提升为 verified；单层、changed、smoke 通过均不推进状态。不得手动改状态。
 
@@ -138,7 +138,7 @@ E2E 失败时：
 运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
 
 ```bash
-code-flow task verify --task-dir "<需求目录>" --layers validators,review,e2e --profile changed --root "$PWD" --json
+code-flow task verify --task-dir "<需求目录>" --tasks TASK-001,TASK-002 --layers validators,e2e --profile smoke --root "$PWD" --json
 code-flow task verify-e2e --task-dir "<需求目录>" --root "$PWD" --json
 code-flow task confirm-manual --help
 code-flow acceptance run --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --write-evidence

@@ -1114,6 +1114,7 @@ def test_task_flow_consistency(tmp_path: Path) -> None:
     assert start_data["active"]["task_id"] == "TASK-001"
     assert parse_task_document(work.read_text(encoding="utf-8")).tasks[0].status == "in-progress"
 
+    (root / "src/app.py").write_text("VALUE = 1\n# task change\n", encoding="utf-8")
     finished = _run_script(
         "cf_task_workflow.py", "finish",
         "--task-dir", str(task_dir), "--task", "TASK-001",

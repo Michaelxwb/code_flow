@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import tempfile
+from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "core", "code-flow", "scripts"))
 from codeflow.core import cf_log
@@ -72,6 +73,20 @@ def test_rotation_archives_and_read_spans_archive():
         # read spans archive + live (corrupt filler line skipped)
         files = [e["data"]["file"] for e in cf_log.read_events(root, events=("edit",))]
         assert files == ["old.py", "new.py"]
+
+
+def test_archive_window_includes_cutoff_month_at_month_end(tmp_path, monkeypatch):
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 10, 31, 16, 9, 39, tzinfo=tz)
+
+    monkeypatch.setattr(cf_log, "datetime", FixedDateTime)
+    assert cf_log.append_event(str(tmp_path), "edit", {"file": "old.py"}, "s1")
+    with open(cf_log.log_path(str(tmp_path)), "a", encoding="utf-8") as handle:
+        handle.write("x" * cf_log.MAX_BYTES + "\n")
+    assert cf_log.append_event(str(tmp_path), "edit", {"file": "new.py"}, "s1")
+    assert [item["data"]["file"] for item in cf_log.read_events(str(tmp_path))] == ["old.py", "new.py"]
 
 
 def test_append_unwritable_returns_false():

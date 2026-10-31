@@ -32,9 +32,10 @@ from codeflow.spec.cf_spec_resolver import resolve_candidates, SpecCandidate
 from codeflow.spec.cf_spec_context_model import context_sha256
 from codeflow.spec.cf_spec_verify import VerificationEvidence, VerificationScope, run_all_verifiers, store_verification_evidence
 from codeflow.core.cf_core import load_config, phase_timing, resolve_quality_loop
+from codeflow.core import cf_git
 from codeflow.acceptance.cf_acceptance_manifest_core import validate_execution_baseline
 from codeflow.acceptance.cf_acceptance_schema import load_manifest
-from codeflow.core.cf_exec_base import execution_session
+from codeflow.core.cf_exec_base import execution_session, record_report
 from codeflow.core.cf_validators import (
     PARSE_ERROR,
     VALID,
@@ -102,6 +103,13 @@ def _required_candidate(candidate: SpecCandidate) -> bool:
 
 def evaluate_scope(root: str, task_dir: str) -> ScopeResult:
     active = load_active_task(root)
+    if active.baseline.head:
+        try:
+            cf_git.run_git(root, ("rev-parse", "--verify", f"{active.baseline.head}^{{commit}}"))
+        except cf_git.GitError as exc:
+            return ScopeResult("pause", (), (), f"baseline_unavailable: {exc}")
+    else:
+        return ScopeResult("pause", (), (), "baseline_unavailable: missing task baseline")
     files = current_owned_paths(root, active)
     context = load_context(_context_path(task_dir))
     candidates = resolve_candidates(root, "code", files)
@@ -306,6 +314,7 @@ def _binding_deferrals(
 
 _NON_EXECUTION_ERRORS = frozenset((
     "skipped_in_cheap_gate",
+    "no_matching_files",
     "verifier_missing",
     "command_unavailable",
     "file_read_error",
@@ -420,6 +429,8 @@ def _run_finish_validation(root: str, files: tuple[str, ...]) -> tuple[str, int]
     quality = resolve_quality_loop(load_config(root))
     if not quality.get("finish_check"):
         return "", 0
+    if not files:
+        return "", 0
     include_heavy = bool(quality.get("heavy_at_finish"))
     try:
         config, effective = resolve_validators(root)
@@ -452,6 +463,57 @@ def _run_finish_validation(root: str, files: tuple[str, ...]) -> tuple[str, int]
     return f"finish validation failed{suffix}: {names}", deferred_heavy
 
 
+def _record_spec_phase(name: str, started: float) -> None:
+    record_report({"kind": "spec_phases", "timings": {name: (time.monotonic() - started) * 1000}})
+
+
+def _run_done_binding(binding: SpecBinding, scope: VerificationScope, task_dir: str, scope_specs: set[str],
+                      verifier_budget: float, run_started: float, deadline: Optional[float],
+                      cheap: bool) -> tuple[tuple[VerificationEvidence, ...], int, int, int]:
+    phase_started = time.monotonic()
+    metadata = load_spec_metadata(str(Path(scope.root) / ".code-flow/specs" / binding.path))
+    _record_spec_phase("planning_ms", phase_started)
+    deferred_review = sum(1 for rule in binding.rules if rule.verifier_stage == "review")
+    deferrals = {} if cheap else _binding_deferrals(binding, metadata, scope_specs, verifier_budget, run_started)
+    deferred_requirement = sum(1 for rule in binding.rules
+                               if deferrals.get(rule.ref) == "review_stage" and rule.enforcement == "required")
+    deferred_budget = sum(1 for rule in binding.rules
+                          if deferrals.get(rule.ref) == "budget" and rule.enforcement == "required")
+    confirmations = {rule.ref: value for rule in binding.rules
+                     if (value := _rule_manual_confirmation(rule)) is not None}
+    remaining = None if deadline is None else deadline - time.monotonic()
+    result = run_all_verifiers(metadata, scope, confirmations, cheap, remaining, stage="code", deferred=deferrals or None)
+    phase_timing(f"done.verify.{binding.spec_id}", phase_started)
+    evidence_started = time.monotonic()
+    try:
+        from codeflow.evidence.cf_evidence_store import requirement_key
+        store_verification_evidence(metadata, scope, result, requirement=requirement_key(Path(task_dir)))
+    except (OSError, ValueError) as exc:
+        sys.stderr.write(f"cf_task_runtime: evidence sidecar write failed: {exc}\n")
+    _record_spec_phase("evidence_ms", evidence_started)
+    return result.evidence, deferred_review, deferred_requirement, deferred_budget
+
+
+def _run_done_verifiers(context: SpecContext, scope: VerificationScope, task_dir: str, owner: str,
+                        deadline: Optional[float], cheap: bool) -> tuple[list[VerificationEvidence], int, int, int]:
+    quality = resolve_quality_loop(load_config(scope.root))
+    verifier_budget = float(quality.get("finish_verifier_budget", 300.0))
+    scope_specs = set() if cheap else task_spec_scope(scope.root, task_dir, owner, scope.files)
+    if not cheap and not scope_specs:
+        scope_specs = {binding.spec_id for binding in context.bindings}
+    run_started = time.monotonic()
+    evidence: list[VerificationEvidence] = []
+    review = requirement = budget = 0
+    for binding in context.bindings:
+        records, one_review, one_requirement, one_budget = _run_done_binding(
+            binding, scope, task_dir, scope_specs, verifier_budget, run_started, deadline, cheap)
+        evidence.extend(records)
+        review += one_review
+        requirement += one_requirement
+        budget += one_budget
+    return evidence, review, requirement, budget
+
+
 def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Optional[float] = None, include_e2e: bool = False, task_id: str = "") -> DoneResult:
     active = load_active_task(root)
     owner = task_id or active.task_id
@@ -460,12 +522,11 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
     started = time.monotonic()
     scope_result = evaluate_scope(root, task_dir)
     phase_timing("done.evaluate_scope", started)
+    _record_spec_phase("preflight_ms", started)
     if scope_result.decision == "pause":
         return DoneResult("block", scope_result.files, (), scope_result.message)
     deadline = started + budget if budget is not None else None
-    issue, acceptance_kind, env_details = _run_acceptance(
-        root, task_dir, owner, include_e2e, deadline, cheap
-    )
+    issue, acceptance_kind, env_details = _run_acceptance(root, task_dir, owner, include_e2e, deadline, cheap)
     if issue:
         decision = "provisional" if acceptance_kind in ("env_blocked", "incomplete") else "block"
         return DoneResult(decision, scope_result.files, (), issue,
@@ -474,55 +535,15 @@ def _run_done_gate(root: str, task_dir: str, cheap: bool = False, budget: Option
     context = load_context(_context_path(task_dir))
     diff_hash = _diff_hash(root, scope_result.files)
     phase_timing("done.load_context_and_diff", phase_started)
-    verifier_evidence: list[VerificationEvidence] = []
-    deferred_review = 0
-    deferred_requirement = 0
-    deferred_budget = 0
+    _record_spec_phase("planning_ms", phase_started)
     deferred_heavy = 0
-    quality = resolve_quality_loop(load_config(root))
-    verifier_budget = float(quality.get("finish_verifier_budget", 300.0))
-    scope_specs = set() if cheap else task_spec_scope(root, task_dir, owner, scope_result.files)
-    if not cheap and not scope_specs:
-        # 既无 Spec-Refs 也无路径命中（老任务/无改动可定位）：回退全量绑定，
-        # 避免把"定位不到"误当成"无需验证"。
-        scope_specs = {binding.spec_id for binding in context.bindings}
-    run_started = time.monotonic()
-    for binding in context.bindings:
-        phase_started = time.monotonic()
-        metadata = load_spec_metadata(str(Path(root) / ".code-flow/specs" / binding.path))
-        deferred_review += sum(1 for rule in binding.rules if rule.verifier_stage == "review")
-        deferrals = {} if cheap else _binding_deferrals(binding, metadata, scope_specs, verifier_budget, run_started)
-        deferred_requirement += sum(
-            1 for rule in binding.rules
-            if deferrals.get(rule.ref) == "review_stage" and rule.enforcement == "required"
-        )
-        deferred_budget += sum(
-            1 for rule in binding.rules
-            if deferrals.get(rule.ref) == "budget" and rule.enforcement == "required"
-        )
-        confirmations: dict[str, Mapping[str, object]] = {}
-        for rule in binding.rules:
-            confirmation = _rule_manual_confirmation(rule)
-            if confirmation is not None:
-                confirmations[rule.ref] = confirmation
-        remaining = None if budget is None else budget - (time.monotonic() - started)
-        result = run_all_verifiers(
-            metadata, VerificationScope(root, scope_result.files, diff_hash), confirmations, cheap, remaining,
-            stage="code", deferred=deferrals or None,
-        )
-        phase_timing(f"done.verify.{binding.spec_id}", phase_started)
-        try:
-            from codeflow.evidence.cf_evidence_store import requirement_key
-            store_verification_evidence(
-                metadata, VerificationScope(root, scope_result.files, diff_hash), result,
-                requirement=requirement_key(Path(task_dir)),
-            )
-        except (OSError, ValueError) as exc:
-            sys.stderr.write(f"cf_task_runtime: evidence sidecar write failed: {exc}\n")
-        verifier_evidence.extend(result.evidence)
+    verifier_evidence, deferred_review, deferred_requirement, deferred_budget = _run_done_verifiers(
+        context, VerificationScope(root, scope_result.files, diff_hash), task_dir, owner, deadline, cheap)
+    evidence_started = time.monotonic()
     updated, all_evidence = integrate_verification_evidence(context, verifier_evidence)
     if updated != context:
         save_context(_context_path(task_dir), updated)
+    _record_spec_phase("evidence_ms", evidence_started)
     gate = validate_stage(updated, "code", diff_sha256=diff_hash, allow_cheap_skips=cheap,
                           allow_deferred_skips=True)
     if gate.decision == "block" and not cheap:

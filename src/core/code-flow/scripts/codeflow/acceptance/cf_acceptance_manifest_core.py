@@ -239,9 +239,11 @@ def _manifest_hash(rows: list[dict[str, object]]) -> str:
         # Optional E2E precision fields are hashed only when present so old
         # manifests keep their historical baseline hash.
         for key in ("why_e2e", "trigger_paths", "smoke", "components", "steps", "expected",
-                    "expected_refs", "assertions", "preconditions", "defer_reason", "defer_owner", "target_phase", "features", "tags"):
+                    "expected_refs", "expected_checks", "assertions", "preconditions", "defer_reason", "defer_owner", "target_phase", "features", "tags"):
             if key in item:
                 entry[key] = item[key]
+        if "expected_checks" in item:
+            entry["checks"] = item.get("checks", [])
         immutable.append(entry)
     payload = json.dumps(immutable, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
@@ -364,7 +366,7 @@ def _derive_checks(rows: list[dict[str, object]]) -> list[dict[str, object]]:
 
 
 _SCENARIO_SOURCE_FIELDS = ("why_e2e", "trigger_paths", "smoke", "components", "steps", "expected", "assertions",
-                           "expected_refs", "preconditions", "defer_reason", "target_phase", "features", "tags")
+                           "expected_refs", "expected_checks", "checks", "preconditions", "defer_reason", "target_phase", "features", "tags")
 
 
 def _source_contract(scenarios_file: str,
@@ -420,7 +422,7 @@ def _merge_scenario_source(rows: list[dict[str, object]], scenarios_file: str,
         # Explicit false/empty values must be able to clear a stale table cell.
         for field in ("level", "priority", "boundary", "exec",
                       "why_e2e", "trigger_paths", "smoke", "env", "components", "steps", "expected",
-                      "expected_refs", "assertions", "preconditions", "defer_reason", "target_phase", "features", "tags"):
+                      "expected_refs", "expected_checks", "checks", "assertions", "preconditions", "defer_reason", "target_phase", "features", "tags"):
             if field in provided:
                 row[field] = scenario.get(field)
         if "owner" in provided:
@@ -519,7 +521,7 @@ def extract_manifest(task_file: str, kind_fn: Callable[[str], str] = kind,
 
 
 IMMUTABLE_SCENARIO_FIELDS = (
-    "id", "source", "level", "kind", "boundary", "owner", "command", "cwd", "timeout", "depends_on", "check",
+    "id", "source", "level", "kind", "boundary", "owner", "command", "cwd", "timeout", "depends_on", "check", "checks", "expected_checks",
     "priority", "exec", "env", "inputs", "why_e2e", "trigger_paths", "smoke",
     "components", "steps", "expected", "expected_refs", "assertions", "preconditions", "defer_reason", "defer_owner",
     "target_phase", "features", "tags",

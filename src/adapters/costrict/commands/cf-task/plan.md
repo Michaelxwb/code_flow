@@ -29,7 +29,7 @@ E2E 不是“用户可见结果”的默认测试层。plan 阶段必须按风�
 6. 不得断言源码字符串、CSS、组件宽度、字段顺序、文案顺序；这些属于 component/visual。
 7. 同一旅程只保留一条 E2E；重复旅程合并。
 
-`scenarios parse --quality` 和 `acceptance manifest --verify-plan` 会失败关闭。plan 摘要必须输出 E2E 数量、占比、smoke 数量和每条 E2E 的理由；数量不是目标，删除一条无法证明独特价值的 E2E 是正确结果。
+`scenarios parse --quality` 和 `acceptance manifest --verify-plan` 会失败关闭。plan 摘要必须输出 E2E 数量、占比、smoke 数量和每条 E2E 的理由；数量、比例和任务耗时只用于诊断，不设固定配额；零 E2E 且覆盖完整的计划合法。
 
 ### 可执行计划质量
 
@@ -311,7 +311,7 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 - [ ] 交付 `<Capability>`，并提供可重复的演示命令/操作（1-2 天可完成）
 - [ ] <具体实现步骤1>
 - [ ] <具体实现步骤2>
-- [ ] [S-01][E2E] 编写只覆盖关键旅程的 E2E，登记可单独执行的命令与触发路径（真实边界：浏览器 → API → Store → Renderer）；只断言用户可观察结果，不做源码/CSS/布局断言；不在编码期执行 RED/GREEN
+- [ ] [S-01][E2E] 编写只覆盖关键旅程的 E2E，登记可单独执行的命令与触发路径（真实边界：浏览器 → API → Store → Renderer）；只断言用户可观察结果，不做源码/CSS/布局断言；相关批次就绪后执行关键 smoke
 - [ ] [S-01] 断言 <最终可观测结果 1> 与 <最终可观测结果 2>
 - [ ] [E-01][integration] 覆盖 <异常输入> 与 <可观测失败行为>
 - [ ] 运行验收命令并填写 Acceptance Evidence
@@ -325,7 +325,7 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 
 ### Acceptance Evidence
 
-> `cf-task-start` 在编码期填写 functional 的 RED/GREEN 结果、每个关键断言的位置和真实组件证据；manual 场景只登记原因/边界/验收方式，人工确认与 E2E 执行统一留给 verify-e2e。全部 functional 状态 verified 后任务才可 done。全量套件/构建/E2E 类 verifier 建议显式标 `stage: review`，由需求终验统一执行；本任务 required code 检查因预算或环境未执行时，Done Gate 返回 `provisional`，补齐后重跑 finish，不能自动延后并标记 done。
+> `cf-task-start` 在编码期填写 functional 的 RED/GREEN 结果、每个关键断言的位置和真实组件证据；manual 场景登记原因/边界/验收方式并由用户确认；相关批次先验证已就绪的关键 smoke，需求终验补足剩余 E2E 证据。全部 functional 状态 verified 后任务才可 done。全量套件/构建/E2E 类 verifier 建议显式标 `stage: review`，由需求终验统一执行；本任务 required code 检查因预算或环境未执行时，Done Gate 返回 `provisional`，补齐后重跑 finish，不能自动延后并标记 done。
 
 ### Log
 - [<当前日期>] created (draft)

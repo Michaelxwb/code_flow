@@ -137,6 +137,9 @@ def _validate_scenario_metadata(scenario_id: str, item: Mapping[str, object]) ->
 
 
 def _validate_contract_metadata(scenario_id: str, item: Mapping[str, object]) -> None:
+    if "expected_checks" in item:
+        from codeflow.acceptance.cf_scenario_quality import validate_expected_checks
+        validate_expected_checks(item)
     for field in ("components", "steps", "expected", "assertions", "preconditions", "features", "tags"):
         if field in item and (not isinstance(item[field], list) or not all(isinstance(value, str) for value in item[field])):
             raise ValueError(f"invalid scenario {scenario_id}:{field}")
@@ -178,7 +181,20 @@ def validate_checks(value: object) -> list[dict[str, object]]:
     return value
 
 
+def validate_check_levels(scenarios: list[dict[str, object]], checks: list[dict[str, object]]) -> None:
+    """A mixed-level composition must declare every member's level."""
+    by_id = {str(check["id"]): check for check in checks}
+    for row in scenarios:
+        members = [by_id[check_id] for check_id in scenario_check_ids(row) if check_id in by_id]
+        levels = {str(check.get("level") or row.get("level") or "") for check in members}
+        if len(levels) > 1 and any("level" not in check for check in members):
+            raise ValueError(f"scenario {row.get('id')} mixed checks require explicit levels")
+
+
 def _validate_check_registration(check_id: str, item: Mapping[str, object]) -> None:
+    from codeflow.acceptance.cf_scenario_source import LEVELS
+    if "level" in item and (not isinstance(item["level"], str) or item["level"] not in LEVELS):
+        raise ValueError(f"invalid check {check_id}:level")
     if "suite" in item and item["suite"] not in ("unit", "component", "contract", "integration", "system", "browser", "capacity"):
         raise ValueError(f"invalid check {check_id}:suite")
     for field in ("test_ids", "markers"):
@@ -201,6 +217,13 @@ def _validate_check_environment(check_id: str, item: Mapping[str, object]) -> No
     env = item.get("env", "none")
     if not isinstance(env, str) or not env.strip():
         raise ValueError(f"invalid check {check_id}:env")
+    revision = item.get("environment_revision")
+    if revision is not None and (not isinstance(revision, str) or not revision.strip()):
+        raise ValueError(f"invalid check {check_id}:environment_revision")
+    ttl = item.get("evidence_ttl_seconds")
+    if ttl is not None and (isinstance(ttl, bool) or not isinstance(ttl, (int, float))
+                            or not math.isfinite(ttl) or ttl <= 0):
+        raise ValueError(f"invalid check {check_id}:evidence_ttl_seconds")
     scope = item.get("env_scope", "shared")
     if not isinstance(scope, str) or scope not in _ENV_SCOPES:
         raise ValueError(f"invalid check {check_id}:env_scope")
@@ -236,6 +259,7 @@ def load_manifest(path: Path, *, text: Optional[str] = None) -> dict[str, object
     validate_scenarios(data.get("scenarios"))
     if "checks" in data:
         validate_checks(data.get("checks"))
+        validate_check_levels(data["scenarios"], data["checks"])
     check_ids = {
         item.get("id") for item in data.get("checks", [])
         if isinstance(item, dict)

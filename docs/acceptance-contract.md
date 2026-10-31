@@ -165,7 +165,11 @@ code-flow task verify --task-dir "<需求目录>" --layers validators,review,e2e
 
 `--require-scenarios` 用于明确要求场景源；即使不传，`--verify-plan` 也始终检查 manifest 基线、场景语义、实际登记/收集、设计闭环和 plan Spec Gate。已有场景源会被自动发现。新锁文件声明 `quality_schema: 2`，start 复核当前质量和登记；旧锁文件缺少该版本时，start 保留原 E2E 门禁并输出 `legacy_quality_schema` 警告，提示补字段并重锁，不宣称新质量检查通过。
 
-显式 `exec: deferred` 的 E2E 保留在 owned/smoke 提示中，编码阶段不进入 scheduled，也不执行登记收集；完整 verify-plan 仍检查其质量和登记，需求终验再执行。Done 的 integration/system/capacity 延后场景也可保留 e2e_deferred；verified 必须闭环。并行批次只运行本批 TASK 的场景，需求终验继续覆盖整个需求。
+显式 `exec: deferred` 的 E2E 保留在 owned/smoke 提示中，编码阶段不进入 scheduled，也不执行登记收集；完整 verify-plan 仍检查其质量和登记，需求终验再执行。Done 的 integration/system/capacity 延后场景也可保留 e2e_deferred；verified 必须闭环。批次验证包含相关且已就绪的共享 smoke，即使其 owner 属于旧批次；需求终验继续覆盖整个需求。
+
+场景可用 `expected_checks: [{expected: 1, checks: ["CHK-contract", "CHK-component"]}]` 将每个 1-based 预期绑定到必要 check；所有成员均须通过。混合层级逐 check 声明 `level`，缺失映射或未知 check 阻断锁定；旧计划未声明字段时保留原有语义。重锁改变契约会保留历史并使旧证据失效。
+
+CAS 冲突可组合 contract、component 和真实存储 integration；聚合补零和关系绑定也优先用低层验证。Cookie 身份隔离、SSE 恢复可保留关键浏览器链路。E2E 数量、比例和耗时只作诊断，不设配额；设计评审判断独特故障、低层覆盖与剩余风险。相关已完成批次可用 `code-flow task verify --tasks TASK-001,TASK-002 --layers validators,e2e --profile smoke`；部分通过不等于需求终验。
 
 重锁按场景保存 status、revision、evidence、runs 和 stale_checks。场景契约或 check 配置变化时，保留历史并标为 stale；未变场景保留有效状态。CLI 的 relock 字段报告 preserved/stale/removed，旧锁文件损坏会给出 warnings。
 

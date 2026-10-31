@@ -6,7 +6,7 @@ import subprocess
 from typing import Callable, Mapping, Optional, Sequence
 
 from codeflow.acceptance.cf_acceptance_schema import scenario_check_ids
-from codeflow.acceptance.cf_check_inputs import match_path
+from codeflow.acceptance.cf_check_inputs import match_path, missing_input_patterns, repo_input_files
 
 
 def select_owned(items: list[Mapping[str, object]], owner: str) -> list[Mapping[str, object]]:
@@ -37,10 +37,11 @@ def select_owned(items: list[Mapping[str, object]], owner: str) -> list[Mapping[
 
 def changed_paths(root: str) -> set[str]:
     changed: set[str] = set()
-    for arguments in (("diff", "--name-only", "HEAD"), ("ls-files", "--others", "--exclude-standard")):
+    for arguments in (("diff", "--no-renames", "--name-only", "HEAD"), ("ls-files", "--others", "--exclude-standard")):
         completed = subprocess.run(("git", "-C", root, *arguments), text=True, capture_output=True, check=False)
-        if completed.returncode == 0:
-            changed.update(line.strip() for line in completed.stdout.splitlines() if line.strip())
+        if completed.returncode != 0:
+            return set()
+        changed.update(line.strip() for line in completed.stdout.splitlines() if line.strip())
     return changed
 
 
@@ -72,6 +73,7 @@ class _ScenarioFacts:
     path_matches: bool
     repo_scoped: bool
     inputs_match: bool
+    inputs_incomplete: bool
 
 
 _RuleTable = tuple[tuple[Callable[["_ProfileContext", "_ScenarioFacts"], bool],
@@ -99,7 +101,7 @@ _SMOKE_RULES: _RuleTable = (
 # without trigger paths belongs to the explicit smoke profile.
 _CHANGED_RULES: _RuleTable = (
     (lambda ctx, facts: facts.is_e2e and bool(facts.path_patterns),
-     lambda ctx, facts: not ctx.changed or facts.path_matches),
+     lambda ctx, facts: not ctx.changed or facts.path_matches or facts.inputs_incomplete or facts.inputs_match),
     (lambda ctx, facts: facts.is_e2e and facts.smoke,
      lambda ctx, facts: False),
     (lambda ctx, facts: True,
@@ -175,11 +177,13 @@ def _scenario_facts(ctx: _ProfileContext, scenario: Mapping[str, object]) -> _Sc
         path_patterns=path_patterns,
         path_matches=any(
             match_path(path, pattern) for pattern in path_patterns for path in ctx.changed),
-        repo_scoped=not check_ids or any(not value for value in inputs_by_check),
+        repo_scoped=not check_ids or any(not value for value in inputs_by_check)
+                    or any((check or {}).get("_inputs_incomplete") for check in scenario_checks),
         inputs_match=any(
             match_path(path, str(pattern))
             for value in inputs_by_check if isinstance(value, list)
             for pattern in value for path in ctx.changed),
+        inputs_incomplete=any((check or {}).get("_inputs_incomplete") for check in scenario_checks),
     )
 
 
@@ -247,8 +251,16 @@ def select_profile(data: Mapping[str, object], root: str, profile: str,
         for item in data.get("checks", []) or []
         if isinstance(item, Mapping) and isinstance(item.get("id"), str)
     }
+    files = repo_input_files(root)
+    missing = {key: missing_input_patterns(root, check.get("inputs", []), files)
+               for key, check in checks.items()}
+    checks = {key: {**check, "_inputs_incomplete": bool(missing[key])} for key, check in checks.items()}
     scenarios = [item for item in data.get("scenarios", []) or [] if isinstance(item, Mapping)]
     selected = select_scenarios(scenarios, checks, profile, changed_paths(root), force_ids)
-    return _profile_result(data, profile, selected)
+    result = _profile_result(data, profile, selected)
+    if profile == "changed" and any(missing.values()):
+        result["selection_reason"] = "incomplete_inputs_conservative"
+        result["missing_input_patterns"] = {key: value for key, value in missing.items() if value}
+    return result
 
 

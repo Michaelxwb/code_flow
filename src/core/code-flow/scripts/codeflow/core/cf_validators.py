@@ -25,7 +25,8 @@ from typing import Mapping, NamedTuple, Optional, Sequence
 
 from codeflow.core import cf_log
 from codeflow.core.cf_core import normalize_path
-from codeflow.core.cf_exec_base import build_argv, remaining_seconds, run_command, worktree_fingerprint
+from codeflow.core.cf_exec_base import (build_argv, record_report, redact_sensitive_text, report_requested,
+                                        remaining_seconds, run_command, worktree_fingerprint)
 
 MISSING = "missing"
 EMPTY = "empty"
@@ -194,36 +195,40 @@ def _tool_missing(detail: str) -> bool:
 
 
 def _validator_result(root: str, validator: Mapping[str, object], argv: list, sid: str,
-                      deadline: Optional[float], strict: bool) -> tuple[list, bool]:
+                      deadline: Optional[float], strict: bool,
+                      timings: Optional[dict[str, float]] = None) -> tuple[list, bool, bool]:
     try:
         timeout = float(validator.get("timeout", 30000)) / 1000.0
     except (ValueError, TypeError):
         if strict:
-            return [_validator_failure(validator, "invalid validator timeout")], False
+            return [_validator_failure(validator, "invalid validator timeout")], False, False
         timeout = 30.0
     if not math.isfinite(timeout) or timeout <= 0:
-        return [_validator_failure(validator, "invalid validator timeout")], False
+        return [_validator_failure(validator, "invalid validator timeout")], False, False
     outcome = run_command(argv, root, timeout, deadline)
+    if timings is not None:
+        timings["execution_ms"] += float(outcome.get("execution_ms", 0))
+    reused = bool(outcome.get("execution_reused"))
     passed = outcome["status"] == "ok" and outcome["returncode"] == 0
     if outcome["status"] == "deadline_exceeded":
-        return [_validator_failure(validator, "预算耗尽未执行", True)], True
+        return [_validator_failure(validator, "预算耗尽未执行", True)], True, reused
     timed_out = outcome["status"] == "timeout"
     detail = (f"超时（>{timeout:.0f}s），未完成" if timed_out else
               (str(outcome.get("stdout", "")) + str(outcome.get("stderr", ""))).strip()[-400:])
     if outcome["status"] == "spawn_error":
         if validator.get("skip_if_missing") is True:
             cf_log.degrade(root, "stop_check", f"{validator.get('name')}:tool_missing", sid)
-            return [], False
+            return [], False, reused
         cf_log.degrade(root, "stop_check", f"{validator.get('name')}:{outcome['stderr']}", sid)
         if not strict:
-            return [], False
+            return [], False, reused
     elif not passed and not timed_out and validator.get("skip_if_missing") is True and _tool_missing(detail):
         cf_log.degrade(root, "stop_check", f"{validator.get('name')}:tool_missing", sid)
-        return [], False
+        return [], False, reused
     cf_log.append_event(root, "stop_check",
                         {"trigger": validator.get("trigger", ""),
-                         "cmd": str(validator.get("command", ""))[:120], "passed": passed}, sid)
-    return ([] if passed else [_validator_failure(validator, detail)]), timed_out
+                         "cmd": Path(argv[0]).name, "passed": passed}, sid)
+    return ([] if passed else [_validator_failure(validator, redact_sensitive_text(detail))]), timed_out, reused
 
 
 def _tree_fingerprint(project_root: str, validators: Sequence[object]) -> str:
@@ -272,9 +277,25 @@ def _cache_key(argv: Sequence[str]) -> str:
     return hashlib.sha256(json.dumps({"argv": list(argv)}, ensure_ascii=False).encode()).hexdigest()
 
 
+def _execution_observation(root: str, validator: Mapping[str, object], argv: Sequence[str],
+                           fingerprint: str, entry: object) -> dict[str, str]:
+    """Describe this execution without exposing commands or environment values."""
+    payload = {"argv": list(argv), "cwd": str(Path(root).resolve()), "validator": dict(validator),
+               "environment": dict(os.environ), "input_fingerprint": fingerprint}
+    identity = hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False,
+                                        default=str).encode()).hexdigest()
+    prior = entry.get("fingerprint") if isinstance(entry, dict) else None
+    previous_identity = entry.get("execution_identity") if isinstance(entry, dict) else None
+    category = ("unproven" if not fingerprint else "no_baseline" if prior is None else
+                "worktree_changed" if prior != fingerprint else
+                "execution_context_changed" if previous_identity != identity else "unchanged")
+    return {"identity": identity, "input_change_category": category}
+
+
 def _run_one(project_root: str, validator: object, files: Sequence[str], sid: str,
              deadline: Optional[float], strict: bool, fingerprint: str,
-             cache_data: dict, dirty: list[bool]) -> ValidatorRun:
+             cache_data: dict, dirty: list[bool], timings: Optional[dict[str, float]] = None,
+             observations: Optional[list[dict[str, str]]] = None) -> ValidatorRun:
     if not isinstance(validator, Mapping):
         failures = [_validator_failure({}, "invalid validator record")] if strict else []
         return ValidatorRun(failures, False, 0)
@@ -291,19 +312,23 @@ def _run_one(project_root: str, validator: object, files: Sequence[str], sid: st
     if not argv:
         return ValidatorRun([], False, 0)
     key = _cache_key(argv)
+    entry = cache_data.get(key)
+    observation = _execution_observation(project_root, validator, argv, fingerprint, entry)
+    if observations is not None:
+        observations.append(observation)
     if fingerprint:
-        entry = cache_data.get(key)
-        if isinstance(entry, dict) and entry.get("fingerprint") == fingerprint:
+        if (isinstance(entry, dict) and entry.get("fingerprint") == fingerprint
+                and entry.get("execution_identity") == observation["identity"]):
             return ValidatorRun([], False, 1)
-    errors, incomplete = _validator_result(project_root, validator, argv, sid, deadline, strict)
+    errors, incomplete, reused = _validator_result(project_root, validator, argv, sid, deadline, strict, timings)
     if fingerprint and not errors and not incomplete:
         cache_data[key] = {
             "fingerprint": fingerprint,
             "at": datetime.now(timezone.utc).isoformat(),
-            "command": str(validator.get("command", ""))[:200],
         }
+        cache_data[key]["execution_identity"] = observation["identity"]
         dirty[0] = True
-    return ValidatorRun(errors, incomplete, 0)
+    return ValidatorRun(errors, incomplete, int(reused))
 
 
 def run_validators(
@@ -315,6 +340,8 @@ def run_validators(
     *,
     strict: bool = False,
     cache: bool = True,
+    timings: Optional[dict[str, float]] = None,
+    observations: Optional[list[dict[str, str]]] = None,
 ) -> ValidatorRun:
     """Match validators, execute argv under one deadline, report unrun work.
 
@@ -323,18 +350,34 @@ def run_validators(
     truncated, reused).
     """
     validators = list(config.validators)
+    if report_requested():
+        if timings is None:
+            timings = {"planning_ms": 0.0, "preflight_ms": 0.0, "execution_ms": 0.0, "evidence_ms": 0.0}
+        if observations is None:
+            observations = []
+    started = time.monotonic()
     fingerprint = _tree_fingerprint(project_root, validators) if cache and validators else ""
     cache_data = _load_validation_cache(project_root) if fingerprint else {}
+    if timings is not None:
+        timings["preflight_ms"] += (time.monotonic() - started) * 1000
     dirty = [False]
     failures: list[dict[str, object]] = []
     truncated = False
     reused = 0
     for validator in validators:
         outcome = _run_one(project_root, validator, files, sid, deadline, strict,
-                           fingerprint, cache_data, dirty)
+                           fingerprint, cache_data, dirty, timings, observations)
         failures.extend(outcome.failures)
         truncated = truncated or outcome.truncated
         reused += outcome.reused
     if dirty[0]:
+        started = time.monotonic()
         _save_validation_cache(project_root, cache_data)
+        if timings is not None:
+            timings["evidence_ms"] += (time.monotonic() - started) * 1000
+    if report_requested():
+        record_report({"kind": "validators", "scope": {"files": list(files)}, "timings": dict(timings or {}),
+                       "execution_identities": [item["identity"] for item in observations or []],
+                       "input_change_category": [item["input_change_category"] for item in observations or []],
+                       "reused": reused, "selected": len(observations or [])})
     return ValidatorRun(failures, truncated, reused)

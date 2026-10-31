@@ -97,11 +97,19 @@ def check_input_hash(root: str, check: Mapping[str, object],
 
 
 def _registered_fallback(check: Mapping[str, object], fallback: str) -> str:
-    registration = {key: check[key] for key in ("suite", "test_ids", "markers", "collect") if key in check}
+    registration = {key: check[key] for key in ("suite", "test_ids", "markers", "collect", "level", "environment_revision", "evidence_ttl_seconds") if key in check}
     if not fallback or not registration:
         return fallback
     payload = json.dumps([fallback, registration], sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def missing_input_patterns(root: str, patterns: Sequence[str], files: Sequence[str]) -> list[str]:
+    """Report patterns with no present file; deleted and unknown inputs are unsafe."""
+    base = Path(root)
+    return [pattern for pattern in patterns if not any(
+        match_path(path, pattern) and (base / path).is_file() for path in files
+    )]
 
 
 def check_input_hashes(root: str, checks: Mapping[str, Mapping[str, object]],
@@ -112,11 +120,14 @@ def check_input_hashes(root: str, checks: Mapping[str, Mapping[str, object]],
         value = check.get("inputs")
         patterns_by_check[check_id] = [str(item) for item in value] if isinstance(value, list) else []
     all_patterns = sorted({pattern for values in patterns_by_check.values() for pattern in values})
-    repo_files = _repo_files(root) if all_patterns else ()
+    repo_files = repo_input_files(root) if all_patterns else ()
     matched: dict[str, list[str]] = {}
+    missing: dict[str, list[str]] = {}
     union: set[str] = set()
     for check_id, patterns in patterns_by_check.items():
-        files = [path for path in repo_files if any(match_path(path, pattern) for pattern in patterns)]
+        missing[check_id] = missing_input_patterns(root, patterns, repo_files)
+        files = [path for path in repo_files if (Path(root) / path).is_file()
+                 and any(match_path(path, pattern) for pattern in patterns)]
         matched[check_id] = files
         union.update(files)
     hashed = hash_files(root, sorted(union))
@@ -125,6 +136,10 @@ def check_input_hashes(root: str, checks: Mapping[str, Mapping[str, object]],
         bound_fallback = _registered_fallback(checks[check_id], fallback)
         if not patterns:
             result[check_id] = {"input_hash": bound_fallback, "scope": "repo"}
+            continue
+        if missing[check_id]:
+            result[check_id] = {"input_hash": bound_fallback, "scope": "incomplete",
+                                "missing_patterns": missing[check_id]}
             continue
         if not matched[check_id]:
             result[check_id] = {"input_hash": bound_fallback, "scope": "empty"}
@@ -137,7 +152,7 @@ def check_input_hashes(root: str, checks: Mapping[str, Mapping[str, object]],
             key: check.get(key) for key in
             ("command", "cwd", "timeout", "env", "env_scope", "preflight", "parallel_safe", "profile")
         }
-        identity.update({key: check[key] for key in ("suite", "test_ids", "markers", "collect") if key in check})
+        identity.update({key: check[key] for key in ("suite", "test_ids", "markers", "collect", "level", "environment_revision", "evidence_ttl_seconds") if key in check})
         payload = json.dumps(
             [identity, sorted((path, hashed[path]) for path in matched[check_id])],
             ensure_ascii=False, sort_keys=True,
@@ -149,7 +164,7 @@ def check_input_hashes(root: str, checks: Mapping[str, Mapping[str, object]],
     return result
 
 
-def _repo_files(root: str) -> tuple[str, ...]:
+def repo_input_files(root: str) -> tuple[str, ...]:
     tracked = _git(root, "ls-files")
     untracked = _git(root, "ls-files", "--others", "--exclude-standard")
     if tracked is None or untracked is None:

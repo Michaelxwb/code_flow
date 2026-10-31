@@ -97,7 +97,7 @@
       "prefix": [
         "verify"
       ],
-      "example_args": "--task-dir \"<需求目录>\" --layers validators,review,e2e --profile changed --root \"$PWD\" --json"
+      "example_args": "--task-dir \"<需求目录>\" --tasks TASK-001,TASK-002 --layers validators,e2e --profile smoke --root \"$PWD\" --json"
     },
     "task verify-e2e": {
       "module": "cf_task_workflow",

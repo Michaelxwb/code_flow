@@ -118,7 +118,7 @@ def _candidate_files(project_root: str, days: int) -> list:
             except ValueError:
                 continue
             # keep a month if any part of it can fall inside the window
-            if month_start >= cutoff.replace(day=1):
+            if month_start >= cutoff.replace(day=1, hour=0, minute=0, second=0, microsecond=0):
                 month_dir = os.path.join(base, month)
                 paths.extend(
                     os.path.join(month_dir, name)

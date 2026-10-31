@@ -24,7 +24,10 @@ def test_verified_pure_result_is_persisted_and_reused(tmp_path: Path, monkeypatc
         [{"rule": "RULE-verify-001", "type": "regex", "config": {"pattern": "print\\(", "files": "src/*.py"}}],
         [("RULE-verify-001", "No print calls")],
     )
-    scope = VerificationScope(str(tmp_path), (), "a" * 64)
+    source = tmp_path / "src/app.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("VALUE = 1\n", encoding="utf-8")
+    scope = VerificationScope(str(tmp_path), ("src/app.py",), "a" * 64)
     from codeflow.spec import cf_spec_verify
 
     calls = 0
@@ -54,6 +57,28 @@ def test_command_result_is_not_cached(tmp_path: Path) -> None:
     assert run_all_verifiers(metadata, scope).passed
     assert run_all_verifiers(metadata, scope).passed
     assert marker.read_text(encoding="utf-8") == "xx"
+
+
+def test_session_reuse_does_not_count_as_spec_execution_time(tmp_path: Path) -> None:
+    from codeflow.core.cf_exec_base import execution_session, report_session, run_command
+
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "config", "user.email", "t@t"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "config", "user.name", "t"], check=True)
+    (tmp_path / ".gitignore").write_text("runs.txt\n.code-flow/\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", ".gitignore"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "commit", "-qm", "baseline"], check=True)
+    marker = tmp_path / "runs.txt"
+    command = [sys.executable, "-c", "from pathlib import Path; Path('runs.txt').write_text('x')"]
+    metadata = _metadata(tmp_path, [{"rule": "RULE-verify-001", "type": "test",
+                                     "config": {"argv": command}}], [("RULE-verify-001", "Rule 1")])
+    scope = VerificationScope(str(tmp_path), (), "a" * 64)
+    with report_session() as reports, execution_session():
+        assert run_command(command, str(tmp_path), 30)["returncode"] == 0
+        assert run_all_verifiers(metadata, scope).passed
+    spec = next(item for item in reports if item.get("kind") == "spec_check")
+    assert spec["reused"] == 1 and spec["execution_ms"] == 0
+    assert marker.read_text(encoding="utf-8") == "x"
 
 
 def _metadata(tmp_path: Path, verifiers: list[dict[str, object]], rules: list[tuple[str, str]]):

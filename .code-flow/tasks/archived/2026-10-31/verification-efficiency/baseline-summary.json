@@ -1,0 +1,58 @@
+{
+  "cold": {
+    "samples": 3,
+    "median_elapsed_ms": 52.43979199999998,
+    "executed": [
+      1,
+      1,
+      1
+    ],
+    "reused": [
+      0,
+      0,
+      0
+    ]
+  },
+  "unchanged": {
+    "samples": 3,
+    "median_elapsed_ms": 32.91824999999998,
+    "executed": [
+      0,
+      0,
+      0
+    ],
+    "reused": [
+      1,
+      1,
+      1
+    ]
+  },
+  "unrelated": {
+    "samples": 3,
+    "median_elapsed_ms": 60.80170800000004,
+    "executed": [
+      1,
+      1,
+      1
+    ],
+    "reused": [
+      0,
+      0,
+      0
+    ]
+  },
+  "shared_dependency": {
+    "samples": 3,
+    "median_elapsed_ms": 53.17612500000002,
+    "executed": [
+      1,
+      1,
+      1
+    ],
+    "reused": [
+      0,
+      0,
+      0
+    ]
+  }
+}

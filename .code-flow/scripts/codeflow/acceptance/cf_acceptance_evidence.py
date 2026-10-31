@@ -140,6 +140,7 @@ def _run_record(row: Mapping[str, object], result: Mapping[str, object], run_id:
         "status": _EVIDENCE_STATUS[state],
         "executed_at": executed_at,
         "source": str(result.get("source") or "local"),
+        "environment_hash": str(result.get("environment_hash") or ""),
         "commit": commit,
         "run_url": str(result.get("run_url") or ""),
     }
@@ -227,6 +228,7 @@ def _restore_checkpoint(row: dict[str, object], result: Mapping[str, object], ru
             record[key] = result[key]
     row["status"] = "verified"
     row.pop("stale_checks", None)
+    row.pop("stale_reason", None)
     return record, "verified"
 
 
@@ -249,6 +251,7 @@ def _record_result(row: dict[str, object], result: Mapping[str, object], run_key
     status = "verified" if state == "passed" else state
     row["status"] = status
     row.pop("stale_checks", None)
+    row.pop("stale_reason", None)
     record = {**result, "revision": row["revision"], "run_id": run_key, "executed_at": executed_at}
     # Identity for cross-run reuse checks: command/cwd/timeout + content
     # fingerprint of the worktree the command actually ran against.

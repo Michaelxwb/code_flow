@@ -168,7 +168,7 @@ def test_opencode_core_task_workflow_has_all_context_gates() -> None:
         "align": ("refresh --task-dir", "Design Gate"),
         "plan": ("--stage plan --artifact", "Context Plan"),
         "start": ("code-flow task start", "Context hash"),
-        "archive": ("code-flow spec gate", "spec-context.yml"),
+        "archive": ("code-flow task archive", "spec-context.yml"),
     }
     for command, required in phrases.items():
         text = _read(f"src/adapters/opencode/commands/cf-task/{command}.md")

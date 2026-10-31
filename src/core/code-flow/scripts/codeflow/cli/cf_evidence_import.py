@@ -33,7 +33,8 @@ from codeflow.acceptance.cf_acceptance_evidence import persist_results
 from codeflow.acceptance.cf_acceptance_schema import load_manifest, scenario_check_ids
 from codeflow.acceptance.cf_check_inputs import check_input_hashes
 from codeflow.evidence.cf_evidence_store import EvidenceStoreError, discover_project_root
-from codeflow.core.cf_exec_base import worktree_fingerprint
+from codeflow.core.cf_exec_base import execution_environment_hash, worktree_fingerprint
+from codeflow.core.cf_worktree_env import check_environment
 
 MANIFEST_NAME = ".acceptance-manifest.json"
 FORMATS = ("junit", "playwright")
@@ -546,6 +547,12 @@ def import_report(
     results = _scenario_results(
         data, outcomes, commit=head, run_url=url, fmt=fmt, report_sha256=digest
     )
+    for result in results:
+        for check_id, outcome in result.get("check_results", {}).items():
+            check = checks[check_id]
+            outcome["environment_hash"] = execution_environment_hash(check_environment(check, str(project)))
+        if len(result.get("check_results", {})) == 1:
+            result["environment_hash"] = next(iter(result["check_results"].values()))["environment_hash"]
     _attach_check_hashes(data, results, check_hashes, fingerprint)
     if not results:
         raise EvidenceImportError("check_without_scenarios", "check", "report checks have no scenario")

@@ -527,8 +527,8 @@ def test_plan_templates_document_coverage_command_column() -> None:
         assert "argv JSON" in text, rel
 
 
-def test_archive_templates_document_working_verify_plan_command() -> None:
-    """archive 模板的 verify-plan 调用必须带 --task-dir（照抄可执行）。"""
+def test_archive_templates_document_single_verification_entry() -> None:
+    """归档通过唯一运行时入口执行完整验证，不重复调度计划检查。"""
     root = Path(__file__).resolve().parents[1]
     templates = (
         "src/adapters/claude/commands/cf-task/archive.md",
@@ -538,5 +538,5 @@ def test_archive_templates_document_working_verify_plan_command() -> None:
     )
     for rel in templates:
         text = (root / rel).read_text(encoding="utf-8")
-        assert "--verify-plan --task-dir" in text, rel
-        assert "--output \"<需求目录>/.acceptance-manifest.json\" --verify-plan" not in text, rel
+        assert 'code-flow task archive --task-dir "<需求目录>" --root "$PWD" --json' in text, rel
+        assert "archive 内置 full verify" in text, rel

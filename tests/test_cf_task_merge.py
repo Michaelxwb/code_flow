@@ -555,10 +555,15 @@ def test_merge_invalidates_only_changed_check_and_preserves_history(tmp_path: Pa
     task.write_text(task.read_text().replace("print('ok')", "pass", 1))
     data = write_manifest(str(task), str(path))
     a_id, b_id = [row["check"] for row in data["scenarios"]]
+    source = task.with_suffix(".scenarios.md")
+    source.write_text(yaml.safe_dump({"schema": 1, "scenarios": [{
+        "id": "S-01", "level": "integration", "expected": ["both checks pass"],
+        "checks": [a_id, b_id],
+        "expected_checks": [{"expected": 1, "checks": [a_id, b_id]}],
+    }]}), encoding="utf-8")
+    data = write_manifest(str(task), str(path), str(source))
     for check in data["checks"]:
         check["inputs"] = ["a.py" if check["id"] == a_id else "b.py"]
-    data["scenarios"][0]["checks"] = [a_id, b_id]
-    data["scenarios"][1]["checks"] = [b_id]
     path.write_text(json.dumps(data))
     _commit(root, "check inputs")
     assert run_manifest(str(path), str(root), write_evidence=True)["decision"] == "pass"

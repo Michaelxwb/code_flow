@@ -176,6 +176,7 @@ def test_layers_cli_runs_only_requested_e2e(tmp_path: Path) -> None:
 def test_layers_keep_independent_results_after_layer_failure(tmp_path: Path) -> None:
     """某层失败不影响其他层：validators 失败仍返回 e2e 层结果并执行 E2E。"""
     fixture = _requirement(tmp_path, validator_exit=1)
+    (fixture["root"] / "src/app.py").write_text("VALUE = 2\n", encoding="utf-8")
 
     completed = _cli(fixture, "verify", "--task-dir", str(fixture["req"]),
                      "--layers", "validators,e2e", "--json")
@@ -260,6 +261,7 @@ def test_empty_noop_manifest_without_e2e_scenarios(tmp_path: Path) -> None:
 def test_checks_flag_runs_validators_only_as_cf_validate_alias(tmp_path: Path) -> None:
     """[S-11] `task verify --checks` 是 cf-validate 的 0.8 等价入口，只跑 validators。"""
     fixture = _requirement(tmp_path)
+    (fixture["root"] / "src/app.py").write_text("VALUE = 2\n", encoding="utf-8")
 
     completed = _cli(fixture, "verify", "--task-dir", str(fixture["req"]), "--checks", "--json")
 

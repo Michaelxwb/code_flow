@@ -108,6 +108,7 @@ def test_collect_honors_done_gate_deferrals_with_real_acceptance_proof(tmp_path:
     root, demand = _repo(tmp_path)
     task = demand / "work.md"
     assert start_task(str(root), str(demand), str(task), "TASK-001", ())["ok"]
+    (root / "src/app.py").write_text("VALUE = 1\n# task change\n", encoding="utf-8")
     finished = finish_task(str(root), str(demand), str(task), "TASK-001")
     assert finished["decision"] == "pass", finished
     context = load_context(str(demand / "spec-context.yml"))

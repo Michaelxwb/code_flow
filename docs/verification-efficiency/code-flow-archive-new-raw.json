@@ -1,0 +1,2578 @@
+{
+  "source": "code-flow-real-cli-synthetic-fixture",
+  "phase": "new",
+  "test_sha256": "abb5f2164a96ab8b6ba3f833bcf0be8b270993d99664a2eb50ebdb2995122eaf",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "python": "3.9.6 (default, Aug 25 2026, 21:26:21) \n[Clang 21.0.0 (clang-2100.3.34.2)]",
+  "limitations": [
+    "temporary fixture rather than real requirement",
+    "old version does not report total executed/reused"
+  ],
+  "runs": [
+    {
+      "mode": "missing",
+      "repeat": 1,
+      "argv": [
+        "node",
+        "/Users/jahan/workspace/code_flow/src/cli.js",
+        "task",
+        "archive",
+        "--root",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-imql698i",
+        "--task-dir",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-imql698i/.code-flow/tasks/demo",
+        "--json"
+      ],
+      "elapsed_ms": 498.134,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "archived_to": "/private/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-imql698i/.code-flow/tasks/archived/2026-10-30/demo",
+        "verify": {
+          "decision": "pass",
+          "reason": "",
+          "profile": "full",
+          "selected_layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "layers": {
+            "validators": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 1,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [],
+              "validation": {
+                "decision": "pass",
+                "reason": "",
+                "reused": 0,
+                "failures": [],
+                "files": [
+                  ".gitignore",
+                  "AGENTS.md",
+                  "a.py",
+                  "b.py"
+                ],
+                "timings": {
+                  "planning_ms": 1.0137499999999937,
+                  "preflight_ms": 15.944792,
+                  "execution_ms": 20.312791999999995,
+                  "evidence_ms": 0.12920799999999177,
+                  "elapsed_ms": 59.999792
+                },
+                "observations": [
+                  {
+                    "identity": "f03058d1908f138e00424d5b78f6ea96a17e6b87df50d2971c85f1375c5eeec5",
+                    "input_change_category": "execution_context_changed"
+                  }
+                ]
+              }
+            },
+            "review": {
+              "decision": "pass",
+              "reason": "nothing_to_verify",
+              "executed": 0,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": []
+            },
+            "e2e": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 2,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [
+                {
+                  "check_id": "S-01",
+                  "status": "passed"
+                },
+                {
+                  "check_id": "S-02",
+                  "status": "passed"
+                }
+              ],
+              "acceptance": {
+                "decision": "pass",
+                "results": [
+                  {
+                    "id": "S-01",
+                    "kind": "functional",
+                    "status": "passed",
+                    "exit_code": 0,
+                    "execution_ms": 14.298915999999995,
+                    "check_id": "CHK-5db56516d7a7",
+                    "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                    "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                    "check_config": {
+                      "id": "CHK-5db56516d7a7",
+                      "command": [
+                        "/Library/Developer/CommandLineTools/usr/bin/python3",
+                        "-c",
+                        "from pathlib import Path; p=Path('.code-flow/a.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('a.py').read_text().strip() == 'value = 1'"
+                      ],
+                      "cwd": ".",
+                      "timeout": 60.0,
+                      "env": "none",
+                      "env_scope": "shared",
+                      "parallel_safe": false,
+                      "profile": "changed",
+                      "inputs": [
+                        "a.py"
+                      ],
+                      "preflight": [],
+                      "paths": []
+                    }
+                  },
+                  {
+                    "id": "S-02",
+                    "kind": "functional",
+                    "status": "passed",
+                    "exit_code": 0,
+                    "execution_ms": 14.21508299999996,
+                    "check_id": "CHK-197bcd8a3f40",
+                    "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                    "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                    "check_config": {
+                      "id": "CHK-197bcd8a3f40",
+                      "command": [
+                        "/Library/Developer/CommandLineTools/usr/bin/python3",
+                        "-c",
+                        "from pathlib import Path; p=Path('.code-flow/b.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('b.py').read_text().strip() == 'value = 1'"
+                      ],
+                      "cwd": ".",
+                      "timeout": 60.0,
+                      "env": "none",
+                      "env_scope": "shared",
+                      "parallel_safe": false,
+                      "profile": "changed",
+                      "inputs": [
+                        "b.py"
+                      ],
+                      "preflight": [],
+                      "paths": []
+                    }
+                  }
+                ],
+                "executed": 2,
+                "reused": 0,
+                "incomplete": 0,
+                "failed": [],
+                "checks": [
+                  {
+                    "id": "CHK-5db56516d7a7",
+                    "status": "passed",
+                    "scenarios": [
+                      "S-01"
+                    ],
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                    "input_scope": "inputs"
+                  },
+                  {
+                    "id": "CHK-197bcd8a3f40",
+                    "status": "passed",
+                    "scenarios": [
+                      "S-02"
+                    ],
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                    "input_scope": "inputs"
+                  }
+                ],
+                "env_blocked": 0,
+                "selection_reason": "profile_and_owner",
+                "scope": {
+                  "profile": "full",
+                  "owner": "TASK-001"
+                },
+                "reuse_reason": "no_reused_results",
+                "summary": "acceptance: executed 2, reused 0",
+                "execution_identities": [
+                  "8307e4b9a4a6a0a2836e55d46a32cbfbfa1ed56ca3b1f6d3c335068b103accd9",
+                  "bffeef4898b9a2a1654c5af87fc913c2c6dc7bb07a93fd91be9ac2339fb08c98"
+                ],
+                "selected_check_ids": [
+                  "CHK-197bcd8a3f40",
+                  "CHK-5db56516d7a7"
+                ],
+                "timings": {
+                  "planning_ms": 0.6360410000000039,
+                  "preflight_ms": 67.784084,
+                  "execution_ms": 28.513998999999956,
+                  "evidence_ms": 105.04308300000004,
+                  "elapsed_ms": 217.335125
+                },
+                "input_change_category": {
+                  "CHK-197bcd8a3f40": "no_baseline",
+                  "CHK-5db56516d7a7": "no_baseline"
+                }
+              },
+              "results": [
+                {
+                  "id": "S-01",
+                  "kind": "functional",
+                  "status": "passed",
+                  "exit_code": 0,
+                  "execution_ms": 14.298915999999995,
+                  "check_id": "CHK-5db56516d7a7",
+                  "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                  "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                  "check_config": {
+                    "id": "CHK-5db56516d7a7",
+                    "command": [
+                      "/Library/Developer/CommandLineTools/usr/bin/python3",
+                      "-c",
+                      "from pathlib import Path; p=Path('.code-flow/a.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('a.py').read_text().strip() == 'value = 1'"
+                    ],
+                    "cwd": ".",
+                    "timeout": 60.0,
+                    "env": "none",
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "profile": "changed",
+                    "inputs": [
+                      "a.py"
+                    ],
+                    "preflight": [],
+                    "paths": []
+                  }
+                },
+                {
+                  "id": "S-02",
+                  "kind": "functional",
+                  "status": "passed",
+                  "exit_code": 0,
+                  "execution_ms": 14.21508299999996,
+                  "check_id": "CHK-197bcd8a3f40",
+                  "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                  "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                  "check_config": {
+                    "id": "CHK-197bcd8a3f40",
+                    "command": [
+                      "/Library/Developer/CommandLineTools/usr/bin/python3",
+                      "-c",
+                      "from pathlib import Path; p=Path('.code-flow/b.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('b.py').read_text().strip() == 'value = 1'"
+                    ],
+                    "cwd": ".",
+                    "timeout": 60.0,
+                    "env": "none",
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "profile": "changed",
+                    "inputs": [
+                      "b.py"
+                    ],
+                    "preflight": [],
+                    "paths": []
+                  }
+                }
+              ],
+              "checks": [
+                {
+                  "id": "CHK-5db56516d7a7",
+                  "status": "passed",
+                  "scenarios": [
+                    "S-01"
+                  ],
+                  "env_scope": "shared",
+                  "parallel_safe": false,
+                  "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                  "input_scope": "inputs"
+                },
+                {
+                  "id": "CHK-197bcd8a3f40",
+                  "status": "passed",
+                  "scenarios": [
+                    "S-02"
+                  ],
+                  "env_scope": "shared",
+                  "parallel_safe": false,
+                  "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                  "input_scope": "inputs"
+                }
+              ]
+            }
+          },
+          "executed": 3,
+          "reused": 0,
+          "failed": [],
+          "env_blocked": 0,
+          "incomplete": 0,
+          "evidence": [
+            {
+              "layer": "e2e",
+              "check_id": "S-01",
+              "status": "passed"
+            },
+            {
+              "layer": "e2e",
+              "check_id": "S-02",
+              "status": "passed"
+            }
+          ],
+          "env_blocked_details": [],
+          "scope": {
+            "layers": [
+              "validators",
+              "review",
+              "e2e"
+            ],
+            "files": [
+              ".gitignore",
+              "AGENTS.md",
+              "a.py",
+              "b.py"
+            ]
+          },
+          "selection_reason": "multiple_layer_policies",
+          "reuse_reason": "no_reused_results",
+          "execution_identities": [
+            "f03058d1908f138e00424d5b78f6ea96a17e6b87df50d2971c85f1375c5eeec5",
+            "8307e4b9a4a6a0a2836e55d46a32cbfbfa1ed56ca3b1f6d3c335068b103accd9",
+            "bffeef4898b9a2a1654c5af87fc913c2c6dc7bb07a93fd91be9ac2339fb08c98"
+          ],
+          "input_change_category": [
+            "execution_context_changed",
+            "no_baseline"
+          ],
+          "summary": "validators: executed 1, reused 0; acceptance: executed 2, reused 0",
+          "timings": {
+            "planning_ms": 1.6497909999999976,
+            "preflight_ms": 83.72887599999999,
+            "execution_ms": 48.82679099999995,
+            "evidence_ms": 105.17229100000003,
+            "elapsed_ms": 323.971708
+          },
+          "timings_scope": [
+            "validators",
+            "e2e"
+          ],
+          "selection_reasons": {
+            "e2e": "profile_and_owner",
+            "validators": "validator_trigger_matches_selected_files"
+          },
+          "selected_check_ids": [
+            "CHK-197bcd8a3f40",
+            "CHK-5db56516d7a7"
+          ],
+          "input_change_categories": {
+            "validators": [
+              "execution_context_changed"
+            ],
+            "e2e": {
+              "CHK-197bcd8a3f40": "no_baseline",
+              "CHK-5db56516d7a7": "no_baseline"
+            }
+          }
+        },
+        "selection_reason": "multiple_layer_policies",
+        "selection_reasons": {
+          "e2e": "profile_and_owner",
+          "validators": "validator_trigger_matches_selected_files"
+        },
+        "reuse_reason": "no_reused_results",
+        "scope": {
+          "layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "files": [
+            ".gitignore",
+            "AGENTS.md",
+            "a.py",
+            "b.py"
+          ]
+        },
+        "summary": "validators: executed 1, reused 0; acceptance: executed 2, reused 0",
+        "executed": 3,
+        "reused": 0,
+        "execution_identities": [
+          "f03058d1908f138e00424d5b78f6ea96a17e6b87df50d2971c85f1375c5eeec5",
+          "8307e4b9a4a6a0a2836e55d46a32cbfbfa1ed56ca3b1f6d3c335068b103accd9",
+          "bffeef4898b9a2a1654c5af87fc913c2c6dc7bb07a93fd91be9ac2339fb08c98"
+        ],
+        "input_change_category": [
+          "execution_context_changed",
+          "no_baseline"
+        ],
+        "input_change_categories": {
+          "validators": [
+            "execution_context_changed"
+          ],
+          "e2e": {
+            "CHK-197bcd8a3f40": "no_baseline",
+            "CHK-5db56516d7a7": "no_baseline"
+          }
+        },
+        "timings_scope": [
+          "validators",
+          "e2e"
+        ],
+        "timings": {
+          "planning_ms": 1.6497909999999976,
+          "preflight_ms": 83.72887599999999,
+          "execution_ms": 48.82679099999995,
+          "evidence_ms": 105.17229100000003,
+          "elapsed_ms": 405.896625
+        }
+      },
+      "check_count_before": [
+        2,
+        2
+      ],
+      "check_count_after": [
+        3,
+        3
+      ]
+    },
+    {
+      "mode": "missing",
+      "repeat": 2,
+      "argv": [
+        "node",
+        "/Users/jahan/workspace/code_flow/src/cli.js",
+        "task",
+        "archive",
+        "--root",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-_rnfnhs5",
+        "--task-dir",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-_rnfnhs5/.code-flow/tasks/demo",
+        "--json"
+      ],
+      "elapsed_ms": 493.39,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "archived_to": "/private/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-_rnfnhs5/.code-flow/tasks/archived/2026-10-30/demo",
+        "verify": {
+          "decision": "pass",
+          "reason": "",
+          "profile": "full",
+          "selected_layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "layers": {
+            "validators": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 1,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [],
+              "validation": {
+                "decision": "pass",
+                "reason": "",
+                "reused": 0,
+                "failures": [],
+                "files": [
+                  ".gitignore",
+                  "AGENTS.md",
+                  "a.py",
+                  "b.py"
+                ],
+                "timings": {
+                  "planning_ms": 1.0078749999999914,
+                  "preflight_ms": 15.743332999999998,
+                  "execution_ms": 20.61129099999999,
+                  "evidence_ms": 0.11549999999999061,
+                  "elapsed_ms": 61.411792000000005
+                },
+                "observations": [
+                  {
+                    "identity": "d954b2354b1ed5035fb0b7ed6d4e5cc82d713e1d660ab8a8725af8604119633e",
+                    "input_change_category": "execution_context_changed"
+                  }
+                ]
+              }
+            },
+            "review": {
+              "decision": "pass",
+              "reason": "nothing_to_verify",
+              "executed": 0,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": []
+            },
+            "e2e": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 2,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [
+                {
+                  "check_id": "S-01",
+                  "status": "passed"
+                },
+                {
+                  "check_id": "S-02",
+                  "status": "passed"
+                }
+              ],
+              "acceptance": {
+                "decision": "pass",
+                "results": [
+                  {
+                    "id": "S-01",
+                    "kind": "functional",
+                    "status": "passed",
+                    "exit_code": 0,
+                    "execution_ms": 14.674707999999981,
+                    "check_id": "CHK-5db56516d7a7",
+                    "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                    "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                    "check_config": {
+                      "id": "CHK-5db56516d7a7",
+                      "command": [
+                        "/Library/Developer/CommandLineTools/usr/bin/python3",
+                        "-c",
+                        "from pathlib import Path; p=Path('.code-flow/a.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('a.py').read_text().strip() == 'value = 1'"
+                      ],
+                      "cwd": ".",
+                      "timeout": 60.0,
+                      "env": "none",
+                      "env_scope": "shared",
+                      "parallel_safe": false,
+                      "profile": "changed",
+                      "inputs": [
+                        "a.py"
+                      ],
+                      "preflight": [],
+                      "paths": []
+                    }
+                  },
+                  {
+                    "id": "S-02",
+                    "kind": "functional",
+                    "status": "passed",
+                    "exit_code": 0,
+                    "execution_ms": 14.149000000000022,
+                    "check_id": "CHK-197bcd8a3f40",
+                    "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                    "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                    "check_config": {
+                      "id": "CHK-197bcd8a3f40",
+                      "command": [
+                        "/Library/Developer/CommandLineTools/usr/bin/python3",
+                        "-c",
+                        "from pathlib import Path; p=Path('.code-flow/b.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('b.py').read_text().strip() == 'value = 1'"
+                      ],
+                      "cwd": ".",
+                      "timeout": 60.0,
+                      "env": "none",
+                      "env_scope": "shared",
+                      "parallel_safe": false,
+                      "profile": "changed",
+                      "inputs": [
+                        "b.py"
+                      ],
+                      "preflight": [],
+                      "paths": []
+                    }
+                  }
+                ],
+                "executed": 2,
+                "reused": 0,
+                "incomplete": 0,
+                "failed": [],
+                "checks": [
+                  {
+                    "id": "CHK-5db56516d7a7",
+                    "status": "passed",
+                    "scenarios": [
+                      "S-01"
+                    ],
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                    "input_scope": "inputs"
+                  },
+                  {
+                    "id": "CHK-197bcd8a3f40",
+                    "status": "passed",
+                    "scenarios": [
+                      "S-02"
+                    ],
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                    "input_scope": "inputs"
+                  }
+                ],
+                "env_blocked": 0,
+                "selection_reason": "profile_and_owner",
+                "scope": {
+                  "profile": "full",
+                  "owner": "TASK-001"
+                },
+                "reuse_reason": "no_reused_results",
+                "summary": "acceptance: executed 2, reused 0",
+                "execution_identities": [
+                  "b0d1e1c2d3a4809717b002b221361fa9f1eb6f5f860a786e73d978a9fe4ccad6",
+                  "236aa985036ef494b2a16694ea7664dac95f4585779ceb692876f8ec76105fae"
+                ],
+                "selected_check_ids": [
+                  "CHK-197bcd8a3f40",
+                  "CHK-5db56516d7a7"
+                ],
+                "timings": {
+                  "planning_ms": 0.6539999999999879,
+                  "preflight_ms": 70.54725,
+                  "execution_ms": 28.823708000000003,
+                  "evidence_ms": 97.12683300000002,
+                  "elapsed_ms": 213.87895799999998
+                },
+                "input_change_category": {
+                  "CHK-197bcd8a3f40": "no_baseline",
+                  "CHK-5db56516d7a7": "no_baseline"
+                }
+              },
+              "results": [
+                {
+                  "id": "S-01",
+                  "kind": "functional",
+                  "status": "passed",
+                  "exit_code": 0,
+                  "execution_ms": 14.674707999999981,
+                  "check_id": "CHK-5db56516d7a7",
+                  "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                  "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                  "check_config": {
+                    "id": "CHK-5db56516d7a7",
+                    "command": [
+                      "/Library/Developer/CommandLineTools/usr/bin/python3",
+                      "-c",
+                      "from pathlib import Path; p=Path('.code-flow/a.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('a.py').read_text().strip() == 'value = 1'"
+                    ],
+                    "cwd": ".",
+                    "timeout": 60.0,
+                    "env": "none",
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "profile": "changed",
+                    "inputs": [
+                      "a.py"
+                    ],
+                    "preflight": [],
+                    "paths": []
+                  }
+                },
+                {
+                  "id": "S-02",
+                  "kind": "functional",
+                  "status": "passed",
+                  "exit_code": 0,
+                  "execution_ms": 14.149000000000022,
+                  "check_id": "CHK-197bcd8a3f40",
+                  "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                  "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                  "check_config": {
+                    "id": "CHK-197bcd8a3f40",
+                    "command": [
+                      "/Library/Developer/CommandLineTools/usr/bin/python3",
+                      "-c",
+                      "from pathlib import Path; p=Path('.code-flow/b.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('b.py').read_text().strip() == 'value = 1'"
+                    ],
+                    "cwd": ".",
+                    "timeout": 60.0,
+                    "env": "none",
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "profile": "changed",
+                    "inputs": [
+                      "b.py"
+                    ],
+                    "preflight": [],
+                    "paths": []
+                  }
+                }
+              ],
+              "checks": [
+                {
+                  "id": "CHK-5db56516d7a7",
+                  "status": "passed",
+                  "scenarios": [
+                    "S-01"
+                  ],
+                  "env_scope": "shared",
+                  "parallel_safe": false,
+                  "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                  "input_scope": "inputs"
+                },
+                {
+                  "id": "CHK-197bcd8a3f40",
+                  "status": "passed",
+                  "scenarios": [
+                    "S-02"
+                  ],
+                  "env_scope": "shared",
+                  "parallel_safe": false,
+                  "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                  "input_scope": "inputs"
+                }
+              ]
+            }
+          },
+          "executed": 3,
+          "reused": 0,
+          "failed": [],
+          "env_blocked": 0,
+          "incomplete": 0,
+          "evidence": [
+            {
+              "layer": "e2e",
+              "check_id": "S-01",
+              "status": "passed"
+            },
+            {
+              "layer": "e2e",
+              "check_id": "S-02",
+              "status": "passed"
+            }
+          ],
+          "env_blocked_details": [],
+          "scope": {
+            "layers": [
+              "validators",
+              "review",
+              "e2e"
+            ],
+            "files": [
+              ".gitignore",
+              "AGENTS.md",
+              "a.py",
+              "b.py"
+            ]
+          },
+          "selection_reason": "multiple_layer_policies",
+          "reuse_reason": "no_reused_results",
+          "execution_identities": [
+            "d954b2354b1ed5035fb0b7ed6d4e5cc82d713e1d660ab8a8725af8604119633e",
+            "b0d1e1c2d3a4809717b002b221361fa9f1eb6f5f860a786e73d978a9fe4ccad6",
+            "236aa985036ef494b2a16694ea7664dac95f4585779ceb692876f8ec76105fae"
+          ],
+          "input_change_category": [
+            "execution_context_changed",
+            "no_baseline"
+          ],
+          "summary": "validators: executed 1, reused 0; acceptance: executed 2, reused 0",
+          "timings": {
+            "planning_ms": 1.6618749999999793,
+            "preflight_ms": 86.290583,
+            "execution_ms": 49.43499899999999,
+            "evidence_ms": 97.24233300000002,
+            "elapsed_ms": 321.472542
+          },
+          "timings_scope": [
+            "validators",
+            "e2e"
+          ],
+          "selection_reasons": {
+            "e2e": "profile_and_owner",
+            "validators": "validator_trigger_matches_selected_files"
+          },
+          "selected_check_ids": [
+            "CHK-197bcd8a3f40",
+            "CHK-5db56516d7a7"
+          ],
+          "input_change_categories": {
+            "validators": [
+              "execution_context_changed"
+            ],
+            "e2e": {
+              "CHK-197bcd8a3f40": "no_baseline",
+              "CHK-5db56516d7a7": "no_baseline"
+            }
+          }
+        },
+        "selection_reason": "multiple_layer_policies",
+        "selection_reasons": {
+          "e2e": "profile_and_owner",
+          "validators": "validator_trigger_matches_selected_files"
+        },
+        "reuse_reason": "no_reused_results",
+        "scope": {
+          "layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "files": [
+            ".gitignore",
+            "AGENTS.md",
+            "a.py",
+            "b.py"
+          ]
+        },
+        "summary": "validators: executed 1, reused 0; acceptance: executed 2, reused 0",
+        "executed": 3,
+        "reused": 0,
+        "execution_identities": [
+          "d954b2354b1ed5035fb0b7ed6d4e5cc82d713e1d660ab8a8725af8604119633e",
+          "b0d1e1c2d3a4809717b002b221361fa9f1eb6f5f860a786e73d978a9fe4ccad6",
+          "236aa985036ef494b2a16694ea7664dac95f4585779ceb692876f8ec76105fae"
+        ],
+        "input_change_category": [
+          "execution_context_changed",
+          "no_baseline"
+        ],
+        "input_change_categories": {
+          "validators": [
+            "execution_context_changed"
+          ],
+          "e2e": {
+            "CHK-197bcd8a3f40": "no_baseline",
+            "CHK-5db56516d7a7": "no_baseline"
+          }
+        },
+        "timings_scope": [
+          "validators",
+          "e2e"
+        ],
+        "timings": {
+          "planning_ms": 1.6618749999999793,
+          "preflight_ms": 86.290583,
+          "execution_ms": 49.43499899999999,
+          "evidence_ms": 97.24233300000002,
+          "elapsed_ms": 401.33983300000006
+        }
+      },
+      "check_count_before": [
+        2,
+        2
+      ],
+      "check_count_after": [
+        3,
+        3
+      ]
+    },
+    {
+      "mode": "missing",
+      "repeat": 3,
+      "argv": [
+        "node",
+        "/Users/jahan/workspace/code_flow/src/cli.js",
+        "task",
+        "archive",
+        "--root",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-9h595006",
+        "--task-dir",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-9h595006/.code-flow/tasks/demo",
+        "--json"
+      ],
+      "elapsed_ms": 487.573,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "archived_to": "/private/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-9h595006/.code-flow/tasks/archived/2026-10-30/demo",
+        "verify": {
+          "decision": "pass",
+          "reason": "",
+          "profile": "full",
+          "selected_layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "layers": {
+            "validators": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 1,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [],
+              "validation": {
+                "decision": "pass",
+                "reason": "",
+                "reused": 0,
+                "failures": [],
+                "files": [
+                  ".gitignore",
+                  "AGENTS.md",
+                  "a.py",
+                  "b.py"
+                ],
+                "timings": {
+                  "planning_ms": 1.032832999999997,
+                  "preflight_ms": 15.832917000000002,
+                  "execution_ms": 19.987832999999995,
+                  "evidence_ms": 0.11795800000000134,
+                  "elapsed_ms": 59.95966700000001
+                },
+                "observations": [
+                  {
+                    "identity": "8a684d63738dfb964a5c41ded82a23d227b10c7ca392c5f931cdba09560d241b",
+                    "input_change_category": "execution_context_changed"
+                  }
+                ]
+              }
+            },
+            "review": {
+              "decision": "pass",
+              "reason": "nothing_to_verify",
+              "executed": 0,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": []
+            },
+            "e2e": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 2,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [
+                {
+                  "check_id": "S-01",
+                  "status": "passed"
+                },
+                {
+                  "check_id": "S-02",
+                  "status": "passed"
+                }
+              ],
+              "acceptance": {
+                "decision": "pass",
+                "results": [
+                  {
+                    "id": "S-01",
+                    "kind": "functional",
+                    "status": "passed",
+                    "exit_code": 0,
+                    "execution_ms": 14.274625000000013,
+                    "check_id": "CHK-5db56516d7a7",
+                    "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                    "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                    "check_config": {
+                      "id": "CHK-5db56516d7a7",
+                      "command": [
+                        "/Library/Developer/CommandLineTools/usr/bin/python3",
+                        "-c",
+                        "from pathlib import Path; p=Path('.code-flow/a.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('a.py').read_text().strip() == 'value = 1'"
+                      ],
+                      "cwd": ".",
+                      "timeout": 60.0,
+                      "env": "none",
+                      "env_scope": "shared",
+                      "parallel_safe": false,
+                      "profile": "changed",
+                      "inputs": [
+                        "a.py"
+                      ],
+                      "preflight": [],
+                      "paths": []
+                    }
+                  },
+                  {
+                    "id": "S-02",
+                    "kind": "functional",
+                    "status": "passed",
+                    "exit_code": 0,
+                    "execution_ms": 14.40454200000002,
+                    "check_id": "CHK-197bcd8a3f40",
+                    "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                    "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                    "check_config": {
+                      "id": "CHK-197bcd8a3f40",
+                      "command": [
+                        "/Library/Developer/CommandLineTools/usr/bin/python3",
+                        "-c",
+                        "from pathlib import Path; p=Path('.code-flow/b.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('b.py').read_text().strip() == 'value = 1'"
+                      ],
+                      "cwd": ".",
+                      "timeout": 60.0,
+                      "env": "none",
+                      "env_scope": "shared",
+                      "parallel_safe": false,
+                      "profile": "changed",
+                      "inputs": [
+                        "b.py"
+                      ],
+                      "preflight": [],
+                      "paths": []
+                    }
+                  }
+                ],
+                "executed": 2,
+                "reused": 0,
+                "incomplete": 0,
+                "failed": [],
+                "checks": [
+                  {
+                    "id": "CHK-5db56516d7a7",
+                    "status": "passed",
+                    "scenarios": [
+                      "S-01"
+                    ],
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                    "input_scope": "inputs"
+                  },
+                  {
+                    "id": "CHK-197bcd8a3f40",
+                    "status": "passed",
+                    "scenarios": [
+                      "S-02"
+                    ],
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                    "input_scope": "inputs"
+                  }
+                ],
+                "env_blocked": 0,
+                "selection_reason": "profile_and_owner",
+                "scope": {
+                  "profile": "full",
+                  "owner": "TASK-001"
+                },
+                "reuse_reason": "no_reused_results",
+                "summary": "acceptance: executed 2, reused 0",
+                "execution_identities": [
+                  "7c28ecc3fd0de6bd8087238e2a08207825126bf4fc970077d511ed982e5a3c2a",
+                  "b69bfbb0402aff1593fa48beb3893137f6738974f7e628731fe7837246f165c7"
+                ],
+                "selected_check_ids": [
+                  "CHK-197bcd8a3f40",
+                  "CHK-5db56516d7a7"
+                ],
+                "timings": {
+                  "planning_ms": 0.6774589999999914,
+                  "preflight_ms": 68.94704100000001,
+                  "execution_ms": 28.679167000000035,
+                  "evidence_ms": 95.55333299999997,
+                  "elapsed_ms": 209.959709
+                },
+                "input_change_category": {
+                  "CHK-197bcd8a3f40": "no_baseline",
+                  "CHK-5db56516d7a7": "no_baseline"
+                }
+              },
+              "results": [
+                {
+                  "id": "S-01",
+                  "kind": "functional",
+                  "status": "passed",
+                  "exit_code": 0,
+                  "execution_ms": 14.274625000000013,
+                  "check_id": "CHK-5db56516d7a7",
+                  "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                  "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                  "check_config": {
+                    "id": "CHK-5db56516d7a7",
+                    "command": [
+                      "/Library/Developer/CommandLineTools/usr/bin/python3",
+                      "-c",
+                      "from pathlib import Path; p=Path('.code-flow/a.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('a.py').read_text().strip() == 'value = 1'"
+                    ],
+                    "cwd": ".",
+                    "timeout": 60.0,
+                    "env": "none",
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "profile": "changed",
+                    "inputs": [
+                      "a.py"
+                    ],
+                    "preflight": [],
+                    "paths": []
+                  }
+                },
+                {
+                  "id": "S-02",
+                  "kind": "functional",
+                  "status": "passed",
+                  "exit_code": 0,
+                  "execution_ms": 14.40454200000002,
+                  "check_id": "CHK-197bcd8a3f40",
+                  "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                  "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                  "check_config": {
+                    "id": "CHK-197bcd8a3f40",
+                    "command": [
+                      "/Library/Developer/CommandLineTools/usr/bin/python3",
+                      "-c",
+                      "from pathlib import Path; p=Path('.code-flow/b.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('b.py').read_text().strip() == 'value = 1'"
+                    ],
+                    "cwd": ".",
+                    "timeout": 60.0,
+                    "env": "none",
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "profile": "changed",
+                    "inputs": [
+                      "b.py"
+                    ],
+                    "preflight": [],
+                    "paths": []
+                  }
+                }
+              ],
+              "checks": [
+                {
+                  "id": "CHK-5db56516d7a7",
+                  "status": "passed",
+                  "scenarios": [
+                    "S-01"
+                  ],
+                  "env_scope": "shared",
+                  "parallel_safe": false,
+                  "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                  "input_scope": "inputs"
+                },
+                {
+                  "id": "CHK-197bcd8a3f40",
+                  "status": "passed",
+                  "scenarios": [
+                    "S-02"
+                  ],
+                  "env_scope": "shared",
+                  "parallel_safe": false,
+                  "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                  "input_scope": "inputs"
+                }
+              ]
+            }
+          },
+          "executed": 3,
+          "reused": 0,
+          "failed": [],
+          "env_blocked": 0,
+          "incomplete": 0,
+          "evidence": [
+            {
+              "layer": "e2e",
+              "check_id": "S-01",
+              "status": "passed"
+            },
+            {
+              "layer": "e2e",
+              "check_id": "S-02",
+              "status": "passed"
+            }
+          ],
+          "env_blocked_details": [],
+          "scope": {
+            "layers": [
+              "validators",
+              "review",
+              "e2e"
+            ],
+            "files": [
+              ".gitignore",
+              "AGENTS.md",
+              "a.py",
+              "b.py"
+            ]
+          },
+          "selection_reason": "multiple_layer_policies",
+          "reuse_reason": "no_reused_results",
+          "execution_identities": [
+            "8a684d63738dfb964a5c41ded82a23d227b10c7ca392c5f931cdba09560d241b",
+            "7c28ecc3fd0de6bd8087238e2a08207825126bf4fc970077d511ed982e5a3c2a",
+            "b69bfbb0402aff1593fa48beb3893137f6738974f7e628731fe7837246f165c7"
+          ],
+          "input_change_category": [
+            "execution_context_changed",
+            "no_baseline"
+          ],
+          "summary": "validators: executed 1, reused 0; acceptance: executed 2, reused 0",
+          "timings": {
+            "planning_ms": 1.7102919999999884,
+            "preflight_ms": 84.77995800000002,
+            "execution_ms": 48.66700000000003,
+            "evidence_ms": 95.67129099999997,
+            "elapsed_ms": 317.39729100000005
+          },
+          "timings_scope": [
+            "validators",
+            "e2e"
+          ],
+          "selection_reasons": {
+            "e2e": "profile_and_owner",
+            "validators": "validator_trigger_matches_selected_files"
+          },
+          "selected_check_ids": [
+            "CHK-197bcd8a3f40",
+            "CHK-5db56516d7a7"
+          ],
+          "input_change_categories": {
+            "validators": [
+              "execution_context_changed"
+            ],
+            "e2e": {
+              "CHK-197bcd8a3f40": "no_baseline",
+              "CHK-5db56516d7a7": "no_baseline"
+            }
+          }
+        },
+        "selection_reason": "multiple_layer_policies",
+        "selection_reasons": {
+          "e2e": "profile_and_owner",
+          "validators": "validator_trigger_matches_selected_files"
+        },
+        "reuse_reason": "no_reused_results",
+        "scope": {
+          "layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "files": [
+            ".gitignore",
+            "AGENTS.md",
+            "a.py",
+            "b.py"
+          ]
+        },
+        "summary": "validators: executed 1, reused 0; acceptance: executed 2, reused 0",
+        "executed": 3,
+        "reused": 0,
+        "execution_identities": [
+          "8a684d63738dfb964a5c41ded82a23d227b10c7ca392c5f931cdba09560d241b",
+          "7c28ecc3fd0de6bd8087238e2a08207825126bf4fc970077d511ed982e5a3c2a",
+          "b69bfbb0402aff1593fa48beb3893137f6738974f7e628731fe7837246f165c7"
+        ],
+        "input_change_category": [
+          "execution_context_changed",
+          "no_baseline"
+        ],
+        "input_change_categories": {
+          "validators": [
+            "execution_context_changed"
+          ],
+          "e2e": {
+            "CHK-197bcd8a3f40": "no_baseline",
+            "CHK-5db56516d7a7": "no_baseline"
+          }
+        },
+        "timings_scope": [
+          "validators",
+          "e2e"
+        ],
+        "timings": {
+          "planning_ms": 1.7102919999999884,
+          "preflight_ms": 84.77995800000002,
+          "execution_ms": 48.66700000000003,
+          "evidence_ms": 95.67129099999997,
+          "elapsed_ms": 397.164459
+        }
+      },
+      "check_count_before": [
+        2,
+        2
+      ],
+      "check_count_after": [
+        3,
+        3
+      ]
+    },
+    {
+      "mode": "reuse",
+      "repeat": 1,
+      "argv": [
+        "node",
+        "/Users/jahan/workspace/code_flow/src/cli.js",
+        "task",
+        "archive",
+        "--root",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-k0088j6e",
+        "--task-dir",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-k0088j6e/.code-flow/tasks/demo",
+        "--json"
+      ],
+      "elapsed_ms": 590.266,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "archived_to": "/private/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-k0088j6e/.code-flow/tasks/archived/2026-10-30/demo",
+        "verify": {
+          "decision": "pass",
+          "reason": "",
+          "profile": "full",
+          "selected_layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "layers": {
+            "validators": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 1,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [],
+              "validation": {
+                "decision": "pass",
+                "reason": "",
+                "reused": 0,
+                "failures": [],
+                "files": [
+                  ".gitignore",
+                  "AGENTS.md",
+                  "a.py",
+                  "b.py"
+                ],
+                "timings": {
+                  "planning_ms": 1.0218750000000054,
+                  "preflight_ms": 17.239375000000003,
+                  "execution_ms": 23.19929100000001,
+                  "evidence_ms": 0.14158400000000015,
+                  "elapsed_ms": 69.81795799999999
+                },
+                "observations": [
+                  {
+                    "identity": "6072e712e3596f3a8f60b82b77fbff7b37270b0bdea105e402ec59efaa3d58ab",
+                    "input_change_category": "execution_context_changed"
+                  }
+                ]
+              }
+            },
+            "review": {
+              "decision": "pass",
+              "reason": "nothing_to_verify",
+              "executed": 0,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": []
+            },
+            "e2e": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 0,
+              "reused": 2,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [
+                {
+                  "check_id": "S-01",
+                  "status": "passed"
+                },
+                {
+                  "check_id": "S-02",
+                  "status": "passed"
+                }
+              ],
+              "acceptance": {
+                "decision": "pass",
+                "results": [
+                  {
+                    "id": "S-01",
+                    "kind": "functional",
+                    "status": "passed",
+                    "exit_code": 0,
+                    "cache_reused": true,
+                    "checkpoint_reused": true,
+                    "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                    "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                    "check_id": "CHK-5db56516d7a7",
+                    "check_config": {
+                      "id": "CHK-5db56516d7a7",
+                      "command": [
+                        "/Library/Developer/CommandLineTools/usr/bin/python3",
+                        "-c",
+                        "from pathlib import Path; p=Path('.code-flow/a.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('a.py').read_text().strip() == 'value = 1'"
+                      ],
+                      "cwd": ".",
+                      "timeout": 60.0,
+                      "env": "none",
+                      "env_scope": "shared",
+                      "parallel_safe": false,
+                      "profile": "changed",
+                      "inputs": [
+                        "a.py"
+                      ],
+                      "preflight": [],
+                      "paths": []
+                    }
+                  },
+                  {
+                    "id": "S-02",
+                    "kind": "functional",
+                    "status": "passed",
+                    "exit_code": 0,
+                    "cache_reused": true,
+                    "checkpoint_reused": true,
+                    "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                    "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                    "check_id": "CHK-197bcd8a3f40",
+                    "check_config": {
+                      "id": "CHK-197bcd8a3f40",
+                      "command": [
+                        "/Library/Developer/CommandLineTools/usr/bin/python3",
+                        "-c",
+                        "from pathlib import Path; p=Path('.code-flow/b.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('b.py').read_text().strip() == 'value = 1'"
+                      ],
+                      "cwd": ".",
+                      "timeout": 60.0,
+                      "env": "none",
+                      "env_scope": "shared",
+                      "parallel_safe": false,
+                      "profile": "changed",
+                      "inputs": [
+                        "b.py"
+                      ],
+                      "preflight": [],
+                      "paths": []
+                    }
+                  }
+                ],
+                "executed": 0,
+                "reused": 2,
+                "incomplete": 0,
+                "failed": [],
+                "checks": [
+                  {
+                    "id": "CHK-5db56516d7a7",
+                    "status": "passed",
+                    "scenarios": [
+                      "S-01"
+                    ],
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                    "input_scope": "inputs"
+                  },
+                  {
+                    "id": "CHK-197bcd8a3f40",
+                    "status": "passed",
+                    "scenarios": [
+                      "S-02"
+                    ],
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                    "input_scope": "inputs"
+                  }
+                ],
+                "env_blocked": 0,
+                "selection_reason": "profile_and_owner",
+                "scope": {
+                  "profile": "full",
+                  "owner": "TASK-001"
+                },
+                "reuse_reason": "matching_evidence",
+                "summary": "acceptance: executed 0, reused 2",
+                "execution_identities": [],
+                "selected_check_ids": [
+                  "CHK-197bcd8a3f40",
+                  "CHK-5db56516d7a7"
+                ],
+                "timings": {
+                  "planning_ms": 0.8682920000000205,
+                  "preflight_ms": 108.67037499999998,
+                  "execution_ms": 0.0,
+                  "evidence_ms": 127.40933300000002,
+                  "elapsed_ms": 237.287667
+                },
+                "input_change_category": {
+                  "CHK-197bcd8a3f40": "unchanged",
+                  "CHK-5db56516d7a7": "unchanged"
+                }
+              },
+              "results": [
+                {
+                  "id": "S-01",
+                  "kind": "functional",
+                  "status": "passed",
+                  "exit_code": 0,
+                  "cache_reused": true,
+                  "checkpoint_reused": true,
+                  "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                  "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                  "check_id": "CHK-5db56516d7a7",
+                  "check_config": {
+                    "id": "CHK-5db56516d7a7",
+                    "command": [
+                      "/Library/Developer/CommandLineTools/usr/bin/python3",
+                      "-c",
+                      "from pathlib import Path; p=Path('.code-flow/a.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('a.py').read_text().strip() == 'value = 1'"
+                    ],
+                    "cwd": ".",
+                    "timeout": 60.0,
+                    "env": "none",
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "profile": "changed",
+                    "inputs": [
+                      "a.py"
+                    ],
+                    "preflight": [],
+                    "paths": []
+                  }
+                },
+                {
+                  "id": "S-02",
+                  "kind": "functional",
+                  "status": "passed",
+                  "exit_code": 0,
+                  "cache_reused": true,
+                  "checkpoint_reused": true,
+                  "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                  "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                  "check_id": "CHK-197bcd8a3f40",
+                  "check_config": {
+                    "id": "CHK-197bcd8a3f40",
+                    "command": [
+                      "/Library/Developer/CommandLineTools/usr/bin/python3",
+                      "-c",
+                      "from pathlib import Path; p=Path('.code-flow/b.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('b.py').read_text().strip() == 'value = 1'"
+                    ],
+                    "cwd": ".",
+                    "timeout": 60.0,
+                    "env": "none",
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "profile": "changed",
+                    "inputs": [
+                      "b.py"
+                    ],
+                    "preflight": [],
+                    "paths": []
+                  }
+                }
+              ],
+              "checks": [
+                {
+                  "id": "CHK-5db56516d7a7",
+                  "status": "passed",
+                  "scenarios": [
+                    "S-01"
+                  ],
+                  "env_scope": "shared",
+                  "parallel_safe": false,
+                  "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                  "input_scope": "inputs"
+                },
+                {
+                  "id": "CHK-197bcd8a3f40",
+                  "status": "passed",
+                  "scenarios": [
+                    "S-02"
+                  ],
+                  "env_scope": "shared",
+                  "parallel_safe": false,
+                  "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                  "input_scope": "inputs"
+                }
+              ]
+            }
+          },
+          "executed": 1,
+          "reused": 2,
+          "failed": [],
+          "env_blocked": 0,
+          "incomplete": 0,
+          "evidence": [
+            {
+              "layer": "e2e",
+              "check_id": "S-01",
+              "status": "passed"
+            },
+            {
+              "layer": "e2e",
+              "check_id": "S-02",
+              "status": "passed"
+            }
+          ],
+          "env_blocked_details": [],
+          "scope": {
+            "layers": [
+              "validators",
+              "review",
+              "e2e"
+            ],
+            "files": [
+              ".gitignore",
+              "AGENTS.md",
+              "a.py",
+              "b.py"
+            ]
+          },
+          "selection_reason": "multiple_layer_policies",
+          "reuse_reason": "evidence_reused",
+          "execution_identities": [
+            "6072e712e3596f3a8f60b82b77fbff7b37270b0bdea105e402ec59efaa3d58ab"
+          ],
+          "input_change_category": [
+            "execution_context_changed",
+            "unchanged"
+          ],
+          "summary": "validators: executed 1, reused 0; acceptance: executed 0, reused 2",
+          "timings": {
+            "planning_ms": 1.890167000000026,
+            "preflight_ms": 125.90974999999997,
+            "execution_ms": 23.19929100000001,
+            "evidence_ms": 127.55091700000001,
+            "elapsed_ms": 363.844292
+          },
+          "timings_scope": [
+            "validators",
+            "e2e"
+          ],
+          "selection_reasons": {
+            "e2e": "profile_and_owner",
+            "validators": "validator_trigger_matches_selected_files"
+          },
+          "selected_check_ids": [
+            "CHK-197bcd8a3f40",
+            "CHK-5db56516d7a7"
+          ],
+          "input_change_categories": {
+            "validators": [
+              "execution_context_changed"
+            ],
+            "e2e": {
+              "CHK-197bcd8a3f40": "unchanged",
+              "CHK-5db56516d7a7": "unchanged"
+            }
+          }
+        },
+        "selection_reason": "multiple_layer_policies",
+        "selection_reasons": {
+          "e2e": "profile_and_owner",
+          "validators": "validator_trigger_matches_selected_files"
+        },
+        "reuse_reason": "evidence_reused",
+        "scope": {
+          "layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "files": [
+            ".gitignore",
+            "AGENTS.md",
+            "a.py",
+            "b.py"
+          ]
+        },
+        "summary": "validators: executed 1, reused 0; acceptance: executed 0, reused 2",
+        "executed": 1,
+        "reused": 2,
+        "execution_identities": [
+          "6072e712e3596f3a8f60b82b77fbff7b37270b0bdea105e402ec59efaa3d58ab"
+        ],
+        "input_change_category": [
+          "execution_context_changed",
+          "unchanged"
+        ],
+        "input_change_categories": {
+          "validators": [
+            "execution_context_changed"
+          ],
+          "e2e": {
+            "CHK-197bcd8a3f40": "unchanged",
+            "CHK-5db56516d7a7": "unchanged"
+          }
+        },
+        "timings_scope": [
+          "validators",
+          "e2e"
+        ],
+        "timings": {
+          "planning_ms": 1.890167000000026,
+          "preflight_ms": 125.90974999999997,
+          "execution_ms": 23.19929100000001,
+          "evidence_ms": 127.55091700000001,
+          "elapsed_ms": 477.42179200000004
+        }
+      },
+      "check_count_before": [
+        2,
+        2
+      ],
+      "check_count_after": [
+        2,
+        2
+      ]
+    },
+    {
+      "mode": "reuse",
+      "repeat": 2,
+      "argv": [
+        "node",
+        "/Users/jahan/workspace/code_flow/src/cli.js",
+        "task",
+        "archive",
+        "--root",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-i9dhe4si",
+        "--task-dir",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-i9dhe4si/.code-flow/tasks/demo",
+        "--json"
+      ],
+      "elapsed_ms": 473.643,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "archived_to": "/private/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-i9dhe4si/.code-flow/tasks/archived/2026-10-30/demo",
+        "verify": {
+          "decision": "pass",
+          "reason": "",
+          "profile": "full",
+          "selected_layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "layers": {
+            "validators": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 1,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [],
+              "validation": {
+                "decision": "pass",
+                "reason": "",
+                "reused": 0,
+                "failures": [],
+                "files": [
+                  ".gitignore",
+                  "AGENTS.md",
+                  "a.py",
+                  "b.py"
+                ],
+                "timings": {
+                  "planning_ms": 1.0912500000000018,
+                  "preflight_ms": 15.887790999999998,
+                  "execution_ms": 21.073833999999987,
+                  "evidence_ms": 0.13966700000000998,
+                  "elapsed_ms": 61.809833
+                },
+                "observations": [
+                  {
+                    "identity": "219b8c37f6741992fac8af671b3435ec8f4769566124dcdba4e18e82e42d150c",
+                    "input_change_category": "execution_context_changed"
+                  }
+                ]
+              }
+            },
+            "review": {
+              "decision": "pass",
+              "reason": "nothing_to_verify",
+              "executed": 0,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": []
+            },
+            "e2e": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 0,
+              "reused": 2,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [
+                {
+                  "check_id": "S-01",
+                  "status": "passed"
+                },
+                {
+                  "check_id": "S-02",
+                  "status": "passed"
+                }
+              ],
+              "acceptance": {
+                "decision": "pass",
+                "results": [
+                  {
+                    "id": "S-01",
+                    "kind": "functional",
+                    "status": "passed",
+                    "exit_code": 0,
+                    "cache_reused": true,
+                    "checkpoint_reused": true,
+                    "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                    "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                    "check_id": "CHK-5db56516d7a7",
+                    "check_config": {
+                      "id": "CHK-5db56516d7a7",
+                      "command": [
+                        "/Library/Developer/CommandLineTools/usr/bin/python3",
+                        "-c",
+                        "from pathlib import Path; p=Path('.code-flow/a.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('a.py').read_text().strip() == 'value = 1'"
+                      ],
+                      "cwd": ".",
+                      "timeout": 60.0,
+                      "env": "none",
+                      "env_scope": "shared",
+                      "parallel_safe": false,
+                      "profile": "changed",
+                      "inputs": [
+                        "a.py"
+                      ],
+                      "preflight": [],
+                      "paths": []
+                    }
+                  },
+                  {
+                    "id": "S-02",
+                    "kind": "functional",
+                    "status": "passed",
+                    "exit_code": 0,
+                    "cache_reused": true,
+                    "checkpoint_reused": true,
+                    "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                    "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                    "check_id": "CHK-197bcd8a3f40",
+                    "check_config": {
+                      "id": "CHK-197bcd8a3f40",
+                      "command": [
+                        "/Library/Developer/CommandLineTools/usr/bin/python3",
+                        "-c",
+                        "from pathlib import Path; p=Path('.code-flow/b.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('b.py').read_text().strip() == 'value = 1'"
+                      ],
+                      "cwd": ".",
+                      "timeout": 60.0,
+                      "env": "none",
+                      "env_scope": "shared",
+                      "parallel_safe": false,
+                      "profile": "changed",
+                      "inputs": [
+                        "b.py"
+                      ],
+                      "preflight": [],
+                      "paths": []
+                    }
+                  }
+                ],
+                "executed": 0,
+                "reused": 2,
+                "incomplete": 0,
+                "failed": [],
+                "checks": [
+                  {
+                    "id": "CHK-5db56516d7a7",
+                    "status": "passed",
+                    "scenarios": [
+                      "S-01"
+                    ],
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                    "input_scope": "inputs"
+                  },
+                  {
+                    "id": "CHK-197bcd8a3f40",
+                    "status": "passed",
+                    "scenarios": [
+                      "S-02"
+                    ],
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                    "input_scope": "inputs"
+                  }
+                ],
+                "env_blocked": 0,
+                "selection_reason": "profile_and_owner",
+                "scope": {
+                  "profile": "full",
+                  "owner": "TASK-001"
+                },
+                "reuse_reason": "matching_evidence",
+                "summary": "acceptance: executed 0, reused 2",
+                "execution_identities": [],
+                "selected_check_ids": [
+                  "CHK-197bcd8a3f40",
+                  "CHK-5db56516d7a7"
+                ],
+                "timings": {
+                  "planning_ms": 0.6544579999999967,
+                  "preflight_ms": 77.68333400000002,
+                  "execution_ms": 0.0,
+                  "evidence_ms": 102.21312500000002,
+                  "elapsed_ms": 180.854958
+                },
+                "input_change_category": {
+                  "CHK-197bcd8a3f40": "unchanged",
+                  "CHK-5db56516d7a7": "unchanged"
+                }
+              },
+              "results": [
+                {
+                  "id": "S-01",
+                  "kind": "functional",
+                  "status": "passed",
+                  "exit_code": 0,
+                  "cache_reused": true,
+                  "checkpoint_reused": true,
+                  "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                  "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                  "check_id": "CHK-5db56516d7a7",
+                  "check_config": {
+                    "id": "CHK-5db56516d7a7",
+                    "command": [
+                      "/Library/Developer/CommandLineTools/usr/bin/python3",
+                      "-c",
+                      "from pathlib import Path; p=Path('.code-flow/a.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('a.py').read_text().strip() == 'value = 1'"
+                    ],
+                    "cwd": ".",
+                    "timeout": 60.0,
+                    "env": "none",
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "profile": "changed",
+                    "inputs": [
+                      "a.py"
+                    ],
+                    "preflight": [],
+                    "paths": []
+                  }
+                },
+                {
+                  "id": "S-02",
+                  "kind": "functional",
+                  "status": "passed",
+                  "exit_code": 0,
+                  "cache_reused": true,
+                  "checkpoint_reused": true,
+                  "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                  "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                  "check_id": "CHK-197bcd8a3f40",
+                  "check_config": {
+                    "id": "CHK-197bcd8a3f40",
+                    "command": [
+                      "/Library/Developer/CommandLineTools/usr/bin/python3",
+                      "-c",
+                      "from pathlib import Path; p=Path('.code-flow/b.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('b.py').read_text().strip() == 'value = 1'"
+                    ],
+                    "cwd": ".",
+                    "timeout": 60.0,
+                    "env": "none",
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "profile": "changed",
+                    "inputs": [
+                      "b.py"
+                    ],
+                    "preflight": [],
+                    "paths": []
+                  }
+                }
+              ],
+              "checks": [
+                {
+                  "id": "CHK-5db56516d7a7",
+                  "status": "passed",
+                  "scenarios": [
+                    "S-01"
+                  ],
+                  "env_scope": "shared",
+                  "parallel_safe": false,
+                  "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                  "input_scope": "inputs"
+                },
+                {
+                  "id": "CHK-197bcd8a3f40",
+                  "status": "passed",
+                  "scenarios": [
+                    "S-02"
+                  ],
+                  "env_scope": "shared",
+                  "parallel_safe": false,
+                  "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                  "input_scope": "inputs"
+                }
+              ]
+            }
+          },
+          "executed": 1,
+          "reused": 2,
+          "failed": [],
+          "env_blocked": 0,
+          "incomplete": 0,
+          "evidence": [
+            {
+              "layer": "e2e",
+              "check_id": "S-01",
+              "status": "passed"
+            },
+            {
+              "layer": "e2e",
+              "check_id": "S-02",
+              "status": "passed"
+            }
+          ],
+          "env_blocked_details": [],
+          "scope": {
+            "layers": [
+              "validators",
+              "review",
+              "e2e"
+            ],
+            "files": [
+              ".gitignore",
+              "AGENTS.md",
+              "a.py",
+              "b.py"
+            ]
+          },
+          "selection_reason": "multiple_layer_policies",
+          "reuse_reason": "evidence_reused",
+          "execution_identities": [
+            "219b8c37f6741992fac8af671b3435ec8f4769566124dcdba4e18e82e42d150c"
+          ],
+          "input_change_category": [
+            "execution_context_changed",
+            "unchanged"
+          ],
+          "summary": "validators: executed 1, reused 0; acceptance: executed 0, reused 2",
+          "timings": {
+            "planning_ms": 1.7457079999999985,
+            "preflight_ms": 93.57112500000001,
+            "execution_ms": 21.073833999999987,
+            "evidence_ms": 102.35279200000002,
+            "elapsed_ms": 291.800208
+          },
+          "timings_scope": [
+            "validators",
+            "e2e"
+          ],
+          "selection_reasons": {
+            "e2e": "profile_and_owner",
+            "validators": "validator_trigger_matches_selected_files"
+          },
+          "selected_check_ids": [
+            "CHK-197bcd8a3f40",
+            "CHK-5db56516d7a7"
+          ],
+          "input_change_categories": {
+            "validators": [
+              "execution_context_changed"
+            ],
+            "e2e": {
+              "CHK-197bcd8a3f40": "unchanged",
+              "CHK-5db56516d7a7": "unchanged"
+            }
+          }
+        },
+        "selection_reason": "multiple_layer_policies",
+        "selection_reasons": {
+          "e2e": "profile_and_owner",
+          "validators": "validator_trigger_matches_selected_files"
+        },
+        "reuse_reason": "evidence_reused",
+        "scope": {
+          "layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "files": [
+            ".gitignore",
+            "AGENTS.md",
+            "a.py",
+            "b.py"
+          ]
+        },
+        "summary": "validators: executed 1, reused 0; acceptance: executed 0, reused 2",
+        "executed": 1,
+        "reused": 2,
+        "execution_identities": [
+          "219b8c37f6741992fac8af671b3435ec8f4769566124dcdba4e18e82e42d150c"
+        ],
+        "input_change_category": [
+          "execution_context_changed",
+          "unchanged"
+        ],
+        "input_change_categories": {
+          "validators": [
+            "execution_context_changed"
+          ],
+          "e2e": {
+            "CHK-197bcd8a3f40": "unchanged",
+            "CHK-5db56516d7a7": "unchanged"
+          }
+        },
+        "timings_scope": [
+          "validators",
+          "e2e"
+        ],
+        "timings": {
+          "planning_ms": 1.7457079999999985,
+          "preflight_ms": 93.57112500000001,
+          "execution_ms": 21.073833999999987,
+          "evidence_ms": 102.35279200000002,
+          "elapsed_ms": 380.55454199999997
+        }
+      },
+      "check_count_before": [
+        2,
+        2
+      ],
+      "check_count_after": [
+        2,
+        2
+      ]
+    },
+    {
+      "mode": "reuse",
+      "repeat": 3,
+      "argv": [
+        "node",
+        "/Users/jahan/workspace/code_flow/src/cli.js",
+        "task",
+        "archive",
+        "--root",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-fd1uwgkn",
+        "--task-dir",
+        "/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-fd1uwgkn/.code-flow/tasks/demo",
+        "--json"
+      ],
+      "elapsed_ms": 461.503,
+      "exit_code": 0,
+      "result": {
+        "decision": "pass",
+        "archived_to": "/private/var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/cf-archive-pilot-fd1uwgkn/.code-flow/tasks/archived/2026-10-30/demo",
+        "verify": {
+          "decision": "pass",
+          "reason": "",
+          "profile": "full",
+          "selected_layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "layers": {
+            "validators": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 1,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [],
+              "validation": {
+                "decision": "pass",
+                "reason": "",
+                "reused": 0,
+                "failures": [],
+                "files": [
+                  ".gitignore",
+                  "AGENTS.md",
+                  "a.py",
+                  "b.py"
+                ],
+                "timings": {
+                  "planning_ms": 1.0181249999999946,
+                  "preflight_ms": 16.04725,
+                  "execution_ms": 20.489790999999993,
+                  "evidence_ms": 0.12624999999999442,
+                  "elapsed_ms": 61.26345800000001
+                },
+                "observations": [
+                  {
+                    "identity": "db189ecb2e79796f745abb154ff7efe7dda6b3cd2bd6b573be9548467e919342",
+                    "input_change_category": "execution_context_changed"
+                  }
+                ]
+              }
+            },
+            "review": {
+              "decision": "pass",
+              "reason": "nothing_to_verify",
+              "executed": 0,
+              "reused": 0,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": []
+            },
+            "e2e": {
+              "decision": "pass",
+              "reason": "",
+              "executed": 0,
+              "reused": 2,
+              "failed": [],
+              "env_blocked": 0,
+              "incomplete": 0,
+              "evidence": [
+                {
+                  "check_id": "S-01",
+                  "status": "passed"
+                },
+                {
+                  "check_id": "S-02",
+                  "status": "passed"
+                }
+              ],
+              "acceptance": {
+                "decision": "pass",
+                "results": [
+                  {
+                    "id": "S-01",
+                    "kind": "functional",
+                    "status": "passed",
+                    "exit_code": 0,
+                    "cache_reused": true,
+                    "checkpoint_reused": true,
+                    "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                    "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                    "check_id": "CHK-5db56516d7a7",
+                    "check_config": {
+                      "id": "CHK-5db56516d7a7",
+                      "command": [
+                        "/Library/Developer/CommandLineTools/usr/bin/python3",
+                        "-c",
+                        "from pathlib import Path; p=Path('.code-flow/a.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('a.py').read_text().strip() == 'value = 1'"
+                      ],
+                      "cwd": ".",
+                      "timeout": 60.0,
+                      "env": "none",
+                      "env_scope": "shared",
+                      "parallel_safe": false,
+                      "profile": "changed",
+                      "inputs": [
+                        "a.py"
+                      ],
+                      "preflight": [],
+                      "paths": []
+                    }
+                  },
+                  {
+                    "id": "S-02",
+                    "kind": "functional",
+                    "status": "passed",
+                    "exit_code": 0,
+                    "cache_reused": true,
+                    "checkpoint_reused": true,
+                    "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                    "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                    "check_id": "CHK-197bcd8a3f40",
+                    "check_config": {
+                      "id": "CHK-197bcd8a3f40",
+                      "command": [
+                        "/Library/Developer/CommandLineTools/usr/bin/python3",
+                        "-c",
+                        "from pathlib import Path; p=Path('.code-flow/b.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('b.py').read_text().strip() == 'value = 1'"
+                      ],
+                      "cwd": ".",
+                      "timeout": 60.0,
+                      "env": "none",
+                      "env_scope": "shared",
+                      "parallel_safe": false,
+                      "profile": "changed",
+                      "inputs": [
+                        "b.py"
+                      ],
+                      "preflight": [],
+                      "paths": []
+                    }
+                  }
+                ],
+                "executed": 0,
+                "reused": 2,
+                "incomplete": 0,
+                "failed": [],
+                "checks": [
+                  {
+                    "id": "CHK-5db56516d7a7",
+                    "status": "passed",
+                    "scenarios": [
+                      "S-01"
+                    ],
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                    "input_scope": "inputs"
+                  },
+                  {
+                    "id": "CHK-197bcd8a3f40",
+                    "status": "passed",
+                    "scenarios": [
+                      "S-02"
+                    ],
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                    "input_scope": "inputs"
+                  }
+                ],
+                "env_blocked": 0,
+                "selection_reason": "profile_and_owner",
+                "scope": {
+                  "profile": "full",
+                  "owner": "TASK-001"
+                },
+                "reuse_reason": "matching_evidence",
+                "summary": "acceptance: executed 0, reused 2",
+                "execution_identities": [],
+                "selected_check_ids": [
+                  "CHK-197bcd8a3f40",
+                  "CHK-5db56516d7a7"
+                ],
+                "timings": {
+                  "planning_ms": 0.6958330000000068,
+                  "preflight_ms": 74.76675000000002,
+                  "execution_ms": 0.0,
+                  "evidence_ms": 98.51566699999998,
+                  "elapsed_ms": 174.300208
+                },
+                "input_change_category": {
+                  "CHK-197bcd8a3f40": "unchanged",
+                  "CHK-5db56516d7a7": "unchanged"
+                }
+              },
+              "results": [
+                {
+                  "id": "S-01",
+                  "kind": "functional",
+                  "status": "passed",
+                  "exit_code": 0,
+                  "cache_reused": true,
+                  "checkpoint_reused": true,
+                  "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                  "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                  "check_id": "CHK-5db56516d7a7",
+                  "check_config": {
+                    "id": "CHK-5db56516d7a7",
+                    "command": [
+                      "/Library/Developer/CommandLineTools/usr/bin/python3",
+                      "-c",
+                      "from pathlib import Path; p=Path('.code-flow/a.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('a.py').read_text().strip() == 'value = 1'"
+                    ],
+                    "cwd": ".",
+                    "timeout": 60.0,
+                    "env": "none",
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "profile": "changed",
+                    "inputs": [
+                      "a.py"
+                    ],
+                    "preflight": [],
+                    "paths": []
+                  }
+                },
+                {
+                  "id": "S-02",
+                  "kind": "functional",
+                  "status": "passed",
+                  "exit_code": 0,
+                  "cache_reused": true,
+                  "checkpoint_reused": true,
+                  "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                  "environment_hash": "6502ac35d5991ae6d5246df5f0016a4ae051695abadb6b41c7af51e7c052a78a",
+                  "check_id": "CHK-197bcd8a3f40",
+                  "check_config": {
+                    "id": "CHK-197bcd8a3f40",
+                    "command": [
+                      "/Library/Developer/CommandLineTools/usr/bin/python3",
+                      "-c",
+                      "from pathlib import Path; p=Path('.code-flow/b.count'); p.write_text((p.read_text() if p.exists() else '')+'x'); assert Path('b.py').read_text().strip() == 'value = 1'"
+                    ],
+                    "cwd": ".",
+                    "timeout": 60.0,
+                    "env": "none",
+                    "env_scope": "shared",
+                    "parallel_safe": false,
+                    "profile": "changed",
+                    "inputs": [
+                      "b.py"
+                    ],
+                    "preflight": [],
+                    "paths": []
+                  }
+                }
+              ],
+              "checks": [
+                {
+                  "id": "CHK-5db56516d7a7",
+                  "status": "passed",
+                  "scenarios": [
+                    "S-01"
+                  ],
+                  "env_scope": "shared",
+                  "parallel_safe": false,
+                  "input_hash": "4e31ce64f64cf27d92524c48f1c09f63bcac72367e70001cb085ec5ffefabd78",
+                  "input_scope": "inputs"
+                },
+                {
+                  "id": "CHK-197bcd8a3f40",
+                  "status": "passed",
+                  "scenarios": [
+                    "S-02"
+                  ],
+                  "env_scope": "shared",
+                  "parallel_safe": false,
+                  "input_hash": "75ac2fda9d350bdac219a8698b34b5d1236d63492c8c1b06cd08b092fb4dc8cf",
+                  "input_scope": "inputs"
+                }
+              ]
+            }
+          },
+          "executed": 1,
+          "reused": 2,
+          "failed": [],
+          "env_blocked": 0,
+          "incomplete": 0,
+          "evidence": [
+            {
+              "layer": "e2e",
+              "check_id": "S-01",
+              "status": "passed"
+            },
+            {
+              "layer": "e2e",
+              "check_id": "S-02",
+              "status": "passed"
+            }
+          ],
+          "env_blocked_details": [],
+          "scope": {
+            "layers": [
+              "validators",
+              "review",
+              "e2e"
+            ],
+            "files": [
+              ".gitignore",
+              "AGENTS.md",
+              "a.py",
+              "b.py"
+            ]
+          },
+          "selection_reason": "multiple_layer_policies",
+          "reuse_reason": "evidence_reused",
+          "execution_identities": [
+            "db189ecb2e79796f745abb154ff7efe7dda6b3cd2bd6b573be9548467e919342"
+          ],
+          "input_change_category": [
+            "execution_context_changed",
+            "unchanged"
+          ],
+          "summary": "validators: executed 1, reused 0; acceptance: executed 0, reused 2",
+          "timings": {
+            "planning_ms": 1.7139580000000014,
+            "preflight_ms": 90.81400000000002,
+            "execution_ms": 20.489790999999993,
+            "evidence_ms": 98.64191699999998,
+            "elapsed_ms": 283.703708
+          },
+          "timings_scope": [
+            "validators",
+            "e2e"
+          ],
+          "selection_reasons": {
+            "e2e": "profile_and_owner",
+            "validators": "validator_trigger_matches_selected_files"
+          },
+          "selected_check_ids": [
+            "CHK-197bcd8a3f40",
+            "CHK-5db56516d7a7"
+          ],
+          "input_change_categories": {
+            "validators": [
+              "execution_context_changed"
+            ],
+            "e2e": {
+              "CHK-197bcd8a3f40": "unchanged",
+              "CHK-5db56516d7a7": "unchanged"
+            }
+          }
+        },
+        "selection_reason": "multiple_layer_policies",
+        "selection_reasons": {
+          "e2e": "profile_and_owner",
+          "validators": "validator_trigger_matches_selected_files"
+        },
+        "reuse_reason": "evidence_reused",
+        "scope": {
+          "layers": [
+            "validators",
+            "review",
+            "e2e"
+          ],
+          "files": [
+            ".gitignore",
+            "AGENTS.md",
+            "a.py",
+            "b.py"
+          ]
+        },
+        "summary": "validators: executed 1, reused 0; acceptance: executed 0, reused 2",
+        "executed": 1,
+        "reused": 2,
+        "execution_identities": [
+          "db189ecb2e79796f745abb154ff7efe7dda6b3cd2bd6b573be9548467e919342"
+        ],
+        "input_change_category": [
+          "execution_context_changed",
+          "unchanged"
+        ],
+        "input_change_categories": {
+          "validators": [
+            "execution_context_changed"
+          ],
+          "e2e": {
+            "CHK-197bcd8a3f40": "unchanged",
+            "CHK-5db56516d7a7": "unchanged"
+          }
+        },
+        "timings_scope": [
+          "validators",
+          "e2e"
+        ],
+        "timings": {
+          "planning_ms": 1.7139580000000014,
+          "preflight_ms": 90.81400000000002,
+          "execution_ms": 20.489790999999993,
+          "evidence_ms": 98.64191699999998,
+          "elapsed_ms": 368.809125
+        }
+      },
+      "check_count_before": [
+        2,
+        2
+      ],
+      "check_count_after": [
+        2,
+        2
+      ]
+    }
+  ]
+}

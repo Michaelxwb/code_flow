@@ -19,9 +19,9 @@ def _is_managed(path: str) -> bool:
     return path.startswith(_MANAGED_PREFIXES)
 
 
-def validation_scope(root: str, files: Sequence[str] = ()) -> tuple[str, ...]:
+def validation_scope(root: str, files: Optional[Sequence[str]] = None) -> tuple[str, ...]:
     base = Path(root).resolve()
-    if files:
+    if files is not None:
         selected = []
         for name in files:
             path = (base / name).resolve()
@@ -42,8 +42,9 @@ def validation_scope(root: str, files: Sequence[str] = ()) -> tuple[str, ...]:
     return tuple(sorted(item for item in scoped if not _is_managed(item)))
 
 
-def validate_files(root: str, files: Sequence[str] = (), budget: Optional[float] = None,
+def validate_files(root: str, files: Optional[Sequence[str]] = None, budget: Optional[float] = None,
                    include_heavy: bool = True, use_cache: bool = True) -> dict[str, object]:
+    started = time.monotonic()
     selected = validation_scope(root, files)
     config, effective = resolve_validators(root)
     if config.state == PARSE_ERROR:
@@ -59,8 +60,14 @@ def validate_files(root: str, files: Sequence[str] = (), budget: Optional[float]
     maximum = budget if budget is not None else sum(float(v.get("timeout", 30000)) / 1000 for v in validators)
     if not math.isfinite(maximum) or maximum <= 0:
         raise ValueError("validation budget must be finite and positive")
+    timings = {"planning_ms": (time.monotonic() - started) * 1000,
+               "preflight_ms": 0.0, "execution_ms": 0.0, "evidence_ms": 0.0}
+    observations: list[dict[str, str]] = []
     with execution_session():
         outcome = run_validators(root, ValidatorConfig(VALID, tuple(validators)), list(selected),
-                                 "cf-validate", time.monotonic() + maximum, strict=True, cache=use_cache)
+                                 "cf-validate", time.monotonic() + maximum, strict=True, cache=use_cache,
+                                 timings=timings, observations=observations)
+    timings["elapsed_ms"] = (time.monotonic() - started) * 1000
     return {"decision": "block" if outcome.failures or outcome.truncated else "pass", "files": selected,
-            "failures": outcome.failures, "incomplete": outcome.truncated, "reused": outcome.reused}
+            "failures": outcome.failures, "incomplete": outcome.truncated, "reused": outcome.reused,
+            "timings": timings, "observations": observations}

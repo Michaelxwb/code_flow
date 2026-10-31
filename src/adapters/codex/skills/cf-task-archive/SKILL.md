@@ -37,26 +37,24 @@ description: Archive a completed task file after completeness, correctness, trac
 **Spec Context / 终验与 Gate（先于四维校验）**：
 
 - 需求目录必须存在 `spec-context.yml`；执行 `code-flow spec refresh --task-dir <需求目录> --root "$PWD" --json`
-- 执行 review 终验：`code-flow task verify-e2e --task-dir <需求目录> --root "$PWD" --json`（全量聚合需求目录全部 task context 的 required verifier——code 延后项 + `stage: review` 层——与 acceptance E2E，按 spec/rule 去重执行一次并写回证据）；`decision=pass` 才继续，失败保持阻断。返回 `manual_confirmation_required` 时，先按 verify-e2e 的「人工验收确认」流程取得用户确认并执行 `confirm-manual`，再重跑
-- 执行 `code-flow spec gate --task-dir <需求目录> --stage code --json`；required Rule 的 stale/pending/conflict/unverified 任一存在即 FAIL。**必须在 verify-e2e 之后**：任务层延后（deferred_to_review）与 refresh 转 stale 的规则由终验全量补跑翻牌
-- 执行 `code-flow spec gate --task-dir <需求目录> --stage review --json`；required Rule 存在 unverified review 证据即 FAIL（先完成 review 终验）
+- 不单独运行 verify-e2e 或重复 Spec Gate：步骤 3 的 archive 一次执行 required verifier、项目 validators 和 acceptance，并在移动前校验证据与输入快照。
 - Context 与 Evidence 随需求目录一并归档，`_session` 仅是可重建投影，不是事实源
 
-所有子任务 verified 后，执行四维校验：
+先执行静态四维校验；运行结果在步骤 3 的 archive 返回后核对：
 
 **完整性**：
 - 所有 Checklist 项已勾选
 - 全文无残留的 `#NOTES` 标记
 
 **正确性**：
-- 核对终验返回的 `layers.validators`：全量 validation（含 heavy）必须通过。终验已计算验证范围，不能把工作区干净误认为无需验证，也无需额外重复调用 validate。
+- 步骤 3 核对 archive 返回的 `verify.layers.validators`：全量 validation（含 heavy）必须通过；失败按具体命令与输出修复后重跑 archive。
 - 失败时按具体 validator 的命令、输出和修复建议处理，再重跑终验；通过记录按内容指纹复用。
 
 **验收追溯**：
-- 来源 design 含结构化 S-/E-/B- 场景时，逐项对照 `## Acceptance Coverage`，P0/P1 场景以及 RULE/高影响 RISK 映射场景必须全部存在且状态为 `verified`
-- 每个负责任务的 `Acceptance-Refs`、`Acceptance Contract`、`Acceptance Evidence` 必须闭合，不得残留 `planned` / `pending` / `TBD`
+- 来源 design 含结构化 S-/E-/B- 场景时，逐项对照 `## Acceptance Coverage`，P0/P1 场景以及 RULE/高影响 RISK 映射场景必须全部存在；步骤 3 终验后确认状态为 `verified`
+- 每个负责任务的 `Acceptance-Refs`、`Acceptance Contract`、`Acceptance Evidence` 必须闭合；待运行或待人工确认的条目由步骤 3 终验处理，成功后不得残留 `planned` / `pending` / `TBD`
 - 测试层级不得低于 design；E2E 的真实边界和关键断言必须有文件/用例位置与 fixture/构造证据
-- 核对终验返回的 `layers.e2e`：运行时已校验锁定 manifest 并复验 acceptance。逐项查看 `checks` 与 `check_results`，多 check 场景必须全部有有效结果；测试未收集、未执行或失败均为 FAIL。不要再额外编排 acceptance run。若返回 manifest 基线错误，使用 `code-flow acceptance manifest --verify-plan --task-dir "<需求目录>" --task-file "<任务文件>"` 定位并修复后重跑终验。
+- 步骤 3 核对 archive 返回的 `verify.layers.e2e` 与逐 check 证据：多 check 场景全部必要成员必须有效；缺失或失败时修复后重跑 archive。
 - `manual` 场景必须有用户确认和可复核记录。旧 design 没有结构化场景时注明“不适用”，不得伪造覆盖
 
 **一致性**：
@@ -83,7 +81,7 @@ code-flow task cleanup-session --task-dir "<需求目录>" --root "$PWD" --json
 code-flow task archive --task-dir "<需求目录>" --root "$PWD" --json
 ```
 
-cleanup-session 逐任务删除 `specs/_session/task-<任务文件stem>.md` 投影，必须在源目录仍存在时执行。archive 内置 full verify；内容未变时复用有效证据，失败返回 `archive_verify_failed` 与具体 `verify` 结果，源目录保留。只有 `decision=pass` 才完成移动，目标路径使用返回的 `archived_to`，不得自行推算日期或同名后缀，不得手工 `mv` 绕过门禁。
+cleanup-session 逐任务删除 `specs/_session/task-<任务文件stem>.md` 投影，必须在源目录仍存在时执行。archive 内置 full verify；内容未变时复用有效证据，失败返回 `archive_verify_failed` 与具体 `verify` 结果，源目录保留。只有 `decision=pass` 才完成移动，目标路径使用返回的 `archived_to`，不得自行推算日期或同名后缀，不得手工 `mv` 绕过门禁。 返回 `manual_confirmation_required` 时，按 verify-e2e 的人工验收确认流程取得用户确认，执行 `confirm-manual` 后重跑 archive。
 
 **B. 旧扁平布局**（任务文件直接位于 `.code-flow/tasks/<日期>/<file>.md`）——保留向后兼容的文件查找。当前归档运行时以独立需求目录为边界；旧文件缺少该边界时，报告“先完成需求目录迁移”，保留原文件。不得把包含其他需求的日期目录作为 `--task-dir`，也不得逐文件归档绕过 Context、manifest 和 full verify。
 
@@ -151,11 +149,7 @@ Spec 同步建议:
 ```bash
 code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
 code-flow task finish --task-dir "<需求目录>" --task TASK-001 --root "$PWD" --json
-code-flow task verify --task-dir "<需求目录>" --layers validators,review,e2e --profile changed --root "$PWD" --json
-code-flow task verify-e2e --task-dir "<需求目录>" --root "$PWD" --json
 code-flow task cleanup-session --help
-code-flow spec gate --help
-code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json"
 code-flow task archive --task-dir "<需求目录>" --root "$PWD" --json
 ```
 

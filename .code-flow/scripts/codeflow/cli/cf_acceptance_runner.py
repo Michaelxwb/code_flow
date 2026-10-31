@@ -16,6 +16,7 @@ import json
 import os
 import re
 import subprocess
+import time
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -25,8 +26,12 @@ from typing import Callable, IO, Mapping, Optional, Sequence
 
 from codeflow.core import cf_fs
 from codeflow.core.cf_exec_base import (
+    execution_environment_hash,
     execution_key,
     invalidate_executions,
+    record_report,
+    redact_sensitive_payload,
+    redact_sensitive_text,
     remaining_seconds,
     run_command,
     worktree_fingerprint,
@@ -139,18 +144,25 @@ def _command_outcome(
         return {"status": "not_configured"}
     timeout_value = _scenario_timeout(item)
     cwd = item.get("cwd", ".") if isinstance(item.get("cwd", "."), str) else "."
-    outcome = run_command(command, str(root / cwd), timeout_value, deadline, env=env)
+    identity = {key: item[key] for key in ("suite", "test_ids", "markers", "collect", "level", "environment_revision") if key in item}
+    outcome = run_command(command, str(root / cwd), timeout_value, deadline, env=env, identity_context=identity)
+    result = _normalize_command_outcome(outcome)
+    result["execution_ms"] = float(outcome.get("execution_ms", 0))
+    return result
+
+
+def _normalize_command_outcome(outcome: Mapping[str, object]) -> dict[str, object]:
     if outcome["status"] == "deadline_exceeded":
         return {"status": "incomplete", "error": "deadline_exceeded"}
     if outcome["status"] == "timeout":
         return {"status": "failed", "error": "timeout",
-                "output": str(outcome.get("stdout", ""))}
+                "output": redact_sensitive_text(str(outcome.get("stdout", "")))}
     if outcome["status"] == "spawn_error":
-        return {"status": "failed", "error": str(outcome.get("stderr", ""))}
+        return {"status": "failed", "error": redact_sensitive_text(str(outcome.get("stderr", "")))}
     if outcome["returncode"] == 0:
         return {"status": "passed", "exit_code": 0}
     output = (str(outcome.get("stdout", "")) + str(outcome.get("stderr", ""))).strip()[-4000:]
-    return {"status": "failed", "exit_code": outcome["returncode"], "output": output}
+    return {"status": "failed", "exit_code": outcome["returncode"], "output": redact_sensitive_text(output)}
 
 
 def _run(
@@ -195,18 +207,18 @@ def _preflight_failures(
             break
         if status == "timeout":
             item["exit_code"] = None
-            item["output"] = str(outcome.get("stdout", ""))[-2000:]
+            item["output"] = redact_sensitive_text(str(outcome.get("stdout", ""))[-2000:])
             failures.append(item)
             continue
         if status == "spawn_error":
             item["exit_code"] = None
-            item["output"] = str(outcome.get("stderr", ""))[-2000:]
+            item["output"] = redact_sensitive_text(str(outcome.get("stderr", ""))[-2000:])
             failures.append(item)
             continue
         if outcome["returncode"] != 0:
             item["exit_code"] = outcome["returncode"]
             output = (str(outcome.get("stdout", "")) + str(outcome.get("stderr", ""))).strip()
-            item["output"] = output[-2000:]
+            item["output"] = redact_sensitive_text(output[-2000:])
             item["reason"] = "exit_code"
             failures.append(item)
     return failures
@@ -423,29 +435,87 @@ def _unit_active(unit: Mapping[str, object], include_e2e: bool, only_e2e: bool) 
     ]
 
 
+def _evidence_within_ttl(check: Mapping[str, object], record: Mapping[str, object]) -> bool:
+    ttl = check.get("evidence_ttl_seconds")
+    if ttl is None:
+        return True
+    try:
+        timestamp = datetime.fromisoformat(str(record.get("executed_at", "")).replace("Z", "+00:00"))
+        if timestamp.tzinfo is None:
+            return False
+        age = (datetime.now(timezone.utc) - timestamp).total_seconds()
+        return 0 <= age <= float(ttl)
+    except (TypeError, ValueError, OverflowError):
+        return False
+
+
+def _checkpoint_not_superseded(entry: Mapping[str, object], active: Sequence[Mapping[str, object]],
+                               rows: Mapping[str, Mapping[str, object]]) -> bool:
+    for item in active:
+        row = rows.get(str(item.get("scenario_ref") or item.get("id")), {})
+        evidence = row.get("evidence")
+        if not isinstance(evidence, Mapping):
+            if row.get("runs"):
+                return False
+            continue
+        latest = check_outcome(evidence, str(item.get("check"))) if item.get("scenario_ref") else evidence
+        if latest.get("status") == "passed" and latest.get("exit_code") == 0:
+            continue
+        try:
+            checkpoint_at = datetime.fromisoformat(str(entry.get("executed_at", "")).replace("Z", "+00:00"))
+            evidence_at = datetime.fromisoformat(str(evidence.get("executed_at", "")).replace("Z", "+00:00"))
+            if checkpoint_at.tzinfo is None or evidence_at.tzinfo is None or evidence_at >= checkpoint_at:
+                return False
+        except (TypeError, ValueError):
+            return False
+    return True
+
+
 def _unit_reusable(
     unit: Mapping[str, object], rows: Mapping[str, Mapping[str, object]], fingerprint: str,
     use_cache: bool, include_e2e: bool, only_e2e: bool, checkpoint: _Checkpoint,
+    environment_hash: str,
 ) -> bool:
     """A check is reusable only when every active scenario is still fresh."""
     if not use_cache or not fingerprint or unit.get("deps"):
         return False
+    check = unit.get("check") if isinstance(unit.get("check"), Mapping) else {}
+    if str(check.get("env", "none")).lower() in ("external", "staging", "production") and not check.get("environment_revision"):
+        return False
     active = _unit_active(unit, include_e2e, only_e2e)
     if not active:
         return False
-    if checkpoint.reusable(unit):
+    entry = checkpoint.entries.get(str(unit.get("id")), {})
+    if (check.get("evidence_ttl_seconds") is None and checkpoint.reusable(unit)
+            and entry.get("environment_hash") == environment_hash
+            and _evidence_within_ttl(check, entry)
+            and _checkpoint_not_superseded(entry, active, rows)):
         return True
     return all(
         _reusable(rows.get(str(item.get("scenario_ref") or item.get("id"))), item, fingerprint)
+        and _evidence_within_ttl(check, (rows.get(str(item.get("scenario_ref") or item.get("id"))) or {}).get("evidence", {}))
+        and _item_environment_matches(rows.get(str(item.get("scenario_ref") or item.get("id"))), item, environment_hash)
         for item in active
     )
 
 
+def _item_environment_matches(row: Optional[Mapping[str, object]], item: Mapping[str, object], expected: str) -> bool:
+    evidence = row.get("evidence") if isinstance(row, Mapping) else None
+    if not isinstance(evidence, Mapping):
+        return False
+    outcome = check_outcome(evidence, str(item.get("check"))) if item.get("scenario_ref") else evidence
+    return outcome.get("environment_hash") == expected
+
+
 def _reuse_results(
     unit: Mapping[str, object], root: Path, include_e2e: bool, only_e2e: bool, deadline: Optional[float],
-    checkpoint: _Checkpoint,
+    checkpoint: _Checkpoint, rows: Mapping[str, Mapping[str, object]], environment_hash: str,
 ) -> list[dict[str, object]]:
-    checkpoint_reused = checkpoint.reusable(unit)
+    check = unit.get("check") if isinstance(unit.get("check"), Mapping) else {}
+    entry = checkpoint.entries.get(str(unit.get("id")), {})
+    checkpoint_reused = (check.get("evidence_ttl_seconds") is None and checkpoint.reusable(unit)
+                         and entry.get("environment_hash") == environment_hash
+                         and _checkpoint_not_superseded(entry, _unit_active(unit, include_e2e, only_e2e), rows))
     results: list[dict[str, object]] = []
     for item in unit["scenarios"]:
         if not _included(item, include_e2e, only_e2e):
@@ -549,6 +619,17 @@ def _unit_command(unit: Mapping[str, object]) -> tuple[list[str], str, float]:
     return argv, cwd if isinstance(cwd, str) else ".", _scenario_timeout(source)
 
 
+def _unit_execution_identity(unit: Mapping[str, object], root: Path, fingerprint: str,
+                             namespace: Optional[Mapping[str, str]]) -> str:
+    command, cwd, timeout = _unit_command(unit)
+    check = unit.get("check")
+    extra = check_environment(check, str(root), namespace) if isinstance(check, Mapping) else {}
+    payload = {"command": command, "cwd": str((root / cwd).resolve()), "timeout": timeout,
+               "environment": {**os.environ, **extra}, "inputs": fingerprint,
+               "registration": check if isinstance(check, Mapping) else unit.get("scenarios", [])}
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
+
+
 def _atomic_checkpoint(path: Path, payload: Mapping[str, object]) -> None:
     """Checkpoint files are replaced atomically, like every other evidence file."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -635,7 +716,7 @@ class _Checkpoint:
             and recorded_timeout == timeout
         )
 
-    def record(self, unit: Mapping[str, object], outcome: Mapping[str, object]) -> None:
+    def record(self, unit: Mapping[str, object], outcome: Mapping[str, object], environment_hash: str) -> None:
         if not self.enabled:
             return
         if outcome.get("status") != "passed":
@@ -648,6 +729,8 @@ class _Checkpoint:
             "command": command,
             "cwd": cwd,
             "timeout": timeout,
+            "executed_at": datetime.now(timezone.utc).isoformat(),
+            "environment_hash": environment_hash,
         }
         self._write()
 
@@ -690,6 +773,8 @@ class _UnitEngine:
         self.failures = 0
         self.executed = 0
         self.reused = 0
+        self.execution_ms = 0.0
+        self.execution_identities: list[str] = []
         self.stop_reason = ""
         self.interrupted = False
 
@@ -706,6 +791,8 @@ class _UnitEngine:
         state = {
             "executed": self.executed,
             "reused": self.reused,
+            "execution_ms": self.execution_ms,
+            "execution_identities": self.execution_identities,
             "interrupted": self.interrupted,
             "stopped_reason": self.stop_reason,
         }
@@ -750,11 +837,12 @@ class _UnitEngine:
 
     def _run_unit(self, unit: Mapping[str, object]) -> None:
         fingerprint = self.checkpoint.fingerprint_for(unit)
+        check = unit.get("check") if isinstance(unit.get("check"), Mapping) else {}
+        environment_hash = execution_environment_hash(check_environment(check, str(self.root), self.namespace))
         if _unit_reusable(unit, self.rows, fingerprint, self.use_cache,
-                          self.include_e2e, self.only_e2e, self.checkpoint):
+                          self.include_e2e, self.only_e2e, self.checkpoint, environment_hash):
             results = _reuse_results(unit, self.root, self.include_e2e, self.only_e2e,
-                                     self.deadline, self.checkpoint)
-            self.checkpoint.record(unit, {"status": "passed"})
+                                     self.deadline, self.checkpoint, self.rows, environment_hash)
             self.reused += len(_unit_active(unit, self.include_e2e, self.only_e2e))
             self._record(unit, self._with_input_hash(unit, results))
             return
@@ -770,9 +858,10 @@ class _UnitEngine:
         value = self.checkpoint.fingerprint_for(unit)
         check_id = str(unit.get("id")) if unit.get("check") is not None else ""
         check_config = unit.get("check") if isinstance(unit.get("check"), Mapping) else None
+        environment_hash = execution_environment_hash(check_environment(check_config or {}, str(self.root), self.namespace))
         return [
             {
-                **dict(result), "input_hash": value,
+                **dict(result), "input_hash": value, "environment_hash": environment_hash,
                 **({"check_id": check_id} if check_id else {}),
                 **({"check_config": dict(check_config)} if check_config else {}),
             }
@@ -780,10 +869,16 @@ class _UnitEngine:
         ]
 
     def _complete(self, unit: Mapping[str, object], outcome: Mapping[str, object]) -> None:
+        self.execution_ms += float(outcome.get("execution_ms", 0))
+        if float(outcome.get("execution_ms", 0)) > 0:
+            self.execution_identities.append(_unit_execution_identity(
+                unit, self.root, self.checkpoint.fingerprint_for(unit), self.namespace))
         results = _apply_outcome(unit, outcome, self.root, self.include_e2e,
                                  self.only_e2e, self.deadline)
         self._record(unit, self._with_input_hash(unit, results))
-        self.checkpoint.record(unit, outcome)
+        check = unit.get("check") if isinstance(unit.get("check"), Mapping) else {}
+        environment_hash = execution_environment_hash(check_environment(check, str(self.root), self.namespace))
+        self.checkpoint.record(unit, outcome, environment_hash)
         status = str(outcome.get("status"))
         if _failure(status):
             self.failures += 1
@@ -1142,7 +1237,7 @@ def _multi_check_metadata(members: Sequence[Mapping[str, object]]) -> dict[str, 
         reused[check_id] = member.get("cache_reused") is True
         checkpointed[check_id] = member.get("checkpoint_reused") is True
         outcomes[check_id] = {key: member[key] for key in (
-            "status", "exit_code", "risk", "error", "output", "missing", "owner", "detail",
+            "status", "exit_code", "risk", "error", "output", "missing", "owner", "detail", "environment_hash",
         ) if key in member}
         if isinstance(member.get("check_config"), Mapping):
             configs[check_id] = dict(member["check_config"])
@@ -1213,7 +1308,8 @@ def _aggregate_multi_results(results: Sequence[Mapping[str, object]],
     return collapsed
 
 
-def _prepare_manifest(manifest_file: str, root: str, profile: str, force_ids: Sequence[str], owner: str
+def _prepare_manifest(manifest_file: str, root: str, profile: str, force_ids: Sequence[str], owner: str,
+                      only_scenarios: Optional[Sequence[str]] = None
                       ) -> tuple[dict[str, object], dict[str, object], list[Mapping[str, object]], Optional[dict[str, object]]]:
     if profile not in ("smoke", "changed", "full"):
         raise ValueError(f"invalid verify profile: {profile}")
@@ -1221,6 +1317,9 @@ def _prepare_manifest(manifest_file: str, root: str, profile: str, force_ids: Se
     data = _select_profile(full_data, root, profile, force_ids)
     validate_execution_baseline(Path(manifest_file), full_data)
     _ordered(data["scenarios"])  # Validate the complete DAG before owner filtering.
+    if only_scenarios is not None:
+        allowed = set(only_scenarios)
+        data["scenarios"] = [item for item in data["scenarios"] if item.get("id") in allowed]
     items = _owned(data["scenarios"], owner)
     noop = None
     if not items:
@@ -1232,23 +1331,96 @@ def _prepare_manifest(manifest_file: str, root: str, profile: str, force_ids: Se
     return full_data, data, items, noop
 
 
+def _previous_check_hashes(data: Mapping[str, object]) -> dict[str, set[str]]:
+    result: dict[str, set[str]] = {}
+    for row in data.get("scenarios", []):
+        if not isinstance(row, Mapping):
+            continue
+        for check_id in scenario_check_ids(row):
+            value = recorded_check_hash(row, check_id)
+            if value:
+                result.setdefault(check_id, set()).add(value)
+    return result
+
+
+def _input_change_categories(checks: Sequence[str], fingerprints: Mapping[str, Mapping[str, str]],
+                             previous: Mapping[str, set[str]]) -> dict[str, str]:
+    result = {}
+    for check_id in checks:
+        current = fingerprints.get(check_id, {}).get("input_hash", "")
+        old = previous.get(check_id, set())
+        result[check_id] = ("unproven" if not current else "no_baseline" if not old else
+                            "unchanged" if old == {current} else "inputs_changed")
+    return result
+
+
+def _add_run_reporting(outcome: dict[str, object], state: Mapping[str, object],
+                       fingerprints: Mapping[str, Mapping[str, str]], data: Mapping[str, object],
+                       started: float, planning_ms: float, preflight_ms: float,
+                       evidence_ms: float, profile: str, owner: str,
+                       previous: Mapping[str, set[str]]) -> None:
+    scope = {"profile": profile, "owner": owner}
+    if data.get("missing_input_patterns"):
+        scope["missing_input_patterns"] = data["missing_input_patterns"]
+    outcome.update({"selection_reason": data.get("selection_reason", "profile_and_owner"), "scope": scope,
+                    "reuse_reason": "matching_evidence" if state.get("reused") else "no_reused_results",
+                    "summary": f"acceptance: executed {int(state.get('executed', 0))}, reused {int(state.get('reused', 0))}",
+                    "execution_identities": list(state.get("execution_identities", [])),
+                    "selected_check_ids": sorted(str(check["id"]) for check in outcome.get("checks", [])
+                                                 if check.get("status") != "not_included"),
+                    "timings": {"planning_ms": planning_ms, "preflight_ms": preflight_ms,
+                                "execution_ms": float(state.get("execution_ms", 0)),
+                                "evidence_ms": evidence_ms, "elapsed_ms": (time.monotonic() - started) * 1000}})
+    outcome["input_change_category"] = _input_change_categories(outcome["selected_check_ids"], fingerprints, previous)
+    for check in outcome.get("checks", []):
+        identity = fingerprints.get(str(check.get("id")))
+        if identity:
+            check["input_hash"] = identity["input_hash"]
+            check["input_scope"] = identity["scope"]
+    if data.get("schema") == 2:
+        outcome["schema2_compat"] = True
+
+
+def _finalize_manifest(outcome: dict[str, object], state: Mapping[str, object],
+                       items: Sequence[Mapping[str, object]], results: list[dict[str, object]]) -> dict[str, object]:
+    if state.get("interrupted"):
+        raise AcceptanceInterrupted(outcome)
+    if not _executable(items):
+        return {"decision": "block", "results": results, "error": "no_executable_scenarios"}
+    record_report({"kind": "acceptance", **{key: outcome[key] for key in
+                   ("selection_reason", "scope", "reuse_reason", "timings", "selected_check_ids", "execution_identities", "input_change_category",
+                    "executed", "reused") if key in outcome}})
+    return outcome
+
+
 def run_manifest(manifest_file: str, root: str, write_evidence: bool = False,
                  include_e2e: bool = False, owner: str = "", deadline: Optional[float] = None,
                  only_e2e: bool = False, use_cache: bool = True, run_id: str = "", resume: bool = False,
                  max_failures: int = 0, fail_fast: bool = False, jobs: int = 0,
-                 profile: str = "full", force_ids: Sequence[str] = ()) -> dict[str, object]:
-    full_data, data, items, noop = _prepare_manifest(manifest_file, root, profile, force_ids, owner)
+                 profile: str = "full", force_ids: Sequence[str] = (),
+                 only_scenarios: Optional[Sequence[str]] = None) -> dict[str, object]:
+    started = time.monotonic()
+    full_data, data, items, noop = _prepare_manifest(manifest_file, root, profile, force_ids, owner, only_scenarios)
     if noop is not None:
         return noop
     ordered = _ordered(items)
     expanded, aggregates = _expand_multi_checks(ordered)
     rows = _scenario_rows(data["scenarios"])
+    previous = _previous_check_hashes(data)
     check_list, check_map = _check_plan(data)
+    from codeflow.acceptance.cf_acceptance_manifest_core import kind
+    for item in expanded:
+        check = check_map.get(str(item.get("check", "")), {})
+        level = check.get("level")
+        if isinstance(level, str):
+            item["level"], item["kind"] = level, kind(level)
     for item in items:
         if isinstance(item, dict):
             item["check_config"] = check_map.get(str(item.get("check", "")), {})
     run_key = resolve_run_id(run_id)
     namespace = _run_namespace(str(root), check_map, owner, items, run_key)
+    preflight_started = time.monotonic()
+    planning_ms = (preflight_started - started) * 1000
     fingerprint = worktree_fingerprint(str(root)) if use_cache else ""
     check_fingerprints = _check_input_fingerprints(str(root), check_map, fingerprint) if use_cache else {}
     fingerprints = {check_id: value["input_hash"] for check_id, value in check_fingerprints.items()}
@@ -1260,28 +1432,21 @@ def run_manifest(manifest_file: str, root: str, write_evidence: bool = False,
     engine = _UnitEngine(units, Path(root), include_e2e or only_e2e, only_e2e, deadline,
                          namespace, rows, fingerprint, use_cache, limit, checkpoint, jobs,
                          fingerprints=engine_fingerprints)
+    preflight_ms = (time.monotonic() - preflight_started) * 1000
     results_by_id, state = engine.run()
     results = _ordered_results(expanded if aggregates else ordered, results_by_id)
     results = _aggregate_multi_results(results, aggregates)
     for result, item in zip(results, ordered):
         if isinstance(result, dict) and isinstance(item, dict) and item.get("check_config"):
             result["check_config"] = item.get("check_config")
-    # Only the checkpoint sidecar records progress during an interruption.
+    evidence_started = time.monotonic()
     if not state.get("interrupted") and (write_evidence or resume):
         persist_results(Path(manifest_file), full_data, results, fingerprint=fingerprint, run_id=run_key)
+    evidence_ms = (time.monotonic() - evidence_started) * 1000
     outcome = _payload(items, check_list, check_map, results, state)
-    for check in outcome.get("checks", []):
-        identity = check_fingerprints.get(str(check.get("id")))
-        if identity:
-            check["input_hash"] = identity["input_hash"]
-            check["input_scope"] = identity["scope"]
-    if full_data.get("schema") == 2:
-        outcome["schema2_compat"] = True
-    if state.get("interrupted"):
-        raise AcceptanceInterrupted(outcome)
-    if not _executable(items):
-        return {"decision": "block", "results": results, "error": "no_executable_scenarios"}
-    return outcome
+    _add_run_reporting(outcome, state, check_fingerprints, data,
+                       started, planning_ms, preflight_ms, evidence_ms, profile, owner, previous)
+    return _finalize_manifest(outcome, state, items, results)
 
 
 def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> int:
@@ -1309,17 +1474,17 @@ def main(argv: Optional[Sequence[str]] = None, stdout: IO[str] = sys.stdout) -> 
             resume=args.resume, max_failures=args.max_failures, fail_fast=args.fail_fast,
             jobs=args.jobs,
         )
-        stdout.write(json.dumps(result, ensure_ascii=False))
+        stdout.write(json.dumps(redact_sensitive_payload(result), ensure_ascii=False))
         if result.get("interrupted"):
             return 130
         return 0 if result["decision"] == "pass" else 3
     except AcceptanceInterrupted as exc:
-        stdout.write(json.dumps(exc.payload, ensure_ascii=False))
+        stdout.write(json.dumps(redact_sensitive_payload(exc.payload), ensure_ascii=False))
         return 130
     except KeyboardInterrupt:
         stdout.write(json.dumps({"decision": "block", "error": "interrupted", "interrupted": True},
                                 ensure_ascii=False))
         return 130
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        stdout.write(json.dumps({"decision": "block", "error": str(exc)}, ensure_ascii=False))
+        stdout.write(json.dumps(redact_sensitive_payload({"decision": "block", "error": str(exc)}), ensure_ascii=False))
         return 2

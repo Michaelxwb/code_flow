@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import signal
 import shlex
 import json
@@ -23,6 +24,64 @@ from pathlib import Path
 from typing import Callable, Iterator, Mapping, Optional, Sequence
 
 _EXECUTIONS: ContextVar[Optional[dict[str, dict[str, object]]]] = ContextVar("cf_executions", default=None)
+_REPORTS: ContextVar[Optional[list[dict[str, object]]]] = ContextVar("cf_reports", default=None)
+_SECRET_OPTION = re.compile(r"(?i)^--?(?:api[-_]?key|access[-_]?token|token|password|passwd|secret|credential)$")
+_SECRET_ASSIGNMENT = re.compile(r"(?i)(--?(?:api[-_]?key|access[-_]?token|token|password|passwd|secret|credential)=)([^\s]+)")
+_RUNTIME_ENV = frozenset(("CF_RUNTIME_COMMAND", "CF_RUNTIME_ACTION", "CF_CLI_VERSION"))
+
+
+def redact_sensitive_text(value: str) -> str:
+    """Hide inherited sensitive environment values from diagnostics."""
+    names = ("SECRET", "TOKEN", "PASSWORD", "PASSWD", "CREDENTIAL", "API_KEY", "PRIVATE_KEY")
+    secrets = {item for key, item in os.environ.items()
+               if item and any(name in key.upper() for name in names)}
+    for secret in sorted(secrets, key=len, reverse=True):
+        value = value.replace(secret, "[REDACTED]")
+    return _SECRET_ASSIGNMENT.sub(r"\1[REDACTED]", value)
+
+
+def _redact_sequence(values: Sequence[object]) -> list[object]:
+    result: list[object] = []
+    hide_next = False
+    for item in values:
+        if hide_next:
+            result.append("[REDACTED]")
+            hide_next = False
+            continue
+        result.append(redact_sensitive_payload(item))
+        hide_next = isinstance(item, str) and bool(_SECRET_OPTION.fullmatch(item))
+    return result
+
+
+def redact_sensitive_payload(value: object) -> object:
+    """Return a JSON-compatible copy with sensitive strings redacted."""
+    if isinstance(value, str):
+        return redact_sensitive_text(value)
+    if isinstance(value, Mapping):
+        return {key: redact_sensitive_payload(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return _redact_sequence(value)
+    return value
+
+
+@contextmanager
+def report_session() -> Iterator[list[dict[str, object]]]:
+    reports: list[dict[str, object]] = []
+    token = _REPORTS.set(reports)
+    try:
+        yield reports
+    finally:
+        _REPORTS.reset(token)
+
+
+def record_report(report: Mapping[str, object]) -> None:
+    reports = _REPORTS.get()
+    if reports is not None:
+        reports.append(dict(report))
+
+
+def report_requested() -> bool:
+    return _REPORTS.get() is not None
 
 
 @contextmanager
@@ -44,13 +103,26 @@ def invalidate_executions() -> None:
         cache.clear()
 
 
+def command_environment(env: Optional[Mapping[str, str]] = None) -> dict[str, str]:
+    """Do not pass CLI dispatch metadata into user checks."""
+    environment = {key: value for key, value in os.environ.items() if key not in _RUNTIME_ENV}
+    environment.update({str(key): str(value) for key, value in (env or {}).items()})
+    return environment
+
+
 def execution_key(argv: Sequence[str], cwd: str, timeout: float,
                   env: Optional[Mapping[str, str]] = None) -> str:
     """Identity of a command under the current process environment."""
-    payload: list[object] = [list(argv), str(Path(cwd).resolve()), float(timeout)]
-    if env:
-        payload.append(sorted((str(key), str(value)) for key, value in env.items()))
-    return json.dumps(payload, ensure_ascii=False)
+    environment = command_environment(env)
+    payload: list[object] = [list(argv), str(Path(cwd).resolve()), float(timeout), sorted(environment.items())]
+    return hashlib.sha256(json.dumps(payload, ensure_ascii=False).encode()).hexdigest()
+
+
+def execution_environment_hash(env: Optional[Mapping[str, str]] = None) -> str:
+    """Bind evidence to inherited and explicit environment without exposing values."""
+    environment = command_environment(env)
+    payload = json.dumps(sorted(environment.items()), ensure_ascii=False)
+    return hashlib.sha256(payload.encode()).hexdigest()
 
 
 def remaining_seconds(deadline: Optional[float]) -> Optional[float]:
@@ -87,14 +159,28 @@ def run_command(
     timeout: float,
     deadline: Optional[float] = None,
     env: Optional[Mapping[str, str]] = None,
+    identity_context: Optional[Mapping[str, object]] = None,
 ) -> dict[str, object]:
     """Run argv synchronously under timeout+deadline. Never uses a shell."""
     key = execution_key(argv, cwd, timeout, env)
+    if identity_context:
+        payload = json.dumps(identity_context, sort_keys=True, ensure_ascii=False, default=str)
+        key = hashlib.sha256(f"{key}:{payload}".encode()).hexdigest()
     cache = _EXECUTIONS.get()
-    if cache is not None and key in cache:
-        return dict(cache[key])
+    fingerprint = ""
+    if cache is not None:
+        root = _fingerprint_git(cwd, "rev-parse", "--show-toplevel")
+        if root is not None and root.returncode == 0:
+            fingerprint = worktree_fingerprint(root.stdout.strip())
+    key = hashlib.sha256(f"{key}:{fingerprint}".encode()).hexdigest() if fingerprint else ""
+    if cache is not None and key and key in cache:
+        return {**cache[key], "execution_ms": 0.0, "execution_reused": True}
+    started = time.monotonic()
     result = _execute(argv, cwd, timeout, deadline, env)
-    if cache is not None and result["status"] == "ok":
+    result["execution_ms"] = ((time.monotonic() - started) * 1000
+                              if result.get("execution_started", True) else 0.0)
+    result["execution_reused"] = False
+    if cache is not None and key and result["status"] == "ok" and result["returncode"] == 0:
         cache[key] = result
     return result
 
@@ -194,14 +280,13 @@ def _execute(argv: Sequence[str], cwd: str, timeout: float, deadline: Optional[f
              env: Optional[Mapping[str, str]] = None) -> dict[str, object]:
     remaining = remaining_seconds(deadline)
     if remaining is not None and remaining <= 0:
-        return {"status": "deadline_exceeded", "returncode": None, "stdout": "", "stderr": ""}
+        return {"status": "deadline_exceeded", "returncode": None, "stdout": "", "stderr": "",
+                "execution_started": False}
     # When the entry deadline is tighter than the command timeout, expiry is
     # unexecuted work (`incomplete`), never a product failure.
     deadline_bounded = remaining is not None and remaining <= timeout
     effective = min(timeout, remaining) if remaining is not None else timeout
-    child_env = None
-    if env:
-        child_env = {**os.environ, **{str(key): str(value) for key, value in env.items()}}
+    child_env = command_environment(env)
     try:
         proc = subprocess.Popen(
             list(argv), cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
@@ -211,7 +296,8 @@ def _execute(argv: Sequence[str], cwd: str, timeout: float, deadline: Optional[f
     except subprocess.TimeoutExpired as exc:
         return _timeout_result(proc, exc, deadline_bounded)
     except OSError as exc:
-        return {"status": "spawn_error", "returncode": None, "stdout": "", "stderr": str(exc)}
+        return {"status": "spawn_error", "returncode": None, "stdout": "", "stderr": str(exc),
+                "execution_started": False}
     return {"status": "ok", "returncode": proc.returncode, "stdout": out or "", "stderr": err or ""}
 
 
