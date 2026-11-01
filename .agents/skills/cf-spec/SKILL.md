@@ -70,11 +70,16 @@ description: Manage schema-v1 Spec Context, drift recovery, and prepared one-sho
 6. `decision=null` 是自动验证的正常情况；无需改代码但已符合规则时提交对应证据，不强制用户 N/A。只有确实不适用/豁免时要求用户 decision。
 7. `convention_review_required` 表示绑定 Spec 的 Conventions 尚未成为可执行约束；审查与当前设计的冲突，关键条目提升为稳定 Rule 并配置 verifier。CLI 低于 runtime 时先按提示升级 CLI；不要尝试把项目 runtime 降级。
 
+## 规范自检与优化
+
+按 `docs/spec-optimization.md` 执行审计、路径预算、影响查询和只读优化预览。`code-flow spec optimize --apply --plan <提案>` 需要在交互终端展示并获得用户对具体 diff 的明确确认；不得代为确认。应用后对受影响需求执行 refresh 和 doctor。
+
 <!-- code-flow:runtime-commands start -->
 
 运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
 
 ```bash
+code-flow spec optimize --help
 code-flow spec validate --task-dir "<需求目录>" --json
 code-flow spec status --task-dir "<需求目录>" --root "$PWD" --json
 code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json

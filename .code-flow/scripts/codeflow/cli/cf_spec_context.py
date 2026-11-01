@@ -289,12 +289,23 @@ def _candidate_data(candidate: SpecCandidate) -> dict[str, object]:
 
 
 def _catalog_command(args: argparse.Namespace) -> dict[str, object]:
+    from codeflow.core.cf_core import CatalogBudgetError, build_effective_mapping, catalog_omissions, load_config
+    config = load_config(args.root)
+    budget = config.get("budget") or {}
+    if not isinstance(budget, dict):
+        raise ValueError("budget must be a mapping")
+    maximum = int(budget.get("catalog_max", 200))
+    try:
+        omissions = catalog_omissions(args.root, build_effective_mapping(args.root, config.get("path_mapping") or {}), maximum)
+    except CatalogBudgetError as exc:
+        return {"ok": False, "error": {"code": "catalog_budget_too_small", "minimum": exc.minimum}}
     candidates = resolve_candidates(args.root, args.stage, tuple(args.paths))
     return {
         "ok": True,
         "stage": args.stage,
         "total": len(candidates),
         "candidates": [_candidate_data(item) for item in candidates],
+        **omissions,
     }
 
 
@@ -740,6 +751,60 @@ def _doctor_config(root: Path) -> list[dict[str, str]]:
     return []
 
 
+def _doctor_layout(root: Path) -> list[dict[str, str]]:
+    from codeflow.core.cf_core import load_config
+    try:
+        config = load_config(str(root))
+    except (OSError, ValueError) as exc:
+        return [_doctor_finding("domain_config_invalid", "block", str(exc),
+                                str(root / '.code-flow/config.yml'), '修复 config.yml 后重试')]
+    workflow = config.get("spec_workflow") or {}
+    mapping = config.get("path_mapping") or {}
+    if not isinstance(workflow, dict) or not isinstance(mapping, dict):
+        return [_doctor_finding("domain_config_invalid", "block", "domain 配置必须是 mapping")]
+    strict = workflow.get("strict_domain_layout", False)
+    if type(strict) is not bool:
+        return [_doctor_finding("domain_config_invalid", "block", "strict_domain_layout 必须是布尔值")]
+    severity = "block" if strict else "warn"
+    return [finding for domain, entry in sorted(mapping.items())
+            for finding in _domain_findings(root, str(domain), entry, severity)]
+
+
+def _domain_findings(root: Path, domain: str, entry: object, severity: str) -> list[dict[str, str]]:
+    specs = root / '.code-flow/specs'
+    findings: list[dict[str, str]] = []
+    if domain not in ('shared', '_session') and not (specs / domain).is_dir():
+        findings.append(_doctor_finding('domain_directory_missing', severity, f'配置域 {domain} 没有目录',
+                                        str(specs / domain), '创建域目录或修正 path_mapping'))
+    if not isinstance(entry, dict) or not isinstance(entry.get('specs', []), list):
+        return findings
+    for item in entry.get('specs', []):
+        path = item if isinstance(item, str) else item.get('path', '') if isinstance(item, dict) else ''
+        if isinstance(path, str) and path and path.replace('\\', '/').split('/')[0] != domain:
+            findings.append(_doctor_finding('domain_cross_reference', severity, f'{domain} 跨域声明 {path}',
+                                            str(specs / path), '将规范放入所属域或修正配置'))
+    findings.extend(_domain_auto_discovered(specs, domain, entry))
+    return findings
+
+
+def _domain_auto_discovered(specs: Path, domain: str, entry: dict) -> list[dict[str, str]]:
+    """Describe implicit entries without claiming they are missing from routing."""
+    directory = specs / domain
+    if domain in ('shared', '_session') or not directory.is_dir():
+        return []
+    declared = {item if isinstance(item, str) else item.get('path', '')
+                for item in entry.get('specs', []) if isinstance(item, (str, dict))}
+    findings: list[dict[str, str]] = []
+    for path in sorted(directory.rglob('*.md')):
+        relative = path.relative_to(specs).as_posix()
+        if path.name == '_map.md' or relative in declared:
+            continue
+        findings.append(_doctor_finding('domain_auto_discovered', 'warn',
+                                        f'{relative} 未显式登记，已由自动发现纳入', str(path),
+                                        '如需固定标签或层级，可在 path_mapping 中显式登记'))
+    return findings
+
+
 def _doctor_migrations(root: Path) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     lock = root / ".code-flow/.runtime-migration.lock"
@@ -832,6 +897,7 @@ def _doctor_command(args: argparse.Namespace) -> dict[str, object]:
     runtime, runtime_findings = _doctor_runtime(root)
     findings.extend(runtime_findings)
     findings.extend(_doctor_config(root))
+    findings.extend(_doctor_layout(root))
     findings.extend(_doctor_migrations(root))
     findings.extend(_doctor_legacy(root))
     from codeflow.spec.cf_rule_readiness import applied_findings, convention_findings
@@ -887,6 +953,23 @@ def _parser() -> argparse.ArgumentParser:
     catalog.add_argument("--stage", required=True)
     catalog.add_argument("--paths", nargs="*", default=())
     catalog.add_argument("--json", action="store_true")
+    budget = commands.add_parser("budget")
+    budget.add_argument("--paths", nargs="*", default=())
+    budget.add_argument("--changed", action="store_true")
+    budget.add_argument("--json", action="store_true")
+    impact = commands.add_parser("impact")
+    impact.add_argument("spec")
+    impact.add_argument("--max-files", type=int, default=5000)
+    impact.add_argument("--max-depth", type=int, default=20)
+    impact.add_argument("--json", action="store_true")
+    optimize = commands.add_parser("optimize")
+    optimize_actions = optimize.add_mutually_exclusive_group(required=True)
+    optimize_actions.add_argument("--dry-run", action="store_true")
+    optimize_actions.add_argument("--apply", action="store_true")
+    optimize.add_argument("--paths", nargs="*", default=())
+    optimize.add_argument("--target", default="")
+    optimize.add_argument("--plan", default="")
+    optimize.add_argument("--json", action="store_true")
     decision = commands.add_parser("decision")
     decision.add_argument("--task-dir", required=True)
     decision.add_argument("--json", action="store_true")
@@ -933,7 +1016,60 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _apply_optimization(args: argparse.Namespace, stdin: IO[str]) -> dict[str, object]:
+    from codeflow.spec.cf_spec_optimize_apply import apply_proposal
+    if not args.plan or args.paths or args.target:
+        raise ValueError('--apply requires --plan and does not accept --paths or --target')
+    path = Path(args.plan)
+    if path.stat().st_size > 2_000_000:
+        raise ValueError('proposal file exceeds size limit')
+    proposal = json.loads(path.read_text(encoding='utf-8'))
+    if not isinstance(proposal, dict):
+        raise ValueError('proposal must be a JSON object')
+    if not stdin.isatty():
+        raise ValueError('explicit interactive confirmation requires a terminal')
+    summary = {key: proposal.get(key) for key in ('proposal_id', 'operations', 'mapping_diff', 'budget', 'affected_contexts')}
+    sys.stderr.write(json.dumps(summary, ensure_ascii=False) + '\n确认应用上述提案？输入 y 确认: ')
+    sys.stderr.flush()
+    if stdin.readline().strip().lower() != 'y':
+        raise ValueError('proposal was not confirmed')
+    return apply_proposal(os.getcwd(), proposal, confirmed=True)
+
+
 def _execute(args: argparse.Namespace, stdin: IO[str]) -> dict[str, object]:
+    if args.command == "optimize":
+        from codeflow.spec.cf_spec_optimize import build_proposal
+        try:
+            if args.apply:
+                return _apply_optimization(args, stdin)
+            if args.plan:
+                raise ValueError('--plan is only supported with --apply')
+            return build_proposal(os.getcwd(), tuple(args.paths), args.target)
+        except (OSError, UnicodeError, ValueError) as exc:
+            return {"ok": False, "error": {"code": "proposal_unavailable", "message": str(exc)}}
+    if args.command == "impact":
+        from codeflow.spec.cf_spec_impact import inspect_impact
+        try:
+            return inspect_impact(os.getcwd(), args.spec, args.max_files, args.max_depth)
+        except ValueError as exc:
+            message = str(exc)
+            code = message if message in ("spec_not_found", "spec_identity_ambiguous") else "impact_invalid"
+            return {"ok": False, "error": {"code": code, "message": message}}
+    if args.command == "budget":
+        from codeflow.core.cf_git import GitError, changed_files
+        from codeflow.spec.cf_spec_budget import measure_path_budget
+        paths = list(args.paths)
+        if args.changed:
+            try:
+                paths.extend(changed_files(os.getcwd()))
+            except GitError as exc:
+                return {"ok": False, "error": {"code": "git_error", "message": str(exc)}}
+        if not paths and not args.changed:
+            return {"ok": False, "error": {"code": "paths_required", "message": "spec budget requires --paths or --changed"}}
+        try:
+            return measure_path_budget(os.getcwd(), tuple(dict.fromkeys(paths)))
+        except (TypeError, ValueError) as exc:
+            return {"ok": False, "error": {"code": getattr(exc, "code", "invalid_config"), "message": str(exc)}}
     if args.command == "catalog":
         return _catalog_command(args)
     if args.command == "doctor":
@@ -983,8 +1119,48 @@ def main(argv: Optional[Sequence[str]] = None, stdin: IO[str] = sys.stdin, stdou
                 stdout.write(_doctor_text(data) + "\n")
             return 0 if data["decision"] == "pass" else 3
         result = _execute(args, stdin)
+        if args.command == "catalog" and not args.json and result.get("ok"):
+            stdout.write(json.dumps(result, ensure_ascii=False))
+            if result.get("dropped_count"):
+                stdout.write(f"\n因预算未列出 {result['dropped_count']} 项，涉及域: {', '.join(result['dropped_domains'])}\n")
+            return 0
+        if args.command == "impact" and not args.json:
+            if result.get("ok") is False:
+                stdout.write(f"影响查询失败: {result['error']['message']}\n")
+                return 3
+            stdout.write(f"规范: {result['spec_id']} ({result['spec_path']})\n")
+            for item in result['references']:
+                stdout.write(f" - {item['source']}: {item.get('task_path', item.get('context_path', ''))} "
+                             f"{item.get('task_id', '')} {item.get('rule_ref', '')}\n")
+            for item in result['errors']:
+                stdout.write(f" - 读取失败: {item['path']}: {item['message']}\n")
+            stdout.write(f"已扫描: {result['scanned_files']}，截断: {bool(result['truncated'])}\n")
+            stdout.write(f"{result['next']}\n")
+            return 3 if result['truncated'] or result['errors'] else 0
+        if args.command == "optimize" and not args.json:
+            if result.get("ok") is False:
+                stdout.write(f"优化预览失败: {result['error']['message']}\n")
+                return 3
+            if args.apply:
+                stdout.write(f"已应用提案 {result['proposal_id']}: {', '.join(result['changed'])}\n")
+                return 0
+            stdout.write(f"提案: {result['proposal_id']}，规范: {len(result['specs'])}，"
+                         f"建议: {len(result['suggestions'])}\n{result['note']}\n")
+            return 0
+        if args.command == "budget" and not args.json:
+            if result.get("ok") is False:
+                stdout.write(f"预算检查失败: {result['error']['message']}\n")
+                return 3
+            stdout.write(f"单次注入: {result['matched_total']} / {result['limit']} tokens\n"
+                         f"规范全量聚合: {result['aggregate_total']} tokens\n"
+                         f"超限: {'是' if result['over_limit'] else '否'}\n")
+            for item in result['matched_specs']:
+                stdout.write(f" - {item['path']}: {item['tokens']} tokens\n")
+            return 3 if result['over_limit'] else 0
         stdout.write(json.dumps(result, ensure_ascii=False))
-        return 0
+        return 3 if ((args.command == "budget" and result.get("over_limit"))
+                     or (args.command == "impact" and (result.get("truncated") or result.get("errors")))
+                     or result.get("ok") is False) else 0
     except ContextError as exc:
         stdout.write(json.dumps({"ok": False, "error": exc.to_dict()}, ensure_ascii=False))
         return 3

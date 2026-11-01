@@ -398,6 +398,14 @@ CATALOG_HEADER = (
 )
 
 
+class CatalogBudgetError(ConfigError):
+    """Catalog cannot fit its mandatory header and complete-list notice."""
+
+    def __init__(self, minimum: int) -> None:
+        self.minimum = minimum
+        super().__init__(f"catalog_max is too small; minimum is {minimum} estimated tokens")
+
+
 def _catalog_entries(project_root: str, effective_mapping: dict) -> list:
     """Collect injectable specs as (tier, rel_path, abs_path) sorted tier1-first."""
     specs_root = os.path.join(project_root, ".code-flow", "specs")
@@ -445,7 +453,7 @@ def _bounded_catalog(lines: list[str], maximum: int) -> str:
         included += 1
     text = catalog + footer(included)
     if estimate_tokens(text) > maximum:
-        raise ConfigError("catalog_max is too small for the Catalog and complete-list command")
+        raise CatalogBudgetError(estimate_tokens(text))
     return text
 
 
@@ -468,6 +476,22 @@ def build_spec_catalog(project_root: str, effective_mapping: dict, catalog_max: 
     catalog = _bounded_catalog(lines, catalog_max) if lines else ""
     _catalog_cache[project_root] = {"signature": signature, "catalog_max": catalog_max, "catalog": catalog}
     return catalog
+
+
+def catalog_omissions(project_root: str, effective_mapping: dict, catalog_max: int) -> dict[str, object]:
+    """Compute omissions from the actual bounded catalog without changing its ordering."""
+    from collections import Counter
+    lines = _catalog_lines(_catalog_entries(project_root, effective_mapping))
+    text = build_spec_catalog(project_root, effective_mapping, catalog_max)
+    remaining = Counter(line for line in text.splitlines() if line.startswith('- `'))
+    dropped: list[str] = []
+    for line in lines:
+        if remaining[line]:
+            remaining[line] -= 1
+        else:
+            dropped.append(line.split('`', 2)[1])
+    return {"dropped_count": len(dropped),
+            "dropped_domains": sorted({path.split('/', 1)[0] for path in dropped})}
 
 
 def assemble_context(specs: list, heading: str) -> str:

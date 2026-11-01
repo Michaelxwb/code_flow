@@ -17,16 +17,14 @@ from codeflow.core.cf_core import (
     ConfigError,
     build_effective_mapping,
     build_spec_catalog,
-    compress_content,
     estimate_tokens,
     load_config,
-    parse_spec_frontmatter,
     resolve_compress,
 )
 from codeflow.core.cf_log import warn
 from codeflow.cli.cf_spec_context import ContextError, SpecContext, load_active_task, load_context
 from codeflow.core.cf_context_cache import load_snapshot
-from codeflow.spec.cf_spec_resolver import resolve_candidate_headers, resolve_candidates
+from codeflow.spec.cf_spec_resolver import resolve_candidate_headers
 from codeflow.spec.cf_spec_context_model import context_sha256
 from codeflow.spec.cf_task_projection import project_task_session
 
@@ -210,23 +208,11 @@ def _active_route(root: str, paths: Sequence[str] = (), check_scope: bool = Fals
 
 
 def _read_candidates(root: str, paths: Sequence[str], compress: bool = True) -> RouteResult:
+    from codeflow.spec.cf_spec_budget import SpecBudgetError, path_specs
     try:
-        candidates = resolve_candidates(root, "code", tuple(paths), matched_only=True)
-    except ValueError as exc:
-        raise RouterError("invalid_spec_metadata", str(exc)) from exc
-    specs = []
-    for candidate in candidates:
-        if candidate.scope == "unmatched":
-            continue
-        target = Path(root) / ".code-flow/specs" / candidate.path
-        try:
-            raw = target.read_text(encoding="utf-8")
-        except OSError as exc:
-            raise RouterError("spec_read_failed", f"{candidate.path}: {exc}") from exc
-        unused_frontmatter, content = parse_spec_frontmatter(raw)
-        del unused_frontmatter
-        final_content = compress_content(content.strip()) if compress else content.strip()
-        specs.append({"path": candidate.path, "content": final_content, "tier": 1})
+        specs = path_specs(root, paths, compress)
+    except SpecBudgetError as exc:
+        raise RouterError(exc.code, str(exc)) from exc
     text = assemble_context(specs, "## Active Specs (path-mapped)") if specs else ""
     budget = load_config(root).get("budget", {})
     if not isinstance(budget, dict):

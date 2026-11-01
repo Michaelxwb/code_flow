@@ -1523,3 +1523,7 @@ Agent 使用 `code-flow spec/task/scenarios/design/acceptance/evidence/audit/val
 | `code-flow spec doctor --task-dir "<需求目录>" --root "$PWD" --json` | Context/安装健康、应用引用与阶段 readiness |
 
 运行时状态：`done` 仅在 required code check 全部 verified 后成立；`provisional` 表示仍有合法延后、env_blocked 或 incomplete；真实 failed 会阻断，不会转成成功。`env_blocked` 不写 verified、不计产品失败。0.7 安装需执行显式事务迁移，见 [0.8.0 迁移说明](migrations/runtime-0.8.0.md)（含 rollback、manifest v3 与 evidence sidecar）。旧的 0.7 命令别名保留一个 minor。
+
+### Spec 自检与优化
+
+按 [Spec 自检与优化](spec-optimization.md) 手动执行 audit、budget、impact、预览及交互确认；该流程不会自动运行。

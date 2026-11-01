@@ -1,6 +1,21 @@
 {
   "schema_version": 1,
   "commands": {
+    "spec budget": {
+      "module": "cf_spec_context",
+      "prefix": ["budget"],
+      "example_args": "--help"
+    },
+    "spec impact": {
+      "module": "cf_spec_context",
+      "prefix": ["impact"],
+      "example_args": "--help"
+    },
+    "spec optimize": {
+      "module": "cf_spec_context",
+      "prefix": ["optimize"],
+      "example_args": "--help"
+    },
     "spec catalog": {
       "module": "cf_spec_context",
       "prefix": [

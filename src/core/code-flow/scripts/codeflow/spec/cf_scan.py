@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import json
+import glob
 import os
 import re
 import sys
+from pathlib import Path
 
 from codeflow.core import cf_log
 from codeflow.acceptance.cf_checks import load_check_state, parse_spec_checks
@@ -86,14 +88,30 @@ def normalize_line(line: str) -> str:
     return " ".join(line.strip().split())
 
 
+_YAML_STRUCTURE = re.compile(
+    r"^(?:stages:.*|enforcement:.*|verifiers:.*|tags:.*|tier:.*|"
+    r"- (?:design|plan|code|review)|-?\s*type:\s*(?:command|test))$"
+)
+
+
+def _audit_body(content: str) -> str:
+    """Remove only a complete frontmatter block at the start of the file."""
+    lines = content.splitlines()
+    if lines and lines[0].strip() == "---":
+        end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+        if end is not None:
+            return "\n".join(lines[end + 1:])
+    return content
+
+
 def find_redundant_lines(specs: list) -> dict:
     line_map: dict = {}
     for spec in specs:
-        for raw in spec["content"].splitlines():
+        for raw in _audit_body(spec["content"]).splitlines():
             line = normalize_line(raw)
             if not line:
                 continue
-            if line.startswith("#") or line == "---":
+            if line.startswith("#") or line == "---" or _YAML_STRUCTURE.fullmatch(line):
                 continue
             if len(line) < 6:
                 continue
@@ -102,23 +120,73 @@ def find_redundant_lines(specs: list) -> dict:
     return redundant
 
 
+def _audit_options(config: dict) -> tuple[list[str], int]:
+    audit = config.get("audit", {})
+    if not isinstance(audit, dict):
+        raise ValueError("audit must be a mapping")
+    roots = audit.get("path_roots", [])
+    if not isinstance(roots, list) or any(not isinstance(root, str) or not root for root in roots):
+        raise ValueError("audit.path_roots must be a list of paths")
+    maximum = audit.get("long_spec_tokens", 500)
+    if type(maximum) is not int or maximum <= 0:
+        raise ValueError("audit.long_spec_tokens must be a positive integer")
+    return roots, maximum
+
+
+def _audit_roots(project_root: str, configured: list[str]) -> tuple[list[str], list[dict[str, str]]]:
+    project = Path(project_root).resolve()
+    roots: list[str] = []
+    warnings: list[dict[str, str]] = []
+    discovered = [path for pattern in ("apps/*/src/*", "packages/*/src/*", "lib/*/src/*")
+                  for path in sorted(glob.glob(str(project / pattern)))]
+    for value in [*configured, *discovered]:
+        candidate = (project / value).resolve()
+        if (candidate != project and project not in candidate.parents) or not candidate.is_dir() or not os.access(candidate, os.R_OK | os.X_OK):
+            if value in configured:
+                warnings.append({"code": "invalid_path_root", "path": value})
+            continue
+        resolved = str(candidate)
+        if resolved not in roots:
+            roots.append(resolved)
+    return roots, warnings
+
+
+def _path_resolution(text: str, project_root: str, base_dir: str,
+                     roots: list[str]) -> tuple[list[str], dict[str, str]]:
+    missing: list[str] = []
+    resolved: dict[str, str] = {}
+    project = Path(project_root).resolve()
+    for token in _path_tokens(text):
+        candidates = [str(project), base_dir, *roots]
+        if os.path.isabs(token):
+            candidates = [""]
+        for root in candidates:
+            if root and not Path(root).is_dir():
+                continue
+            target = Path(os.path.join(root, token)).resolve()
+            if not os.path.isabs(token) and target != project and project not in target.parents:
+                continue
+            if target.exists():
+                resolved[token] = os.path.relpath(root, project) if root else "/"
+                break
+        else:
+            missing.append(token)
+    return missing, resolved
+
+
+def _path_tokens(text: str) -> list[str]:
+    tokens: set[str] = set()
+    for word in re.findall(r"[^\s`<>()\"']+", text):
+        if "://" in word or any(char in word for char in "*?{}[]"):
+            continue
+        tokens.update(PATH_PATTERN.findall(word))
+    return sorted(tokens)
+
+
 def find_missing_paths(text: str, project_root: str, base_dir: str = "") -> list:
     """路径引用检查：项目根解析失败时，再按 spec 自身目录二次解析——
     _map.md 常用相对本域目录的引用（如 design/design-lite.md）。"""
-    missing: list = []
-    for token in set(PATH_PATTERN.findall(text)):
-        if token.startswith("http://") or token.startswith("https://"):
-            continue
-        if os.path.isabs(token):
-            if not os.path.exists(token):
-                missing.append(token)
-            continue
-        if os.path.exists(os.path.join(project_root, token)):
-            continue
-        if base_dir and os.path.exists(os.path.join(base_dir, token)):
-            continue
-        missing.append(token)
-    return sorted(missing)
+    return _path_resolution(text, project_root, base_dir, [])[0]
 
 
 def build_report(project_root: str, platform: str = "") -> dict:
@@ -165,6 +233,8 @@ def build_report(project_root: str, platform: str = "") -> dict:
     # 模板标记前置：模板（tags:[]）不参与冗长/冗余审计，也不把
     # 模板间共享的文档头计入其他文件的冗余计数
     config = load_config(project_root)
+    configured_roots, long_spec_tokens = _audit_options(config)
+    roots, audit_warnings = _audit_roots(project_root, configured_roots)
     effective_mapping = build_effective_mapping(
         project_root, config.get("path_mapping") or {}
     )
@@ -176,11 +246,11 @@ def build_report(project_root: str, platform: str = "") -> dict:
 
     for spec in specs:
         issues = []
-        if not spec["template"] and spec["tokens"] > 500:
+        if not spec["template"] and spec["tokens"] > long_spec_tokens:
             issues.append(f"冗长: {spec['tokens']} tokens")
 
         spec_dir = os.path.join(specs_root, os.path.dirname(spec.get("rel", "")))
-        missing_paths = find_missing_paths(spec["content"], project_root, spec_dir)
+        missing_paths, resolved_paths = _path_resolution(spec["content"], project_root, spec_dir, roots)
         for path in missing_paths[:3]:
             issues.append(f"过时: 路径不存在 {path}")
 
@@ -206,6 +276,7 @@ def build_report(project_root: str, platform: str = "") -> dict:
             "tokens": spec["tokens"],
             "issues": issues,
             "template": spec["template"],
+            "resolved_paths": resolved_paths,
         })
 
     for entry in files:
@@ -245,6 +316,7 @@ def build_report(project_root: str, platform: str = "") -> dict:
         "catalog": catalog_info,
         "review": review,
         "warnings": [],
+        "audit_warnings": audit_warnings,
     }
 
 

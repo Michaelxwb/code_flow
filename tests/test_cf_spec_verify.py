@@ -45,6 +45,22 @@ def test_verified_pure_result_is_persisted_and_reused(tmp_path: Path, monkeypatc
     assert (tmp_path / ".code-flow" / ".verifier-cache.json").is_file()
 
 
+def test_regex_falls_back_to_tracked_matching_files_without_reusing_stale_result(tmp_path: Path) -> None:
+    metadata = _metadata(tmp_path, [{"rule": "RULE-verify-001", "type": "regex",
+                                   "config": {"pattern": "print\\(", "files": "*_hook.py"}}],
+                         [("RULE-verify-001", "No hook print")])
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    hook = tmp_path / "event_hook.py"
+    hook.write_text("VALUE = 1\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "event_hook.py"], check=True)
+    scope = VerificationScope(str(tmp_path), ("other.py",), "a" * 64)
+    first = run_all_verifiers(metadata, scope)
+    assert first.passed and first.evidence[0].details["checked_files"] == 1
+    hook.write_text("print('unsafe')\n", encoding="utf-8")
+    second = run_all_verifiers(metadata, scope)
+    assert not second.passed and second.evidence[0].error_code == "regex_violation"
+
+
 def test_command_result_is_not_cached(tmp_path: Path) -> None:
     marker = tmp_path / "runs.txt"
     code = f"from pathlib import Path; p=Path({str(marker)!r}); p.write_text(p.read_text()+'x' if p.exists() else 'x')"

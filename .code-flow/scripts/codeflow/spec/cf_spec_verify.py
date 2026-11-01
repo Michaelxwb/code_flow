@@ -210,6 +210,10 @@ def _cached_or_run(
     confirmation: Optional[Mapping[str, object]],
     stage: str = "code",
 ) -> VerificationEvidence:
+    if verifier.type == "regex" and not _regex_scope_files(verifier.config, metadata, scope):
+        # The fallback checks tracked files outside the diff. Do not reuse a
+        # diff-keyed result when those files may have changed independently.
+        return _evidence(metadata, rule, verifier, scope, confirmation)
     cacheable = verifier.type in _PURE_VERIFIER_TYPES
     scoped_key: Optional[str] = None
     if cacheable:
@@ -304,6 +308,21 @@ def _document(config: Mapping[str, object], scope: VerificationScope) -> _Outcom
     return _Outcome(passed, None if passed else error, artifact_hash, details)
 
 
+def _regex_file_pattern(config: Mapping[str, object], metadata: SpecMetadata) -> str:
+    check_id = _config_string(config, "check_id")
+    check = next((item for item in metadata.checks if item.get("id") == check_id), None)
+    if check is not None and isinstance(check.get("files"), str):
+        return str(check["files"])
+    return _config_string(config, "files") or "*"
+
+
+def _regex_scope_files(config: Mapping[str, object], metadata: SpecMetadata,
+                       scope: VerificationScope) -> tuple[str, ...]:
+    files = _regex_file_pattern(config, metadata)
+    return tuple(relative for relative in scope.files
+                 if fnmatch.fnmatch(relative, files) and (Path(scope.root) / relative).is_file())
+
+
 def _regex(config: Mapping[str, object], metadata: SpecMetadata, scope: VerificationScope) -> _Outcome:
     pattern = _config_string(config, "pattern")
     files = _config_string(config, "files") or "*"
@@ -316,11 +335,14 @@ def _regex(config: Mapping[str, object], metadata: SpecMetadata, scope: Verifica
         files = check.get("files") if isinstance(check.get("files"), str) else "*"
     if pattern is None:
         return _Outcome(False, "invalid_verifier_config", None, {"required": ["pattern"]})
-    selected = tuple(
-        relative
-        for relative in scope.files
-        if fnmatch.fnmatch(relative, files) and (Path(scope.root) / relative).is_file()
-    )
+    selected = _regex_scope_files(config, metadata, scope)
+    if not selected:
+        tracked = tuple(relative for relative in cf_git.tracked_files(scope.root)
+                        if fnmatch.fnmatch(relative, files))
+        if any(not (Path(scope.root) / relative).is_file() for relative in tracked):
+            return _Outcome(False, "no_matching_files", None,
+                            {"checked_files": 0, "files": files, "reason": "tracked_files_missing"})
+        selected = tracked
     if not selected:
         return _Outcome(False, "no_matching_files", None, {"checked_files": 0, "files": files})
     contents, error = _read_scope_files(VerificationScope(scope.root, selected, scope.diff_sha256))

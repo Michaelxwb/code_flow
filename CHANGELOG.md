@@ -2,6 +2,8 @@
 
 ## Unreleased — 基于 0.8.0
 
+- 增加规范审计配置、路径预算、域布局诊断、影响查询和可审核的受保护优化流程；操作步骤见 [Spec 自检与优化](docs/spec-optimization.md)。
+
 - 场景契约增加 `system` / `capacity`、环境枚举、稳定组件标识和延期责任；浏览器 E2E 校验真实边界声明，具体预期必须引用步骤或已声明断言。
 - 新增 `code-flow design lint`，检查未定义 ID、NFR 冲突、功能覆盖、场景功能错配和模板必填章节。
 - `acceptance manifest --verify-plan` 聚合 manifest 基线、场景语义、设计闭环、Spec Gate 与真实测试收集；核对 browser 套件、smoke/capacity marker 和实际命令选择范围。

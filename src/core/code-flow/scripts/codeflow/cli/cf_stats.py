@@ -336,7 +336,7 @@ def _usage_warnings(l0_tokens: int, l0_budget: int, l1_budget: int, total: int,
                     total_budget: int, usage: dict[str, object]) -> list[str]:
     warnings = []
     for exceeded, message in ((l0_tokens > l0_budget, "L0 超出预算"),
-                              (total - l0_tokens > l1_budget, "L1 超出预算"),
+                              (total - l0_tokens > min(total_budget, l1_budget), "L1 全量聚合超过单次注入上限（不代表单次编辑超限）"),
                               (total > total_budget, "总预算超出")):
         if exceeded:
             warnings.append(message)
@@ -442,6 +442,7 @@ def _stats_report(root: str, args: argparse.Namespace) -> dict[str, object]:
     report = {
         "l0": {"file": instruction, "tokens": l0_tokens, "budget": l0_budget},
         "l1": usage["l1"], "total_tokens": total, "total_budget": total_budget,
+        "budget_summary": {"aggregate_total": usage["tokens"], "single_edit_limit": min(total_budget, l1_budget)},
         "utilization": f"{round(total * 100 / total_budget)}%" if total_budget else "0%",
         "warnings": _usage_warnings(l0_tokens, l0_budget, l1_budget, total, total_budget, usage),
         "spec_domain_map": usage["spec_domain_map"], "missing_specs": usage["missing_specs"],
@@ -454,7 +455,10 @@ def _stats_report(root: str, args: argparse.Namespace) -> dict[str, object]:
     if args.audit:
         from codeflow.spec.cf_scan import build_report
         scan = build_report(root, args.platform)
-        report["audit"] = {"files": [entry for entry in scan["files"] if entry.get("issues")], "review": scan["review"]}
+        report["audit"] = {"files": [entry for entry in scan["files"] if entry.get("issues")],
+                           "review": scan["review"], "warnings": scan["audit_warnings"],
+                           "path_resolutions": [{"path": entry["path"], "resolved_paths": entry["resolved_paths"]}
+                                                for entry in scan["files"] if entry.get("resolved_paths")]}
     return report
 
 
@@ -494,8 +498,10 @@ def _print_audit(audit: Optional[dict[str, object]]) -> None:
         print("AUDIT: 运行 code-flow stats --audit 查看规范质量问题与待复审清单")
         return
     print("AUDIT (规范质量):")
-    if not audit["files"] and not audit["review"]:
+    if not audit["files"] and not audit["review"] and not audit.get("warnings"):
         print(" - 无问题")
+    for warning in audit.get("warnings", []):
+        print(f" - 无效审计路径根: {warning['path']}")
     for entry in audit["files"]:
         print(" -", entry["path"], "|", " / ".join(entry["issues"]))
     if audit["review"]:
