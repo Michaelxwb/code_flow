@@ -57,6 +57,12 @@ def test_s01_timing_and_selection_report(tmp_path: Path, monkeypatch) -> None:
     assert changed["execution_identities"] != first["execution_identities"]
     assert (tmp_path / "runs.txt").read_text(encoding="utf-8") == "xx"
     monkeypatch.setenv("TEST_REPORT_SECRET", "environment-change-12345")
+    unchanged_env = verify_layers(str(tmp_path), str(demand), layers="validators", profile="full")
+    assert unchanged_env["input_change_category"] == ["unchanged"]
+    assert unchanged_env["execution_identities"] == changed["execution_identities"]
+    assert "environment-change-12345" not in json.dumps(unchanged_env)
+    assert (tmp_path / "runs.txt").read_text(encoding="utf-8") == "xx"
+    monkeypatch.setenv("DATABASE_URL", "postgresql://environment-change-12345")
     changed_env = verify_layers(str(tmp_path), str(demand), layers="validators", profile="full")
     assert changed_env["input_change_category"] == ["execution_context_changed"]
     assert changed_env["execution_identities"] != changed["execution_identities"]

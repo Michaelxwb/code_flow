@@ -277,11 +277,36 @@ def _cache_key(argv: Sequence[str]) -> str:
     return hashlib.sha256(json.dumps({"argv": list(argv)}, ensure_ascii=False).encode()).hexdigest()
 
 
+_CACHE_ENV_KEYS = frozenset({
+    "DATABASE_URL", "REDIS_URL", "INTERNAL_SERVICE_TOKEN", "ENV", "LOG_DIR", "LOG_LEVEL",
+    "ARTIFACT_ROOT", "SKILL_CACHE_ROOT", "MIGRATIONS_DIR", "DEFAULT_TENANT_ID", "HOME",
+    "TMPDIR", "PYTHONPATH", "PYTHONHASHSEED", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "CI",
+})
+
+_CACHE_ENV_PREFIXES = (
+    "MUAD_", "DATABASE_", "REDIS_", "POSTGRES", "INTERNAL_", "ARTIFACT_", "SKILL_",
+    "MODEL_", "CAPACITY_", "WECOM_", "CHANNEL_", "GATEWAY_", "RUNTIME_", "WORKER_",
+)
+
+
+def _execution_environment() -> dict[str, str]:
+    """Stable, test-relevant environment fingerprint.
+
+    Shell/terminal bookkeeping (SHLVL, PATH, UV_*, PWD, ...) differs between a
+    direct invocation and the `bash -lc` wrapper used by spec verifiers without
+    changing test inputs, so only known test-relevant keys/prefixes participate.
+    """
+    return {
+        key: value for key, value in os.environ.items()
+        if key in _CACHE_ENV_KEYS or key.startswith(_CACHE_ENV_PREFIXES)
+    }
+
+
 def _execution_observation(root: str, validator: Mapping[str, object], argv: Sequence[str],
                            fingerprint: str, entry: object) -> dict[str, str]:
     """Describe this execution without exposing commands or environment values."""
     payload = {"argv": list(argv), "cwd": str(Path(root).resolve()), "validator": dict(validator),
-               "environment": dict(os.environ), "input_fingerprint": fingerprint}
+               "environment": _execution_environment(), "input_fingerprint": fingerprint}
     identity = hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False,
                                         default=str).encode()).hexdigest()
     prior = entry.get("fingerprint") if isinstance(entry, dict) else None

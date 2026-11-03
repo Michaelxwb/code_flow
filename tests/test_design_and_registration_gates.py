@@ -249,6 +249,6 @@ def test_old_cli_reports_upgrade_for_a_new_project_command_family(tmp_path: Path
     result = subprocess.run(["node", str(old / "src/cli.js"), "scenarios", "parse", "--help"],
                             cwd=project, capture_output=True, text=True, timeout=40)
     assert result.returncode == 3, result.stdout + result.stderr
-    assert "0.7.0" in result.stderr and "0.8.0" in result.stderr
+    assert "0.7.0" in result.stderr and "0.8.1" in result.stderr
     assert "npm install --global" in result.stderr
     assert "migrate --runtime --dry-run" not in result.stderr

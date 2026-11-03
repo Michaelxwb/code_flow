@@ -162,7 +162,7 @@ def test_usage_and_migration_docs_cover_0_8_surface() -> None:
         assert keyword in text, f"迁移指南缺 {keyword!r}"
 
     package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
-    assert package["version"] == "0.8.0"
+    assert package["version"] == "0.8.1"
     assert "docs/migrations/runtime-0.8.0.md" in package["files"]
     assert set(package["dependencies"]) == {"@ccusage/codex"}, "不得新增 npm 运行时依赖"
 
@@ -192,7 +192,7 @@ def test_runtime_migration_dry_run_apply_and_rollback(tmp_path: Path) -> None:
     assert applied.returncode == 0, applied.stderr + applied.stdout
     committed = json.loads(applied.stdout)
     assert committed["status"] == "committed"
-    assert version_file.read_text(encoding="utf-8").strip() == "0.8.0"
+    assert version_file.read_text(encoding="utf-8").strip() == "0.8.1"
 
     rolled_back = _cli(tmp_path, "migrate", "--runtime", "--rollback", committed["migration_id"])
     assert rolled_back.returncode == 4, rolled_back.stderr + rolled_back.stdout

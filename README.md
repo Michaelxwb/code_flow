@@ -2,7 +2,7 @@
 
 用于管理项目规范、任务和可执行验收的命令行工具。通过 `code-flow init` 安装四平台入口，再由持久化 Spec Context、场景源、阶段门禁和逐 check 执行证据约束开发流程。
 
-本仓库当前版本为 **0.8.0**；npm 的 `latest` 标签以注册表查询为准。使用说明见[使用手册](docs/USAGE.md)，场景与测试登记格式见[可执行验收契约](docs/acceptance-contract.md)。
+本仓库当前版本为 **0.8.1**；npm 的 `latest` 标签以注册表查询为准。使用说明见[使用手册](docs/USAGE.md)，场景与测试登记格式见[可执行验收契约](docs/acceptance-contract.md)。
 
 ## 安装
 
@@ -43,7 +43,7 @@ pnpm add -g @michaelxwb/code-flow@latest
 
 ```bash
 npm pack --ignore-scripts
-npm install --global ./michaelxwb-code-flow-0.8.0.tgz --ignore-scripts
+npm install --global ./michaelxwb-code-flow-0.8.1.tgz --ignore-scripts
 code-flow --version
 ```
 
