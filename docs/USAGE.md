@@ -1,1529 +1,227 @@
-# code-flow 使用手册
+# code-flow v1 使用说明
 
-## 目录
+本文描述 v1 目标用法；当前实现差距见 [实施记录](v1-implementation.md)，完整契约见 [设计](v1-design.md)。
 
-- [快速开始](#快速开始)
-- [核心概念](#核心概念)
-- [质量闭环](#质量闭环)
-- [CLI 命令](#cli-命令)
-- [可执行场景、设计和计划门禁](#可执行场景设计和计划门禁)
-- [规范管理命令](#规范管理命令)
-- [任务管理命令](#任务管理命令)
-- [配置参考](#配置参考)
-- [工作流示例](#工作流示例)
-- [Hook 机制](#hook-机制)
-- [故障排查](#故障排查)
-- [0.8.0 运行时命令契约](#080-运行时命令契约)
-
-场景格式、测试登记、报告口径与常见错误统一见[可执行验收契约](acceptance-contract.md)；升级见 [0.8 迁移指南](migrations/runtime-0.8.0.md)。
-
----
-
-## 快速开始
-
-### 支持的 AI 工具
-
-code-flow 同时支持 Claude Code、Codex CLI、Costrict 和 OpenCode，四者共用同一套 `.code-flow/` 规范体系：
-
-| AI 工具 | 指令文件 | Hook 触发时机 | 命令调用方式 |
-|---------|---------|--------------|------------|
-| [Claude Code](https://claude.ai/code) | `CLAUDE.md` | prompt（Catalog/直注）+ 编辑前注入 + 编辑后合规反馈 + 收尾守门 | `/cf-init`、`/cf-learn` 等 |
-| [Codex CLI](https://github.com/openai/codex) | `AGENTS.md` | 同上（hooks.json：UserPromptSubmit/PostToolUse/Stop） | `$cf-init`、`$cf-learn` 等 |
-| [Costrict](https://costrict.com) | `CLAUDE.md` | 同 Claude Code（五 Hook 同协议） | `/cf-init`、`/cf-learn` 等 |
-| [OpenCode](https://opencode.ai) v2 | `AGENTS.md` | v2 插件 hooks 等价转发（`session.prompt`/`tool.execute.after`/`session.idle`） | `/cf-init`、`/cf-learn` 等 |
-
-> 四者可同时使用同一项目，规范文件 `.code-flow/specs/` 完全共享。
-
-### 前置条件
-
-- Node.js 18+（用于 CLI）
-- Python 3.9+
-- pyyaml (`pip install pyyaml`)
-- Codex CLI（如使用 Codex）：`npm i -g @openai/codex`，并在 `.codex/config.toml` 中启用 `features.hooks = true`（v0.4.7 起由 codex_hooks 更名；`code-flow init` 自动生成）
-- OpenCode v2（如使用 OpenCode）：`opencode.ai`；插件位于 `.opencode/plugins/code-flow/`，由 OpenCode v2 自动加载（v1 插件 API 不兼容）
-
-### 安装
+## 1. 全局安装
 
 ```bash
-# npm
 npm i -g @michaelxwb/code-flow
-
-# pnpm
-pnpm add -g @michaelxwb/code-flow
+code-flow init --platform=claude
+code-flow init --platform=codex
+code-flow init --platform=all
 ```
 
-仓库版本与 npm 的 `latest` 标签独立。安装后核对 `code-flow --version`；需要尚未发布的本地修复时，按 [README 的本地包安装步骤](../README.md#升级)操作。已有项目升级 CLI 后，还要执行 `code-flow migrate --runtime --dry-run` → `--apply`，更新项目 runtime 与已安装平台。
+每个使用的平台安装一次。之后 code-flow init 更新当前项目全部已安装的 v1 平台。init --dry-run 只展示变更；不写目录、绑定或锁。
 
-### 初始化项目
+Hook 通过项目 bridge 校验 PATH 全局包与协议后优先使用，回退初始化时的固定 Node/JS。项目本地 bin 不参与选择；错误降级且不阻断。两种入口均失效时重新 init，doctor 给出诊断；宿主加载与信任需在宿主中确认。
+
+## 2. 创建 Spec
+
+文件 .code-flow/specs/cli/runtime.md：
+
+````markdown
+---
+{"description":"CLI 运行时规则","next_rule":2}
+---
+# Runtime
+
+## Rules
+
+- [RULE-001] Hook stdout 只输出协议 JSON。
+  诊断输出到 stderr，保留完整多行说明和代码示例。
+````
+
+身份是 cli/runtime。新增规则从 next_rule 分配数字 ID；手动编辑时也要维护计数，删除编号不能复用。允许 RULE-cli-json-001 这样的语义 ID。
+
+config.json：
+
+```json
+{
+  "version": 1,
+  "always": ["cli/runtime"],
+  "paths": { "src/**/*.js": ["cli/runtime"] },
+  "budget": { "maxTokens": 2500, "maxBytes": 16384 },
+  "tests": { "timeoutSeconds": 120, "jobs": 2 }
+}
+```
+
+always 适合少量共享基础规则；领域规范通常放在 Task 的 spec_refs。支持 *、**、?；** 可匹配零层目录，路径严格区分大小写。
 
 ```bash
-cd your-project
-code-flow init                    # 默认等价于 --platform=claude
-# 或显式指定：
-# code-flow init --platform=claude
-# code-flow init --platform=codex
-# code-flow init --platform=costrict
-# code-flow init --platform=opencode
+code-flow spec list --json
+code-flow spec inject --path src/app.js --json
+code-flow spec inject --task-file .code-flow/tasks/2026-11-10/example/example.md --task TASK-001 --full
 ```
 
-初始化后生成的目录结构（按平台）：
+Spec 级引用接收后续新增规则；#Rule 引用只选择一条规则。预算按完整规则块裁剪，omitted 显示未发送的引用和完整读取方式。catalog 只读头信息，规则数由 spec list 读取完整正文统计。
 
-**所有平台都会生成（core，共用）**：
+## 3. 创建与选择 Task
 
-```
-your-project/
-├── .code-flow/
-│   ├── config.yml              # 核心配置（路径映射、预算、注入规则）
-│   ├── validation.yml          # 验证规则（lint、type check、test）
-│   ├── scripts/                # Python 运行时脚本
-│   │   ├── cf_core.py                    # 核心工具库
-│   │   ├── cf_pre_tool_hook.py           # PreToolUse Hook：Context/scope 检查（替代旧 cf_inject_hook）
-│   │   ├── cf_user_prompt_hook.py        # prompt 路由服务及 Claude/Costrict 入口
-│   │   ├── cf_spec_session.py            # 会话状态管理（替代旧 cf_session_hook）
-│   │   ├── cf_post_hook.py               # PostToolUse Hook：合规反馈（v0.5）
-│   │   ├── cf_stop_hook.py               # Stop Hook：收尾守门（v0.5）
-	│   │   ├── cf_spec_context.py            # Spec Context 刷新/校验
-	│   │   ├── cf_spec_gate.py               # Stage Gate 判定
-	│   │   ├── cf_spec_router.py             # Context-first 路由
-	│   │   ├── cf_task_runtime.py            # active-task 运行时
-│   │   ├── cf_log.py / cf_checks.py      # 会话日志 / checks 引擎（v0.5）
-│   │   ├── cf_feedback.py                # 误报标记 CLI（v0.5）
-│   │   ├── cf_scan.py                    # Token 审计脚本
-│   │   └── cf_stats.py                   # 统计脚本
-│   └── specs/                  # 规范文件目录（四端共用）
-│       ├── frontend/           # 前端域（按项目类型生成）
-│       │   ├── _map.md         # Tier 0 导航地图
-│       │   ├── directory-structure.md
-│       │   ├── quality-standards.md
-│       │   └── component-specs.md
-│       └── backend/            # 后端域（按项目类型生成）
-│           ├── _map.md
-│           ├── directory-structure.md
-│           ├── logging.md
-│           ├── database.md
-│           ├── platform-rules.md
-│           └── code-quality-performance.md
+一个需求一份任务文档 `.code-flow/tasks/2026-11-10/example/example.md`，内部包含多个 `## TASK-NNN` 段。设计文档前后端分开：
+
+```text
+.code-flow/tasks/2026-11-10/example/
+  example.prd.md
+  example.frontend.design.md
+  example.backend.design.md
+  example.scenarios.md
+  example.md
 ```
 
-**仅 Claude 平台生成/更新（`code-flow init` 默认）**：
+任务文档示例：
 
-```
-.claude/
-└── settings.local.json    # Claude Code Hook 配置
-CLAUDE.md                  # L0 全局指令（Claude Code 每次对话读取）
-.claude/commands/          # Claude 命令文件
-```
+````markdown
+---
+{"version":1,"requirement":"example"}
+---
+# Tasks: example
 
-**仅 Codex 平台生成/更新（`code-flow init --platform=codex`）**：
+## TASK-001: Implement behavior
 
-```
-.codex/
-├── hooks.json             # Codex CLI Hook 配置
-└── config.toml            # Codex 功能开关
-AGENTS.md                  # L0 全局指令（Codex CLI 每次对话读取）
-.agents/skills/            # Codex Skills（项目级，自动安装）
-  cf-init/SKILL.md、cf-learn/SKILL.md、cf-stats/SKILL.md 等
-```
+- **Status**: draft
+- **Depends**:
+- **Source**: example.backend.design.md#5.2
+- **Scenarios**: S-01
+- **Spec-Refs**: cli/runtime
+- **Paths**: src/**, test/**
+- **E2E**: ci:e2e
 
-**仅 Costrict 平台生成/更新（`code-flow init --platform=costrict`）**：
+### Tests
 
-```
-.costrict/
-├── settings.local.json    # Costrict Hook 配置
-└── commands/              # Costrict 命令文件
-  cf-init.md、cf-learn.md、cf-stats.md 等
-CLAUDE.md                  # L0 全局指令（Costrict 与 Claude Code 同用 CLAUDE.md）
-```
-
-**仅 OpenCode 平台生成/更新（`code-flow init --platform=opencode`）**：
-
-```
-.opencode/
-├── commands/                    # OpenCode 命令文件（含 cf-task/）
-│   cf-init.md、cf-learn.md、cf-stats.md、cf-task/{prd,align,plan,...}.md
-└── plugins/code-flow/           # OpenCode v2 原生插件（事件调用 cf_opencode_event.py）
-    ├── index.js                 # ESM 插件入口（默认导出 { id, setup }）
-    └── package.json             # `"type": "module"`
-opencode.json                    # OpenCode 配置（仅 `$schema`；`.opencode/plugins/` 自动发现，无需注册键）
-AGENTS.md                        # L0 全局指令（OpenCode 每次对话读取）
+```json
+[
+  {
+    "id": "unit",
+    "argv": ["node", "--test", "test/hook.test.js"],
+    "parallel": true
+  }
+]
 ```
 
-### 升级
+### Checklist
 
-当 code-flow 发布新版本后，更新全局包并在项目中重新执行 init：
+- [ ] 实现相关行为并验证回归。
+
+### Spec Delta
+
+```json
+[]
+```
+````
+
+TASK ID 必须与标题 `## TASK-NNN:` 一致，并在文档内唯一；裸 TASK-001 不是跨需求定位键。prompt 的独立行可以指定本轮任务：
+
+```text
+task: .code-flow/tasks/2026-11-10/example/example.md#TASK-001
+```
+
+cf-task skill 使用 Hook 上下文中的 session token：
 
 ```bash
-# 更新全局包
-npm i -g @michaelxwb/code-flow@latest
+code-flow task start .code-flow/tasks/2026-11-10/example/example.md --task TASK-001 --session <token>
+```
 
-# 在项目中升级（自动检测版本差异，增量更新）
-cd your-project
+token 由工作区、平台和原生会话 ID 产生。绑定仅在系统临时目录，不保存规范快照或测试事实。不同会话/worktree 互不影响。未获得 token 时省略参数，读取 start 打印的规范 brief。
+
+重复 start 一个 in-progress Task 是幂等的。done/blocked/归档后绑定失效，后续不自动改选另一个任务。
+
+```bash
+code-flow task unbind --session <token>
+code-flow task block <task-file> --task TASK-001 --reason "等待外部依赖"
+code-flow task start <task-file> --task TASK-001
+code-flow task reopen <done-task-file> --task TASK-001 --reason "新增回归需要验证"
+code-flow task status --json
+```
+
+## 4. 测试与完成
+
+```bash
+code-flow task finish <task-file> --task TASK-001 --jobs 2 --json
+```
+
+finish 只接受 in-progress，实际执行该 TASK 的 tests，全部通过才原子写入 done。失败、超时和中断保持进行中，回收整个进程树；测试期间 Task 有并发编辑则不覆盖。
+
+不提供独立 task verify 入口；日常完成直接 finish，避免重复执行。E2E 和全量回归由 CI 执行，`e2e` 字段只作声明。
+
+- 优先 argv；需要 shell 特性才使用 run，只执行可信任务中的命令。
+- 默认 cwd 是项目根，覆盖目录必须仍在工作区内。
+- parallel 默认 false，为单 runner 独占屏障；true 的命令受 jobs 上限约束，同仓库各 CLI/worktree 的同名 group 通过仓库共享锁互斥。
+- 同框架多个文件聚合到一次调用，优先框架内部 workers；避免 CLI jobs 与框架 workers 叠加争抢资源。
+- 每个 stdout/stderr 最多保留尾部 50 行、64KiB。
+- tests=[] 需同时有 skip_tests:true 与非空 skip_reason。
+
+PASS 表示此次声明命令成功，不代表之后修改或全量需求已经通过。
+
+## 5. 沉淀与归档
+
+done Task 的 `### Spec Delta` JSON 块直接使用数组：
+
+```json
+[
+  {
+    "id": "DELTA-001",
+    "op": "add",
+    "target": "cli/runtime",
+    "rule": "测试失败必须保留进行中状态。",
+    "evidence": "失败测试不能成为完成依据。"
+  }
+]
+```
+
+```bash
+code-flow spec learn --from-task <done-task-file> --task TASK-001 --dry-run
+code-flow spec learn --from-task <done-task-file> --task TASK-001
+code-flow task archive <requirement-dir> --dry-run
+code-flow task archive <requirement-dir>
+```
+
+add 需要 rule/evidence；update 需要 ref/before/rule/evidence；remove 需要 ref/before/evidence。before 必须匹配旧规则完整正文，目标 Spec 必须存在。
+
+Delta 身份由任务文档路径 + TASK ID + Delta ID 构成，已应用后不能修改 payload，修订需使用新 ID。Spec 的 Applied Deltas 使用 JSON 行记录来源、Rule、操作和 payload hash，保障中断后的重试；不要删除记录或回退 next_rule。
+
+多文件应用允许部分成功；失败时保留需求目录，重试跳过相同已应用项。在 Git 注册的协调工作区、关联 run 已完成且所有 Task done、增量应用成功后，才移动至 tasks/archived/<原日期>/<需求>。worker 中 archive/learn 均拒绝，不以目录名判断权限。目标存在时报错，不改名覆盖。
+
+archive --no-learn 明确跳过沉淀。归档不会运行任何测试。
+
+## 6. 升级、worktree 与旧版切换
+
+```bash
+npm i -g @michaelxwb/code-flow@<version>
 code-flow init
 ```
 
-升级时 code-flow 会自动检测当前版本和新版本的差异：
-- **工具文件**（commands/、skills/、scripts/、插件）：直接更新
-- **合并文件**（CLAUDE.md、AGENTS.md、settings.local.json、hooks.json、config.toml、config.yml、opencode.json）：智能合并，保留用户自定义内容
-- **用户文件**（specs/、tasks/、validation.yml、.gitignore）：不覆盖（.code-flow/.gitignore 的托管块会自动补齐运行时条目）
+所有项目共享全局版本。回滚兼容的 v1 包后重新 init；用户数据通过 git 撤销。
 
-如需强制重新生成所有文件：
+批次 worktree 由内部 `task parallel prepare/collect/merge/cleanup` 编排，`cf-task:start` 负责驱动 worker：prepare 仅把 Specs、当前需求和 config 形成 baseline，范围外脏改动（含其他需求/无关暂存内容）拒绝。worker 校验快照并自动 init；`--no-init` 可关闭，工具增量不提交或合并。
 
-```bash
-code-flow init --force
-```
+每个 worker 只改业务代码和自己的 TASK 段。collect 核对完整 diff 与准确 SHA；任务文档按三方归属合并，同段冲突不会采用 done 优先。全部合入后在协调工作区聚合重跑本批相关测试，去重且不跑全量/E2E，通过后才自动清理；失败保留资源。runner 每次重建 ledger 的隔离环境，默认最多 2 个 worker，并结合 jobs/框架 workers 设置资源预算。
 
----
+run ledger 是唯一持久编排台账。中断后 status/doctor 只读给出实际状态，重新调用 prepare/merge/cleanup 才执行恢复；恢复核对 Git 提交与所有权，不凭目录存在继续。
 
-## 核心概念
+从旧版切换：
 
-### 两层规范体系
+1. 保存 git 基线与未跟踪资料。
+2. 处理旧 .code-flow 内真实 worktree，避免移动其父目录破坏路径。
+3. 手工移除各平台中旧 code-flow Hook、插件、命令和托管指令段，保留用户其他内容。
+4. 把旧数据保存到项目外，重新 init。
+5. 依据当前代码整理仍适用的 Spec，采用 JSON frontmatter/路径身份；重建活跃 Task 和测试声明。
 
-code-flow 采用两层规范架构，自动为 AI 编码提供上下文约束：
+init 不负责旧版清理或转换，不提供迁移脚本。
 
-| 层级 | 文件 | 加载方式 | 内容 |
-|------|------|---------|------|
-| **Tier 0** | `CLAUDE.md` + `_map.md` | 每次对话自动加载 | 全局指令 + 导航地图 |
-| **Tier 1** | `code-standards.md` 等 | 编辑代码时 Hook 按标签注入 | 编码规则、模式、反模式 |
+## 7. CI 与诊断
 
-**为什么分两层？**
+全量回归和 E2E 是独立 CI 命令。本仓库使用 npm test，外部项目可分别运行 npm run test:all 与 npm run test:e2e，不让 task archive 隐式调用。
 
-- Tier 0 提供全局视角（"代码在哪里"），每次对话都需要
-- Tier 1 提供精准约束（"代码怎么写"），只在编辑对应文件时才需要
-- 分层后 token 预算可控，避免一次性加载所有规范
-
-### 导航地图 (`_map.md`)
-
-每个域一个导航地图，结构固定：
-
-```markdown
-# [Domain] Retrieval Map
-
-## Purpose        — 项目在该域的角色
-## Architecture   — 技术栈和架构模式
-## Key Files      — 关键入口文件表
-## Module Map     — 目录树形图
-## Data Flow      — 数据流向
-## Navigation Guide — "做 X 去哪里"
-```
-
-### 约束规范 (code-standards 等)
-
-每个约束 spec 文件遵循统一格式：
-
-```markdown
----
-description: 一句话适用场景（Spec Catalog 目录行来源，v0.5+）
-checks:                          # 可选：机检标注（v0.5+，见「质量闭环」）
-  - id: no-print-debug
-    type: regex
-    pattern: '^\s*print\('
-    files: "**/*.py"
-    message: 禁止 print() 调试
----
-
-# [规范名称]
-
-## Examples       — ✅/❌ 代码对照示例（对 AI 引导最有效，优先使用）
-## Rules          — 必须遵守的硬性约束
-## Patterns       — 推荐的实现方式
-## Anti-Patterns  — 明确禁止的做法
-```
-
-> frontmatter 仅用于目录与机检，注入时自动剥离、不占 token 预算。
-
-### 自动注入机制
-
-**Catalog 模式（默认）**：prompt 不含明确文件路径时，注入一份极小的 **Spec Catalog**（每个 spec 一行适用场景，~150 token），由 AI 按语义自行读取相关 spec 全文——语义匹配交给模型本身，比关键词词表准确（实测可达率 76%→100%）：
-
-```
-用户提交 prompt（无明确路径）→ 注入 Spec Catalog
-  → AI 按目录行判断 → Read 相关 spec 全文
-```
-
-prompt 含明确文件路径、或 AI 实际编辑文件时，仍**直接注入完整约束**兜底：
-
-**Claude Code / Costrict**：AI 调用 Edit/Write 时，`PreToolUse Hook` 自动拦截并注入规范：
-
-```
-AI 调用 Edit/Write → Hook 拦截（文件路径）
-  → 提取标签 → 匹配 specs → 注入到 AI 上下文
-```
-
-**Codex CLI**：用户提交 prompt 时，`UserPromptSubmit Hook` 提取文件引用，命中域则直注完整约束，否则注入 Catalog：
-
-```
-用户提交 prompt → Hook 拦截（prompt 文本）
-  → 含路径且命中域 → 直注完整约束
-  → 否则 → 注入 Spec Catalog（AI 自取）
-```
-
-> Catalog 模式是唯一行为；v0.4 的纯词表匹配已移除。
-
-**OpenCode**：通过 `.opencode/plugins/code-flow/` 插件介入（v2 hooks）：
-
-```
-用户消息 → 原生 session.prompt hook → cf_opencode_event.py → 共享 prompt 服务
-  → 原生 RPC 返回 context/blocked → 当前插件按 sessionID 排队
-  → session.context hook 将反馈注入 system（SystemPart）
-```
-
-四者效果一致，用户无需手动操作，整个过程透明。Hook 输出 JSON 用 `ensure_ascii=False`，避免中文 spec 被 escape 后吃掉 token 预算。
-
-### Token 预算
-
-规范注入受 token 预算限制，防止上下文膨胀：
-
-| 预算项 | 默认值 | 说明 |
-|--------|--------|------|
-| `total` | 2500 | L0 + L1 总预算 |
-| `l0_max` | 800 | CLAUDE.md 最大 token |
-| `l1_max` | 1700 | 所有 tier 1 specs 合计上限 |
-| `map_max` | 400 | 单个 `_map.md` 最大 token |
-| `catalog_max` | 200 | Spec Catalog 目录上限（超出按约束优先截断并告警） |
-
-> Hook 注入前默认对 spec 做**保守无损压缩**（`quality_loop.compress: true`），压缩后的 token 才参与预算决策，相同预算下可容纳更完整的 spec。设 `quality_loop.compress: false` 可关闭；`cf-stats` 输出 `compression_summary` 及 `COMPRESSION: raw → compressed (-pct%)` 行。
-
----
-
-## 质量闭环
-
-> v0.5 新增。零配置开箱即用，`quality_loop.enabled: false` 一键回退。所有数据仅存本地 `.code-flow/`，30 天 / 5MB 滚动，不上传不外发。
-
-### 合规反馈（编辑后机检）
-
-spec frontmatter 标注 `checks` 后，AI 每次编辑文件都会被自动检查，违规当场反馈修正——**只提示、不阻断**，同一规则同一文件每会话只提醒一次：
-
-```
-AI 编辑 src/app.py（写入 print 调试）
-  → PostToolUse Hook 执行匹配域的 checks
-  → 反馈：⚠ 禁止 print() 调试（规则: scripts/code-standards.md#no-print-debug）
-  → AI 当场修正
-```
-
-checks 字段：`id`（kebab-case 唯一）、`type`（当前支持 regex；ast/cmd 接口预留）、`pattern`、`files`（fnmatch glob，缺省 `*`）、`message`（≤200 字符）、`severity`（warn/info，无 error 级）。
-
-### 收尾守门
-
-会话结束时，Stop Hook 按 `validation.yml` 对本会话编辑过的文件执行校验，未过项会把 AI 拦回修复（总预算 30s，超时输出已完成部分；无 validation.yml 则静默跳过）。
-
-同一工作区的 Stop 使用非阻塞进程锁；并发调用立即返回 stop_already_running 和持有者 PID。进程退出后 OS 自动释放锁。命令超时会清理子进程组，避免后代进程持有输出管道导致长期等待。
-
-### 学习沉淀（纠正即规范）
-
-你在对话中纠正 AI（"不要用 print 调试"、"改回去"）会被记录为 correction 事件；`/cf-learn` 把同类纠正与 AI 随后的修正编辑配对成 ✅/❌ 证据对，聚合 ≥2 次生成候选规范（附 checks 草稿），由你确认后落盘——**纠正一次，不用说第二遍**。
-
-### 误报治理
-
-反馈出现误报时直接告诉 AI"这是误报"，它会代为执行：
+只读诊断：
 
 ```bash
-code-flow feedback ignore <check-id>
+code-flow doctor --json
 ```
 
-同一规则误报 ≥3 次或误报率 >10% 自动停用并在 `cf-stats` 标注；`cf-stats --audit` 输出待复审清单（长期未命中 / 已停用 / 反复误报的规范），处置后加入 `.check-state.json` 的 `_review_exempt` 列表即不再提示。
+检查 config、模板、Spec、Task 文档、平台入口和 worktree ledger；不修改文件。
 
-### 运行时数据
+`code-flow doctor --json` 只读检查配置、引用、Hook、模板和 run；返回稳定诊断与修复建议，不执行用户 Hook/Tests。宿主加载/信任无法确认时标记 unknown，发现错误退出 1，只有警告或 unknown 退出 0，用法/诊断自身错误退出 2。
 
-| 文件 | 内容 | 说明 |
-|------|------|------|
-| `.code-flow/.session-log.jsonl` | 会话事件流（inject/edit/violation/correction/degrade/stop_check） | 5MB 滚动归档至 `sessions/YYYY-MM/` |
-| `.code-flow/.check-state.json` | check 触发/误报/停用状态 | 误报治理与复审的数据源 |
+Hook 失败只向 stderr 输出诊断，不拒绝 prompt。普通 CLI 用法/数据错误退出 2，操作或测试失败退出 1；--json 输出结构化结果，中断保留平台退出状态。
 
-两者均已加入 `.code-flow/.gitignore`，首次使用自动创建。
-
----
-
-## CLI 命令
-
-### 0.8 用户命令面（16 → 11）
-
-0.8.0 把 Agent 命令从 16 条收敛到 11 条。命令清单的唯一权威源是 `src/adapters/commands.json`，四平台（Claude Code / Codex / Costrict / OpenCode）从同一目录生成/校验；旧命令文件保留一个 minor，0.9.0 移除。
-
-| 用户命令 | 用途 |
-|----------|------|
-| `cf-init` | 初始化项目规范体系 |
-| `cf-learn` | 从项目配置、代码与变更中沉淀规范 |
-| `cf-spec` | Spec Context、迁移计划与 `code-flow spec doctor` |
-| `cf-stats` | Token/预算统计与规范质量审计 |
-| `cf-task:prd` | 产出产品需求文档 |
-| `cf-task:align` | 需求对齐与设计简报 |
-| `cf-task:plan` | 能力级任务拆解与预算门禁 |
-| `cf-task:start` | 激活任务并编码 |
-| `cf-task:status` | 任务总览；`--notes` / `--block` / `--graph` 子动作 |
-| `cf-task:archive` | 归档已完成需求 |
-| `cf-task:verify-e2e` | 分层/分级验证（`code-flow task verify` 兼容别名） |
-
-兼容别名与内部命令（不计入 11 条用户命令面）：
-
-| 命令 | 状态 | 0.8 等价入口 |
-|------|------|--------------|
-| `cf-task:note` | 别名（0.9.0 移除） | `/cf-task:status --notes` |
-| `cf-task:block` | 别名（0.9.0 移除） | `/cf-task:status --block` |
-| `cf-task:graph` | 别名（0.9.0 移除） | `/cf-task:status --graph` |
-| `cf-validate` | 别名（0.9.0 移除） | `code-flow task verify --checks` |
-| `cf-sync` | internal（开发/发布维护） | 不属于用户安装面 |
-
-> 从 0.7 升级请按 [0.8.0 迁移说明](migrations/runtime-0.8.0.md) 执行 `code-flow migrate --runtime --dry-run` → `--apply`；迁移包含 manifest v3、evidence sidecar、状态机与命令别名。
-
-### `code-flow init`
-
-在终端中执行，一键初始化项目规范体系。默认平台为 `claude`。
-
-```bash
-code-flow init                             # 标准初始化（默认 = --platform=claude）
-code-flow init --platform=claude          # 显式初始化 Claude 适配文件
-code-flow init --platform=codex           # 显式初始化 Codex 适配文件
-code-flow init --platform=costrict        # 显式初始化 Costrict 适配文件
-code-flow init --platform=opencode        # 显式初始化 OpenCode 适配文件
-code-flow init --force                    # 强制重新生成（覆盖工具文件）
-code-flow --help                          # 查看帮助
-```
-
-**初始化模式**：
-
-| 模式 | 触发条件 | 行为 |
-|------|---------|------|
-| fresh | 项目无 `.code-flow/` | 全量生成 |
-| upgrade | 已有旧版本 | 增量更新，保留用户自定义 |
-| current | 版本一致 | 跳过（输出提示） |
-| force | `--force` 参数 | 强制覆盖工具文件 |
-
-### `code-flow evidence import` — CI 证据导入
-
-全量 E2E 在 CI 执行后，把 JUnit / Playwright 报告导入 central evidence sidecar；本地 `task verify`、collect 与 archive 直接消费该证据，不再重跑同一 check。
-
-```bash
-code-flow evidence import --format junit --file ci/junit.xml \
-  --commit "$(git rev-parse HEAD)" --run-url "https://ci.example.com/runs/42" --json
-
-code-flow evidence import --format playwright --file ci/playwright.json \
-  --commit "$(git rev-parse HEAD)" --run-url "https://ci.example.com/runs/42" \
-  --check CHK-0123456789ab --json
-```
-
-映射与校验规则（全部 fail-closed，缺失即拒绝导入）：
-
-- `--commit` 必须解析为当前 `HEAD`；不同 commit 的报告不能证明当前工作区。
-- 工作区必须干净（忽略 `.code-flow/`）；报告请放在仓库外，或加入 `.gitignore`。
-- `--run-url` 必须是非空 http(s) 地址；证据固定写入 `source=ci`，并绑定当前 `input_hash`。
-- 用例名中的 check ID（`CHK-...`）必须唯一；同一用例同时标记多个 check 会被拒绝。场景 ID（如 `test_acceptance[S-01]`）和 manifest 的 `assertions`（`file:line`）仅用于绑定一个 check 的场景；显式 `--check` 表示整个报告属于该 check。
-- 一个场景绑定多个 checks 时，报告必须分别覆盖全部 check，才能更新该场景。使用下面的显式格式；不得用一条仅标记场景 ID 的用例推断多个 checks 已执行，缺少部分 check 的报告也不能将整个场景标为 verified。
-- 无法映射的用例、`skipped` 用例不会被伪装成通过：映射失败拒绝导入，`skipped` 记为 `incomplete`。
-- 报告推导的 exit code 与 `--exit-code` 不一致时拒绝导入（CI job 因基础设施失败但报告全绿的情况不会被误收）。
-- 导入结果按 check 聚合：全部通过才写 `passed` / `verified`，任一失败写 `failed`；重复导入同一报告是幂等的。
-
-```xml
-<testsuite name="acceptance">
-  <testcase name="test_cache[CHK-A]" />
-  <testcase name="test_resume[CHK-B]" />
-</testsuite>
-```
-
-风险接受通过 `acceptance risk --risk-owner TASK-001` 绑定该任务在当前 check 下负责的场景。新增场景不会自动继承已有风险接受；其他任务共用同一 check 时仍需独立验收。`stats` / `audit` 的 `accepted_risks` 只计当前有效且归属匹配的 check，`recorded_risks` 计全部登记，`inactive_risks` 计过期或归属已失效的登记；`deferred_rules` 只计实际延后到 review/heavy 的规则，预算或环境未执行项不算合法延后。
-
-旧版 design 保留完整场景定义时可以继续走兼容审计。只有场景引用的 design 缺少 `.scenarios.md` 时返回 `scenario_source_missing`，需恢复场景源后重跑，不能从引用表推断测试层级和真实边界。
-
-## 可执行场景、设计和计划门禁
-
-`<需求>.scenarios.md` 是验收唯一源，design 引用场景 ID；任务登记责任与命令，manifest 保存投影和执行配置。先验证场景与设计，再锁定和验证计划：
-
-```bash
-code-flow scenarios parse --file "<需求>.scenarios.md" --quality --json
-code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json
-code-flow acceptance manifest --task-file "<任务文件>" --output "<需求目录>/.acceptance-manifest.json" --scenarios-file "<需求>.scenarios.md" --register-checks
-code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
-# 真实测试登记与引用同步后运行完整门禁
-code-flow acceptance manifest --verify-plan --require-scenarios --task-dir "<需求目录>" --task-file "<任务文件>"
-```
-
-多份设计用重复 `--file` 合并检查。design frontmatter 声明 `design_template: lite|full|frontend` 中的实际值；lint 校验 FEAT/API/NFR 定义与引用、功能场景覆盖、场景功能错配和该模板必填章节。未声明模板的旧设计仍进行 ID 校验，不强加不相关章节。
-
-verify-plan 始终聚合 manifest 基线、场景质量、设计闭环、测试登记/真实收集和 plan Spec Gate。`--require-scenarios` 不是启用质量检查的开关。浏览器 E2E 的 check 必须属于 browser 套件；smoke/capacity 的 check 和收集用例必须有对应 marker，实际 command 必须选择登记的测试。
-
-### E2E 精度（plan / start）
-
-E2E 只用于 P0/P1 关键用户旅程，且必须证明低层测试覆盖不了：
-
-- `level` 支持 `unit` / `component` / `contract` / `integration` / `system` / `capacity` / `e2e` / `manual`。API/CLI/后台全链路使用 system。
-- E2E 必须有浏览器 env/组件声明、匹配的 `boundary`、`why_e2e`、`steps`、具体 `expected`；非 `smoke` E2E 还必须有 `trigger_paths`。
-- 每个 expected 通过 `expected_refs` 引用存在的步骤（从 1 开始）或已声明断言 ID；deferred 必须声明 defer_reason、owner、target_phase。
-- env 使用 none/local/local-api/browser/external/staging/capacity/ci/production；components 使用稳定标识符。数据库属于组件，不使用 env=db。
-- `code-flow scenarios parse --file <需求>.scenarios.md --quality --json` 和 `code-flow acceptance manifest --verify-plan --require-scenarios ...` 会失败关闭。
-- `code-flow task start` 返回 `e2e_plan`：当前 TASK 的 owned E2E 和全局 smoke E2E 中，只有非 deferred 场景进入 scheduled。显式 deferred 仍显示归属并留到需求终验。
-- 相关批次完成后可运行 `code-flow task verify --tasks TASK-001,TASK-002 --layers validators,e2e --profile smoke`；仅执行关联且已就绪的关键 smoke，结果标为部分范围。普通 task 不默认启动全域浏览器或容量检查，完整需求终验按证据缺口补验。
-- 旧 manifest 没有 e2e_gate 时返回 legacy_e2e_plan 警告；缺 quality_schema: 2 时保留原门禁并提示 legacy_quality_schema。新锁文件启用当前质量校验，完整 verify-plan 始终严格检查。
-- `task verify --profile changed` 只跑 `trigger_paths` 命中当前 diff 的 E2E；没有 `trigger_paths` 的 smoke E2E 不会在 changed 中顺跑。`--profile smoke` 只跑 smoke E2E（旧计划无 smoke 标记时才回退全量）。
-- 不要把“全量 E2E 通过”作为每个小 PR 的硬门禁；全量 E2E 放 nightly / release，PR 用受影响的 component/contract/integration + 少量 smoke。
-
-数量报告区分声明的 e2e_browser_count/system_count/capacity_count 与通过真实收集的 runnable 数量；未检查的 runnable 为 null。收集通过不等于已运行真实浏览器或已通过业务断言。完整字段与可复制示例见[验收契约](acceptance-contract.md)。
-
-`--register-checks` 从 pytest / Playwright 真实收集自动生成登记，项目收集器通过 --registration-file 配置。重锁保留历史并把变化场景标为 stale；提交不改变相同内容的验收指纹，未跟踪新文件也纳入验证。
-
-### `/cf-init` / `$cf-init`
-
-在 AI 工具会话中执行的交互式初始化，功能更丰富：
-
-**Claude Code 中调用**：
-
-```
-/cf-init                 # 自动检测技术栈
-/cf-init frontend        # 强制前端项目
-/cf-init backend         # 强制后端项目
-/cf-init fullstack       # 强制全栈项目
-/cf-init --skip-learn    # 跳过自动扫描，仅生成模板
-```
-
-**Codex CLI 中调用**（`.agents/skills/cf-init/SKILL.md` 安装后可用）：
-
-```
-$cf-init                  # 自动检测技术栈
-$cf-init frontend         # 强制前端项目
-$cf-init backend          # 强制后端项目
-$cf-init fullstack        # 强制全栈项目
-$cf-init --skip-learn     # 跳过自动扫描，仅生成模板
-```
-
-**Costrict 中调用**（`.costrict/commands/cf-init.md` 安装后可用）：
-
-```
-/project:cf-init                  # 自动检测技术栈
-/project:cf-init frontend         # 强制前端项目
-/project:cf-init backend          # 强制后端项目
-/project:cf-init fullstack        # 强制全栈项目
-/project:cf-init --skip-learn     # 跳过自动扫描，仅生成模板
-```
-
-**OpenCode 中调用**（`.opencode/commands/cf-init.md` 安装后可用）：
-
-```
-/cf-init                          # 自动检测技术栈
-/cf-init frontend                 # 强制前端项目
-/cf-init backend                  # 强制后端项目
-/cf-init fullstack                # 强制全栈项目
-/cf-init --skip-learn             # 跳过自动扫描，仅生成模板
-```
-
-与终端 `code-flow init` 的区别：
-- 自动检测技术栈（React/Vue/FastAPI/Go 等）
-- 扫描项目配置和代码模式，填充真实规范内容
-- 生成导航地图（`_map.md`）
-- 生成 `AGENTS.md`（Codex/OpenCode）或合并 `CLAUDE.md`（Claude）
-- 交互式确认
-
----
-
-## 规范管理命令
-
-以下命令在 Claude Code / OpenCode 中通过 `/cf-` 前缀调用，在 Codex CLI 中通过 `$cf-` 前缀调用（需先完成初始化安装 Skill 文件），在 Costrict 中通过 `/project:cf-` 前缀调用。
-
-### `/cf-stats` — 统计 token 使用 + 规范质量审计
-
-统计规范体系的 token 分布和预算利用率；`--audit` 附带规范质量审计与待复审清单（原独立命令 `/cf-scan` 已并入本命令）。
-
-```
-/cf-stats                    # 完整统计
-/cf-stats --human            # 人类可读格式
-/cf-stats --domain=frontend  # 仅统计前端域
-/cf-stats --audit            # 附带规范质量审计 + 待复审清单
-```
-
-输出示例：
-
-```
-L0 (CLAUDE.md): ~650 / 800 tokens
-
-L1 Frontend:
-  - directory-structure.md: ~180 tokens
-  - quality-standards.md: ~150 tokens
-
-L1 Backend:
-  - database.md: ~200 tokens
-
-TOTAL: ~1580 / 2500
-UTILIZATION: 63%
-```
-
-当 `config.yml` 中配置了 spec 但文件不存在时，会额外输出缺失清单和告警：
-
-```
-L0 (CLAUDE.md): 315 / 800
-MISSING SPECS:
- - frontend frontend/_map.md
- - backend backend/database.md
-TOTAL: 315 / 2500
-UTILIZATION: 13%
-WARNINGS: 配置的 spec 文件缺失: 2 个; 以下域未加载到任何 L1 spec: backend
-```
-
-JSON 输出（默认模式）会包含 `missing_specs` 字段，可用于自动化检查。
-
-**v0.5 新增输出**：`CATALOG:`（注入模式与目录开销）和 `QUALITY-LOOP:` 节——违规 Top 榜、修正率（违规→后续编辑→未再违规口径）、各 check 的 hit/fp/停用状态、降级组件计数；JSON 模式对应 `catalog` 与 `quality_loop` 字段。无日志数据时显示"暂无数据"。
-
-**预算口径**：`tags: []` 的命令专用模板（如 shared 的 PRD/设计模板，仅被 cf-task 命令显式 Read）不计入注入预算，单列为 `TEMPLATES (非注入)` 行；`TOTAL` 与 `UTILIZATION` 只统计真正可注入的规范。
-
-**`--audit` 规范质量审计**（原 `/cf-scan`）：JSON 增 `audit` 字段、human 模式增 `AUDIT` 段，检测项——
-
-- 单文件超过 500 tokens → "冗长"
-- 同一行出现在 3+ 个 spec 文件中 → "冗余"
-- spec 中引用的文件路径不存在 → "过时"
-- 约束 spec 缺 frontmatter `description` → "缺描述"（Spec Catalog 行来源）
-- `checks` 标注语法错误 / message 超长 → "checks"
-
-并附 `REVIEW (待复审)` 清单——长期未命中注入、已自动停用、反复误报的规范条目（处置后加入 `.check-state.json` 的 `_review_exempt` 不再提示）。
-
-### `/cf-spec` — Spec Context 管理与迁移
-
-管理 schema v1 Spec Context（绑定、Rule 阶段状态、漂移检测）与一次性迁移计划确认。替代旧版 `/cf-inject`。
-
-**子命令**：
-
-| 子命令 | 用途 |
-|--------|------|
-| `context [需求目录]` | 展示 `spec-context.yml` 的 bindings、Rule 状态、Evidence 与 drift |
-| `refresh [需求目录]` | 刷新 Context：changed Rule 标 stale，missing/conflict 不自动降级 |
-| `status [需求目录]` | 人话版 Context 状态：任务、marker 一致性、code Gate、Rule 状态与下一步 |
-| `doctor [需求目录]` | 健康诊断、未解决应用引用、Conventions 提示与 plan/code/review readiness |
-| `migrate --plan <plan>` | 确认 prepared migration plan 中的 unresolved 项（需用户逐项选择） |
-
-```
-/cf-spec context                      # 从 active-task 定位，展示当前 Context
-/cf-spec refresh .code-flow/tasks/2026-04-21/specs-proactive  # 刷新指定需求 Context
-/cf-spec doctor                       # 诊断当前 Spec Workflow；漂移按 next 指引 refresh
-/cf-spec status                       # 人话版 Context 状态与下一步
-/cf-spec migrate --plan .code-flow/migrations/v0.6.0/plan.yml # 确认迁移计划
-```
-
-`doctor` 的机器入口是 `code-flow spec doctor --task-dir "<需求目录>" --root "$PWD" --json`。它只读检查 config schema、active marker、Context hash、迁移 journal/lock、运行时 manifest 与 legacy residue；还检查 applied artifact 的条目是否已解决，并提示 `convention_review_required`。顶层 decision 表示健康诊断，`readiness.plan/code/review` 分别给出阶段准备情况；健康通过不代表各阶段均可通过。发现阻断项时按 `next` 修复。
-
-applied 引用必须指向正确章节与条目，不能含待同步/待确认/TBD；code/review 需要执行证据。已有代码无需变更时可通过自动 verifier 证明符合，`decision=null` 本身不阻断；不适用规则仍需 not_applicable 与用户 decision。关键 Conventions 应提升为稳定 Rule 与 verifier。
-
-> **硬门禁**：`spec_workflow.schema_version` 非 `1` 时只有 `migrate --plan` 可用；Context 缺失/损坏时 fail-closed，不回退 Catalog。
->
-> 默认使用 `required`。运行时仍兼容历史 `warn/inject`：它们会降低部分验证门禁，doctor 返回 `legacy_enforcement_mode`，建议审查后显式改回 `required`。配置损坏、绑定 Spec 漂移、Context 无效、TASK 投影失败和注入超预算始终阻断，历史模式不能隐藏这些错误。`quality_loop` 控制质量反馈能力。
-
-### `/cf-sync` — 双副本同步（internal）
-
-> **0.8 命令面状态**：internal（开发/发布维护专用），不属于 11 条用户命令面。普通用户执行 `code-flow init` / `code-flow migrate --runtime --apply` 即可，无需调用本命令。
-
-一键检查/同步 canonical 源与部署副本（`src/core/code-flow` ↔ `.code-flow`、四平台适配器 ↔ 运行目录），防止"测试通过但 live 行为不变"。
-
-```
-code-flow sync check   # 检查漂移（默认）
-code-flow sync apply    # canonical → 部署副本
-```
-
-项目自有内容（`specs/`、`tasks/`、`config.yml`、`settings.local.json`）不在同步范围；部署侧独有文件不会被删除。
-
-### `/cf-validate` — 验证变更（别名）
-
-> **0.8 命令面状态**：alias（0.9.0 移除）。等价入口是 `code-flow task verify --checks`（即 `--layers validators`）；需要 review/e2e 时用 `task verify --layers validators,review,e2e`。
-
-根据变更文件自动匹配并执行验证规则（测试、类型检查、lint）。
-
-```
-code-flow task verify --task-dir "<需求目录>" --checks --profile full --root "$PWD" --json
-code-flow task verify --task-dir "<需求目录>" --layers e2e --profile changed --root "$PWD" --json
-code-flow validate --root "$PWD" --json  # 无 active TASK 或显式变更范围
-/cf-validate src/Foo.tsx                # 兼容别名：验证指定文件
-/cf-validate --files=src/a.ts,src/b.ts  # 兼容别名：验证多个文件
-```
-
-验证规则定义在 `.code-flow/validation.yml`：
-
-```yaml
-validators:
-  - name: "TypeScript 类型检查"
-    trigger: "**/*.{ts,tsx}"
-    command: "npx tsc --noEmit"
-    timeout: 30000
-    on_fail: "检查类型定义"
-
-  - name: "ESLint"
-    trigger: "**/*.{ts,tsx,js,jsx}"
-    command: "npx eslint {files}"
-    timeout: 15000
-    on_fail: "运行 npx eslint --fix 自动修复"
-
-  - name: "Pytest"
-    trigger: "**/*.py"
-    command: "python3 -m pytest --tb=short -q"
-    timeout: 60000
-    on_fail: "测试失败，检查断言和 mock"
-```
-
-`{files}` 占位符会替换为匹配到的变更文件路径。验证失败时自动尝试修复。
-
-`--checks` 等价 `--layers validators`，允许任务进行中执行，不额外运行 review/e2e、不推进 done/verified；`--profile full` 包含 heavy validators。任务范围包含冻结基线以来已提交与未提交的变更。无 active TASK 时使用 `code-flow validate`，指定文件时追加 `--files "src/a.py" "src/b.py"`；损坏的 marker 或 Context 仍须修复。
-
-### `/cf-learn` — 规范学习与沉淀
-
-从项目配置、代码模式和当前工作区变更中自动提取编码约束，沉淀到 spec 文件。
-
-#### 全量扫描模式
-
-扫描项目配置文件（eslintrc、tsconfig、pyproject.toml 等）和代码模式，提取隐含规范：
-
-```
-/cf-learn              # 全量扫描
-/cf-learn frontend     # 仅扫描前端
-/cf-learn backend      # 仅扫描后端
-```
-
-扫描流程：配置文件提取 → 代码模式分析 → 用户选择聚焦域 → 生成候选约束 → 去重过滤 → 用户确认 → 写入 spec 文件。
-
-#### 导航地图生成
-
-```
-/cf-learn --map              # 扫描并生成/更新所有域的导航地图
-/cf-learn frontend --map     # 仅生成前端导航地图
-```
-
-基于代码结构扫描结果自动填充 `_map.md` 的各段落（Purpose、Architecture、Key Files、Module Map、Data Flow、Navigation Guide）。
-
-#### Review 模式（基于当前变更提炼规范）
-
-**这是最强大的规范沉淀工具。** 自动从当前工作区代码变更中提炼可沉淀的规则，避免等待历史积累：
-
-```
-/cf-learn --review              # 扫描 staged + unstaged + untracked 代码变更
-/cf-learn --review --staged     # 仅扫描 staged 变更
-```
-
-**工作原理**：
-
-1. **采集当前变更**：读取 `git diff --name-only`、`git diff --cached --name-only` 和 untracked 文件
-2. **读取变更证据**：按文件读取 unstaged/staged diff；新文件读取完整内容
-3. **提炼规则候选**：从当前改动归纳 Rule/Pattern/Anti-Pattern
-4. **聚类置信度**：同一模式在多个文件重复出现标记高置信度
-
-#### 纠正信号源（v0.5）
-
-开启 `quality_loop.correction_capture` 后，你在对话中纠正 AI 的语句（"不要用 print 调试"）会记入会话日志；cf-learn（全量与 `--review` 模式）自动消费：
-
-1. 读取近 30 天 correction 事件，与同会话 AI 随后的修正编辑配对为 **✅/❌ 证据对**
-2. 同类纠正聚合计数，**≥2 次才生成候选**（防句式误判噪音）
-3. 候选附带可机检的 `checks` 草稿，确认落盘时写入目标 spec 的 frontmatter
-
-这是优先级最高的证据源——它直接来自你的真实反馈，而不是从代码反推。
-5. **去重过滤**：与现有 spec 对比，跳过已覆盖规则
-6. **用户确认**：按域分组展示，用户选择写入哪些
-
-输出示例：
-
-```
-从当前工作区变更中发现 N 个候选规则：
-
-scripts 域（建议写入 specs/scripts/code-standards.md）：
-  1. [x] [高] Anti-Pattern: 禁止在循环中重复调用 load_config()
-         来源: src/core/code-flow/scripts/cf_x.py (staged diff)
-  2. [x] [高] Rule: Hook 输出必须是合法 JSON
-         来源: src/core/code-flow/scripts/cf_a.py, cf_b.py
-
-已覆盖（跳过）：
-  - "禁止使用 print() 调试" → 已在 specs/scripts/code-standards.md 中
-
-确认要写入的条目（编号 / all / high / none）：
-```
-
-**最佳实践**：每次完成一轮实现并通过验证后运行一次 `--review`，趁上下文还在时沉淀规则。
-
----
-
-## 任务管理命令
-
-code-flow 提供从需求对齐到编码实现的完整任务管理流程。
-
-### `/cf-task:prd` — 产品需求文档
-
-从一句话需求出发，通过结构化对话产出产品需求文档（`.prd.md`），包含问题陈述、用户故事、功能清单、范围边界等，为 `/cf-task:align` 提供足够丰富的需求输入。
-
-```
-/cf-task:prd "给项目加上用户认证"                              # 从需求描述新建
-/cf-task:prd                                                   # 交互式
-/cf-task:prd .code-flow/tasks/2026-04-06/user-auth/user-auth.prd.md      # 恢复草稿继续讨论
-```
-
-**执行流程**：
-1. 扫描项目背景（`.code-flow/specs/shared/_map.md`、已有 PRD）
-2. 围绕 PRD 要素交互：背景与目标 → 用户与场景 → 功能需求 → 非功能需求（按需）→ 范围与边界 → 依赖与风险（按需）
-3. 基于 `.code-flow/specs/shared/prd-template.md` 模板生成文档
-4. 写入 `.code-flow/tasks/<YYYY-MM-DD>/<需求>/<需求>.prd.md`（**需求目录**：PRD / design / tasks 同放一处，`cf-task:archive` 按整目录归档）
-
-产出的 `.prd.md` 可直接作为 `/cf-task:align` 的输入。**适用场景**：需求早期阶段，在设计之前；**不适用**：已有明确技术方案（请直接用 `/cf-task:align`）。
-
-### `/cf-task:align` — 需求对齐与设计简报
-
-从需求出发，通过结构化对话产出设计简报（`.design.md`），包含技术选型、架构设计、接口设计、**性能与容量设计**、验收条件等，为 `/cf-task:plan` 提供足够丰富的输入。支持三种输入：
-
-```
-/cf-task:align "给项目加上用户认证"                              # 纯文本需求，新建
-/cf-task:align .code-flow/tasks/2026-04-06/user-auth/user-auth.prd.md    # 从 PRD 派生（推荐路径）
-/cf-task:align .code-flow/tasks/2026-04-06/user-auth/user-auth.design.md # 恢复草稿继续讨论
-/cf-task:align                                                 # 交互式
-```
-
-**输入模式**：
-
-| 参数形态 | 模式 | 行为 |
-|---------|------|------|
-| `.design.md` | 恢复模式 | 读取草稿，展示当前内容，询问调整点 |
-| `.prd.md` | PRD 派生模式 | 继承 PRD 的目标/用户/功能/范围，只补技术维度 |
-| 其他 `.md` | 新建（带上下文） | 作为参考材料进入细化 |
-| 纯文本 / 无参数 | 新建 / 交互 | 从零开始细化 |
-
-**执行流程**：
-1. 识别输入模式，扫描代码库上下文（技术栈、现有模式）
-2. 依代码库扫描自动识别域选模板（前端→`design-frontend.md`；后端/通用→`design-lite.md` 简单 / `design-full.md` 跨系统/架构演进）
-3. 围绕维度交互：目标与边界 → 数据模型（按需）→ 接口设计（按需，API/CLI/函数三形态）→ 技术方案（性能敏感路径按最优性能设计）→ 性能与容量（按需）→ 约束条件 → 验收标准（可转测试断言）→ 妥协与技术债（按需）
-4. **PRD 派生模式**：已从 PRD 覆盖的维度不再提问；FEAT 保留对 US-XX 的来源追溯
-5. 基于模板生成设计简报并展示（功能→接口→验收追溯闭合；Full 模板生成 §6 需求追溯矩阵 US→FEAT→API→TC）
-6. 写入需求目录，**按域后缀命名**：前端 `<需求>.frontend.design.md`、后端/通用 `<需求>.backend.design.md` 或 `<需求>.design.md`；全栈需求前后端各产出一份；PRD 派生时复用 PRD 所在需求目录
-
-输出摘要含**追溯自检**与**性能自检**：FEAT 无来源/无验收、或标记性能敏感却无对应设计时，显式提示补全。
-
-产出 design 时同时维护 canonical 场景源与模板声明，并执行 `scenarios parse --quality`、`design lint`；只引用已定义 ID。规则应用引用应指向已完成条目，不能把“待同步 spec”作为 applied 证明。
-
-支持中断恢复——对话进行中即写入草稿，下次通过文件路径继续。
-
-### `/cf-task:plan` — 从设计文档拆解任务
-
-```
-/cf-task:plan docs/auth-design.md                                    # 设计文档（含缺口分析）
-/cf-task:plan docs/auth-design.md --quick                             # 跳过缺口分析
-/cf-task:plan docs/auth-design.md --explore                           # 仅输出分析报告
-/cf-task:plan .code-flow/tasks/2026-04-06/user-auth                    # 从 align 产出的设计简报拆解（传目录，自动发现 *.design.md）
-```
-
-**执行流程**：
-1. 读取输入文件，判断类型（设计简报 vs 设计文档）；**传需求目录时自动发现其中全部 `*.design.md`（前后端）合并拆解**
-2. 设计文档模式：建立章节索引 → 缺口分析对话（`--quick` 跳过）→ 拆解
-3. 设计简报模式：直接从 Goal/DB/API/Acceptance Criteria 拆解；多 design 合并为一份任务，各 TASK 的 Source 指向其来源 design
-4. 展示拆解结果供用户确认/调整
-5. 写入任务文件到需求目录：`.code-flow/tasks/<YYYY-MM-DD>/<需求>/<需求>.md`
-
-计划产出还包括场景到全部 checks 的绑定与锁定 manifest；补齐真实测试登记，执行 `acceptance manifest --verify-plan` 后才进入 start。重新锁定保留 check 的登记配置，更改配置会使旧输入证明失效。
-
-**缺口分析**（设计文档模式，`--quick` 跳过）：AI 从文档中识别目标/非目标、范围边界、未确认的技术决策、风险点和验收标准，输出结构化分析并与用户交互讨论。对齐结论写入 Proposal 的 `### Alignment` 子节。
-
-生成的任务文件格式：
-
-```markdown
-# Tasks: 用户认证模块
-
-- **Source**: docs/auth-design.md
-- **Created**: 2026-03-23
-- **Updated**: 2026-03-23
-
-## Proposal
-实现用户注册、登录和 JWT 认证功能，支持 token 自动刷新。
-
----
-
-## TASK-001: 用户模型定义
-
-- **Status**: draft
-- **Priority**: P0
-- **Depends**:
-- **Source**: docs/auth-design.md#§3.1 数据模型(L83-L110)
-
-### Description
-定义 User 表结构，包含 email、password_hash、created_at 等字段。
-
-### Checklist
-- [ ] 创建 User model
-- [ ] 添加数据库迁移
-- [ ] 编写单元测试
-
-### Log
-- [2026-03-23] created (draft)
-```
-
-`--explore` 模式仅输出分析报告（功能域识别、依赖关系、风险点），不生成文件，适合先了解全貌再决定是否拆解。
-
-### `/cf-task:start` — 激活并编码
-
-```
-/cf-task:start auth-module TASK-001    # 启动单个子任务
-/cf-task:start auth-module             # 启动文件内所有可执行的子任务（批次内默认并行派发子 agent）
-/cf-task:start auth-module --serial    # 整文件模式强制串行（不建 worktree）
-```
-
-**单任务模式流程**：
-1. **前置检查**：由 `code-flow task start` 检查状态、依赖、Context/marker、范围及 canonical E2E 质量与登记，不能靠手改状态绕过
-2. **加载详设**：使用已持久化 Context 中的 Spec-Refs、Design refs 与 Acceptance Contract 读取对应内容
-3. **编码**：进入 in-progress，逐项完成 Checklist；开发中可用 `task verify --checks` 运行 validators
-4. **完成门禁**：调用 `code-flow task finish`，依据 required code checks 的有效执行证据推导 done/provisional；勾选 Checklist 不自动证明验收通过
-5. **Spec 同步检查**：检查新增模式是否需要更新规范；需求终验仍需完整 verify
-
-**整文件模式（并行批次）**：按依赖拓扑排序输出执行计划，批次内独立 TASK 默认并行执行：
-
-1. `cf_task_parallel.py prepare` 预检（git 仓库、tracked 干净、无 active marker），为每个 TASK 建独立 worktree + 分支（`.code-flow/worktrees/`，已 gitignore）
-2. 每个 TASK 派发一个子 agent，在其 worktree 内跑完整单任务流程（RED → 实现 → GREEN → finish 并提交）
-3. `collect` 校验（改动已提交、done/verified、marker 已清理）后，`merge` 按 TASK 顺序自动回并：worktree 内 rebase、状态文件冲突（覆盖状态列 / `spec-context.yml` / manifest）按确定性并集规则解决、主区 `--no-ff` 合并、`refresh` 收敛 hash
-4. 代码文件冲突无法程序化合并时 merge 报 `code_conflict` 并保持主区不变；由主 agent 合并双方意图并用测试仲裁，无法调和才叫停交用户决策
-5. `cleanup` 清理 worktree；已合入分支自动删除，未合入分支保留排查（`--force` 时按用户明确意图一并删除）
-
-预检失败（工作区不干净、平台无子 agent 能力、批次仅 1 个任务等）自动回退串行，无需用户介入。
-
-### `/cf-task:status` — 查看任务状态
-
-```
-/cf-task:status              # 所有活跃任务的总览
-/cf-task:status auth-module  # 指定文件的详细状态
-```
-
-0.8 起 `cf-task:status` 同时承载三个子动作（旧命令保留一个 minor）：
-
-| 子动作 | 等价旧命令 | 用途 |
-|--------|-----------|------|
-| `/cf-task:status --notes` | `/cf-task:note` | 讨论并收敛 `#NOTES` |
-| `/cf-task:status --block` | `/cf-task:block` | 标记阻塞并记录原因 |
-| `/cf-task:status --graph` | `/cf-task:graph` | 依赖 DAG 与并行批次 |
-
-输出示例：
-
-```
-📋 auth-module.md (来源: docs/auth-design.md)
-┌──────────┬──────────────┬────────────┬──────┬────────────┐
-│ ID       │ 标题         │ 状态       │ 优先 │ 进度       │
-├──────────┼──────────────┼────────────┼──────┼────────────┤
-│ TASK-001 │ 用户模型定义 │ done       │ P0   │ 3/3 [100%] │
-│ TASK-002 │ 注册接口实现 │ in-progress│ P0   │ 1/4 [25%]  │
-│ TASK-003 │ JWT 工具函数 │ draft      │ P1   │ 0/2 [0%]   │
-└──────────┴──────────────┴────────────┴──────┴────────────┘
-汇总: 3 个子任务 | done: 1 | in-progress: 1 | draft: 1
-```
-
-### `/cf-task:note` — 讨论 Notes（别名）
-
-> **0.8 命令面状态**：alias（0.9.0 移除），等价 `/cf-task:status --notes`。
-
-用户在 review 任务文件时，可以在任意位置标注 `#NOTES` 提出疑问：
-
-```markdown
-### Checklist
-- [ ] 密码加密存储  #NOTES 用 bcrypt 还是 argon2？
-```
-
-然后运行：
-
-```
-/cf-task:note auth-module              # 讨论文件内所有 #NOTES
-/cf-task:note auth-module TASK-001     # 只讨论指定子任务的 #NOTES
-```
-
-AI 会加载详设上下文，逐条分析并给出建议方案。用户确认后，结论融入原文，`#NOTES` 标记被删除。
-
-> `#NOTES` 是 `cf-task:start` 的前置条件之一——含有未解决 Notes 的子任务无法启动。
-
-### `/cf-task:block` — 标记阻塞（别名）
-
-> **0.8 命令面状态**：alias（0.9.0 移除），等价 `/cf-task:status --block`。
-
-```
-/cf-task:status --block auth-module TASK-001 "等待第三方 SDK 文档"   # 0.8 推荐
-/cf-task:block auth-module TASK-001 "等待第三方 SDK 文档"            # 兼容别名
-```
-
-Status 更新为 blocked，阻塞原因记录在 Log 中。
-
-解除方式：
-- Notes 导致的阻塞 → 用 `/cf-task:note` 讨论解决后自动解除
-- 外部阻塞 → 手动编辑文件移除阻塞条目，再用 `/cf-task:start` 重新启动
-
-### `/cf-task:graph` — 可视化依赖（别名）
-
-> **0.8 命令面状态**：alias（0.9.0 移除），等价 `/cf-task:status --graph`。
-
-```
-/cf-task:status --graph auth-module    # 0.8 推荐：指定文件的依赖图
-/cf-task:status --graph                # 所有活跃文件的依赖图
-/cf-task:graph auth-module             # 兼容别名
-```
-
-输出 ASCII 依赖 DAG，标注可并行执行的任务组和关键路径。
-
-### `/cf-task:archive` — 归档已完成任务
-
-```
-/cf-task:archive auth-module
-```
-
-**归档前执行校验**：
-
-| 维度 | 检查内容 |
-|------|---------|
-| 完整性 | 所有 Checklist 已勾选，无残留 `#NOTES` |
-| 正确性 | validation.yml 中匹配的验证规则通过 |
-| 一致性 | Proposal 中的意图与实际代码变更一致 |
-| 可追溯性 | 场景、全部 checks、Spec Gate 与当前输入执行证据一致 |
-
-通过完整需求验收与 Spec Gate 后，由正式运行时归档并移动目录：
-
-```bash
-code-flow task archive --task-dir "<需求目录>" --root "$PWD" --json
-```
-
-实际归档位置以返回的 `archived_to` 为准，PRD/design/scenarios/tasks 随整个需求目录归档。旧扁平布局缺少独立需求边界时会要求迁移，不提供逐文件移动回退。不要手工 mv 或只移动任务文件；归档后再审查是否需要同步规范。
-
----
-
-## 配置参考
-
-### `.code-flow/config.yml`
-
-```yaml
-version: 1
-
-# Token 预算控制
-budget:
-  total: 2500       # L0 + L1 总预算
-  l0_max: 800       # CLAUDE.md 最大 token
-  l1_max: 1700      # 所有 tier 1 specs 合计上限
-  map_max: 400      # 单个 _map.md 最大 token
-  catalog_max: 200  # Spec Catalog 目录上限（v0.5+）
-
-# 推荐 required；历史 warn/inject 的限制和迁移提示见 cf-spec doctor
-spec_workflow:
-  schema_version: 1
-  enforcement: required
-
-# 质量闭环：enabled 仅 literal true 启用（存量升级默认关闭，行为不变）；
-# 子开关缺省跟随 enabled，仅 literal false 单独关闭。
-# 注入/校验的扩展名与路径过滤都在这里（v0.6 起注入行为不再有独立 inject 块）
-quality_loop:
-  enabled: true
-  post_check: true            # PostToolUse 违规反馈（只提示不阻断）
-  stop_check: true            # Stop 收尾按 validation.yml 校验（heavy 项跳过）
-  finish_check: true          # 任务 finish 时执行 validation.yml（不含 heavy）
-  heavy_at_finish: false      # 显式 true 时 finish 也跑 heavy 项（默认归档/verify-e2e 跑）
-  finish_verifier_budget: 300 # finish 的 command/test verifier 预算（秒）；未完成不算 verified
-  correction_capture: true    # 纠正句式采集（喂 cf-learn 候选）
-  compress: true              # 注入时对 spec 做保守无损压缩；缺省/非布尔按 true 处理
-  compress_reminder: true     # 会话过长每 N 轮提醒压缩上下文
-  code_extensions:            # 触发注入的文件扩展名
-    - ".py"
-    - ".js"
-    - ".ts"
-    - ".tsx"
-  skip_extensions:            # 跳过的扩展名
-    - ".md"
-    - ".json"
-    - ".yml"
-  skip_paths:                 # 跳过的路径 glob
-    - "docs/**"
-    - ".code-flow/**"
-    - "node_modules/**"
-
-# 路径映射：文件路径 → 域 → specs
-path_mapping:
-  frontend:
-    patterns:          # 哪些文件属于该域
-      - "src/components/**"
-      - "**/*.tsx"
-    specs:             # 该域关联的规范文件
-      - path: "frontend/_map.md"
-        tags: ["*"]    # 通配符，总是匹配
-        tier: 0        # 导航地图
-      - path: "frontend/quality-standards.md"
-        tags: ["quality", "type", "lint", "error"]
-        tier: 1        # 约束规范，按标签匹配
-  backend:
-    patterns:
-      - "**/*.py"
-    specs:
-      - path: "backend/_map.md"
-        tags: ["*"]
-        tier: 0
-      - path: "backend/code-quality-performance.md"
-        tags: ["quality", "error", "test"]
-        tier: 1
-```
-
-#### 自定义域扩展
-
-在 `path_mapping` 中添加任意域：
-
-```yaml
-infra:
-  patterns:
-    - "infra/**"
-    - "terraform/**"
-    - "Dockerfile"
-  specs:
-    - path: "infra/_map.md"
-      tags: ["*"]
-      tier: 0
-    - path: "infra/deployment-rules.md"
-      tags: ["deploy", "docker", "terraform", "ci"]
-      tier: 1
-```
-
-然后在 `.code-flow/specs/infra/` 下创建对应文件即可，Hook 会自动识别。
-
-### `.code-flow/validation.yml`
-
-```yaml
-validators:
-  - name: "验证器名称"
-    trigger: "**/*.{ts,tsx}"     # 触发的文件 glob
-    command: "npx tsc --noEmit"  # 执行的命令（{files} 占位符可选）
-    timeout: 30000               # 超时时间（毫秒）
-    skip_if_missing: true        # 可选：工具未安装时跳过（degrade 记录）而非阻断
-    heavy: true                  # 可选：慢命令（全量测试/构建/e2e），Stop 与 finish 跳过，
-                                 # 由 verify-e2e / 归档 / cf-validate 全量执行一次
-    on_fail: "修复建议"           # 失败时展示的提示
-```
-
-### `CLAUDE.md`
-
-Claude Code 项目级 AI 指令文件，每次对话自动加载。核心段落：
-
-| 段落 | 用途 |
-|------|------|
-| `## Team Identity` | 团队和项目标识 |
-| `## Core Principles` | 全局编码原则 |
-| `## Forbidden Patterns` | 全局禁止模式 |
-| `## Spec Loading` | 两层规范加载指令（自动生成，勿手动修改） |
-
-### `AGENTS.md`
-
-Codex CLI 和 OpenCode 的项目级 AI 指令文件（Costrict 与 Claude Code 一样使用 `CLAUDE.md`），每次对话自动加载。结构与 `CLAUDE.md` 相同，`Spec Loading` 节说明 Spec Catalog 自取与自动注入的分工，`合规反馈协议` 节（v0.5）约定违规修正与误报代执行行为。
-
-### `.claude/settings.local.json`
-
-Claude Code 的 Hook 配置。code-flow 自动生成以下 Hook：
-
-| Hook 事件 | 触发时机 | 脚本 | 作用 |
-|-----------|---------|------|------|
-| PreToolUse | AI 调用 Edit/Write/MultiEdit | `cf_pre_tool_hook.py` | Context/scope 检查、按匹配注入 specs + edit 事件埋点 |
-| PostToolUse | AI 编辑完成后 | `cf_post_hook.py` | frontmatter checks 合规反馈（v0.5） |
-| Stop | 会话收尾 | `cf_stop_hook.py` | validation.yml 收尾守门（v0.5） |
-| UserPromptSubmit | 每次提交 prompt | `cf_user_prompt_hook.py` | Spec Catalog / 直注 + 纠正句式采集 |
-
-### `.codex/hooks.json`
-
-Codex 四个事件统一调用原生入口 `cf_codex_hook.py`。编辑事件匹配器为 `^apply_patch$`，补丁来自 `tool_input.command`，会话目录和身份来自 `cwd` / `session_id`。
-
-| Hook 事件 | 作用 |
-|-----------|------|
-| UserPromptSubmit | Context-first 路由与纠正句式采集 |
-| PreToolUse | 解析新增、修改、删除、移动及多文件补丁，逐文件检查 scope |
-| PostToolUse | 确认补丁成功后记录编辑，并检查现存文件的合规性 |
-| Stop | 在会话项目内执行收尾校验 |
-
-平台入口调用共享业务服务，不转换为其他平台的工具事件。安装清单验证受管理脚本、Skill、命令契约和 Hook 定义；用户自定义 Hook 不计入受管理定义。
-
-### `.costrict/settings.local.json`
-
-Costrict 的 Hook 配置，与 Claude Code 完全一致（PreToolUse / PostToolUse / Stop / UserPromptSubmit 四个 Hook，同脚本同协议）。
-
-### `.opencode/plugins/code-flow/`
-
-OpenCode v2 的插件目录，放在 `.opencode/plugins/` 下即自动发现，无需在 `opencode.json` 中注册。等价于其他平台的 Hook 配置：
-
-| 原生 API / 事件 | 触发时机 | 处理路径 | 作用 |
-|---------|---------|---------|------|
-| `session.hook("prompt")` | 用户提交消息 | `cf_opencode_event.py` → 共享 prompt 服务 | Context / Catalog 注入 |
-| `tool.hook("execute.before")` | 编辑前 | 原生 `input.path/patchText` → 共享编辑服务 | 路径/安装/Spec 范围检查 |
-| `tool.hook("execute.after")` | 工具返回后 | 原生 `status: completed/error` → 共享编辑服务 | 成功编辑证据及合规反馈；失败写 degrade |
-| `session.hook("context")` | 模型请求前 | 插件内按会话消费反馈 | 注入 `{ type: "text", text }` |
-| `event.subscribe()` → `session.idle` | 会话空闲 | `cf_opencode_event.py` → 共享收尾服务 | 校验失败进入下轮 context；没有阻断 idle 的 API |
-
-新增路径引入未绑定的 required Spec 时，三端均提示先 refresh Context / Plan，允许本次编辑；上下文损坏或漂移仍按 required 模式阻断。提示不替代阶段门禁的 Spec 校验。
-
-会话目录取自 `ctx.session.get({ sessionID }).location.directory`，插件状态按实例隔离。同目录子会话不运行主任务 Done gate；独立工作区子会话检查自己的任务。清理插件时取消事件订阅和在途子进程。
-
-> OpenCode v2 插件入口需默认导出 `{ id, setup }`（或 `Plugin.define`），入口名 `index.js`，`package.json` 含 `"type": "module"`；`code-flow init --platform=opencode` 会一并部署。
-
-### `.codex/config.toml`
-
-Codex CLI 功能开关（v0.4.7 起特性开关由 `codex_hooks` 更名为 `hooks`）：
-
-```toml
-[features]
-hooks = true
-```
-
----
-
-## 工作流示例
-
-### 典型开发流程
-
-```
-1. 初始化（一次性）
-   code-flow init
-   /cf-learn --map                          ← 填充导航地图
-
-2. 需求对齐（三种入口，按需选择）
-   a) 有设计文档:
-      /cf-task:plan docs/feature-design.md  ← 缺口分析 + 拆解任务
-   b) 只有一句话需求、需要先理清业务（推荐）:
-      /cf-task:prd   "给项目加用户认证"       ← 交互式产出 .prd.md（业务需求）
-      /cf-task:align .code-flow/tasks/.../xxx.prd.md    ← 从 PRD 派生 .design.md（技术设计）
-      /cf-task:plan  .code-flow/tasks/.../xxx.design.md ← 从设计简报拆解任务
-   c) 技术方案已明确，直接做设计:
-      /cf-task:align "给项目加用户认证"       ← 交互式需求细化，产出 .design.md
-      /cf-task:plan .code-flow/tasks/.../xxx.design.md  ← 从设计简报拆解任务
-
-3. 任务审阅
-   （review 任务文件，标注 #NOTES）
-   /cf-task:note feature-module             ← 讨论并解决 Notes
-
-4. 编码实现
-   /cf-task:start feature-module            ← 按依赖顺序逐个编码
-   （任务验收标准自动成为会话约束；编辑前注入规范，
-     编辑后 checks 机检——违规当场反馈，AI 自行修正，v0.5）
-
-5. 验证
-   （会话收尾 Stop Hook 自动按 validation.yml 校验本次改动，
-     未过项把 AI 拦回修复；/cf-validate 仍可随时手动触发）
-
-6. 归档
-   /cf-task:archive feature-module          ← 三维校验 + 归档（清理会话约束）
-
-7. 规范沉淀
-   /cf-learn --review                       ← 候选自动带上本期对话纠正信号
-```
-
-### 规范持续改进循环（v0.5）
-
-```
-开发中 AI 生成代码 → 违规被 checks 当场机检反馈 → AI 自行修正
-                                              ↓
-机检覆盖不到的问题：你在对话中纠正 AI（"不要这样写"）
-                                              ↓
-          纠正语句 + AI 的修正改动被自动配对采集（correction 事件）
-                                              ↓
-/cf-learn 聚合同类纠正（≥2 次）→ 候选规范（✅/❌ 对照 + checks 草稿）
-                                              ↓
-        你确认写入 spec → 下次该问题直接被机检拦住，不再进对话
-```
-
-关键变化：v0.5 之前"发现问题"靠人、"沉淀规范"靠定期手动运行命令；v0.5 起机检负责拦截已知问题，对话纠正自动变成候选规范——**你的角色从"巡检员"变成"仲裁者"：只在反馈误报和候选确认两个点做决定**。
-
-### 多人协作
-
-spec 文件（含 frontmatter 的 description/checks）和 `CLAUDE.md` 提交到 git 仓库，团队共享同一套规范与机检规则。任何人更新 spec 后，其他人在下次会话即生效。运行时数据（`.session-log.jsonl`、`.check-state.json`）是个人本地的，不共享、不入库——误报停用按人生效，纠正信号也只来自你自己的会话。
-
-### 管理员旅程（规范维护者）
-
-> 适用于负责团队 `.code-flow/specs/` 质量的人。开发者旅程是"被约束 + 被采集"，管理员旅程是"定规则 + 看数据 + 做减法"。
-
-**一、接入期（一次性）**
-
-```
-1. code-flow init && /cf-learn --map        ← 部署 + 导航地图
-2. /cf-learn                                ← 全量扫描存量代码，产出初始规范候选
-3. 逐条确认候选：优先 ✅/❌ Examples 表达；可机检的规则补 checks 标注
-4. 调 config.yml：path_mapping 域划分、quality_loop 开关、预算
-5. specs/ + CLAUDE.md + config.yml 提交入库 → 全队下次会话生效
-```
-
-**二、治理周期（建议每周或每个迭代一次，约 10 分钟）**
-
-```
-/cf-stats --human
-  ├─ 违规 Top 榜：高频违规 = 规则写得不清 → 补 Examples / 改写 message
-  ├─ 修正率：反馈后修正率低 = message 没说清怎么改 → 改提示文案
-  └─ 误报率与自动停用：fp 高的 check → 收紧 pattern 或删除
-
-/cf-stats --audit
-  ├─ REVIEW 待复审清单：长期未命中 / 已停用 / 反复误报 → 改写、删除或豁免
-  ├─ "冗长/冗余/过时/缺描述/checks 语法" 告警 → 修文档债
-  └─ CATALOG 行数与 token：目录超预算 = 该拆域或精简 description
-```
-
-**三、规范变更评审（随 PR）**
-
-- spec 改动走正常 PR：**checks 标注影响全队的编辑体验，按生产配置评审**（pattern 误报面、message 是否给出修正路径、files glob 范围）
-- 开发者确认落盘的 cf-learn 候选同样经 PR 进入主干——管理员是最后一道闸
-- 新规则上线后下个治理周期看它的违规/误报数据，用数据验证规则质量
-
-**四、升级与灰度**
-
-- `npm i -g @michaelxwb/code-flow@latest && code-flow init`：工具文件覆盖、合并文件智能合并、specs 不动
-- 新能力灰度：`quality_loop` 子开关支持单项关闭（如只开 post_check、关 correction_capture）
-- `quality_loop.enabled: false` 可关闭质量反馈；`required` 的 Spec Gate 仍生效。历史 `warn/inject` 会降低部分验证门禁，由 doctor 提示迁移，路由完整性错误始终阻断。运行时升级回滚按迁移 journal 操作。
-
-**管理员的关键转变**（v0.5）：过去判断"规范好不好"靠体感，现在有三组数据闭环——违规率说明规则是否被理解、修正率说明反馈是否有效、误报率说明机检是否过严。规范库的增删都有数据背书，做减法（退役僵尸规范）第一次变得有依据。
-
----
-
-## Hook 机制
-
-### Claude Code 工作原理
-
-code-flow 通过 Claude Code 的 `PreToolUse` Hook 在代码编辑前注入规范：
-
-```
-AI 调用 Edit("src/api/users.py", ...)
-  → Claude Code 触发 PreToolUse Hook
-  → cf_pre_tool_hook.py 从 stdin 接收 JSON（tool_name + file_path）
-  → 从文件路径提取上下文标签：{api, user, route, ...}
-  → 标签与 config.yml 中的 specs tags 做交集匹配
-  → 读取匹配到的 spec 文件内容
-  → 按 tier 分层（Tier 0 导航地图在前、Tier 1 约束规范在后）、按 token 预算裁剪
-  → **约束声明"以上规范是本次开发的约束条件，生成代码必须遵循"始终置于输出顶部**（assemble_context 强制）
-  → 通过 stdout JSON 返回 hookSpecificOutput.additionalContext
-  → 规范内容注入到 AI 上下文，指导代码生成
-```
-
-### Codex CLI 工作原理
-
-code-flow 通过 Codex 的 `UserPromptSubmit` Hook 在 prompt 提交前注入规范：
-
-```
-用户输入 "修改 @src/api/users.py 的权限验证逻辑，注意性能"
-  → Codex CLI 触发 UserPromptSubmit Hook
-  → cf_user_prompt_hook.py 从 stdin 接收 JSON（prompt + session_id）
-  → 从 prompt 文本中提取文件引用（@前缀、反引号、裸路径）→ context_tags
-  → 含路径且命中域：与 specs tags 交集匹配后直注完整约束（+ 附带 Catalog 保证跨域可达）
-  → 无路径命中（catalog 模式默认）：注入 Spec Catalog，AI 按目录行自行 Read 相关 spec
-  → mode: full 时回到旧行为：关键词词表匹配，零命中 fallback 仅注入 Tier 0 导航地图
-  → 通过 stdout JSON 返回 hookSpecificOutput.additionalContext
-  → 规范内容注入到本次 prompt 上下文
-```
-
-**四端差异**：Claude/Costrict 在"提交 prompt（UserPromptSubmit）"、"编辑前（PreToolUse）"、"编辑后（PostToolUse 合规反馈）"、"收尾（Stop 守门）"四个时机介入；Codex 同样四时机（hooks.json 注册）；OpenCode 使用原生 v2 prompt / tool-before / tool-after / context / idle API；idle 无 Stop 阻断接口。四端共用注入服务，Prompt 与编辑前通过实际投影指纹去重。Claude/Costrict/Codex 的编辑前阻断使用 `permissionDecision: deny`；OpenCode 使用原生 `blocked` 结果。Hook stdout 统一用 `json.dumps(payload, ensure_ascii=False)`。
-
-### 质量闭环 Hook（v0.5）
-
-```
-AI 编辑完成 → PostToolUse 触发 cf_post_hook.py
-  → 匹配域内 specs 的 frontmatter checks（mtime 缓存、单条 2s 超时、>256KB 跳过）
-  → 违规 → additionalContext 反馈（同 check 同文件每会话一次）+ violation 事件
-  → 无违规/开关关闭/无 checks → 静默 exit 0
-
-会话收尾 → Stop 触发 cf_stop_hook.py
-  → 从会话日志取本会话编辑过的文件 → 匹配 validation.yml trigger
-  → 串行执行（总预算 30s）→ 未过项以 decision=block 拦回修复
-  → 全过/无 validation.yml/stop_hook_active → 静默
-```
-
-### Costrict 工作原理
-
-Costrict 的 Hook 机制与 Claude Code 相同，通过 `PreToolUse` Hook 在代码编辑前注入规范：
-
-```
-AI 调用 Edit("src/api/users.py", ...)
-  → Costrict 触发 PreToolUse Hook
-  → cf_pre_tool_hook.py 从 stdin 接收 JSON（tool_name + file_path）
-  → 从文件路径提取上下文标签
-  → 标签与 config.yml 中的 specs tags 做交集匹配
-  → 读取匹配到的 spec 文件内容
-  → 通过 stdout JSON 返回 hookSpecificOutput.additionalContext
-  → 规范内容注入到 AI 上下文，指导代码生成
-```
-
-### OpenCode 工作原理
-
-OpenCode v2 插件使用原生事件接口，调用独立的 `cf_opencode_event.py`，直接复用共享业务服务：
-
-```text
-session.prompt → 原生 prompt/sessionID → 共享路由服务
-execute.before → edit/write 的 input.path、patch 的 input.patchText → 范围检查
-execute.after → status=completed 才记录 edit 与运行合规检查
-session.context → 等待该会话的在途事件 → 注入排队反馈
-session.idle → 从会话 API 获取实际目录 → 校验该工作区的任务
-```
-
-已在 OpenCode v2.0.15 实机验证插件发现和 prompt 事件；原生编辑工具是 `edit/write/patch`，不提供 v1 工具字段别名或 Claude 协议转换。RPC 错误、超时和非法输出显式记录，并向模型反馈。idle 校验失败通过下一轮 context 提示，任务 Finish / verify-e2e 门禁仍须通过。
-
-### 标签提取逻辑
-
-文件路径 `src/api/handlers/user_auth.py` 的标签提取过程：
-
-| 策略 | 提取结果 |
-|------|---------|
-| 目录名 | `src`, `api`, `handlers` |
-| 安全去复数 | `handler` (handlers → handler) |
-| 语义映射 | `handlers` → `[api, error]` |
-| 文件名词分割 | `user`, `auth` |
-
-### 调试 Hook
-
-**Claude Code Hook**：
-
-```bash
-CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"/path/to/src/api/users.py","old_string":"x","new_string":"y"}}' | python3 .code-flow/scripts/cf_pre_tool_hook.py
-```
-
-**Codex Hook**：
-
-```bash
-CF_DEBUG=1 printf '%s' '{"session_id":"test-session","prompt":"修改 @src/api/users.py 的权限逻辑，注意性能"}' | python3 .code-flow/scripts/cf_user_prompt_hook.py
-```
-
-**Costrict Hook**（与 Claude Hook 相同）：
-
-```bash
-CF_DEBUG=1 printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"/path/to/src/api/users.py","old_string":"x","new_string":"y"}}' | python3 .code-flow/scripts/cf_pre_tool_hook.py
-```
-
-**OpenCode v2 原生接入验证**（在本仓库执行）：
-
-```bash
-node tests/test_opencode_plugin.js
-python3 -m pytest -q tests/test_opencode_native.py
-```
-
-第二项在安装了 `opencode2` 时启动隔离的真实 v2 服务，验证插件加载和原生 prompt；不使用账号或付费模型。
-调试输出会包含 `debug` 字段，显示匹配到的域、标签和 specs。
-
-### 会话状态
-
-注入状态保存在 `.code-flow/sessions/injection/<session-id 的 SHA256>.json`，Prompt 与编辑入口共享；`.session-state.json` 仅保存上下文压缩提醒计数。
-
-- TASK 和 path 模式按实际投影指纹去重，修改 `Spec-Refs`、合同或投影依赖后立即重新注入。
-- 每个会话独立，保留每 25 轮 Prompt 的周期重注入；成功输出后才提交去重状态，输出失败会保留重试机会。
-- 每个批量编辑事件按所属项目加载一次 Context；每次事件检查绑定 Spec 的源哈希，变化后要求 refresh。
-- path 注入使用 `min(budget.total, budget.l1_max)` 的估算 token 预算。超预算会阻断并提示创建聚焦 TASK 或缩小编辑范围，required 内容不会被静默截断。
-- Catalog 排除 `_session/` 与命令模板；目录超预算时显示省略数量，并提供 `code-flow spec catalog --root . --stage code --json` 获取完整约束候选。
-
-实现与回归场景见 [Specs 注入校验](spec-injection-hardening.md)。
-
----
-
-## 故障排查
-
-> 先确认初始化平台：
-> - Claude 路径（`code-flow init` 或 `--platform=claude`）检查 `.claude/settings.local.json`
-> - Codex 路径（`--platform=codex`）检查 `.codex/hooks.json` 与 `.codex/config.toml`
-> - Costrict 路径（`--platform=costrict`）检查 `.costrict/settings.local.json`
-> - OpenCode 路径（`--platform=opencode`）检查 `.opencode/plugins/code-flow/{index.js,package.json}`，并用 `opencode plugin list` 确认 `code-flow` 已加载
-> - 单平台项目缺少其他平台的配置文件属于正常现象
-
-### Hook 未触发（Claude Code）
-
-**现象**：编辑代码文件时没有看到规范注入。
-
-**排查步骤**：
-
-1. 检查 `.claude/settings.local.json` 中 hooks 配置是否存在
-2. 检查文件扩展名是否在 `config.yml` 的 `code_extensions` 列表中
-3. 检查文件路径是否被 `skip_paths` 排除
-4. 手动运行 Hook 测试：
-   ```bash
-   printf '%s' '{"tool_name":"Edit","tool_input":{"file_path":"/absolute/path/to/file.py"}}' | python3 .code-flow/scripts/cf_pre_tool_hook.py
-   ```
-
-### Hook 未触发（Codex CLI）
-
-1. 检查 `.codex/config.toml` 中 `features.hooks = true`，并在 Codex `/hooks` 中信任当前定义。
-2. 检查 `.codex/hooks.json` 的四个事件是否调用 `cf_codex_hook.py`，编辑事件 matcher 是否为 `^apply_patch$`。
-3. 执行 `code-flow spec validate --help` 检查公开命令与安装完整性。
-4. 安装损坏或版本不一致时，执行 `code-flow migrate --runtime --dry-run` 查看范围，再执行 `code-flow migrate --runtime --apply`。迁移会备份受影响文件并更新全部已安装平台。
-5. 没有 active TASK、没有显式文件路径时只注入 Spec Catalog；这是 Context-first 路由的正常行为。
-
-### Codex 命令不可用
-
-**现象**：在 Codex CLI 中输入 `$cf-init` 无响应。
-
-**排查步骤**：
-
-1. 检查 `.agents/skills/cf-init/SKILL.md` 是否存在
-2. 若不存在，重新运行 `code-flow init --platform=codex` 重新部署 Skills
-3. 确认 Codex CLI 版本支持 Skills：`codex --version`
-
-### Hook 未触发（Costrict）
-
-**现象**：编辑代码文件时没有看到规范注入。
-
-**排查步骤**：
-
-1. 检查 `.costrict/settings.local.json` 中 hooks 配置是否存在
-2. 检查文件扩展名是否在 `config.yml` 的 `code_extensions` 列表中
-3. 检查文件路径是否被 `skip_paths` 排除
-4. 手动运行 Hook 测试（与 Claude Hook 相同）：
-   ```bash
-   printf '%s' '{"tool_name":"Edit","tool_input":{"file_path":"/absolute/path/to/file.py"}}' | python3 .code-flow/scripts/cf_pre_tool_hook.py
-   ```
-
-### Costrict 命令不可用
-
-**现象**：在 Costrict 中输入 `/project:cf-init` 无响应。
-
-**排查步骤**：
-
-1. 检查 `.costrict/commands/cf-init.md` 是否存在
-2. 若不存在，重新运行 `code-flow init --platform=costrict` 重新部署命令文件
-3. 确认命令前缀为 `/project:` 而非 `/`
-
-### Hook 未触发（OpenCode）
-
-**现象**：OpenCode 中提交消息后 system prompt 没有 spec 注入。
-
-**排查步骤**：
-
-1. 运行 `opencode plugin list`，确认 `code-flow` 以 `local` 来源出现在 `.opencode/plugins/code-flow/index.js`；若 ID 显示为 `-` 说明加载失败，查看 `~/.local/share/opencode/log/opencode.log`（v2 自动发现，不需要 `opencode.json` 注册；若配置里残留 v1 `plugin` 键，删除后重新 init）
-2. 检查 `.opencode/plugins/code-flow/package.json` 是否存在且包含 `"type": "module"`（ESM 入口必需，缺失会导致插件加载失败）
-3. 检查 `.opencode/plugins/code-flow/index.js` 是否完整（默认导出 `{ id, setup }`，注册 prompt/context、execute.before/after 并订阅 session.idle）
-4. 查看 OpenCode 服务日志中的 `code-flow OpenCode` / `native runtime` 错误，以及 `.code-flow/.session-log.jsonl` 中的 inject/edit/degrade 事件；插件在工作区激活后才进入 active 列表
-5. 手动测试 hook 脚本（与 Codex 相同）：
-   ```bash
-   printf '%s' '{"session_id":"test","prompt":"修改 @src/api/users.py 注意性能"}' | python3 .code-flow/scripts/cf_user_prompt_hook.py
-   ```
-
-### OpenCode 命令不可用
-
-**现象**：在 OpenCode 中输入 `/cf-init` 无响应。
-
-**排查步骤**：
-
-1. 检查 `.opencode/commands/cf-init.md` 是否存在且首部是合法 YAML frontmatter（`---\ndescription: ...\n---`）
-2. 若不存在，重新运行 `code-flow init --platform=opencode` 重新部署命令文件
-3. 确认子命令路径正确，如 `/cf-task:plan` 对应 `.opencode/commands/cf-task/plan.md`
-
-### 规范未匹配
-
-**现象**：Hook 触发了但没有注入预期的 spec。
-
-**排查步骤**：
-
-1. 用 `CF_DEBUG=1` 运行 Hook，查看 `context_tags` 和 `matched_specs`
-2. 检查 `config.yml` 中对应 spec 的 `tags` 是否包含文件路径能提取出的标签
-3. Tier 1 约束规范无 fallback，当 context_tags ∪ prompt_tags 与 spec.tags 无交集时，对应规范不会被注入
-
-### Python 环境问题
-
-```bash
-# 检查 Python 版本
-python3 --version    # 需要 >= 3.9
-
-# 检查 pyyaml / pytest
-python3 -c "import yaml; print(yaml.__version__)"
-python3 -m pytest --version
-
-# 手动安装运行依赖
-python3 -m pip install pyyaml pytest
-```
-
-### Token 超预算
-
-运行 `/cf-stats --audit` 查看各文件 token 分布与质量问题。优化方向：
-- 删除冗余规则（多个 spec 重复的内容）
-- 精简过长的 spec 文件（单文件 > 500 tokens 会被标记）
-- 调整 `config.yml` 中的预算上限
-
-## 0.8.0 运行时命令契约
-
-Agent 使用 `code-flow spec/task/scenarios/design/acceptance/evidence/audit/validate/stats` 正式入口；Python 文件是内部实现。参数帮助来自实际运行时解析器，例如 `code-flow spec doctor --help`。当前命令包括：
-
-| 命令 | 用途 |
-|------|------|
-| `code-flow scenarios parse --file "<需求>.scenarios.md" --quality --json` | 场景语义与浏览器边界质量门禁 |
-| `code-flow design lint --file "<需求>.design.md" --scenarios-file "<需求>.scenarios.md" --json` | ID 闭环、功能覆盖与声明模板章节 |
-| `code-flow acceptance manifest --verify-plan --task-dir "<需求目录>" --task-file "<任务文件>"` | 完整计划门禁与真实收集校验 |
-| `code-flow task verify --layers validators,review,e2e --profile smoke\|changed\|full --resume --deadline <秒>` | 分层/分级/续跑；`--checks` 等价 `--layers validators` |
-| `code-flow task finish --batch TASK-001,TASK-002` / `--capability <名称>` | 批量 Done Gate，共享 check 只执行一次 |
-| `code-flow evidence import --format junit\|playwright --file <报告> --commit <sha> --run-url <url>` | CI 证据导入 |
-| `code-flow audit --task-dir <需求目录> --json` | 只读不变量审计 |
-| `code-flow spec doctor --task-dir "<需求目录>" --root "$PWD" --json` | Context/安装健康、应用引用与阶段 readiness |
-
-运行时状态：`done` 仅在 required code check 全部 verified 后成立；`provisional` 表示仍有合法延后、env_blocked 或 incomplete；真实 failed 会阻断，不会转成成功。`env_blocked` 不写 verified、不计产品失败。0.7 安装需执行显式事务迁移，见 [0.8.0 迁移说明](migrations/runtime-0.8.0.md)（含 rollback、manifest v3 与 evidence sidecar）。旧的 0.7 命令别名保留一个 minor。
-
-### Spec 自检与优化
-
-按 [Spec 自检与优化](spec-optimization.md) 手动执行 audit、budget、impact、预览及交互确认；该流程不会自动运行。
+需要检查全量规则时使用 spec inject --full。没有 Context refresh、安装 manifest、集中 Evidence Store 或持久测试缓存。

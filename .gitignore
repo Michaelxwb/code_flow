@@ -6,6 +6,8 @@
 .idea/
 .DS_Store
 node_modules/
+.code-flow/worktrees/
+*.tgz
 .coverage
 .pytest_cache/
 __pycache__/

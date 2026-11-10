@@ -1,44 +1,48 @@
 # Project Guidelines
 
 ## Team Identity
+
 - Project: code-flow
-- Language: JavaScript (CLI) + Python (core scripts)
+- Language: JavaScript, Node.js >= 18, CommonJS core
 
 ## Core Principles
-- All changes must include tests
-- Single responsibility per function (<= 50 lines)
-- No loose typing or silent exception handling
-- Handle errors explicitly
 
-## Forbidden Patterns
-- Hard-coded secrets or credentials
-- Hook 脚本 stdout 输出非 JSON（破坏 Claude Code / Codex 协议）
-- CLI 引入 npm 外部依赖
+- All changes must include meaningful tests.
+- Single responsibility per function (<= 50 lines).
+- Validate external JSON and command inputs explicitly; no loose coercion.
+- Handle errors explicitly; never silently swallow failures.
+- Keep runtime dependencies empty; use Node built-ins.
+- Hook stdout contains only native protocol JSON; diagnostics go to stderr.
 
-<!-- code-flow:spec-loading schema=1 start -->
-## Spec Workflow (schema 1)
+## v1 Architecture
 
-- If `.code-flow/.active-task.json` exists, validate it and `spec-context.yml`, then use only the active TASK's `Spec-Refs`, Design refs, and Acceptance Contract. Never reselect Specs from Catalog.
-- Without an active TASK, explicit file paths use deterministic `path_mapping` constraints; prompts without paths receive the Spec Catalog for exploration or creation of the next Context.
-- PRD, Design, Plan, Start, Coding, and Done inherit one persisted Context. Required rules must be applied and verified before their stage gate passes.
-- A corrupt marker, Context hash drift, or required scope expansion is `SPEC_WORKFLOW_BLOCKED`; run `cf-spec refresh/doctor` instead of falling back.
-- Tier 0 `_map.md` files are navigation only. Rule constraints live in metadata-bearing Tier 1 Specs.
+- Design authority: docs/v1-design.md.
+- Core runtime lives in bin/ and lib/ in the global package; templates/ holds platform adapters and skills.
+- Project config is .code-flow/config.json. Specs use path identity and JSON frontmatter.
+- Select a Task by complete task-document path + TASK-NNN, or explicit temporary session binding. Never infer it from a lone in-progress state.
+- Read current always/Task/path-selected Spec rules before implementation. Do not freeze hashes or create a Spec Context.
+- A requirement has one task document with multiple TASK sections. Task sections hold state and declared tests. Use task finish to run tests before done; archive applies Deltas and moves documents without running tests.
+- Numeric Rule IDs come from next_rule. Preserve Applied Deltas records for safe retries.
+- Init manages v1 entries only and preserves user-owned content. Historical cleanup is manual, not product code.
+- Existing .code-flow/worktrees are historical user workspaces; preserve their paths and contents.
 
-Do NOT ask the user which Specs to load—the Context-first router is authoritative.
-<!-- code-flow:spec-loading schema=1 end -->
+## Development
 
-## Task Documents (cf-task workflow)
+- Run npm test for the complete Node contract suite.
+- Run npm run test:performance for scale measurements.
+- Tests use real temporary projects/processes where filesystem, command, packaging or protocol behavior matters.
+- Keep full regression/E2E in CI. Task commands should declare meaningful related tests and use framework workers before adding CLI parallelism.
 
-- `.code-flow/specs/shared/` holds PRD/design templates（含前端 `design-frontend.md`）used by `/cf-task:prd` and `/cf-task:align`
-- 一个需求的 prd / design / tasks 同放需求目录 `.code-flow/tasks/<日期>/<需求>/`；全栈需求可有 `<需求>.frontend.design.md` + `<需求>.backend.design.md`，`/cf-task:plan <需求目录>` 合并拆解，`/cf-task:archive` 按整个需求目录归档（旧扁平布局仍兼容）
-- Workflow: `/cf-task:prd` → `.prd.md` → `/cf-task:align <.prd.md>` → `.design.md`(s) → `/cf-task:plan <需求目录>` → tasks
-- Templates are read by the commands themselves; you do not need to pre-load them
+<!-- code-flow:v1 start -->
+Use the global code-flow CLI and current project data in `.code-flow/config.json`, `.code-flow/specs/`, `.code-flow/tasks/` and `.code-flow/templates/`.
 
-## 合规反馈协议（quality_loop）
+A requirement has one task document `<requirement>.md` with multiple `## TASK-NNN` sections. Select a Task by task-document path + TASK ID, or by the session token supplied by the prompt Hook; never infer it from status.
 
-1. 编辑代码后收到 **Spec 合规反馈 (auto-check)** 时，先按提示修正违规，再继续当前任务
-2. 用户表示某条反馈是误报（"这是误报"/"忽略这个检查"）时，代为执行：
-   `code-flow feedback ignore <check-id>`
-   （check-id 见反馈中的 `规则: <spec>#<check-id>`；同一规则误报达阈值会自动停用）
-3. 会话收尾被校验拦回（cf-stop 反馈未过项）时，修复后再结束；不要绕过
-4. 新增/修改规范时优先用 ✅/❌ 代码对照示例表达（见 spec 模板 Examples 段）
+Read the current Task's Spec references before implementation. Spec references are paths relative to `.code-flow/specs` without `.md`.
+
+Use `task finish <task-document>.md --task TASK-NNN` to execute declared tests before marking done. Keep tests scoped to meaningful unit/integration regressions; prefer one framework invocation with its own workers.
+
+Archive applies declared Spec Deltas and moves the requirement; CI runs full regression and E2E separately. Use `cf-task:prd`, `cf-task:align` and `cf-task:plan` for document flow; do not create one file per Task.
+
+Hook diagnostics never prohibit work. Missing bindings require an explicit task document + TASK ID or another task start.
+<!-- code-flow:v1 end -->

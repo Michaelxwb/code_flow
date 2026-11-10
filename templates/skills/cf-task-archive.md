@@ -1,0 +1,20 @@
+---
+name: cf-task-archive
+description: Archive a completed requirement after applying Spec Deltas.
+---
+<!-- code-flow:v1 -->
+Read `code-flow task status <requirement-dir> --json`. Every TASK in the one requirement task document must be `done`.
+
+Preview and apply:
+
+```bash
+code-flow task archive <requirement-dir> --dry-run --json
+code-flow task archive <requirement-dir> --json
+```
+
+Archive:
+- applies each TASK's Spec Delta in the coordinator worktree;
+- moves the whole requirement directory;
+- does not run tests, E2E, or scenarios.
+
+Do not run archive inside a worktree. Use the returned `archived_to` path. If Delta application fails, fix the Delta or explicitly use `--no-learn`; do not hand-edit the archive destination.

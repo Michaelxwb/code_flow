@@ -1,33 +1,29 @@
 {
   "name": "@michaelxwb/code-flow",
-  "version": "0.8.1",
-  "description": "Initialize and manage AI coding workflow specs (Claude Code / Codex / Costrict / OpenCode)",
+  "version": "1.0.0",
+  "description": "Global Node-only spec injection and task-to-spec workflow for AI coding agents",
   "license": "UNLICENSED",
   "bin": {
-    "code-flow": "src/cli.js"
+    "code-flow": "bin/code-flow.js"
   },
   "engines": {
     "node": ">=18"
   },
+  "codeFlow": {
+    "hookProtocol": 1
+  },
+  "scripts": {
+    "test": "node test/run.cjs",
+    "test:performance": "node --test test/performance.test.js"
+  },
   "files": [
-    "src/cli.js",
-    "src/runtime.js",
-    "src/migrate/**",
-    "src/core/**",
-    "src/core/code-flow/scripts/runtime-resources.json",
-    "src/adapters/**",
-    "docs/migrations/spec-workflow-0.6.0.md",
-    "docs/migrations/runtime-0.7.0.md",
-    "docs/migrations/runtime-0.8.0.md",
-    "docs/migrations/runtime-0.9.0.md",
-    "docs/acceptance-contract.md",
-    "docs/spec-injection-hardening.md",
-    "docs/spec-optimization.md",
-    "docs/spec-injection-performance.json",
+    "bin/",
+    "lib/",
+    "templates/",
+    "README.md",
     "docs/USAGE.md",
-    "docs/ci/acceptance-evidence.md"
+    "docs/v1-design.md"
+    ,"docs/v1-implementation.md"
   ],
-  "dependencies": {
-    "@ccusage/codex": "^18.0.10"
-  }
+  "dependencies": {}
 }

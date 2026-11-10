@@ -1,88 +1,20 @@
 ---
 name: cf-spec
-description: Manage schema-v1 Spec Context, drift recovery, and prepared one-shot migration plans.
+description: Inspect current code-flow v1 Specs and apply reviewed Task Spec Deltas.
 ---
+<!-- code-flow:v1 -->
+Use `code-flow spec list --json`, `code-flow spec inject --task-file <task-document>.md --task TASK-001 --json`, or `code-flow spec inject --path <file> --full`.
 
-- `cf-spec migrate --plan <migration-plan.yml>`
-- `cf-spec context [需求目录]`
-- `cf-spec refresh [需求目录]`
-- `cf-spec status [需求目录]`
-- `cf-spec doctor [需求目录]`
+Spec identity is its path relative to `.code-flow/specs` without `.md`. Frontmatter is JSON with `description` and a positive `next_rule`. Rules use stable RULE IDs and complete indented explanations/examples.
 
-## 通用硬门禁
+Review applicability and semantic conflicts against current code before writing a Spec Delta. Prefer stable shared constraints over task-specific narration.
 
-1. 先读取 `.code-flow/config.yml`；`spec_workflow.schema_version` 不是 `1` 时，只有 `migrate --plan` 可继续。
-2. 不存在有效 Context 时，不得伪造 binding、Rule 状态、Evidence 或用户确认。
-3. stdout JSON 由 `cf_*.py` 产生；本命令不得手写成功结果。
+Delta operations are add/update/remove. Every item needs a stable ID, target Spec path and evidence; update/remove require the existing Rule ref and exact before text. New numeric IDs come from `next_rule`, never from the largest remaining Rule.
 
-## migrate --plan
-
-只处理 `code-flow migrate --spec-workflow --prepare` 已产生的 prepared plan：
-
-1. 校验 plan 位于当前项目 `.code-flow/migrations/<id>/`，状态为 `prepared_blocked` 或 `prepared`，source hashes 未漂移。
-2. 逐条展示 `unresolved` 的来源、候选和影响；读取关联 Spec 与活跃需求文档后给出建议。
-3. 每项必须由用户明确选择。写入 `confirmed_by`、`confirmed_at`、`source`、`reason`；Agent 不能代确认，不能批量 N/A。
-4. 只修改 prepared plan，不修改项目目标、backup、staging、journal 或 `.version`。
-5. unresolved 清零后提示执行：
-   `code-flow migrate --spec-workflow --apply --plan <migration-plan.yml>`
-
-## context
-
-定位显式需求目录；省略时只可使用有效 `.active-task.json` 的 `task_dir`。
-
-1. 读取并展示 `spec-context.yml` 的 bindings、Rule stage status、artifact refs、Evidence 与 drift。
-2. 执行：
-   `code-flow spec validate --task-dir <目录> --json`
-3. Context 缺失、schema/hash 无效时 fail-closed，不回退 Catalog。
-
-
-## status
-
-展示人话版 Context 状态：任务、marker hash 是否一致、code Gate 结果、各绑定 Rule 状态。
-
-执行：
-
-`code-flow spec status --task-dir <目录> --root "$PWD"`
-
-- marker 漂移时输出下一步：先 refresh 自动重同步；仍不一致时用 `active doctor --resync`（hash 取 status --json 的 context_sha256）。
-- 需要机器可读输出时加 `--json`。
-
-## refresh
-
-执行：
-
-`code-flow spec refresh --task-dir <目录> --root "$PWD" --json`
-
-- changed required Rule 标为 stale，关联 stage Gate 必须阻断。
-- missing/conflict 不自动降级；回 Align 或 Plan 更新承接后再继续。
-- refresh 不替用户做 N/A/waiver 决策。
-
-## doctor
-
-1. 校验 config schema、active marker、lock、Context hash、task/status、migration journal 和 legacy residue。
-2. 按场景恢复，禁止删除 marker、手改状态或越过 required Gate：
-   - **Context hash drift**（`status` 显示 marker hash 漂移）：先执行 refresh，它会自动重同步 marker hash；成功后继续原流程，不要用 doctor。
-   - **marker 停在 `activating`（start 事务中断）**：取 `status --json` 的 `context_sha256` 执行 `active doctor`；hash/head 可证明时自动恢复 active，无法证明时加 `--resync` 重新绑定。
-   - **marker 损坏或归属无法证明**：向用户说明影响，仅在用户明确确认放弃该 TASK 后执行 `active doctor --abandon`，随后重新规划该任务。
-3. `active doctor` 返回 `recovery_required`（退出码 3）是诊断结果而非崩溃：按第 2 步选择 refresh / `--resync` / `--abandon`，不要用 `--help` 探测或反复重试。
-4. 输出明确修复命令。不得删除损坏 marker、越过 required Gate 或静默切换到无任务模式。
-5. doctor 的安装/Context 健康结果与 `readiness.plan/code/review` 分开阅读。`applied` 只表示存在引用，不能替代 code/review 的 verified 执行证据；引用条目仍有“待同步/待确认/TBD”时返回 `rule_applied_unresolved`。
-6. `decision=null` 是自动验证的正常情况；无需改代码但已符合规则时提交对应证据，不强制用户 N/A。只有确实不适用/豁免时要求用户 decision。
-7. `convention_review_required` 表示绑定 Spec 的 Conventions 尚未成为可执行约束；审查与当前设计的冲突，关键条目提升为稳定 Rule 并配置 verifier。CLI 低于 runtime 时先按提示升级 CLI；不要尝试把项目 runtime 降级。
-
-## 规范自检与优化
-
-按 `docs/spec-optimization.md` 执行审计、路径预算、影响查询和只读优化预览。`code-flow spec optimize --apply --plan <提案>` 需要在交互终端展示并获得用户对具体 diff 的明确确认；不得代为确认。应用后对受影响需求执行 refresh 和 doctor。
-
-<!-- code-flow:runtime-commands start -->
-
-运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+Use:
 
 ```bash
-code-flow spec optimize --help
-code-flow spec validate --task-dir "<需求目录>" --json
-code-flow spec status --task-dir "<需求目录>" --root "$PWD" --json
-code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
+code-flow spec learn --from-task <task-document>.md --task TASK-001 --dry-run --json
 ```
 
-<!-- code-flow:runtime-commands end -->
+Review the exact diff, then run without `--dry-run`. Repeating an already applied payload is safe; changed content requires a new Delta ID. A missing target or before mismatch is an error. Preserve Applied Deltas records so interrupted multi-file learning can resume.

@@ -1,0 +1,18 @@
+---
+name: cf-task-plan
+description: Split a requirement into one multi-TASK document.
+---
+<!-- code-flow:v1 -->
+Read the requirement's design files and `.code-flow/templates/task.md`. Write exactly one task document:
+
+```text
+.code-flow/tasks/<date>/<requirement>/<requirement>.md
+```
+
+Inside it create `## TASK-NNN` sections. Keep each Task small enough to demonstrate a capability. For every Task declare:
+
+- Status, Depends, Source, Scenarios, Spec-Refs, Paths;
+- a `### Tests` JSON array of fast unit/integration commands;
+- a `### Spec Delta` JSON array (empty is valid).
+
+Do not create one file per Task. Do not create an acceptance manifest. Do not run old scenario/quality/Stage Gate commands. Verify the result with `code-flow task status --json`, then use `cf-task:start`.

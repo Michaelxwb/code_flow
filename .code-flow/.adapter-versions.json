@@ -1,9 +1,0 @@
-{
-  "core": "0.8.1",
-  "adapters": {
-    "claude": "0.8.1",
-    "codex": "0.8.1",
-    "costrict": "0.8.1",
-    "opencode": "0.8.1"
-  }
-}
