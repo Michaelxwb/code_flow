@@ -207,6 +207,18 @@ test('prepare rejects user content in Codex config managed settings', async t =>
   assert.equal(resumed.resumed, true);
 });
 
+test('prepare auto-inits dotted features.hooks without user content error', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  h.write(root, '.codex/config.toml', 'features.hooks = false\n');
+  git(root, ['add', '.codex/config.toml']);
+  git(root, ['commit', '-qm', 'dotted codex config']);
+  await init.init(root, { platform: 'codex' });
+  const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'run-dotted' });
+  assert.equal(prepared.ok, true);
+  worktree.cleanup(root, 'run-dotted', true);
+});
+
 test('prepare tolerates CRLF checkout with autocrlf enabled', async t => {
   const root = h.project(t);
   h.write(root, '.gitignore', '.code-flow/worktrees/\n');

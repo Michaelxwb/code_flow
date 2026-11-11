@@ -111,6 +111,15 @@ test('Codex config recognizes quoted, dotted and array-boundary TOML forms', () 
   assert.match(array, /\[\[skills\.config\]\]\nhooks = false/);
   const quotedTable = adapters.codexConfig('["features"]\nhooks = false\n');
   assert.match(quotedTable, /\["features"\]\nhooks = true/);
+  const unicodeKey = adapters.codexConfig('[features]\n"\\u0068ooks" = false\n');
+  assert.match(unicodeKey, /"\\u0068ooks" = true/);
+  const unicodeTable = adapters.codexConfig('["\\u0066eatures"]\nhooks = false\n');
+  assert.match(unicodeTable, /\["\\u0066eatures"\]\nhooks = true/);
+  const singleKey = adapters.codexConfig('["features.hooks"] = false\n');
+  assert.match(singleKey, /\["features\.hooks"\] = false/);
+  assert.match(singleKey, /\[features\]\nhooks = true/);
+  assert.throws(() => adapters.codexConfig('"features" = { hooks = false }\n'), /\[features\] table/);
+  assert.throws(() => adapters.codexConfig("'features' = { hooks = false }\n"), /\[features\] table/);
 });
 
 test('Codex config ignores quoted feature examples inside multiline strings', () => {
