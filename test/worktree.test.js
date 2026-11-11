@@ -197,12 +197,12 @@ test('prepare rejects user content in Codex config managed settings', async t =>
   const worker = path.join(root, ledger.worktrees[0].path);
   fs.rmSync(path.join(worker, '.agents/skills/cf-check/SKILL.md'));
   fs.appendFileSync(path.join(worker, '.codex/config.toml'),
-    '[mcp_servers.fixture.env]\nhooks = "user-value"\n');
+    '[mcp_servers."fixture]one".env]\nhooks = "user-value"\n');
   await assert.rejects(worktree.prepare(root, options), /init_user_content|user content/);
   const configFile = path.join(worker, '.codex/config.toml');
   assert.match(fs.readFileSync(configFile, 'utf8'), /user-value/);
   fs.writeFileSync(configFile, fs.readFileSync(configFile, 'utf8')
-    .replace('[mcp_servers.fixture.env]\nhooks = "user-value"\n', ''));
+    .replace('[mcp_servers."fixture]one".env]\nhooks = "user-value"\n', ''));
   const resumed = await worktree.prepare(root, options);
   assert.equal(resumed.resumed, true);
 });

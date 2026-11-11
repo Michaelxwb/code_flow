@@ -9,6 +9,7 @@ const glob = require('../lib/glob');
 const fm = require('../lib/frontmatter');
 const files = require('../lib/fs');
 const config = require('../lib/config');
+const adapters = require('../lib/adapters');
 const spec = require('../lib/spec');
 
 function project(t) {
@@ -75,6 +76,27 @@ test('config root search stops at a Git worktree boundary', t => {
   fs.rmSync(path.join(worker, '.code-flow/config.json'));
   assert.throws(() => config.findRoot(worker), /project_missing|Run inside/);
   assert.equal(config.findRoot(root), files.realpath(root));
+});
+
+test('Codex config updates only the real features.hooks field', () => {
+  const raw = [
+    'developer_instructions = """',
+    '[features]',
+    'hooks = false',
+    '"""',
+    '',
+    '[features]',
+    'hooks = false',
+    '',
+    '[mcp_servers."fixture]one".env]',
+    'hooks = "user-value"',
+    ''
+  ].join('\n');
+  const result = adapters.codexConfig(raw);
+  assert.match(result, /developer_instructions = """\n\[features\]\nhooks = false\n"""/);
+  assert.match(result, /\[features\]\nhooks = true/);
+  assert.match(result, /\[mcp_servers\."fixture\]one"\.env\]\nhooks = "user-value"/);
+  assert.throws(() => adapters.codexConfig('[ "features" ]\nhooks = true\n'), /features/);
 });
 
 test('rule blocks preserve examples, ignore fenced fake rules and reject duplicate IDs', t => {
