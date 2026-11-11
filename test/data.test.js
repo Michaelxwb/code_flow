@@ -118,6 +118,15 @@ test('Codex config recognizes quoted, dotted and array-boundary TOML forms', () 
   const singleKey = adapters.codexConfig('["features.hooks"] = false\n');
   assert.match(singleKey, /\["features\.hooks"\] = false/);
   assert.match(singleKey, /\[features\]\nhooks = true/);
+  const dottedOther = adapters.codexConfig('features.shell_tool = false\n');
+  assert.match(dottedOther, /features\.shell_tool = false\nfeatures\.hooks = true/);
+  assert.equal((dottedOther.match(/\[features\]/g) || []).length, 0);
+  const nestedArray = adapters.codexConfig('[features]\nshell_tool = true\n[[skills.config]]\nitems = [\n  ["features"],\n]\n');
+  assert.match(nestedArray, /\[features\]\nhooks = true/);
+  assert.match(nestedArray, /\["features"\]/);
+  const subtable = adapters.codexConfig('[profiles.review]\nfeatures = { shell_tool = true }\n');
+  assert.match(subtable, /\[profiles\.review\]\nfeatures = \{ shell_tool = true \}/);
+  assert.match(subtable, /\[features\]\nhooks = true/);
   assert.throws(() => adapters.codexConfig('"features" = { hooks = false }\n'), /\[features\] table/);
   assert.throws(() => adapters.codexConfig("'features' = { hooks = false }\n"), /\[features\] table/);
 });

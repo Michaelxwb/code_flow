@@ -207,6 +207,31 @@ test('prepare rejects user content in Codex config managed settings', async t =>
   assert.equal(resumed.resumed, true);
 });
 
+test('prepare rejects Codex feature comments and table moves', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  h.write(root, '.codex/config.toml',
+    '[features]\nshell_tool = true\nhooks = false # original\n\n[other]\nvalue = 1\n');
+  git(root, ['add', '.codex/config.toml']);
+  git(root, ['commit', '-qm', 'feature comments']);
+  await init.init(root, { platform: 'codex' });
+  h.write(root, '.agents/skills/cf-check/SKILL.md', 'unmanaged\n');
+  git(root, ['add', '.agents/skills/cf-check/SKILL.md']);
+  git(root, ['commit', '-qm', 'unmanaged skill']);
+  const options = { taskFile: file, tasks: ['TASK-001'], runId: 'run-codex-comment' };
+  await assert.rejects(worktree.prepare(root, options), /unmanaged/);
+  const ledger = worktree.readLedger(root, 'run-codex-comment');
+  const worker = path.join(root, ledger.worktrees[0].path);
+  const config = path.join(worker, '.codex/config.toml');
+  fs.rmSync(path.join(worker, '.agents/skills/cf-check/SKILL.md'));
+  fs.writeFileSync(config, fs.readFileSync(config, 'utf8').replace('# original', '# changed'));
+  await assert.rejects(worktree.prepare(root, options), /init_user_content|user content/);
+  assert.match(fs.readFileSync(config, 'utf8'), /# changed/);
+  fs.writeFileSync(config,
+    'shell_tool = true\nhooks = false # original\n\n[other]\nvalue = 1\n[features]\n');
+  await assert.rejects(worktree.prepare(root, options), /init_user_content|user content/);
+  assert.match(fs.readFileSync(config, 'utf8'), /shell_tool = true/);
+});
+
 test('prepare auto-inits dotted features.hooks without user content error', async t => {
   const { root, file } = repo(t, [{ id: 'TASK-001' }]);
   h.write(root, '.codex/config.toml', 'features.hooks = false\n');
