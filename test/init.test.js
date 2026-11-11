@@ -53,6 +53,11 @@ test('project launcher resolves the bridge and preserves prompt context', { skip
   assert.equal(result.status, 0, result.stderr);
   assert.ok(JSON.parse(result.stdout).hookSpecificOutput.additionalContext.includes('Current rule.'));
   assert.ok(fs.existsSync(path.join(root, '.code-flow/launcher/bridge.cjs')));
+  fs.rmSync(path.join(root, '.code-flow/launcher/hook.sh'));
+  const missing = spawnSync('/bin/sh', ['-c', command], { cwd: root, encoding: 'utf8',
+    input: JSON.stringify({ cwd: root, session_id: 'missing', prompt: 'continue' }) });
+  assert.equal(missing.status, 0);
+  assert.equal(missing.stdout, '');
 });
 
 function fakeGlobal(base, options = {}) {
@@ -76,6 +81,7 @@ function fakeGlobal(base, options = {}) {
     delay ? "setTimeout(()=>{" + capability + "}," + delay + ");}" : capability + "}"
   ];
   if (mode === 'corrupt') lines.push("console.log('not-json');process.exit(0)");
+  else if (mode === 'invalid-payload') lines.push("console.log('null');process.exit(0)");
   else if (mode === 'huge') lines.push("process.stdout.write('x'.repeat(2*1024*1024));process.exit(0)");
   else if (mode === 'hang') lines.push("setInterval(()=>{},1000)");
   else lines.push("let raw='';process.stdin.on('data',c=>raw+=c);",
@@ -118,6 +124,12 @@ test('launcher prefers a validated PATH package and falls back when it is invali
     input: prompt, env: { ...process.env, PATH: corrupt.bin + path.delimiter + process.env.PATH } });
   assert.equal(discarded.status, 0, discarded.stderr);
   assert.equal(JSON.parse(discarded.stdout).hookSpecificOutput.additionalContext, '');
+  const invalid = fakeGlobal(corruptBase, { mode: 'invalid-payload' });
+  spawnSync(path.join(invalid.bin, 'code-flow'), ['hook', 'capabilities', '--json'], { encoding: 'utf8' });
+  const malformed = spawnSync('/bin/sh', ['-c', command], { cwd: root, encoding: 'utf8',
+    input: prompt, env: { ...process.env, PATH: invalid.bin + path.delimiter + process.env.PATH } });
+  assert.equal(malformed.status, 0, malformed.stderr);
+  assert.equal(JSON.parse(malformed.stdout).hookSpecificOutput.additionalContext, '');
   const local = path.join(root, 'node_modules/.bin');
   fs.mkdirSync(local, { recursive: true });
   fs.copyFileSync(path.join(fake.bin, 'code-flow'), path.join(local, 'code-flow'));
@@ -237,6 +249,8 @@ test('OpenCode native prompt/context delivers to correct session without rejecti
   const other = { sessionID: 'other', system: [] }; await hooks.context(other); assert.equal(other.system.length, 0);
   const own = { sessionID: 'one', system: [] }; await hooks.context(own);
   assert.ok(own.system[0].text.includes('Current rule.'));
+  const nextTurn = { sessionID: 'one', system: [] }; await hooks.context(nextTurn);
+  assert.ok(nextTurn.system[0].text.includes('Current rule.'));
   const original = console.error, errors = []; console.error = text => errors.push(text);
   try { await hooks.prompt({ sessionID: 'broken', prompt: { text: 'continue' } }); }
   finally { console.error = original; }
@@ -247,7 +261,15 @@ test('Windows adapters target the project launcher and preserve fail-open behavi
   assert.equal(adapters.owned('// code-flow:v1\nimport'), true);
   const codex = adapters.hook('codex', 'C:\\Program Files\\node.exe', 'C:\\global\\bin\\code-flow.js', 'win32');
   assert.ok(codex.commandWindows.includes('hook.cmd'));
+  assert.ok(codex.commandWindows.includes('if exist'));
+  assert.ok(codex.commandWindows.includes('exit /b 0'));
   const claude = adapters.hook('claude', 'C:\\node.exe', 'C:\\global\\bin\\code-flow.js', 'win32');
   assert.equal(claude.shell, 'powershell'); assert.equal(claude.onFailure, 'continue');
   assert.ok(claude.command.includes('hook.ps1'));
+  assert.ok(claude.command.includes('Test-Path'));
+  assert.ok(claude.command.includes('exit 0'));
+  const posix = adapters.hook('codex', '/usr/bin/node', '/global/bin/code-flow.js', 'linux');
+  assert.ok(posix.command.includes('if [ -f'));
+  assert.ok(posix.command.includes('hook.sh'));
+  assert.ok(posix.command.includes('exit 0'));
 });

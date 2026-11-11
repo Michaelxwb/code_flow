@@ -28,6 +28,7 @@ test('workflow templates encode the v1 document flow without retired gates', asy
   assert.match(scenarios, /expected:/);
   assert.match(scenarios, /owner:/);
   const taskTemplate = fs.readFileSync(path.join(directory, 'task.md'), 'utf8');
+  assert.match(taskTemplate, /^\s*---\n\{"version":1,"requirement":"\{requirement\}"\}\n---/);
   assert.match(taskTemplate, /## TASK-001:/);
   assert.match(taskTemplate, /- \*\*Depends\*\*:/);
   assert.match(taskTemplate, /### Tests/);
@@ -35,6 +36,10 @@ test('workflow templates encode the v1 document flow without retired gates', asy
   const startSkill = fs.readFileSync(path.join(root, '.agents/skills/cf-task-start/SKILL.md'), 'utf8');
   assert.match(startSkill, /workers/);
   assert.match(startSkill, /CF_\*/);
+  assert.match(startSkill, /task parallel collect/);
+  assert.match(startSkill, /task parallel merge/);
+  assert.match(startSkill, /task parallel cleanup/);
+  assert.doesNotMatch(startSkill, /tests\s*→\s*finish/);
 });
 
 test('document flow artifacts feed one multi-TASK plan through finish and archive', async t => {

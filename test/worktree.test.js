@@ -100,6 +100,24 @@ test('prepare rejects dirty business code and collect rejects unfinished workers
   assert.throws(() => worktree.collect(root, 'run-2'), /not done|no commit/);
 });
 
+test('prepare rejects a worker with an incomplete ignored Specs snapshot', async t => {
+  const root = h.project(t, { always: ['private/rules'] });
+  h.write(root, '.gitignore', '.code-flow/worktrees/\n.code-flow/specs/private/\n');
+  h.spec(root, 'private/rules', 'Private rule.');
+  const file = h.tasks(root, [{ id: 'TASK-001' }]);
+  git(root, ['init', '-q']);
+  git(root, ['config', 'core.autocrlf', 'false']);
+  git(root, ['config', 'user.name', 'Fixture']);
+  git(root, ['config', 'user.email', 'fixture@example.invalid']);
+  git(root, ['add', '-A']);
+  git(root, ['commit', '-qm', 'baseline']);
+  await assert.rejects(worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'run-specs', noInit: true }), /Specs snapshot differs|specs_incomplete/);
+  const ledger = worktree.readLedger(root, 'run-specs');
+  assert.equal(ledger.status, 'blocked');
+  assert.equal(ledger.worktrees[0].status, 'created');
+});
+
 test('prepare rejects unrelated staged files instead of committing them', async t => {
   const { root, file } = repo(t, [{ id: 'TASK-001' }]);
   h.write(root, '.agents/user-notes.txt', 'keep\n');
@@ -152,8 +170,12 @@ test('code conflicts stop the batch and keep every worktree and branch', async t
   assert.equal(ledger.status, 'blocked');
   assert.deepEqual(ledger.merge.conflicts, [file, 'shared.txt']);
   assert.ok(fs.existsSync(workerOne) && fs.existsSync(workerTwo));
-  assert.equal(git(root, ['status', '--porcelain']), '');
+  assert.equal(spawnSync('git', ['rev-parse', '-q', '--verify', 'MERGE_HEAD'],
+    { cwd: root }).status, 0);
+  assert.deepEqual(git(root, ['diff', '--name-only', '--diff-filter=U']).split('\n').sort(),
+    [file, 'shared.txt'].sort());
   const cleaned = worktree.cleanup(root, 'run-conflict', true);
+  spawnSync('git', ['merge', '--abort'], { cwd: root });
   assert.equal(cleaned.ok, true);
   assert.equal(cleaned.steps.some(item => item.abandoned), true);
   assert.equal(fs.existsSync(workerOne), false);
@@ -433,6 +455,17 @@ test('collect rejects non-ASCII paths outside the owned requirement', async t =>
   git(worker, ['add', '-A']);
   git(worker, ['commit', '-qm', 'touch other requirement']);
   assert.throws(() => worktree.collect(root, 'run-cn-scope'), /shared paths: .*其他需求/);
+});
+
+test('worker finish rejects a damaged run ledger instead of dropping isolation env', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'run-ledger', noInit: true });
+  const worker = path.join(root, prepared.worktrees[0].path);
+  await task.start(worker, file, 'TASK-001');
+  fs.writeFileSync(path.join(root, '.code-flow/worktrees/run-ledger/run.json'), '{broken');
+  await assert.rejects(task.finish(worker, file, 'TASK-001'), /run_invalid|Invalid run ledger/);
+  assert.equal(task.load(worker, file).meta.status, 'in-progress');
 });
 
 test('worker and moved worker worktrees cannot archive or learn Specs', async t => {

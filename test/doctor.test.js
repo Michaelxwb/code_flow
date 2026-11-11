@@ -47,6 +47,15 @@ test('doctor reports corrupted Specs, Tasks and missing launcher without repairi
   assert.equal(fs.readFileSync(path.join(root, '.code-flow/specs/cli/bad.md'), 'utf8'), 'not a spec');
 });
 
+test('doctor warns when the fixed fallback Node/JS entry is missing', async t => {
+  const root = empty(t);
+  await init.init(root, { platform: 'codex', node: '/missing/node', entry: '/missing/entry.js' });
+  const result = doctor.run(root);
+  assert.ok(result.checks.some(item => item.code === 'HOOK_ENTRY_FALLBACK' &&
+    item.severity === 'warning'));
+  assert.ok(!result.checks.some(item => item.code === 'HOOK_ENTRY_OK'));
+});
+
 test('doctor reports missing config Spec references', async t => {
   const root = empty(t);
   await init.init(root, { platform: 'codex' });

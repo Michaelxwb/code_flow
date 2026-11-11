@@ -14,6 +14,14 @@ function emptyPayload(format) {
     : { hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: '' } };
 }
 
+function validPayload(format, payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
+  if (format === 'opencode') return typeof payload.context === 'string';
+  const hook = payload.hookSpecificOutput;
+  return hook !== null && typeof hook === 'object' &&
+    hook.hookEventName === 'UserPromptSubmit' && typeof hook.additionalContext === 'string';
+}
+
 function emit(format, payload) {
   process.stdout.write(JSON.stringify(payload) + '\n');
 }
@@ -97,32 +105,50 @@ function validCapability(data, candidate) {
   return pkg.codeFlow && pkg.codeFlow.hookProtocol === 1;
 }
 
-function spawnCandidate(candidate, args, options) {
+function probeCommand(candidate, args) {
   if (process.platform === 'win32' && /\.(?:cmd|bat)$/i.test(candidate)) {
     const quote = value => '"' + value.replace(/"/g, '""') + '"';
-    return spawnSync(process.env.ComSpec || 'cmd.exe',
-      ['/d', '/s', '/c', [candidate, ...args].map(quote).join(' ')], options);
+    return [process.env.ComSpec || 'cmd.exe',
+      ['/d', '/s', '/c', [candidate, ...args].map(quote).join(' ')]];
   }
-  return spawnSync(candidate, args, options);
+  return [candidate, args];
 }
 
 function probe(root, candidate, budget) {
-  const result = spawnCandidate(candidate, ['hook', 'capabilities', '--json'], {
-    cwd: root, encoding: 'utf8', timeout: Math.max(1, Math.min(PROBE_MS, budget)), maxBuffer: MAX_OUTPUT,
-    windowsHide: true
+  const [file, args] = probeCommand(candidate, ['hook', 'capabilities', '--json']);
+  return new Promise(resolve => {
+    let output = '', size = 0, settled = false, timer;
+    const child = spawn(file, args, {
+      cwd: root, stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32',
+      windowsHide: true
+    });
+    const finish = ok => {
+      if (settled) return;
+      settled = true; clearTimeout(timer);
+      try { child.stdout.destroy(); child.stderr.destroy(); } catch (_) { /* best effort */ }
+      if (!ok) { resolve(null); return; }
+      try {
+        const data = JSON.parse(output);
+        resolve(validCapability(data, candidate) ? data : null);
+      } catch (_) { resolve(null); }
+    };
+    timer = setTimeout(() => { killTree(child); finish(false); }, Math.max(1, Math.min(PROBE_MS, budget)));
+    child.on('error', () => finish(false));
+    child.stdout.on('data', chunk => {
+      size += chunk.length;
+      if (size > MAX_OUTPUT) { killTree(child); finish(false); }
+      else output += chunk;
+    });
+    child.stderr.on('data', () => {});
+    child.on('close', code => finish(code === 0 && output.trim().length > 0));
   });
-  if (result.error || result.status !== 0 || !result.stdout.trim()) return null;
-  try {
-    const data = JSON.parse(result.stdout);
-    return validCapability(data, candidate) ? data : null;
-  } catch (_) { return null; }
 }
 
-function select(root, fixed, deadline) {
+async function select(root, fixed, deadline) {
   for (const candidate of findOnPath(root)) {
     const remaining = deadline - Date.now();
     if (remaining <= 0) break;
-    const capability = probe(root, candidate, remaining);
+    const capability = await probe(root, candidate, remaining);
     if (capability) return capability;
   }
   if (fixed.node && fixed.entry && fs.existsSync(fixed.node) && fs.existsSync(fixed.entry)) {
@@ -156,7 +182,10 @@ function run(root, selected, format, input, deadline) {
         resolve('');
         return;
       }
-      try { JSON.parse(output); resolve(output); } catch (_) { resolve(''); }
+      try {
+        const parsed = JSON.parse(output);
+        resolve(validPayload(format, parsed) ? output : '');
+      } catch (_) { resolve(''); }
     };
     timer = setTimeout(() => { killTree(child); finish(false); },
       Math.max(0, Math.min(TOTAL_MS, deadline - Date.now())));
@@ -188,7 +217,7 @@ async function main() {
   const root = process.cwd(), deadline = Date.now() + TOTAL_MS;
   const input = await readStdin(deadline);
   if (!input.trim()) return;
-  const selected = select(root, fixed, deadline);
+  const selected = await select(root, fixed, deadline);
   if (!selected) {
     process.stderr.write('code-flow bridge: no valid global entry; run doctor\n');
     emit(format, emptyPayload(format));

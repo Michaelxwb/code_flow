@@ -66,6 +66,15 @@ test('preflights all targets before writing and enforces before text', async t =
   await assert.rejects(learn.apply(root, [done(root, [delta('D3', 'update', { ref: 'RULE-001', before: 'stale' })])]), /changed or missing/);
 });
 
+test('a Delta ID cannot be re-applied to a different target', async t => {
+  const root = h.project(t); h.spec(root); h.spec(root, 'other/rules');
+  const first = done(root, [delta('D1', 'add', { target: 'cli/runtime', rule: 'First target.' })]);
+  await learn.apply(root, [first]);
+  const changedTarget = done(root, [delta('D1', 'add', { target: 'other/rules', rule: 'Other target.' })]);
+  await assert.rejects(learn.apply(root, [changedTarget]), /payload changed/);
+  assert.equal(spec.load(root, 'other/rules').rules.length, 1);
+});
+
 test('partial multi-Spec commit can resume without duplicate allocation', async t => {
   const root = h.project(t); h.spec(root); h.spec(root, 'other/rules');
   const document = done(root, [delta('D1'), delta('D2', 'add', { target: 'other/rules' })]);

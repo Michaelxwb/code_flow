@@ -156,9 +156,10 @@ src/core/code-flow/scripts/codeflow/core/cf_worktree_env.py
 ## 本轮设计修订验证
 
 - `node --test test/design.test.js`：9 项通过，校验 JSON/Delta/Task/ledger/doctor 示例、章节与验收引用，并执行真实 POSIX shell 守卫子进程。
-- `npm test`：98 项，97 通过、1 项 Windows-only 跳过；包含多 TASK/Depends/并发写入、模板/文档流程契约、scenarios 不阻断、四平台命令布局、launcher/bridge PATH 选择/回退/慢探测/超时与输出上限、doctor schema、worktree 编排/自动 init/集成验证/冲突/范围审计/恢复/协调身份/跨进程仓库锁与 group 锁、PRD/design/scenarios/多 TASK 文档流契约、CI worker 并发预算模拟测试；环境为 macOS + Node v24.17.0。
+- `npm test`：107 项，106 通过、1 项 Windows-only 跳过；包含多 TASK/Depends/并发写入、模板/文档流程契约、scenarios 不阻断、四平台命令布局、launcher/bridge PATH 选择/回退/慢探测/超时与输出上限、doctor schema、worktree 编排/自动 init/集成验证/冲突/范围审计/恢复/协调身份/跨进程仓库锁与 group 锁、PRD/design/scenarios/多 TASK 文档流契约、CI worker 并发预算模拟测试；环境为 macOS + Node v24.17.0。
 - 修复开发测试入口：`node --test test` 在当前 Node 下无法加载目录；改由 `test/run.cjs` 枚举本测试目录的 `*.test.js` 并传给 Node，兼顾跨平台且不递归进入历史 worktree。
 - Windows GitHub Actions 矩阵（Node 18/22/24）已通过，覆盖 CMD、PowerShell、Git Bash launcher、worktree 和 worker-budget 测试。
+- 已修复 P1 边界：Task `$` 写回、retry 用户文件、Git 边界、协调分支、staged baseline、非 ASCII diff；并完成 P2 的 Specs 快照、Delta target、启动器降级、bridge 截止/协议、OpenCode bridge/续轮、模板 frontmatter、批次收尾、损坏 ledger、doctor fallback 和冲突现场保留。
 
 ## 验证命令
 

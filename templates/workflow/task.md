@@ -1,3 +1,6 @@
+---
+{"version":1,"requirement":"{requirement}"}
+---
 # Tasks: {requirement}
 
 <!--
