@@ -304,7 +304,7 @@ test('worktree run records Delta and archive applies it in the coordinator', asy
   const archived = await task.archive(root, path.posix.dirname(file));
   assert.equal(archived.ok, true);
   assert.match(fs.readFileSync(path.join(root, '.code-flow/specs/cli/runtime.md'), 'utf8'), /Worktree rule\./);
-  assert.ok(archived.archived_to.includes('/.code-flow/tasks/archived/'));
+  assert.ok(archived.archived_to.includes(path.join('.code-flow', 'tasks', 'archived', '')));
   assert.ok(fs.existsSync(archived.archived_to));
 });
 

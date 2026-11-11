@@ -11,7 +11,7 @@ const init = require('../lib/init');
 const adapters = require('../lib/adapters');
 const f = require('../lib/fs');
 function empty(t) {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'cf-v1-init-')));
+  const root = f.realpath(fs.mkdtempSync(path.join(os.tmpdir(), 'cf-v1-init-')));
   t.after(() => { fs.rmSync(f.transientRoot(root), { recursive: true, force: true }); fs.rmSync(root, { recursive: true, force: true }); });
   return root;
 }
@@ -189,7 +189,7 @@ test('all installed v1 platforms update together and user config/hooks survive',
   h.write(root, 'AGENTS.md', 'User instruction must stay.\n');
   for (const platform of ['codex', 'claude', 'costrict', 'opencode']) await init.init(root, { platform });
   const update = await init.init(root, { node: '/new/node', entry: '/new/bin/code-flow.js' });
-  assert.equal(update.platforms.length, 4);
+  assert.equal(update.platforms.length, 4, update.platforms.join(','));
   assert.ok(fs.existsSync(path.join(root, '.claude/commands/cf-task/prd.md')));
   assert.ok(fs.existsSync(path.join(root, '.agents/skills/cf-task-prd/SKILL.md')));
   assert.ok(fs.existsSync(path.join(root, '.opencode/commands/cf-task/start.md')));

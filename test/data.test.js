@@ -11,7 +11,7 @@ const config = require('../lib/config');
 const spec = require('../lib/spec');
 
 function project(t) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cf-v1-data-'));
+  const root = files.realpath(fs.mkdtempSync(path.join(os.tmpdir(), 'cf-v1-data-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, '.code-flow/specs/cli'), { recursive: true });
   fs.writeFileSync(path.join(root, '.code-flow/config.json'), JSON.stringify({ version: 1 }));
@@ -47,7 +47,7 @@ test('paths reject traversal, wrong case and symlink escape before writes', t =>
 
 test('config resolves roots and rejects loose values and invalid glob', t => {
   const root = project(t);
-  assert.equal(config.findRoot(path.join(root, '.code-flow/specs')), fs.realpathSync(root));
+  assert.equal(config.findRoot(path.join(root, '.code-flow/specs')), files.realpath(root));
   assert.equal(config.load(root).tests.jobs, 2);
   fs.writeFileSync(path.join(root, '.code-flow/config.json'), '{"version":1,"tests":{"jobs":"2"}}');
   assert.throws(() => config.load(root), /jobs/);

@@ -24,5 +24,6 @@ test('Windows CMD and PowerShell launchers preserve prompt context', { skip: pro
     ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join('.code-flow', 'launcher', 'hook.ps1'), '-Format', 'codex'],
     { cwd: root, input, encoding: 'utf8' });
   assert.equal(powershell.status, 0, powershell.stderr);
-  assert.ok(JSON.parse(powershell.stdout).hookSpecificOutput.additionalContext.includes('Current rule.'));
+  assert.ok(JSON.parse(powershell.stdout).hookSpecificOutput.additionalContext.includes('Current rule.'),
+    'stdout=' + powershell.stdout + ' stderr=' + powershell.stderr);
 });
