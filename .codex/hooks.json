@@ -5,9 +5,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh '.code-flow/launcher/hook.sh' codex",
+            "command": "if [ -f '.code-flow/launcher/hook.sh' ]; then sh '.code-flow/launcher/hook.sh' codex; fi; exit 0",
             "timeout": 5,
-            "commandWindows": "cmd /c \".code-flow\\launcher\\hook.cmd\" codex"
+            "commandWindows": "cmd /c if exist \".code-flow\\launcher\\hook.cmd\" (call \".code-flow\\launcher\\hook.cmd\" codex) & exit /b 0"
           }
         ]
       }

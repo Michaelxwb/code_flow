@@ -1,11 +1,18 @@
 // code-flow:v1
 import { execFile } from "node:child_process";
-import { isAbsolute } from "node:path";
+import { existsSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
 const NODE = "/Users/jahan/.nvm/versions/node/v24.17.0/bin/node";
 const ENTRY = "/Users/jahan/workspace/code_flow/bin/code-flow.js";
 function invoke(directory, event, signal) {
   return new Promise((resolve, reject) => {
-    const child = execFile(NODE, [ENTRY, "hook", "prompt", "--format=opencode"],
+    const bridge = join(directory, ".code-flow/launcher/bridge.cjs");
+    const useBridge = existsSync(bridge);
+    const command = existsSync(NODE) ? NODE : process.execPath;
+    const args = useBridge
+      ? [bridge, "--format", "opencode", "--node", NODE, "--entry", ENTRY]
+      : [ENTRY, "hook", "prompt", "--format=opencode"];
+    const child = execFile(command, args,
       { cwd: directory, timeout: 3000, maxBuffer: 131072, windowsHide: true, signal },
       (error, stdout, stderr) => {
         if (stderr.trim()) console.error(stderr.trim());
@@ -45,7 +52,7 @@ export default {
       await ctx.session.hook("context", async event => {
         try {
           await jobs.get(event.sessionID);
-          const text = pending.get(event.sessionID); pending.delete(event.sessionID);
+          const text = pending.get(event.sessionID);
           if (text && !controller.signal.aborted) event.system.push({ type: "text", text });
         } catch (error) { diagnose(error); }
       });

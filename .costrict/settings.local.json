@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh '.code-flow/launcher/hook.sh' costrict",
+            "command": "if [ -f '.code-flow/launcher/hook.sh' ]; then sh '.code-flow/launcher/hook.sh' costrict; fi; exit 0",
             "timeout": 5
           }
         ]

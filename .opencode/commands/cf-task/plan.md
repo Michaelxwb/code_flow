@@ -9,6 +9,14 @@ Read the requirement's design files and `.code-flow/templates/task.md`. Write ex
 .code-flow/tasks/<date>/<requirement>/<requirement>.md
 ```
 
+Start with JSON frontmatter naming the requirement:
+
+```markdown
+---
+{"version":1,"requirement":"<requirement>"}
+---
+```
+
 Inside it create `## TASK-NNN` sections. Keep each Task small enough to demonstrate a capability. For every Task declare:
 
 - Status, Depends, Source, Scenarios, Spec-Refs, Paths;
