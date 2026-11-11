@@ -63,7 +63,7 @@
 | 集成验证/恢复 | 相关测试聚合、tested_head、写前意图与提交图恢复 | 已实现聚合/去重、tested_head、merge 意图与提交图恢复 |
 | `source/scenarios` | Task 追溯 design/scenarios | 解析/list 已支持；计划技能待接入 |
 | 健康检查 | `cf-check` / `doctor` | 已实现稳定 schema、模板/启动器/Spec/Task/worktree 检查 |
-| 新运行时测试矩阵 | AC-31 ~ AC-59 | AC-31~AC-59 已有测试；AC-42 待真实 Windows CI，AC-55 的 worker 派发预算由 skill/宿主约束 |
+| 新运行时测试矩阵 | AC-31 ~ AC-59 | AC-31~AC-59 已有测试；AC-42 待真实 Windows CI，AC-55 已由 CI 模拟宿主派发 |
 
 ## 旧版 worktree 参考
 
@@ -135,7 +135,7 @@ src/core/code-flow/scripts/codeflow/core/cf_worktree_env.py
 | AC-52 | 模板首次改写与 prd/全栈 align/plan/start 的内容交接 | test/workflow.test.js | 已有基础 |
 | AC-53 | doctor schema/退出码/只读；宿主未知；禁止执行用户代码 | test/doctor.test.js、test/cli.test.js | 已有 |
 | AC-54 | PATH 包/协议校验、固定回退、错误 stdout 与 stdin 单次消费 | test/init.test.js、test/package.test.js | 已有 |
-| AC-55 | runner 重建 ledger env 与 worker/jobs 总预算 | test/worktree.test.js、test/verify.test.js | 已有基础 |
+| AC-55 | runner 重建 ledger env 与 worker/jobs 总预算 | test/worktree.test.js、test/verify.test.js、test/worker-budget.test.js | 已有（CI 模拟宿主派发） |
 | AC-56 | prepare/init 部分失败与同名外来资源恢复 | test/worktree.test.js | 已有 |
 | AC-57 | 精确 init 增量识别、不提交/合并、混合用户内容保护 | test/worktree.test.js、test/init.test.js | 已有 |
 | AC-58 | catalog 只读头无计数；spec list 准确统计 | test/injection.test.js | 已有 |
@@ -156,7 +156,7 @@ src/core/code-flow/scripts/codeflow/core/cf_worktree_env.py
 ## 本轮设计修订验证
 
 - `node --test test/design.test.js`：9 项通过，校验 JSON/Delta/Task/ledger/doctor 示例、章节与验收引用，并执行真实 POSIX shell 守卫子进程。
-- `npm test`：97 项，96 通过、1 项 Windows-only 跳过；包含多 TASK/Depends/并发写入、模板/文档流程契约、scenarios 不阻断、四平台命令布局、launcher/bridge PATH 选择/回退/慢探测/超时与输出上限、doctor schema、worktree 编排/自动 init/集成验证/冲突/范围审计/恢复/协调身份/跨进程仓库锁与 group 锁、PRD/design/scenarios/多 TASK 文档流契约测试；环境为 macOS + Node v24.17.0。
+- `npm test`：98 项，97 通过、1 项 Windows-only 跳过；包含多 TASK/Depends/并发写入、模板/文档流程契约、scenarios 不阻断、四平台命令布局、launcher/bridge PATH 选择/回退/慢探测/超时与输出上限、doctor schema、worktree 编排/自动 init/集成验证/冲突/范围审计/恢复/协调身份/跨进程仓库锁与 group 锁、PRD/design/scenarios/多 TASK 文档流契约、CI worker 并发预算模拟测试；环境为 macOS + Node v24.17.0。
 - 修复开发测试入口：`node --test test` 在当前 Node 下无法加载目录；改由 `test/run.cjs` 枚举本测试目录的 `*.test.js` 并传给 Node，兼顾跨平台且不递归进入历史 worktree。
 - 本轮已改多 TASK 运行时基础、模板/命令安装、launcher/bridge、doctor 稳定 schema 和 worktree 编排/恢复；未执行真实 Windows CI。
 
@@ -164,6 +164,7 @@ src/core/code-flow/scripts/codeflow/core/cf_worktree_env.py
 
 ```bash
 npm test
+node --test test/worker-budget.test.js
 npm run test:performance
 ```
 
