@@ -100,6 +100,16 @@ test('prepare rejects dirty business code and collect rejects unfinished workers
   assert.throws(() => worktree.collect(root, 'run-2'), /not done|no commit/);
 });
 
+test('prepare rejects unrelated staged files instead of committing them', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  h.write(root, '.agents/user-notes.txt', 'keep\n');
+  git(root, ['add', '.agents/user-notes.txt']);
+  await assert.rejects(worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'run-staged', noInit: true }), /Staged changes outside baseline/);
+  assert.equal(git(root, ['status', '--porcelain']), 'A  .agents/user-notes.txt');
+  assert.equal(fs.readFileSync(path.join(root, '.agents/user-notes.txt'), 'utf8'), 'keep\n');
+});
+
 test('integration reruns the merged batch, blocks on failure and retries merged workers', async t => {
   const { root, file } = repo(t, [{ id: 'TASK-001', tests: [countParts] },
     { id: 'TASK-002', tests: [countParts] }]);
@@ -188,12 +198,17 @@ test('prepare resumes a partially initialized run after init failure', async t =
   const worker = path.join(root, ledger.worktrees[0].path);
   assert.ok(fs.existsSync(worker));
   fs.rmSync(path.join(worker, '.agents/skills/cf-check/SKILL.md'));
+  h.write(worker, 'src/user.js', 'preserve me\n');
+  await assert.rejects(worktree.prepare(root, options), /dirty_worktree|changed before dispatch|uncommitted changes/);
+  assert.ok(fs.existsSync(path.join(worker, 'src/user.js')));
+  fs.rmSync(path.join(worker, 'src/user.js'));
   const resumed = await worktree.prepare(root, options);
   assert.equal(resumed.resumed, true);
   assert.equal(resumed.worktrees[0].status, 'prepared');
   ledger = worktree.readLedger(root, 'run-resume');
   assert.equal(ledger.status, 'running');
   assert.ok(ledger.worktrees[0].init_changes.some(item => item.path === '.agents/skills/cf-check/SKILL.md'));
+  assert.ok(!ledger.worktrees[0].init_changes.some(item => item.path === 'src/user.js'));
 });
 
 test('merge recovers a commit whose ledger step was not recorded', async t => {
@@ -385,6 +400,38 @@ test('force cleanup still verifies ledger ownership and worker branch', async t 
   fs.writeFileSync(path.join(root, '.code-flow/worktrees/run-own/run.json'),
     JSON.stringify(ledger, null, 2) + '\n');
   assert.throws(() => worktree.cleanup(root, 'run-own', true), /owned by run|run_invalid|invalid worker resource/);
+});
+
+test('worktree operations reject a changed coordinator branch', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'run-branch', noInit: true });
+  await finishWorker(path.join(root, prepared.worktrees[0].path), file, 'TASK-001');
+  git(root, ['checkout', '-q', '-b', 'other']);
+  assert.throws(() => worktree.collect(root, 'run-branch'), /Coordinator branch changed/);
+  git(root, ['checkout', '-q', 'main']);
+  assert.equal(worktree.collect(root, 'run-branch').ok, true);
+  git(root, ['checkout', '-q', 'other']);
+  await assert.rejects(worktree.merge(root, 'run-branch'), /Coordinator branch changed/);
+  git(root, ['checkout', '-q', 'main']);
+  assert.equal((await worktree.merge(root, 'run-branch')).integration.status, 'passed');
+  git(root, ['checkout', '-q', 'other']);
+  assert.throws(() => worktree.cleanup(root, 'run-branch', true), /Coordinator branch changed/);
+  git(root, ['checkout', '-q', 'main']);
+  assert.equal(worktree.cleanup(root, 'run-branch').ok, true);
+});
+
+test('collect rejects non-ASCII paths outside the owned requirement', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'run-cn-scope', noInit: true });
+  const worker = path.join(root, prepared.worktrees[0].path);
+  await finishWorker(worker, file, 'TASK-001');
+  git(worker, ['config', 'core.quotePath', 'true']);
+  h.write(worker, '.code-flow/tasks/2026-11-10/其他需求/其他需求.md', '# other requirement\n');
+  git(worker, ['add', '-A']);
+  git(worker, ['commit', '-qm', 'touch other requirement']);
+  assert.throws(() => worktree.collect(root, 'run-cn-scope'), /shared paths: .*其他需求/);
 });
 
 test('worker and moved worker worktrees cannot archive or learn Specs', async t => {

@@ -8,6 +8,22 @@ const task = require('../lib/task');
 const taskdoc = require('../lib/taskdoc');
 const spec = require('../lib/spec');
 
+test('task updates preserve dollar replacement sequences and JSON payloads', t => {
+  const root = h.project(t); h.spec(root);
+  const file = h.task(root, { status: 'in-progress', tests: [{
+    id: 'dollars', argv: ['node', '-e', 'process.stdout.write("$$ $& $` $1")']
+  }] });
+  const document = task.loadDocument(root, file);
+  const updated = taskdoc.updateTask(document, 'TASK-001', {
+    field: 'source', value: 'src/$&/file.js', log: 'changed $$ and $& and $`'
+  });
+  const text = taskdoc.write(updated);
+  assert.match(text, /- \*\*Source\*\*: src\/\$&\//);
+  assert.match(text, /changed \$\$ and \$& and \$`/);
+  const parsed = taskdoc.parse(text, path.join(root, file));
+  assert.equal(parsed.tasks[0].tests[0].argv[2], 'process.stdout.write("$$ $& $` $1")');
+});
+
 test('actual finish success writes done, failure preserves progress and E2E is not invoked', async t => {
   const root = h.project(t); h.spec(root);
   const file = h.task(root, { e2e: 'must-never-run' });

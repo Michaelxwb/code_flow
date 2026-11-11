@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const glob = require('../lib/glob');
 const fm = require('../lib/frontmatter');
 const files = require('../lib/fs');
@@ -53,6 +54,27 @@ test('config resolves roots and rejects loose values and invalid glob', t => {
   assert.throws(() => config.load(root), /jobs/);
   fs.writeFileSync(path.join(root, '.code-flow/config.json'), '{"version":1,"paths":{"{x}":["cli/runtime"]}}');
   assert.throws(() => config.load(root), /glob/i);
+});
+
+test('config root search stops at a Git worktree boundary', t => {
+  const root = project(t);
+  const git = args => {
+    const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  git(['init', '-q']);
+  git(['config', 'user.name', 'Fixture']);
+  git(['config', 'user.email', 'fixture@example.invalid']);
+  git(['add', '-A']); git(['commit', '-qm', 'baseline']);
+  const worker = path.join(root, 'linked-worker');
+  git(['worktree', 'add', '--detach', worker, 'HEAD']);
+  t.after(() => {
+    spawnSync('git', ['worktree', 'remove', '--force', worker], { cwd: root });
+    spawnSync('git', ['worktree', 'prune'], { cwd: root });
+  });
+  fs.rmSync(path.join(worker, '.code-flow/config.json'));
+  assert.throws(() => config.findRoot(worker), /project_missing|Run inside/);
+  assert.equal(config.findRoot(root), files.realpath(root));
 });
 
 test('rule blocks preserve examples, ignore fenced fake rules and reject duplicate IDs', t => {
