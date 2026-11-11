@@ -13,6 +13,16 @@
 - **未完成**：真实 Windows CI 验证、worker 派发预算由 skill/宿主实际执行、AI 协作式 prd→align→plan 端到端验收，以及 AC-42 的真实三平台结果。
 - 当前仓库实现已覆盖主要运行时闭环，但不能宣称已完成全部 v1 设计与跨平台验收。
 
+## 旧版产物处置
+
+旧版 v0.8.1 的运行时、Specs、Tasks、归档和验收资料保留在 Git 标签 `v0.8.1`（提交 `eb0e4c0`）中，可按需恢复查看，不自动转换到 v1。
+
+- 当前工作树只保留 v1 数据：`.code-flow/config.json`、v1 Specs、v1 多 TASK 文档、模板和 launcher。
+- `v1-runtime` 的旧单文件 TASK 已人工迁移为 `.code-flow/tasks/2026-11-10/v1-runtime/v1-runtime.md`。
+- 旧归档需求、旧 `spec-context.yml`、acceptance manifest 和验收证据不迁移；按设计只作为历史资料保留。
+- 旧 `.code-flow/worktrees` 仍原地保留（gitignored）。它们可能是真实 Git worktree，不能按普通目录删除或移动；`doctor` 对其中的旧 ledger 报诊断，需人工决定清理。
+- 仍活跃的旧需求必须人工用 v1 模板重建 PRD/design/scenarios 和任务声明；包内不提供迁移、转换或旧版清理脚本。
+
 ## 实现范围（目标）
 
 - 全局 Node CLI、JSON 数据、路径身份、严格校验与原子写入。
