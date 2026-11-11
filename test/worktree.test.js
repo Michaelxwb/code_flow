@@ -406,18 +406,19 @@ test('worktree operations reject a changed coordinator branch', async t => {
   const { root, file } = repo(t, [{ id: 'TASK-001' }]);
   const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
     runId: 'run-branch', noInit: true });
+  const main = git(root, ['symbolic-ref', '--short', 'HEAD']);
   await finishWorker(path.join(root, prepared.worktrees[0].path), file, 'TASK-001');
   git(root, ['checkout', '-q', '-b', 'other']);
   assert.throws(() => worktree.collect(root, 'run-branch'), /Coordinator branch changed/);
-  git(root, ['checkout', '-q', 'main']);
+  git(root, ['checkout', '-q', main]);
   assert.equal(worktree.collect(root, 'run-branch').ok, true);
   git(root, ['checkout', '-q', 'other']);
   await assert.rejects(worktree.merge(root, 'run-branch'), /Coordinator branch changed/);
-  git(root, ['checkout', '-q', 'main']);
+  git(root, ['checkout', '-q', main]);
   assert.equal((await worktree.merge(root, 'run-branch')).integration.status, 'passed');
   git(root, ['checkout', '-q', 'other']);
   assert.throws(() => worktree.cleanup(root, 'run-branch', true), /Coordinator branch changed/);
-  git(root, ['checkout', '-q', 'main']);
+  git(root, ['checkout', '-q', main]);
   assert.equal(worktree.cleanup(root, 'run-branch').ok, true);
 });
 
