@@ -127,6 +127,8 @@ test('Codex config recognizes quoted, dotted and array-boundary TOML forms', () 
   const subtable = adapters.codexConfig('[profiles.review]\nfeatures = { shell_tool = true }\n');
   assert.match(subtable, /\[profiles\.review\]\nfeatures = \{ shell_tool = true \}/);
   assert.match(subtable, /\[features\]\nhooks = true/);
+  assert.throws(() => adapters.codexConfig('features.shell_tool = [\n false\n]\n'), /Multi-line/);
+  assert.throws(() => adapters.codexConfig('features.shell_tool = """\n false\n"""\n'), /Multi-line/);
   assert.throws(() => adapters.codexConfig('"features" = { hooks = false }\n'), /\[features\] table/);
   assert.throws(() => adapters.codexConfig("'features' = { hooks = false }\n"), /\[features\] table/);
 });

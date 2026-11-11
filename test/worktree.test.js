@@ -149,10 +149,11 @@ test('prepare rejects user content in an untracked mixed managed file', async t 
   const ledger = worktree.readLedger(root, 'run-untracked');
   const worker = path.join(root, ledger.worktrees[0].path);
   fs.rmSync(path.join(worker, '.agents/skills/cf-check/SKILL.md'));
-  h.write(worker, 'AGENTS.md', '<!-- code-flow:v1 start -->\nold\n<!-- code-flow:v1 end -->\n\nUntracked user note.\n');
+  const managedAgents = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8').trimEnd();
+  h.write(worker, 'AGENTS.md', managedAgents + '\n\nUntracked user note.\n');
   await assert.rejects(worktree.prepare(root, options), /init_user_content|user content/);
   assert.ok(fs.readFileSync(path.join(worker, 'AGENTS.md'), 'utf8').includes('Untracked user note.'));
-  h.write(worker, 'AGENTS.md', '<!-- code-flow:v1 start -->\nold\n<!-- code-flow:v1 end -->\n');
+  h.write(worker, 'AGENTS.md', managedAgents + '\n');
   const resumed = await worktree.prepare(root, options);
   assert.equal(resumed.resumed, true);
 });
@@ -230,6 +231,27 @@ test('prepare rejects Codex feature comments and table moves', async t => {
     'shell_tool = true\nhooks = false # original\n\n[other]\nvalue = 1\n[features]\n');
   await assert.rejects(worktree.prepare(root, options), /init_user_content|user content/);
   assert.match(fs.readFileSync(config, 'utf8'), /shell_tool = true/);
+});
+
+test('prepare rejects header comments in untracked Codex config', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  h.write(root, '.gitignore', '.code-flow/worktrees/\n.codex/config.toml\n');
+  await init.init(root, { platform: 'codex' });
+  h.write(root, '.agents/skills/cf-check/SKILL.md', 'unmanaged\n');
+  git(root, ['add', '.gitignore', '.agents/skills/cf-check/SKILL.md']);
+  git(root, ['commit', '-qm', 'ignore codex config']);
+  const options = { taskFile: file, tasks: ['TASK-001'], runId: 'run-untracked-config' };
+  await assert.rejects(worktree.prepare(root, options), /unmanaged/);
+  const ledger = worktree.readLedger(root, 'run-untracked-config');
+  const worker = path.join(root, ledger.worktrees[0].path);
+  fs.rmSync(path.join(worker, '.agents/skills/cf-check/SKILL.md'));
+  const config = path.join(worker, '.codex/config.toml');
+  h.write(worker, '.codex/config.toml', '[features] # user header\nhooks = true\n');
+  await assert.rejects(worktree.prepare(root, options), /init_user_content|user content/);
+  assert.match(fs.readFileSync(config, 'utf8'), /user header/);
+  h.write(worker, '.codex/config.toml', '[features]\nhooks = true\n');
+  const resumed = await worktree.prepare(root, options);
+  assert.equal(resumed.resumed, true);
 });
 
 test('prepare auto-inits dotted features.hooks without user content error', async t => {
