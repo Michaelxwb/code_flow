@@ -10,7 +10,7 @@ function prompt(root, file) {
   return JSON.stringify({ cwd: root, session_id: 'windows', prompt: 'task: ' + file + '#TASK-001' });
 }
 
-test('Windows CMD and PowerShell launchers preserve prompt context', { skip: process.platform !== 'win32' }, async t => {
+test('Windows CMD, PowerShell and Git Bash launchers preserve prompt context', { skip: process.platform !== 'win32' }, async t => {
   const root = h.project(t);
   await init.init(root, { platform: 'codex' });
   h.spec(root);
@@ -26,4 +26,9 @@ test('Windows CMD and PowerShell launchers preserve prompt context', { skip: pro
   assert.equal(powershell.status, 0, powershell.stderr);
   assert.ok(JSON.parse(powershell.stdout).hookSpecificOutput.additionalContext.includes('Current rule.'),
     'stdout=' + powershell.stdout + ' stderr=' + powershell.stderr);
+  const gitBash = spawnSync('bash', ['-c', 'sh .code-flow/launcher/hook.sh codex'],
+    { cwd: root, input, encoding: 'utf8' });
+  assert.equal(gitBash.status, 0, gitBash.stderr);
+  assert.ok(JSON.parse(gitBash.stdout).hookSpecificOutput.additionalContext.includes('Current rule.'),
+    'stdout=' + gitBash.stdout + ' stderr=' + gitBash.stderr);
 });
