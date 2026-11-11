@@ -243,6 +243,8 @@ test('OpenCode native prompt/context delivers to correct session without rejecti
   assert.ok(errors.some(text => text.includes('lookup failed')));
 });
 test('Windows adapters target the project launcher and preserve fail-open behavior', () => {
+  assert.equal(adapters.owned('// code-flow:v1\r\nimport'), true);
+  assert.equal(adapters.owned('// code-flow:v1\nimport'), true);
   const codex = adapters.hook('codex', 'C:\\Program Files\\node.exe', 'C:\\global\\bin\\code-flow.js', 'win32');
   assert.ok(codex.commandWindows.includes('hook.cmd'));
   const claude = adapters.hook('claude', 'C:\\node.exe', 'C:\\global\\bin\\code-flow.js', 'win32');
