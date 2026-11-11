@@ -1,6 +1,6 @@
 # code-flow v1 使用说明
 
-本文描述 v1 目标用法；当前实现差距见 [实施记录](v1-implementation.md)，完整契约见 [设计](v1-design.md)。
+本文描述 v1 用法；实现状态见 [实施记录](v1-implementation.md)，完整契约见 [设计](v1-design.md)。
 
 ## 1. 全局安装
 
@@ -14,6 +14,8 @@ code-flow init --platform=all
 每个使用的平台安装一次。之后 code-flow init 更新当前项目全部已安装的 v1 平台。init --dry-run 只展示变更；不写目录、绑定或锁。
 
 Hook 通过项目 bridge 校验 PATH 全局包与协议后优先使用，回退初始化时的固定 Node/JS。项目本地 bin 不参与选择；错误降级且不阻断。两种入口均失效时重新 init，doctor 给出诊断；宿主加载与信任需在宿主中确认。
+
+Windows 支持 CMD、PowerShell 和 Git Bash：CMD 使用 `hook.cmd`，PowerShell 使用 `hook.ps1`（委托已验证的 CMD 入口），Git Bash 可运行 `hook.sh` 或直接调用 `code-flow` CLI。三种入口均由 Windows CI 覆盖。
 
 ## 2. 创建 Spec
 
@@ -210,7 +212,7 @@ init 不负责旧版清理或转换，不提供迁移脚本。
 
 ## 7. CI 与诊断
 
-全量回归和 E2E 是独立 CI 命令。本仓库使用 npm test，外部项目可分别运行 npm run test:all 与 npm run test:e2e，不让 task archive 隐式调用。
+全量回归和 E2E 是独立 CI 命令。本仓库 CI 使用 `npm test`，在 Ubuntu/macOS/Windows 和 Node 18/22/24 上运行；外部项目按自己的 test:all / test:e2e 脚本执行，不让 task archive 隐式调用。
 
 只读诊断：
 

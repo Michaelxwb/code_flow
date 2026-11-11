@@ -22,8 +22,9 @@
     "templates/",
     "README.md",
     "docs/USAGE.md",
-    "docs/v1-design.md"
-    ,"docs/v1-implementation.md"
+    "docs/v1-design.md",
+    "docs/v1-implementation.md",
+    "docs/README.md"
   ],
   "dependencies": {}
 }

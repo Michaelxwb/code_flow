@@ -24,6 +24,9 @@ test('tarball contains only v1 and installs globally into an isolated prefix', t
   assert.ok(files.includes('templates/adapters/opencode.mjs'));
   assert.ok(files.includes('templates/launcher/bridge.cjs'));
   assert.ok(files.includes('templates/workflow/scenarios.md'));
+  assert.ok(files.includes('docs/README.md'));
+  assert.ok(!files.some(file => file.startsWith('docs/verification-efficiency/') ||
+    file.startsWith('docs/migrations/')));
   assert.ok(!files.some(file => file.endsWith('.py') || file.startsWith('src/') ||
     file.includes('migrat') || file.includes('legacy') || file.startsWith('.code-flow/')));
   assert.deepEqual(require('../package.json').dependencies, {});

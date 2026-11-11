@@ -10,7 +10,7 @@
 
 - **设计**：已修订本轮 review：段锁/短写锁、三方归属合并、合并后相关测试、仓库 group 锁、统一 bridge、collect 越界检查、ledger 恢复、模板交接与只读 doctor 契约；验收扩展至 AC-59。
 - **代码**：已完成多 TASK 文档、Depends 批次、`--task` CLI、session/Delta 身份、段锁+短文档写锁；已安装 PRD/design/scenarios/task 模板、8 个用户命令、项目 launcher/bridge、`init --platform=all`、只读 `doctor`，以及 worktree prepare/collect/merge/cleanup、baseline/自动 init、三方归属合并、合并后集成验证、提交图恢复、仓库/group 锁和协调工作区写权限守卫。
-- **未完成**：真实 Windows CI 验证、worker 派发预算由 skill/宿主实际执行、AI 协作式 prd→align→plan 端到端验收，以及 AC-42 的真实三平台结果。
+- **未完成**：真实 AI 协作式 prd→align→plan 生成由使用者在实际项目中验证；worker 的实际派发数量由宿主/skill 执行，CI 已用模拟器验证 `workers/jobs` 边界。
 - 当前仓库实现已覆盖主要运行时闭环，但不能宣称已完成全部 v1 设计与跨平台验收。
 
 ## 旧版产物处置
@@ -63,7 +63,7 @@
 | 集成验证/恢复 | 相关测试聚合、tested_head、写前意图与提交图恢复 | 已实现聚合/去重、tested_head、merge 意图与提交图恢复 |
 | `source/scenarios` | Task 追溯 design/scenarios | 解析/list 已支持；计划技能待接入 |
 | 健康检查 | `cf-check` / `doctor` | 已实现稳定 schema、模板/启动器/Spec/Task/worktree 检查 |
-| 新运行时测试矩阵 | AC-31 ~ AC-59 | AC-31~AC-59 已有测试；AC-42 待真实 Windows CI，AC-55 已由 CI 模拟宿主派发 |
+| 新运行时测试矩阵 | AC-31 ~ AC-59 | AC-31~AC-59 已有测试；AC-42 Windows CI 已通过；AC-55 已由 CI 模拟宿主派发 |
 
 ## 旧版 worktree 参考
 
@@ -158,7 +158,7 @@ src/core/code-flow/scripts/codeflow/core/cf_worktree_env.py
 - `node --test test/design.test.js`：9 项通过，校验 JSON/Delta/Task/ledger/doctor 示例、章节与验收引用，并执行真实 POSIX shell 守卫子进程。
 - `npm test`：98 项，97 通过、1 项 Windows-only 跳过；包含多 TASK/Depends/并发写入、模板/文档流程契约、scenarios 不阻断、四平台命令布局、launcher/bridge PATH 选择/回退/慢探测/超时与输出上限、doctor schema、worktree 编排/自动 init/集成验证/冲突/范围审计/恢复/协调身份/跨进程仓库锁与 group 锁、PRD/design/scenarios/多 TASK 文档流契约、CI worker 并发预算模拟测试；环境为 macOS + Node v24.17.0。
 - 修复开发测试入口：`node --test test` 在当前 Node 下无法加载目录；改由 `test/run.cjs` 枚举本测试目录的 `*.test.js` 并传给 Node，兼顾跨平台且不递归进入历史 worktree。
-- 本轮已改多 TASK 运行时基础、模板/命令安装、launcher/bridge、doctor 稳定 schema 和 worktree 编排/恢复；未执行真实 Windows CI。
+- Windows GitHub Actions 矩阵（Node 18/22/24）已通过，覆盖 CMD、PowerShell、Git Bash launcher、worktree 和 worker-budget 测试。
 
 ## 验证命令
 

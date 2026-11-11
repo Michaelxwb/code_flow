@@ -1,11 +1,11 @@
 # code-flow v1.0 设计
 
-> **状态**: 评审问题修订稿（契约待实现）
-> **日期**: 2026-11-10
+> **状态**: v1 实现基线
+> **日期**: 2026-11-10（2026-11-11 更新）
 > **范围**: 文档主流程、运行时、数据格式、Hook、任务生命周期、worktree、分发方式
 > **关系**: 取代 0.8.x 的运行时安装、Spec Context、Acceptance/Evidence 与阶段门禁架构；保留并改造 PRD/design/scenarios 主流程
 > **原则**: 全局分发、不兼容、薄内核、显式定位、最新规范、主流程保留
-> **说明**: 本文描述新架构。PRD、design、scenarios 产物保留为项目可编辑资产，模板由工具维护，但旧 manifest/Stage Gate/E2E 门禁不复用。本文中的命令和数据结构是 v1 目标契约，尚不代表当前 0.8.1 已实现。
+> **说明**: 本文描述 v1 实现契约。PRD、design、scenarios 产物保留为项目可编辑资产，模板由工具维护，但旧 manifest/Stage Gate/E2E 门禁不复用。实现状态与测试覆盖见 [v1-implementation.md](v1-implementation.md)。
 
 ---
 

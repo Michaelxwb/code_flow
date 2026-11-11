@@ -92,4 +92,4 @@ npm pack --ignore-scripts
 
 运行源码使用 node bin/code-flow.js。测试覆盖真实子进程、全局包安装、worktree、平台原生协议和多文件失败重试。
 
-[设计](docs/v1-design.md) · [验收覆盖](docs/v1-implementation.md) · [使用说明](docs/USAGE.md)
+[文档索引](docs/README.md) · [设计](docs/v1-design.md) · [验收覆盖](docs/v1-implementation.md) · [使用说明](docs/USAGE.md)
