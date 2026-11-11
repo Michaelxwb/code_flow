@@ -8,7 +8,7 @@ const f = require('../lib/fs');
 const DEFAULT_TASK = '.code-flow/tasks/2026-11-10/demo/demo.md';
 
 function project(t, settings = {}) {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'cf-v1-')));
+  const root = f.realpath(fs.mkdtempSync(path.join(os.tmpdir(), 'cf-v1-')));
   t.after(() => {
     fs.rmSync(f.transientRoot(root), { recursive: true, force: true });
     fs.rmSync(root, { recursive: true, force: true });
