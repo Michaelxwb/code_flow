@@ -135,6 +135,76 @@ test('prepare rejects user content added to a mixed managed file during retry', 
   assert.ok(fs.readFileSync(path.join(worker, 'AGENTS.md'), 'utf8').includes('User note must stay.'));
 });
 
+test('prepare rejects user content in an untracked mixed managed file', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  h.write(root, '.gitignore', '.code-flow/worktrees/\nAGENTS.md\n');
+  git(root, ['add', '.gitignore']);
+  git(root, ['commit', '-qm', 'ignore agents']);
+  await init.init(root, { platform: 'codex' });
+  h.write(root, '.agents/skills/cf-check/SKILL.md', 'unmanaged\n');
+  git(root, ['add', '-A']);
+  git(root, ['commit', '-qm', 'unmanaged skill']);
+  const options = { taskFile: file, tasks: ['TASK-001'], runId: 'run-untracked' };
+  await assert.rejects(worktree.prepare(root, options), /unmanaged/);
+  const ledger = worktree.readLedger(root, 'run-untracked');
+  const worker = path.join(root, ledger.worktrees[0].path);
+  fs.rmSync(path.join(worker, '.agents/skills/cf-check/SKILL.md'));
+  h.write(worker, 'AGENTS.md', '<!-- code-flow:v1 start -->\nold\n<!-- code-flow:v1 end -->\n\nUntracked user note.\n');
+  await assert.rejects(worktree.prepare(root, options), /init_user_content|user content/);
+  assert.ok(fs.readFileSync(path.join(worker, 'AGENTS.md'), 'utf8').includes('Untracked user note.'));
+});
+
+test('prepare rejects user content in Codex config managed settings', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  h.write(root, '.codex/config.toml', 'model = "user-choice"\n');
+  git(root, ['add', '.codex/config.toml']);
+  git(root, ['commit', '-qm', 'user codex config']);
+  await init.init(root, { platform: 'codex' });
+  h.write(root, '.agents/skills/cf-check/SKILL.md', 'unmanaged\n');
+  git(root, ['add', '.agents/skills/cf-check/SKILL.md']);
+  git(root, ['commit', '-qm', 'unmanaged skill']);
+  const options = { taskFile: file, tasks: ['TASK-001'], runId: 'run-codex-config' };
+  await assert.rejects(worktree.prepare(root, options), /unmanaged/);
+  const ledger = worktree.readLedger(root, 'run-codex-config');
+  const worker = path.join(root, ledger.worktrees[0].path);
+  fs.rmSync(path.join(worker, '.agents/skills/cf-check/SKILL.md'));
+  fs.appendFileSync(path.join(worker, '.codex/config.toml'), 'user_extra = "keep"\n');
+  await assert.rejects(worktree.prepare(root, options), /init_user_content|user content/);
+  assert.match(fs.readFileSync(path.join(worker, '.codex/config.toml'), 'utf8'), /user_extra/);
+});
+
+test('prepare tolerates CRLF checkout with autocrlf enabled', async t => {
+  const root = h.project(t);
+  h.write(root, '.gitignore', '.code-flow/worktrees/\n');
+  h.spec(root);
+  const file = h.task(root);
+  h.write(root, 'AGENTS.md', 'User note\r\n');
+  git(root, ['init', '-q']);
+  git(root, ['config', 'core.autocrlf', 'true']);
+  git(root, ['config', 'user.name', 'Fixture']);
+  git(root, ['config', 'user.email', 'fixture@example.invalid']);
+  git(root, ['add', '-A']);
+  git(root, ['commit', '-qm', 'baseline']);
+  await init.init(root, { platform: 'codex' });
+  const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'run-autocrlf' });
+  assert.equal(prepared.ok, true);
+  worktree.cleanup(root, 'run-autocrlf', true);
+});
+
+test('prepare commits a staged rename inside the current requirement', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  const directory = path.posix.dirname(file);
+  h.write(root, directory + '/before.txt', 'before\n');
+  git(root, ['add', '-A']);
+  git(root, ['commit', '-qm', 'add requirement file']);
+  git(root, ['mv', directory + '/before.txt', directory + '/after.txt']);
+  const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'run-legal-rename', noInit: true });
+  assert.equal(prepared.ok, true);
+  assert.equal(fs.existsSync(path.join(root, directory, 'after.txt')), true);
+});
+
 test('prepare rejects staged renames whose source is outside baseline', async t => {
   const { root, file } = repo(t, [{ id: 'TASK-001' }]);
   h.write(root, 'README.md', 'readme\n');
