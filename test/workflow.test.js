@@ -28,7 +28,7 @@ test('workflow templates encode the v1 document flow without retired gates', asy
   assert.match(scenarios, /expected:/);
   assert.match(scenarios, /owner:/);
   const taskTemplate = fs.readFileSync(path.join(directory, 'task.md'), 'utf8');
-  assert.match(taskTemplate, /^\s*---\n\{"version":1,"requirement":"\{requirement\}"\}\n---/);
+  assert.match(taskTemplate, /^\s*---\r?\n\{"version":1,"requirement":"\{requirement\}"\}\r?\n---/);
   assert.match(taskTemplate, /## TASK-001:/);
   assert.match(taskTemplate, /- \*\*Depends\*\*:/);
   assert.match(taskTemplate, /### Tests/);
