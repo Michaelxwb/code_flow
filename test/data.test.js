@@ -96,7 +96,42 @@ test('Codex config updates only the real features.hooks field', () => {
   assert.match(result, /developer_instructions = """\n\[features\]\nhooks = false\n"""/);
   assert.match(result, /\[features\]\nhooks = true/);
   assert.match(result, /\[mcp_servers\."fixture\]one"\.env\]\nhooks = "user-value"/);
-  assert.throws(() => adapters.codexConfig('[ "features" ]\nhooks = true\n'), /features/);
+});
+
+test('Codex config recognizes quoted, dotted and array-boundary TOML forms', () => {
+  const quoted = adapters.codexConfig('[features]\n"hooks" = false\n');
+  assert.match(quoted, /"hooks" = true/);
+  assert.equal((quoted.match(/\[features\]/g) || []).length, 1);
+  const literal = adapters.codexConfig("[features]\n'hooks' = false\n");
+  assert.match(literal, /'hooks' = true/);
+  const dotted = adapters.codexConfig('features.hooks = false # user\n');
+  assert.equal(dotted, 'features.hooks = true # user\n');
+  const array = adapters.codexConfig('[features]\nother = 1\n[[skills.config]]\nhooks = false\n');
+  assert.match(array, /\[features\]\nhooks = true/);
+  assert.match(array, /\[\[skills\.config\]\]\nhooks = false/);
+  const quotedTable = adapters.codexConfig('["features"]\nhooks = false\n');
+  assert.match(quotedTable, /\["features"\]\nhooks = true/);
+});
+
+test('Codex config ignores quoted feature examples inside multiline strings', () => {
+  const raw = [
+    'developer_instructions = """',
+    '["features"]',
+    'hooks = false',
+    '"""',
+    '',
+    '[features]',
+    'hooks = false',
+    ''
+  ].join('\n');
+  const result = adapters.codexConfig(raw);
+  assert.match(result, /developer_instructions = """\n\["features"\]\nhooks = false\n"""/);
+  assert.match(result, /\[features\]\nhooks = true/);
+});
+
+test('Codex config accepts CRLF comments when updating features.hooks', () => {
+  const result = adapters.codexConfig('[features]\r\nhooks = false # comment\r\n');
+  assert.match(result, /hooks = true # comment\r\n/);
 });
 
 test('rule blocks preserve examples, ignore fenced fake rules and reject duplicate IDs', t => {
