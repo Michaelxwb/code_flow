@@ -196,7 +196,8 @@ test('all installed v1 platforms update together and user config/hooks survive',
   assert.ok(fs.existsSync(path.join(root, '.code-flow/templates/prd.md')));
   const hooks = JSON.parse(fs.readFileSync(path.join(root, '.codex/hooks.json'), 'utf8'));
   assert.equal(hooks.userSetting, true); assert.equal(hooks.hooks.Stop[0].hooks[0].command, 'echo user-custom');
-  assert.ok(hooks.hooks.UserPromptSubmit[0].hooks[0].command.includes('hook.sh'));
+  const launcher = process.platform === 'win32' ? 'hook.ps1' : 'hook.sh';
+  assert.ok(hooks.hooks.UserPromptSubmit[0].hooks[0].command.includes(launcher));
   assert.ok(fs.readFileSync(path.join(root, '.code-flow/launcher/hook.sh'), 'utf8').includes('/new/node'));
   assert.ok(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8').startsWith('User instruction'));
   const toml = fs.readFileSync(path.join(root, '.codex/config.toml'), 'utf8');

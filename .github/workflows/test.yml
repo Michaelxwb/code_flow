@@ -21,6 +21,16 @@ jobs:
           node-version: ${{ matrix.node }}
           package-manager-cache: false
       - run: npm test
+      - name: Diagnose failing Windows test files
+        if: failure() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Get-ChildItem test/*.test.js | ForEach-Object {
+            node --test $_.FullName
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "::error title=Windows test failure::$($_.Name)"
+            }
+          }
   worker-budget:
     runs-on: ubuntu-latest
     steps:

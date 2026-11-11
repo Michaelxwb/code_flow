@@ -42,7 +42,8 @@ test('tarball contains only v1 and installs globally into an isolated prefix', t
   const hooks = JSON.parse(fs.readFileSync(path.join(project, '.codex/hooks.json'), 'utf8')).hooks;
   assert.deepEqual(Object.keys(hooks), ['UserPromptSubmit']);
   const command = hooks.UserPromptSubmit[0].hooks[0].command;
-  assert.ok(command.includes('.code-flow/launcher/hook.sh'), 'Hook must use the project launcher');
+  assert.ok(command.includes(process.platform === 'win32' ? 'hook.ps1' : '.code-flow/launcher/hook.sh'),
+    'Hook must use the project launcher');
   assert.ok(fs.existsSync(path.join(project, '.code-flow/launcher/bridge.cjs')));
   if (process.platform !== 'win32') {
     const output = spawnSync('/bin/sh', ['-c', command], { cwd: project, encoding: 'utf8',
