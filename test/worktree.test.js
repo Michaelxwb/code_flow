@@ -152,6 +152,34 @@ test('prepare rejects user content in an untracked mixed managed file', async t 
   h.write(worker, 'AGENTS.md', '<!-- code-flow:v1 start -->\nold\n<!-- code-flow:v1 end -->\n\nUntracked user note.\n');
   await assert.rejects(worktree.prepare(root, options), /init_user_content|user content/);
   assert.ok(fs.readFileSync(path.join(worker, 'AGENTS.md'), 'utf8').includes('Untracked user note.'));
+  h.write(worker, 'AGENTS.md', '<!-- code-flow:v1 start -->\nold\n<!-- code-flow:v1 end -->\n');
+  const resumed = await worktree.prepare(root, options);
+  assert.equal(resumed.resumed, true);
+});
+
+test('prepare rejects user content in Codex hooks managed settings', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  h.write(root, '.codex/hooks.json', JSON.stringify({ hooks: {
+    SessionStart: [{ hooks: [{ type: 'command', command: 'echo user-session' }] }]
+  } }));
+  git(root, ['add', '.codex/hooks.json']);
+  git(root, ['commit', '-qm', 'user codex hook']);
+  await init.init(root, { platform: 'codex' });
+  h.write(root, '.agents/skills/cf-check/SKILL.md', 'unmanaged\n');
+  git(root, ['add', '.agents/skills/cf-check/SKILL.md']);
+  git(root, ['commit', '-qm', 'unmanaged skill']);
+  const options = { taskFile: file, tasks: ['TASK-001'], runId: 'run-codex-hooks' };
+  await assert.rejects(worktree.prepare(root, options), /unmanaged/);
+  const ledger = worktree.readLedger(root, 'run-codex-hooks');
+  const worker = path.join(root, ledger.worktrees[0].path);
+  fs.rmSync(path.join(worker, '.agents/skills/cf-check/SKILL.md'));
+  const hooksFile = path.join(worker, '.codex/hooks.json');
+  const hooks = JSON.parse(fs.readFileSync(hooksFile, 'utf8'));
+  hooks.hooks.UserPromptSubmit = hooks.hooks.UserPromptSubmit || [];
+  hooks.hooks.Stop = [{ hooks: [{ type: 'command', command: 'echo keep-me' }] }];
+  fs.writeFileSync(hooksFile, JSON.stringify(hooks, null, 2));
+  await assert.rejects(worktree.prepare(root, options), /init_user_content|user content/);
+  assert.match(fs.readFileSync(hooksFile, 'utf8'), /echo keep-me/);
 });
 
 test('prepare rejects user content in Codex config managed settings', async t => {
@@ -171,6 +199,10 @@ test('prepare rejects user content in Codex config managed settings', async t =>
   fs.appendFileSync(path.join(worker, '.codex/config.toml'), 'user_extra = "keep"\n');
   await assert.rejects(worktree.prepare(root, options), /init_user_content|user content/);
   assert.match(fs.readFileSync(path.join(worker, '.codex/config.toml'), 'utf8'), /user_extra/);
+  const configFile = path.join(worker, '.codex/config.toml');
+  fs.writeFileSync(configFile, fs.readFileSync(configFile, 'utf8').replace('user_extra = "keep"\n', ''));
+  const resumed = await worktree.prepare(root, options);
+  assert.equal(resumed.resumed, true);
 });
 
 test('prepare tolerates CRLF checkout with autocrlf enabled', async t => {
