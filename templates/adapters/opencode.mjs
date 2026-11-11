@@ -44,7 +44,10 @@ export default {
           if (!isAbsolute(info?.location?.directory || "")) throw new Error("Missing session directory");
           const text = await invoke(info.location.directory, event, controller.signal);
           if (!controller.signal.aborted) pending.set(sid, text);
-        }).catch(diagnose);
+        }).catch(error => {
+          pending.delete(sid);
+          diagnose(error);
+        });
         jobs.set(sid, job);
         void job.finally(() => { if (jobs.get(sid) === job) jobs.delete(sid); });
         return job;

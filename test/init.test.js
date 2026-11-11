@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { spawnSync, spawn } = require('node:child_process');
 const { pathToFileURL } = require('node:url');
 const h = require('./helpers');
 const init = require('../lib/init');
@@ -82,6 +82,9 @@ function fakeGlobal(base, options = {}) {
   ];
   if (mode === 'corrupt') lines.push("console.log('not-json');process.exit(0)");
   else if (mode === 'invalid-payload') lines.push("console.log('null');process.exit(0)");
+  else if (mode === 'extra-fields') lines.push("let raw='';process.stdin.on('data',c=>raw+=c);",
+    "process.stdin.on('end',()=>console.log(JSON.stringify({hookSpecificOutput:{",
+    "hookEventName:'UserPromptSubmit',additionalContext:'PATH CONTEXT'},decision:'block',reason:'x'})))");
   else if (mode === 'huge') lines.push("process.stdout.write('x'.repeat(2*1024*1024));process.exit(0)");
   else if (mode === 'hang') lines.push("setInterval(()=>{},1000)");
   else lines.push("let raw='';process.stdin.on('data',c=>raw+=c);",
@@ -130,6 +133,15 @@ test('launcher prefers a validated PATH package and falls back when it is invali
     input: prompt, env: { ...process.env, PATH: invalid.bin + path.delimiter + process.env.PATH } });
   assert.equal(malformed.status, 0, malformed.stderr);
   assert.equal(JSON.parse(malformed.stdout).hookSpecificOutput.additionalContext, '');
+  const extra = fakeGlobal(corruptBase, { mode: 'extra-fields' });
+  spawnSync(path.join(extra.bin, 'code-flow'), ['hook', 'capabilities', '--json'], { encoding: 'utf8' });
+  const filtered = spawnSync('/bin/sh', ['-c', command], { cwd: root, encoding: 'utf8',
+    input: prompt, env: { ...process.env, PATH: extra.bin + path.delimiter + process.env.PATH } });
+  const payload = JSON.parse(filtered.stdout);
+  assert.equal(filtered.status, 0, filtered.stderr);
+  assert.equal(payload.hookSpecificOutput.additionalContext, 'PATH CONTEXT');
+  assert.equal(Object.hasOwn(payload, 'decision'), false);
+  assert.equal(Object.hasOwn(payload, 'reason'), false);
   const local = path.join(root, 'node_modules/.bin');
   fs.mkdirSync(local, { recursive: true });
   fs.copyFileSync(path.join(fake.bin, 'code-flow'), path.join(local, 'code-flow'));
@@ -172,6 +184,22 @@ test('launcher bounds child output/time and ignores slow PATH probes', { skip: p
     input: prompt, env: { ...process.env, PATH: slow.bin + path.delimiter + process.env.PATH } });
   assert.equal(fallback.status, 0, fallback.stderr);
   assert.ok(JSON.parse(fallback.stdout).hookSpecificOutput.additionalContext.includes('Current rule.'));
+});
+
+test('launcher bridge exits when stdin stalls past its deadline', async t => {
+  const root = empty(t);
+  await init.init(root, { platform: 'codex' });
+  const bridge = path.join(root, '.code-flow/launcher/bridge.cjs');
+  const child = spawn(process.execPath, [bridge, '--format', 'codex', '--node', process.execPath,
+    '--entry', path.resolve(__dirname, '../bin/code-flow.js')],
+  { cwd: root, stdio: ['pipe', 'ignore', 'ignore'] });
+  t.after(() => { if (child.exitCode === null) child.kill('SIGKILL'); });
+  child.stdin.write('{');
+  const code = await new Promise(resolve => {
+    const timer = setTimeout(() => resolve('timeout'), 4000);
+    child.once('close', value => { clearTimeout(timer); resolve(value); });
+  });
+  assert.equal(code, 0);
 });
 
 test('init --platform=all installs all four user command layouts', async t => {
@@ -237,10 +265,11 @@ test('OpenCode native prompt/context delivers to correct session without rejecti
   const pluginFile = path.join(root, '.opencode/plugins/code-flow/index.js');
   const plugin = (await import(pathToFileURL(pluginFile).href)).default;
   const hooks = {};
+  let fail = false;
   const cleanup = await plugin.setup({ session: {
     hook: async (name, fn) => { hooks[name] = fn; },
     get: async ({ sessionID }) => {
-      if (sessionID === 'broken') throw new Error('lookup failed');
+      if (sessionID === 'broken' || fail) throw new Error('lookup failed');
       return { location: { directory: root } };
     }
   } });
@@ -255,6 +284,11 @@ test('OpenCode native prompt/context delivers to correct session without rejecti
   try { await hooks.prompt({ sessionID: 'broken', prompt: { text: 'continue' } }); }
   finally { console.error = original; }
   assert.ok(errors.some(text => text.includes('lookup failed')));
+  fail = true; console.error = text => errors.push(text);
+  try { await hooks.prompt({ sessionID: 'one', prompt: { text: 'continue' } }); }
+  finally { console.error = original; }
+  const afterFailure = { sessionID: 'one', system: [] }; await hooks.context(afterFailure);
+  assert.equal(afterFailure.system.length, 0);
 });
 test('Windows adapters target the project launcher and preserve fail-open behavior', () => {
   assert.equal(adapters.owned('// code-flow:v1\r\nimport'), true);

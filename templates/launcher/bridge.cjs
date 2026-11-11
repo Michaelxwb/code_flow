@@ -22,6 +22,14 @@ function validPayload(format, payload) {
     hook.hookEventName === 'UserPromptSubmit' && typeof hook.additionalContext === 'string';
 }
 
+function normalizePayload(format, payload) {
+  if (!validPayload(format, payload)) return null;
+  return format === 'opencode' ? { context: payload.context } : {
+    hookSpecificOutput: { hookEventName: 'UserPromptSubmit',
+      additionalContext: payload.hookSpecificOutput.additionalContext }
+  };
+}
+
 function emit(format, payload) {
   process.stdout.write(JSON.stringify(payload) + '\n');
 }
@@ -33,6 +41,7 @@ function readStdin(deadline) {
     const finish = value => {
       clearTimeout(timer);
       process.stdin.removeAllListeners();
+      process.stdin.destroy();
       resolve(value);
     };
     timer = setTimeout(() => finish(''), Math.max(0, Math.min(TOTAL_MS, deadline - Date.now())));
@@ -179,13 +188,13 @@ function run(root, selected, format, input, deadline) {
       settled = true; clearTimeout(timer);
       if (!ok) {
         if (stderr.trim()) process.stderr.write(stderr.trim() + '\n');
-        resolve('');
+        resolve(null);
         return;
       }
       try {
         const parsed = JSON.parse(output);
-        resolve(validPayload(format, parsed) ? output : '');
-      } catch (_) { resolve(''); }
+        resolve(normalizePayload(format, parsed));
+      } catch (_) { resolve(null); }
     };
     timer = setTimeout(() => { killTree(child); finish(false); },
       Math.max(0, Math.min(TOTAL_MS, deadline - Date.now())));
@@ -224,7 +233,7 @@ async function main() {
     return;
   }
   const output = await run(root, selected, format, input, deadline);
-  emit(format, output ? JSON.parse(output) : emptyPayload(format));
+  emit(format, output ?? emptyPayload(format));
 }
 
 main().catch(error => {

@@ -118,6 +118,33 @@ test('prepare rejects a worker with an incomplete ignored Specs snapshot', async
   assert.equal(ledger.worktrees[0].status, 'created');
 });
 
+test('prepare rejects user content added to a mixed managed file during retry', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  await init.init(root, { platform: 'codex' });
+  h.write(root, '.agents/skills/cf-check/SKILL.md', 'unmanaged\n');
+  git(root, ['add', '-A']);
+  git(root, ['commit', '-qm', 'tools']);
+  const options = { taskFile: file, tasks: ['TASK-001'], runId: 'run-mixed' };
+  await assert.rejects(worktree.prepare(root, options), /unmanaged/);
+  const ledger = worktree.readLedger(root, 'run-mixed');
+  const worker = path.join(root, ledger.worktrees[0].path);
+  fs.rmSync(path.join(worker, '.agents/skills/cf-check/SKILL.md'));
+  h.write(worker, 'AGENTS.md',
+    '<!-- code-flow:v1 start -->\nold managed block\n<!-- code-flow:v1 end -->\n\nUser note must stay.\n');
+  await assert.rejects(worktree.prepare(root, options), /init_user_content|user content/);
+  assert.ok(fs.readFileSync(path.join(worker, 'AGENTS.md'), 'utf8').includes('User note must stay.'));
+});
+
+test('prepare rejects staged renames whose source is outside baseline', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  h.write(root, 'README.md', 'readme\n');
+  git(root, ['add', 'README.md']);
+  git(root, ['commit', '-qm', 'add readme']);
+  git(root, ['mv', 'README.md', '.code-flow/tasks/2026-11-10/demo/README.md']);
+  await assert.rejects(worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'run-rename', noInit: true }), /Staged changes outside baseline/);
+});
+
 test('prepare rejects unrelated staged files instead of committing them', async t => {
   const { root, file } = repo(t, [{ id: 'TASK-001' }]);
   h.write(root, '.agents/user-notes.txt', 'keep\n');
@@ -204,6 +231,28 @@ test('collect rejects a worker that committed platform init output', async t => 
   const worker = path.join(root, prepared.worktrees[0].path);
   await finishWorker(worker, file, 'TASK-001');
   assert.throws(() => worktree.collect(root, 'run-init-commit'), /shared paths|committed managed tool files/);
+});
+
+test('prepare records init intent before partial writes and resumes after a write failure', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  await init.init(root, { platform: 'codex' });
+  const options = { taskFile: file, tasks: ['TASK-001'], runId: 'run-partial-init' };
+  const original = f.atomicWrite;
+  let calls = 0;
+  f.atomicWrite = (...args) => {
+    if (++calls === 2) throw new Error('simulated write failure');
+    return original(...args);
+  };
+  try { await assert.rejects(worktree.prepare(root, options), /simulated write failure/); }
+  finally { f.atomicWrite = original; }
+  let ledger = worktree.readLedger(root, 'run-partial-init');
+  assert.equal(ledger.status, 'blocked');
+  assert.ok(ledger.worktrees[0].init_changes.length > 0);
+  const resumed = await worktree.prepare(root, options);
+  assert.equal(resumed.resumed, true);
+  assert.equal(resumed.worktrees[0].status, 'prepared');
+  ledger = worktree.readLedger(root, 'run-partial-init');
+  assert.equal(ledger.status, 'running');
 });
 
 test('prepare resumes a partially initialized run after init failure', async t => {
@@ -465,6 +514,20 @@ test('worker finish rejects a damaged run ledger instead of dropping isolation e
   await task.start(worker, file, 'TASK-001');
   fs.writeFileSync(path.join(root, '.code-flow/worktrees/run-ledger/run.json'), '{broken');
   await assert.rejects(task.finish(worker, file, 'TASK-001'), /run_invalid|Invalid run ledger/);
+  assert.equal(task.load(worker, file).meta.status, 'in-progress');
+});
+
+test('worker finish rejects ledger env that is complete enough to parse but invalid', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'run-env-invalid', noInit: true });
+  const worker = path.join(root, prepared.worktrees[0].path);
+  await task.start(worker, file, 'TASK-001');
+  const ledger = worktree.readLedger(root, 'run-env-invalid');
+  ledger.worktrees[0].env = { CF_WORKTREE_ID: 'wrong', CF_TASK_ID: '', CF_RUN_ID: '' };
+  fs.writeFileSync(path.join(root, '.code-flow/worktrees/run-env-invalid/run.json'),
+    JSON.stringify(ledger, null, 2) + '\n');
+  await assert.rejects(task.finish(worker, file, 'TASK-001'), /run_invalid|Invalid worker environment/);
   assert.equal(task.load(worker, file).meta.status, 'in-progress');
 });
 
