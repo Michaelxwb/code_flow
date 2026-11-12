@@ -533,7 +533,7 @@ os.tmpdir()/code-flow/repos/<repository-key>/
 - 同一需求的 archive/learn 与 Task 写入按固定顺序协调：仓库协调锁（仅编排/归档/学习）→ 需求锁 → 按 TASK ID 排序的段锁 → Spec 写锁/短文档写锁；不得持有文档写锁等待测试、group 或其他段锁。
 - 原子替换使用目标目录的短暂临时文件并及时清除；崩溃残留不作为事实源。
 
-run ledger 位于 `.code-flow/worktrees/<run-id>/run.json`，可由 status/doctor 查看，随 `worktrees/` gitignore。它记录编排意图、提交与恢复进度，不充当可跨次复用的测试缓存，不被 prompt Hook 读取。Spec 内 Applied Deltas 与 Task 内 Verification 属于用户文档产物。
+run ledger 位于 `.code-flow/worktrees/<run-id>/run.json`，可由 status/doctor 查看，随 `worktrees/` gitignore。批次 cleanup 默认保留它供审计；需求 archive 时统一清除已完成 run 的 ledger。它记录编排意图、提交与恢复进度，不充当可跨次复用的测试缓存，不被 prompt Hook 读取。Spec 内 Applied Deltas 与 Task 内 Verification 属于用户文档产物。
 
 ---
 
@@ -902,7 +902,7 @@ v1 保留 prepare/collect/merge/cleanup 与并行隔离，删除 evidence/manife
 6. 工作区必须没有待提交业务改动。自动 init 的精确工具增量按 §7.10.4 单独识别；只有内容仍与 ledger 记录完全一致时才能作为工具资产例外，不能忽略整个 `.claude/`、`.agents/`、AGENTS.md 等目录或文件。
 7. 批次全部 collect 成功后，按拓扑/声明顺序向协调分支做 `--no-ff` 合并；只按 §7.10.5 解决任务文档归属，普通代码冲突停止并保留 Git 合并现场。
 8. Git 无冲突只表示文本可以合并。所有分支合入后必须执行 §7.10.6 的相关测试；工具不声称能自动识别全部代码语义冲突。
-9. 只有集成验证通过且协调 HEAD 未变化才自动 cleanup。失败、冲突或未知恢复状态均保留 worktree、分支和 ledger，不自动 reset、回滚、push 或删除。
+9. 只有集成验证通过且协调 HEAD 未变化才自动 cleanup。每个批次默认删除 worker worktree/分支并保留 run ledger 供审计；`task archive` 统一清除该需求的已完成 run ledger，`--purge` 仅用于提前手动清理。失败、冲突或未知恢复状态均保留 worktree、分支和 ledger，不自动 reset、回滚、push 或删除。
 10. worker 内 `task archive` 与 `spec learn` 都拒绝；Spec 写入只在协调工作区、关联 run 完成后执行，见 §7.10.7。
 
 ✅ collect 核对整个分支 diff 与被收集的准确 SHA，merge 使用该 SHA。  

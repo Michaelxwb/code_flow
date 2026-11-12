@@ -360,6 +360,7 @@ code-flow task archive <requirement-dir>
 archive：
 
 - 应用每个 TASK 的 Spec Delta；
+- 清除该需求的已完成 run ledger（保留未完成 run 的拒绝行为）；
 - 移动整个需求目录到 `.code-flow/tasks/archived/<原日期>/<需求>/`；
 - 不执行测试、E2E 或 scenarios；
 - 不会在 worker 内执行；worker 中 archive/learn 会被拒绝。
@@ -391,14 +392,16 @@ code-flow task parallel prepare --task-file <task-doc>.md \
 ```bash
 code-flow task parallel collect --run-id <id> --json
 code-flow task parallel merge --run-id <id> --json
-code-flow task parallel cleanup --run-id <id> --purge --json
+code-flow task parallel cleanup --run-id <id> --json
 ```
 
 - `collect` 核对完整 diff 和准确 SHA；
 - `merge` 做三方任务文档合并；同段冲突不会采用 done 优先；随后聚合重跑本批相关测试，配置了 `tests.regression` 时再追加一次项目回归；
 - 合并/集成失败时保留 worktree、分支和 ledger 供检查；
-- 全部成功后清理资源；`--purge` 同时删除 `.code-flow/worktrees/<run-id>/run.json` 和 run 目录，省略时保留 ledger 供审计；
-- 清理前可用 `task parallel status --run-id <id>` 核对。
+- 每个批次成功后 `cleanup` 删除 worker worktree 和分支，但保留 `run.json` 供审计；
+- 最终 `task archive` 会统一清除该需求的已完成 run ledger；如果有未清理的 worker worktree，archive 会报 `worktree_not_cleaned`；
+- 需要提前清理时可用 `cleanup --purge`；清理前可用 `task parallel status --run-id <id>` 核对。
+- `.code-flow/worktrees` 中没有 `run.json` 的真实 worktree 是用户/历史资源，code-flow 不自动删除；归档只清理本次需求关联的 managed run ledger。
 
 run ledger 在 `.code-flow/worktrees/<run-id>/run.json`，随 `worktrees/` gitignore。中断后 status/doctor 只读显示实际状态；恢复需要重新调用 prepare/merge/cleanup。
 

@@ -211,6 +211,35 @@ test('archive removes an empty date directory and keeps it when other requiremen
   assert.equal(fs.existsSync(date), false);
 });
 
+function archivedRunLedger(root, file, runId, workerStatus) {
+  return JSON.stringify({ version: 1, run_id: runId, task_file: file, status: 'done',
+    coordinator: { root, branch: 'refs/heads/main', git_common_dir: path.join(root, '.git') },
+    worktrees: [{ task: 'TASK-001', path: '.code-flow/worktrees/' + runId + '/TASK-001',
+      branch: 'cf-task/' + runId + '/TASK-001', status: workerStatus }],
+    merge: { order: ['TASK-001'] } });
+}
+
+test('archive clears completed run ledgers for the requirement', async t => {
+  const root = h.project(t); h.spec(root); const file = h.task(root, { status: 'done' });
+  h.write(root, '.code-flow/worktrees/run-archive/run.json',
+    archivedRunLedger(root, file, 'run-archive', 'removed'));
+  h.write(root, '.code-flow/worktrees/run-other/run.json',
+    archivedRunLedger(root, '.code-flow/tasks/2026-11-10/other/other.md', 'run-other', 'removed'));
+  const result = await task.archive(root, path.posix.dirname(file));
+  assert.deepEqual(result.cleared_runs, ['run-archive']);
+  assert.equal(fs.existsSync(path.join(root, '.code-flow/worktrees/run-archive')), false);
+  assert.ok(fs.existsSync(path.join(root, '.code-flow/worktrees/run-other/run.json')));
+});
+
+test('archive refuses to clear a run whose worktree was not cleaned', async t => {
+  const root = h.project(t); h.spec(root); const file = h.task(root, { status: 'done' });
+  h.write(root, '.code-flow/worktrees/run-dirty/run.json',
+    archivedRunLedger(root, file, 'run-dirty', 'merged'));
+  await assert.rejects(task.archive(root, path.posix.dirname(file)), /Clean worktrees/);
+  assert.ok(fs.existsSync(path.join(root, file)));
+  assert.ok(fs.existsSync(path.join(root, '.code-flow/worktrees/run-dirty/run.json')));
+});
+
 test('archive refuses incomplete, empty and conflicting requirements', async t => {
   const root = h.project(t); h.spec(root); const file = h.task(root), dir = path.posix.dirname(file);
   await assert.rejects(task.archive(root, dir), /All tasks/);

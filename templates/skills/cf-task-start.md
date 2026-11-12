@@ -39,9 +39,9 @@ Commit the worker's business changes and its own TASK section after `finish`.
 ```bash
 code-flow task parallel collect --run-id <id> --json
 code-flow task parallel merge --run-id <id> --json
-code-flow task parallel cleanup --run-id <id> --purge --json
+code-flow task parallel cleanup --run-id <id> --json
 ```
 
-`--purge` removes the run ledger directory after all workers and branches are removed. Omit it only when you need to keep the ledger for inspection. Always inspect `task parallel status --run-id <id>` before cleanup.
+Keep the run ledger after each batch for audit; `cf-task:archive` clears completed run ledgers for the requirement. Use `--purge` only for manual early cleanup. Always inspect `task parallel status --run-id <id>` before cleanup.
 
 If merge or integration fails, stop and keep the worktrees, branches and ledger for inspection. Do not run `task archive` inside a worker; archive only in the coordinator worktree after the run is complete. After every TASK is done, use `cf-task:archive` in the coordinator worktree. E2E and full regression stay in CI.

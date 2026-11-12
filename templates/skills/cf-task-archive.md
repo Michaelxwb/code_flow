@@ -14,7 +14,8 @@ code-flow task archive <requirement-dir> --json
 
 Archive:
 - applies each TASK's Spec Delta in the coordinator worktree;
+- clears completed code-flow run ledgers for this requirement;
 - moves the whole requirement directory;
 - does not run tests, E2E, or scenarios.
 
-Do not run archive inside a worktree. Use the returned `archived_to` path. If Delta application fails, fix the Delta or explicitly use `--no-learn`; do not hand-edit the archive destination.
+Per-batch `task parallel cleanup` removes worker worktrees but keeps the run ledger for audit; archive clears those ledgers. If archive reports `worktree_not_cleaned`, run cleanup first. Do not run archive inside a worktree. Use the returned `archived_to` path. If Delta application fails, fix the Delta or explicitly use `--no-learn`; do not hand-edit the archive destination.
