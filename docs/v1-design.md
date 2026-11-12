@@ -172,11 +172,11 @@ global npm package @michaelxwb/code-flow
 user project
   .code-flow/
     config.json
-    launcher/
-      bridge.cjs
-      hook.sh
-      hook.cmd
-      hook.ps1
+    launcher/        # init/node 按当前 OS 生成；以下为可能产物
+      bridge.cjs     # 所有 OS
+      hook.sh        # POSIX；Windows 也生成以兼容 Git Bash
+      hook.cmd       # Windows
+      hook.ps1       # Windows PowerShell
     templates/
       prd.md
       design-lite.md
@@ -1285,7 +1285,7 @@ init 只创建和更新 v1 产物，运行时不包含旧脚本名清单、历�
   task.md
 ```
 
-- 平台 Hook 指向 `.code-flow/launcher/hook.sh|hook.cmd|hook.ps1`，由启动器优先 PATH、回退绝对入口。
+- 平台 Hook 按 OS 指向 `.code-flow/launcher/hook.sh|hook.cmd|hook.ps1`，由启动器优先 PATH、回退绝对入口；launcher 和本地 Hook 由 `init`/`node` 在当前机器生成。
 - 每次 `init` 覆盖工具托管模板；用户个性化规则写 `.code-flow/specs/`，不写模板。
 - 首次交付即完成模板语义改写：保留旧版问题分析、设计细节、场景覆盖、测试计划与追溯深度；删除旧 CLI、manifest/Context/Stage Gate、测试登记/证据字段和 E2E 门禁指令，统一为本文的数据模型。不能靠 skill 中“忽略旧指令”来纠正仍冲突的模板。
 - `cf-task:prd` 读 `templates/prd.md`；`cf-task:align` 读 design 模板 + scenarios；`cf-task:plan` 读 `templates/task.md` 并生成一份 `<需求>.md` 任务文档（内含多个 TASK 段）。

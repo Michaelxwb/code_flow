@@ -73,7 +73,7 @@ test('documented multi-TASK sample has distinct identities and valid declared co
 test('Task, learning and usage examples use direct Delta arrays and agree on the shared add', () => {
   const taskDelta = jsonExamples(section(taskSamples()[0].text, '### Spec Delta', '### Log'))[0];
   const learning = jsonExamples(section(design, '### 8.1 Delta 模型', '### 8.2 校验与预览'))[0];
-  const usage = jsonExamples(section(read('USAGE.md'), '## 5. 沉淀与归档', '## 6. 升级'))[0];
+  const usage = jsonExamples(section(read('USAGE.md'), '## 6. Spec 沉淀与 Delta', '## 7. 过程数据与诊断'))[0];
   for (const deltas of [taskDelta, learning, usage]) {
     assert.ok(Array.isArray(deltas));
     assert.equal(new Set(deltas.map(delta => delta.id)).size, deltas.length);

@@ -7,13 +7,14 @@ const { spawnSync, spawn } = require('node:child_process');
 const { once } = require('node:events');
 const h = require('./helpers');
 const cli = path.resolve(__dirname, '../bin/code-flow.js');
+const version = require('../package.json').version;
 function run(root, args, input, env = {}) {
   return spawnSync(process.execPath, [cli, ...args], { cwd: root, input, encoding: 'utf8',
     timeout: 15000, env: { ...process.env, ...env } });
 }
 test('public CLI exposes v1 and rejects unknown arguments and historical commands', t => {
   const root = h.project(t);
-  assert.equal(run(root, ['--version']).stdout.trim(), '1.0.0');
+  assert.equal(run(root, ['--version']).stdout.trim(), version);
   for (const args of [['task', 'finish', '--help'], ['spec', 'inject', '--help'], ['--help']]) {
     const output = run(root, args); assert.equal(output.status, 0); assert.ok(output.stdout.includes('code-flow'));
   }
@@ -26,7 +27,7 @@ test('public CLI exposes v1 and rejects unknown arguments and historical command
   const capabilities = JSON.parse(run(root, ['hook', 'capabilities', '--json']).stdout);
   assert.equal(capabilities.package, '@michaelxwb/code-flow');
   assert.equal(capabilities.hook_protocol, 1);
-  assert.equal(capabilities.version, '1.0.0');
+  assert.equal(capabilities.version, version);
 });
 test('CLI lifecycle starts from a subdirectory and executes only declared commands', t => {
   const root = h.project(t); h.spec(root); const file = h.task(root);
@@ -64,15 +65,18 @@ test('doctor JSON follows schema, is read-only and exits by severity', t => {
 test('node CLI regenerates only machine-local launcher and hook entries', t => {
   const root = h.project(t);
   assert.equal(run(root, ['init', '--platform=claude', '--json']).status, 0);
-  fs.rmSync(path.join(root, '.code-flow/launcher/hook.sh'));
+  const hook = process.platform === 'win32' ? 'hook.cmd' : 'hook.sh';
+  fs.rmSync(path.join(root, '.code-flow/launcher', hook));
   fs.rmSync(path.join(root, '.claude/settings.local.json'));
   const result = run(root, ['node', '--json']);
   assert.equal(result.status, 0, result.stderr);
   const data = JSON.parse(result.stdout);
   assert.equal(data.ok, true);
   assert.equal(data.action, 'node');
-  assert.ok(fs.existsSync(path.join(root, '.code-flow/launcher/hook.sh')));
+  assert.ok(fs.existsSync(path.join(root, '.code-flow/launcher', hook)));
   assert.ok(fs.existsSync(path.join(root, '.claude/settings.local.json')));
+  assert.equal(fs.existsSync(path.join(root, '.opencode')), false);
+  assert.equal(fs.existsSync(path.join(root, '.costrict')), false);
   const dry = JSON.parse(run(root, ['node', '--dry-run', '--json']).stdout);
   assert.deepEqual(dry.changes, []);
 });

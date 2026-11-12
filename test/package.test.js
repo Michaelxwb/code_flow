@@ -38,7 +38,7 @@ test('tarball contains only v1 and installs globally into an isolated prefix', t
   assert.ok(fs.existsSync(entry));
   const project = h.project(t); h.spec(project); const task = h.task(project);
   const version = spawnSync(process.execPath, [entry, '--version'], { encoding: 'utf8' });
-  assert.equal(version.stdout.trim(), '1.0.0');
+  assert.equal(version.stdout.trim(), require('../package.json').version);
   const initialized = spawnSync(process.execPath, [entry, 'init', '--platform=codex', '--json'],
     { cwd: project, encoding: 'utf8' });
   assert.equal(initialized.status, 0, initialized.stderr);

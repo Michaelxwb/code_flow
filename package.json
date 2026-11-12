@@ -1,6 +1,6 @@
 {
   "name": "@michaelxwb/code-flow",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Global Node-only spec injection and task-to-spec workflow for AI coding agents",
   "license": "UNLICENSED",
   "bin": {

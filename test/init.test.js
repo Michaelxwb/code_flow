@@ -28,7 +28,7 @@ test('fresh global init is idempotent and dry-run writes nothing', async t => {
   assert.deepEqual(names.sort(), ['config.json', 'launcher', 'specs', 'tasks', 'templates']);
   assert.ok(fs.existsSync(path.join(root, '.code-flow/templates/prd.md')));
   assert.ok(fs.existsSync(path.join(root, '.code-flow/templates/task.md')));
-  for (const name of ['bridge.cjs', 'hook.sh', 'hook.cmd', 'hook.ps1'])
+  for (const name of init.launcherTemplates())
     assert.ok(fs.existsSync(path.join(root, '.code-flow/launcher', name)), name);
 });
 test('init installs a project guidelines starter and cf-init references it', async t => {
@@ -339,25 +339,47 @@ test('node regenerates only machine-local launcher and hook files', async t => {
     '.claude/commands/cf-task/prd.md', '.codex/hooks.json'];
   const before = new Map(protectedFiles.map(name =>
     [name, fs.readFileSync(path.join(root, name), 'utf8')]));
-  for (const name of ['.code-flow/launcher/hook.sh', '.code-flow/launcher/hook.cmd',
-    '.claude/settings.local.json', '.costrict/settings.local.json',
-    '.opencode/plugins/code-flow/index.js'])
-    fs.rmSync(path.join(root, name));
+  const hooks = init.launcherTemplates().filter(name => name.startsWith('hook.'));
+  for (const name of hooks) fs.rmSync(path.join(root, '.code-flow/launcher', name));
+  for (const name of ['.claude/settings.local.json', '.costrict/settings.local.json',
+    '.opencode/plugins/code-flow/index.js']) fs.rmSync(path.join(root, name));
   const result = await init.node(root, {});
   assert.equal(result.ok, true);
-  assert.ok(result.changes.some(item => item.path === '.code-flow/launcher/hook.sh'));
-  for (const name of ['.code-flow/launcher/hook.sh', '.code-flow/launcher/hook.cmd',
-    '.claude/settings.local.json', '.costrict/settings.local.json',
+  assert.ok(result.changes.some(item => item.path === '.code-flow/launcher/' + hooks[0]));
+  for (const name of hooks)
+    assert.ok(fs.existsSync(path.join(root, '.code-flow/launcher', name)), name);
+  for (const name of ['.claude/settings.local.json', '.costrict/settings.local.json',
     '.opencode/plugins/code-flow/index.js'])
     assert.ok(fs.existsSync(path.join(root, name)), name);
   for (const [name, text] of before)
     assert.equal(fs.readFileSync(path.join(root, name), 'utf8'), text, name);
   const settings = JSON.parse(fs.readFileSync(path.join(root, '.claude/settings.local.json'), 'utf8'));
   assert.ok(settings.hooks && settings.hooks.UserPromptSubmit);
-  assert.ok(JSON.stringify(settings).includes('launcher/hook.sh'));
   const dry = await init.node(root, { dryRun: true });
   assert.deepEqual(dry.changes, []);
   await assert.rejects(init.node(empty(t)), /config/);
+});
+
+test('node rewrites node paths only for initialized platforms', async t => {
+  const root = empty(t);
+  await init.init(root, { platform: 'all' });
+  const hook = init.launcherTemplates().find(name => name.startsWith('hook.'));
+  const hookFile = path.join(root, '.code-flow/launcher', hook);
+  const plugin = path.join(root, '.opencode/plugins/code-flow/index.js');
+  fs.writeFileSync(hookFile, fs.readFileSync(hookFile, 'utf8')
+    .replace(process.execPath, '/wrong/node'));
+  fs.writeFileSync(plugin, fs.readFileSync(plugin, 'utf8')
+    .replace(process.execPath, '/wrong/node'));
+  const codexHooks = fs.readFileSync(path.join(root, '.codex/hooks.json'), 'utf8');
+  const codexConfig = fs.readFileSync(path.join(root, '.codex/config.toml'), 'utf8');
+  const result = await init.node(root, { node: '/new/node', entry: '/new/entry.js' });
+  assert.equal(result.ok, true);
+  assert.ok(fs.readFileSync(hookFile, 'utf8').includes('/new/node'));
+  assert.ok(fs.readFileSync(plugin, 'utf8').includes('/new/node'));
+  assert.equal(fs.readFileSync(path.join(root, '.codex/hooks.json'), 'utf8'), codexHooks);
+  assert.equal(fs.readFileSync(path.join(root, '.codex/config.toml'), 'utf8'), codexConfig);
+  for (const name of ['.costrict', '.codex', '.agents'])
+    assert.ok(fs.existsSync(path.join(root, name)), name);
 });
 
 test('init --platform=all installs all four user command layouts', async t => {

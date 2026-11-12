@@ -7,7 +7,7 @@ Run the globally installed `code-flow init --platform=<claude|codex|costrict|ope
 
 `init` overwrites tool-owned templates under `.code-flow/templates/` and platform skills/hooks. It preserves `.code-flow/specs/`, `.code-flow/tasks/` and an existing `config.json`. If it reports `conflicts`, resolve those paths and re-run; other files are already updated.
 
-Other clones only need the global CLI installed, then `code-flow node`; it writes this machine's launcher, local hooks and OpenCode plugin without changing shared templates, skills, instructions, Specs or Tasks.
+Other clones only need the global CLI installed, then `code-flow node`; it detects platforms already initialized in the repository and rewrites this machine's launcher and existing local connector paths without changing shared templates, skills, instructions, Specs or Tasks.
 
 For an existing nonempty `.code-flow` without a valid v1 config, preserve it outside the project and manually clear earlier managed platform entries first. Do not write conversion or cleanup scripts.
 
