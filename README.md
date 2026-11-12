@@ -11,7 +11,9 @@ npm i -g @michaelxwb/code-flow
 code-flow init --platform=codex
 ```
 
-平台可选 claude、codex、costrict、opencode。Codex 按宿主要求审阅并信任新的 Hook。所有项目共享当前全局版本；更新 Node 或全局安装路径后，重新 init。
+平台可选 claude、codex、costrict、opencode。Codex 按宿主要求审阅并信任新的 Hook。所有项目共享当前全局版本；更新 Node 或全局安装路径后，重新执行 `code-flow node` 或 init。
+
+其他开发者拉取项目后（已安装全局包）只需执行 `code-flow node`：它生成当前机器的 launcher、本地 Hook 和 OpenCode 插件，不修改共享 templates、skills、Specs 或 Tasks，无需重复 init。
 
 init 会安装 `.code-flow/templates/project-guidelines.md` 作为项目规范 starter；`cf-init` 会据此把项目特有规范写到 `CLAUDE.md`/`AGENTS.md` 的托管块之外，并把 `.code-flow/specs` 明确为规范来源。
 

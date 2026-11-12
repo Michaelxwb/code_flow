@@ -332,6 +332,34 @@ test('launcher bridge exits when stdin stalls past its deadline', async t => {
   assert.equal(code, 0);
 });
 
+test('node regenerates only machine-local launcher and hook files', async t => {
+  const root = empty(t);
+  await init.init(root, { platform: 'all' });
+  const protectedFiles = ['.code-flow/templates/prd.md', 'CLAUDE.md', 'AGENTS.md',
+    '.claude/commands/cf-task/prd.md', '.codex/hooks.json'];
+  const before = new Map(protectedFiles.map(name =>
+    [name, fs.readFileSync(path.join(root, name), 'utf8')]));
+  for (const name of ['.code-flow/launcher/hook.sh', '.code-flow/launcher/hook.cmd',
+    '.claude/settings.local.json', '.costrict/settings.local.json',
+    '.opencode/plugins/code-flow/index.js'])
+    fs.rmSync(path.join(root, name));
+  const result = await init.node(root, {});
+  assert.equal(result.ok, true);
+  assert.ok(result.changes.some(item => item.path === '.code-flow/launcher/hook.sh'));
+  for (const name of ['.code-flow/launcher/hook.sh', '.code-flow/launcher/hook.cmd',
+    '.claude/settings.local.json', '.costrict/settings.local.json',
+    '.opencode/plugins/code-flow/index.js'])
+    assert.ok(fs.existsSync(path.join(root, name)), name);
+  for (const [name, text] of before)
+    assert.equal(fs.readFileSync(path.join(root, name), 'utf8'), text, name);
+  const settings = JSON.parse(fs.readFileSync(path.join(root, '.claude/settings.local.json'), 'utf8'));
+  assert.ok(settings.hooks && settings.hooks.UserPromptSubmit);
+  assert.ok(JSON.stringify(settings).includes('launcher/hook.sh'));
+  const dry = await init.node(root, { dryRun: true });
+  assert.deepEqual(dry.changes, []);
+  await assert.rejects(init.node(empty(t)), /config/);
+});
+
 test('init --platform=all installs all four user command layouts', async t => {
   const root = empty(t);
   const result = await init.init(root, { platform: 'all' });

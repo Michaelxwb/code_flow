@@ -61,6 +61,22 @@ test('doctor JSON follows schema, is read-only and exits by severity', t => {
   assert.ok(JSON.parse(broken.stdout).summary.error >= 1);
 });
 
+test('node CLI regenerates only machine-local launcher and hook entries', t => {
+  const root = h.project(t);
+  assert.equal(run(root, ['init', '--platform=claude', '--json']).status, 0);
+  fs.rmSync(path.join(root, '.code-flow/launcher/hook.sh'));
+  fs.rmSync(path.join(root, '.claude/settings.local.json'));
+  const result = run(root, ['node', '--json']);
+  assert.equal(result.status, 0, result.stderr);
+  const data = JSON.parse(result.stdout);
+  assert.equal(data.ok, true);
+  assert.equal(data.action, 'node');
+  assert.ok(fs.existsSync(path.join(root, '.code-flow/launcher/hook.sh')));
+  assert.ok(fs.existsSync(path.join(root, '.claude/settings.local.json')));
+  const dry = JSON.parse(run(root, ['node', '--dry-run', '--json']).stdout);
+  assert.deepEqual(dry.changes, []);
+});
+
 test('Hook CLI parses native stdin, ignores blank input and never blocks malformed data', t => {
   const root = h.project(t, { always: ['cli/runtime'] }); h.spec(root);
   const good = run(root, ['hook', 'prompt', '--format=codex'], JSON.stringify({ cwd: root, prompt: 'continue', session_id: 'x' }));

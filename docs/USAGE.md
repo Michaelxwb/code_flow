@@ -13,6 +13,14 @@ code-flow init --platform=all
 
 每个使用的平台安装一次。之后 code-flow init 更新当前项目全部已安装的 v1 平台。init --dry-run 只展示变更；不写目录、绑定或锁。
 
+其他开发者拉取项目后（已安装全局包）执行：
+
+```bash
+code-flow node [--platform=claude|codex|costrict|opencode|all] [--json]
+```
+
+`node` 只生成当前机器的 launcher、`.claude`/`.costrict` 本地 Hook 和 OpenCode 插件，不修改共享 templates、skills、instructions、Specs 或 Tasks。Node 或全局安装路径变化后重跑即可。
+
 init 还会安装 `.code-flow/templates/project-guidelines.md` 作为项目规范 starter。`cf-init` 会据此把项目特有规范写到 `CLAUDE.md` / `AGENTS.md` 的 code-flow 托管块之外，并把 `.code-flow/specs` 明确为规范事实源。受管 skill/插件被用户修改或 Codex 配置无法解析时，init 跳过该文件并在 `conflicts` 中报告，其他文件照常写入；解决后重跑。
 
 Hook 通过项目 bridge 校验 PATH 全局包与协议后优先使用，回退初始化时的固定 Node/JS。项目本地 bin 不参与选择；错误降级且不阻断。两种入口均失效时重新 init，doctor 给出诊断；宿主加载与信任需在宿主中确认。
