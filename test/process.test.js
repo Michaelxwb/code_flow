@@ -59,7 +59,7 @@ test('default collect writes stable process files and merges worktree events', t
   const collected = run(root, ['process', 'collect', '--json']);
   assert.equal(collected.status, 0, collected.stderr);
   const data = JSON.parse(collected.stdout);
-  assert.match(data.out, /\.code-flow\/process\/analysis$/);
+  assert.ok(data.out.endsWith(path.join('.code-flow', 'process', 'analysis')));
   for (const name of ['environment.json', 'summary.json', 'worktree-events.jsonl']) {
     assert.ok(fs.existsSync(path.join(root, '.code-flow/process', name)), name);
   }
