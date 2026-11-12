@@ -10,7 +10,7 @@ if [ ! -f "$bridge" ]; then
   printf 'code-flow launcher missing; run init again\n' >&2
   exit 0
 fi
-if code_flow_output=$("$node" "$bridge" --format "$format" --node '/Users/jahan/.nvm/versions/node/v24.17.0/bin/node' --entry '/Users/jahan/workspace/code_flow/bin/code-flow.js'); then
+if code_flow_output=$("$node" "$bridge" --format "$format" --node '/Users/jahan/.nvm/versions/node/v24.17.0/bin/node' --entry '/Users/jahan/.nvm/versions/node/v24.17.0/lib/node_modules/@michaelxwb/code-flow/bin/code-flow.js'); then
   if [ -n "$code_flow_output" ]; then
     printf '%s\n' "$code_flow_output"
   fi

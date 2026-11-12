@@ -3,7 +3,7 @@ name: cf-task-archive
 description: Archive a completed requirement after applying Spec Deltas.
 ---
 <!-- code-flow:v1 -->
-Read `code-flow task status <requirement-dir> --json`. Every TASK in the one requirement task document must be `done`.
+Read `code-flow task status <requirement-dir> --json`. Every TASK in the one requirement task document must be `done`. If a TASK's Spec Delta needs review or correction first, use `cf-spec` (`code-flow spec learn --dry-run`).
 
 Preview and apply:
 

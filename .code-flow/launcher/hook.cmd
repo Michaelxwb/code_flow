@@ -11,5 +11,5 @@ if not exist "%ROOT%\.code-flow\launcher\bridge.cjs" (
   echo code-flow launcher missing; run init again 1>&2
   exit /b 0
 )
-"%NODE%" "%ROOT%\.code-flow\launcher\bridge.cjs" --format "%FORMAT%" --node "/Users/jahan/.nvm/versions/node/v24.17.0/bin/node" --entry "/Users/jahan/workspace/code_flow/bin/code-flow.js"
+"%NODE%" "%ROOT%\.code-flow\launcher\bridge.cjs" --format "%FORMAT%" --node "/Users/jahan/.nvm/versions/node/v24.17.0/bin/node" --entry "/Users/jahan/.nvm/versions/node/v24.17.0/lib/node_modules/@michaelxwb/code-flow/bin/code-flow.js"
 exit /b 0

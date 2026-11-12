@@ -6,6 +6,8 @@
 
 工作流级别来自 `.code-flow/config.json` 的 `workflow`：`hook`（默认）使用 Spec 注入加一份带声明测试的任务文档，不要求 PRD/design/scenarios；`full` 增加 PRD/design/scenarios 流程。设计文档是项目资产，不作为 prompt 输入；只有 Spec 会被注入。
 
+文档流程：`cf-task:prd` → `cf-task:align` → `cf-task:plan` → `cf-task:start`；全部 TASK done 后在协调工作区执行 `cf-task:archive`。Spec 检查/沉淀用 `cf-spec`，健康检查用 `cf-check`。
+
 标记完成前，用 `task finish <task-document>.md --task TASK-NNN` 执行声明的测试。测试应限定在有意义的 unit/integration 回归；优先一次框架调用，使用框架自己的 workers。
 
 archive 应用声明的 Spec Delta 并移动需求；CI 独立执行完整回归和 E2E。使用 `cf-task:prd`、`cf-task:align` 和 `cf-task:plan` 处理文档流程；不要为每个 Task 建一个文件。

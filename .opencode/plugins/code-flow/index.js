@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 const NODE = "/Users/jahan/.nvm/versions/node/v24.17.0/bin/node";
-const ENTRY = "/Users/jahan/workspace/code_flow/bin/code-flow.js";
+const ENTRY = "/Users/jahan/.nvm/versions/node/v24.17.0/lib/node_modules/@michaelxwb/code-flow/bin/code-flow.js";
 function invoke(directory, event, signal) {
   return new Promise((resolve, reject) => {
     const bridge = join(directory, ".code-flow/launcher/bridge.cjs");

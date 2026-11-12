@@ -38,4 +38,4 @@ code-flow task parallel merge --run-id <id> --json
 code-flow task parallel cleanup --run-id <id> --json
 ```
 
-If merge or integration fails, stop and keep the worktrees, branches and ledger for inspection. Do not run `task archive` inside a worker; archive only in the coordinator worktree after the run is complete. E2E and full regression stay in CI.
+If merge or integration fails, stop and keep the worktrees, branches and ledger for inspection. Do not run `task archive` inside a worker; archive only in the coordinator worktree after the run is complete. After every TASK is done, use `cf-task:archive` in the coordinator worktree. E2E and full regression stay in CI.
