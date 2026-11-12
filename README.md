@@ -104,7 +104,7 @@ Hook 只在用户提交 prompt 时读取并交付上下文。没有编辑/Stop �
 code-flow process collect --out <dir> [--transcript <host-session.jsonl>]
 ```
 
-不带 `--out` 时默认写到 `.code-flow/process/`：`events.jsonl`、合并后的 `worktree-events.jsonl`、`environment.json`、`summary.json`，完整快照在 `analysis/`；带 `--out` 时全部写到指定目录。事件包含 task/session/注入引用等元数据但不保存规则正文或 prompt 原文。手动压缩传递。
+不带 `--out` 时默认写到 `.code-flow/process/`：`events.jsonl`、合并后的 `worktree-events.jsonl`、`environment.json`、`summary.json`，完整快照在 `analysis/`；带 `--out` 时全部写到指定目录。worker cleanup 会自动把 worktree 事件快照到协调工作区；事件包含 task/session/注入引用等元数据但不保存规则正文或 prompt 原文。手动压缩传递。
 
 ## 大测试集
 

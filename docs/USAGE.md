@@ -308,7 +308,7 @@ Hook 可以提供 session token；cf-task skill 会把它传给 `--session`：
 code-flow task start <task-doc>.md --task TASK-001 --session <token>
 ```
 
-绑定后，后续 prompt 会注入该 Task 的 `Spec-Refs`，不依赖 prompt 里有没有文件路径。如果 Hook 报 `session_unbound`，说明当前 token 没有绑定 Task；用当前 Hook 的 token 重新 start。没有绑定时，只有显式 task 引用或 prompt 中的文件路径能触发注入。
+绑定后，后续 prompt 会注入该 Task 的 `Spec-Refs`，不依赖 prompt 里有没有文件路径。如果 Hook 报 `session_unbound`，说明当前 token 没有绑定 Task；用当前 Hook 的 token 重新 start。Task 完成后 binding 仍指向它时，Hook 会自动切换到该需求的全部 Spec-Refs，供最终验收/审查使用。没有绑定时，只有显式 task 引用或 prompt 中的文件路径能触发注入。`task start` 未传 `--session` 会返回 `session_missing` 诊断。
 
 也可以在当前 prompt 中用独立行显式指定：
 
@@ -403,8 +403,9 @@ code-flow task parallel cleanup --run-id <id> --json
 - `collect` 核对完整 diff 和准确 SHA；
 - `merge` 做三方任务文档合并；同段冲突不会采用 done 优先；随后聚合重跑本批相关测试，配置了 `tests.regression` 时再追加一次项目回归；
 - 合并/集成失败时保留 worktree、分支和 ledger 供检查；
-- 每个批次成功后 `cleanup` 删除 worker worktree 和分支，但保留 `run.json` 供审计；
+- 每个批次成功后 `cleanup` 删除 worker worktree 和分支，但保留 `run.json` 供审计；删除 worktree 前会自动把其中事件快照到 `worktree-events.jsonl`。
 - 最终 `task archive` 会统一清除该需求的已完成 run ledger；如果有未清理的 worker worktree，archive 会报 `worktree_not_cleaned`；
+- `task status` / `task archive` 也可以直接接收任务文档路径，自动使用其所在需求目录；
 - 需要提前清理时可用 `cleanup --purge`；清理前可用 `task parallel status --run-id <id>` 核对。
 - `.code-flow/worktrees` 中没有 `run.json` 的真实 worktree 是用户/历史资源，code-flow 不自动删除；归档只清理本次需求关联的 managed run ledger。
 

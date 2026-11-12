@@ -27,6 +27,11 @@ test('does not infer the sole active task, but start binds a session precisely',
   assert.ok(ended.diagnostics.some(item => item.code === 'binding_stale'));
 });
 
+test('bare extension tokens are not treated as file paths', t => {
+  const root = h.project(t);
+  assert.deepEqual(hook.paths('look at .md and .json', root), []);
+});
+
 test('unclosed fences never become task directives, and Costrict sessions are distinct', t => {
   const root = h.project(t); h.spec(root); const file = h.task(root);
   const fenced = hook.build(event(root, '~~~text\ntask: ' + file + '#TASK-001'), 'codex');

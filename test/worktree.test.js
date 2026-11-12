@@ -499,7 +499,11 @@ test('integration reruns the merged batch, blocks on failure and retries merged 
   await finishWorker(workerOne, file, 'TASK-001', { 'parts/one.txt': 'one\n' });
   await finishWorker(workerTwo, file, 'TASK-002', { 'parts/two.txt': 'two\n' });
   worktree.collect(root, 'run-integration');
-  await assert.rejects(worktree.merge(root, 'run-integration'), /integration tests failed/);
+  await assert.rejects(worktree.merge(root, 'run-integration'), error => {
+    assert.equal(error.code, 'integration_failed');
+    assert.ok(error.details.integration.failed.length);
+    return true;
+  });
   let ledger = worktree.readLedger(root, 'run-integration');
   assert.equal(ledger.status, 'blocked');
   assert.equal(ledger.integration.status, 'failed');
@@ -702,6 +706,27 @@ test('cleanup --purge removes the run ledger directory after workers', async t =
   assert.equal(cleaned.purged, true);
   assert.equal(fs.existsSync(path.join(root, '.code-flow/worktrees/run-purge')), false);
   assert.throws(() => worktree.readLedger(root, 'run-purge'), /Missing worktree run/);
+});
+
+test('cleanup snapshots worker events before removing the worktree', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'run-events', noInit: true });
+  const worker = path.join(root, prepared.worktrees[0].path);
+  await finishWorker(worker, file, 'TASK-001');
+  worktree.collect(root, 'run-events');
+  await worktree.merge(root, 'run-events');
+  fs.mkdirSync(path.join(worker, '.code-flow/process'), { recursive: true });
+  fs.writeFileSync(path.join(worker, '.code-flow/process/events.jsonl'), JSON.stringify({
+    version: 2, at: new Date().toISOString(), command: 'hook prompt', args: [], cwd: worker,
+    exit: 0, ms: 1, summary: { task: file + '#TASK-001' } }) + '\n');
+  worktree.cleanup(root, 'run-events', true);
+  const events = fs.readFileSync(path.join(root, '.code-flow/process/worktree-events.jsonl'), 'utf8')
+    .trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(events.length, 1);
+  assert.equal(events[0].source, 'worktree');
+  assert.equal(events[0].run_id, 'run-events');
+  assert.equal(events[0].task, 'TASK-001');
 });
 
 test('cleanup protects user changes and force records the abandonment', async t => {

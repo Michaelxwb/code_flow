@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const { spawnSync, spawn } = require('node:child_process');
 const { once } = require('node:events');
 const h = require('./helpers');
+const session = require('../lib/session');
 const cli = path.resolve(__dirname, '../bin/code-flow.js');
 const version = require('../package.json').version;
 function run(root, args, input, env = {}) {
@@ -29,6 +30,13 @@ test('public CLI exposes v1 and rejects unknown arguments and historical command
   assert.equal(capabilities.hook_protocol, 1);
   assert.equal(capabilities.version, version);
 });
+test('task status accepts a task document path and uses its directory', t => {
+  const root = h.project(t); h.spec(root); const file = h.task(root);
+  const status = run(root, ['task', 'status', file, '--json']);
+  assert.equal(status.status, 0, status.stderr);
+  assert.equal(JSON.parse(status.stdout).items.length, 1);
+});
+
 test('CLI lifecycle starts from a subdirectory and executes only declared commands', t => {
   const root = h.project(t); h.spec(root); const file = h.task(root);
   fs.mkdirSync(path.join(root, 'src'));
@@ -148,6 +156,21 @@ test('hook reports an unbound session without rejecting the prompt', t => {
   assert.equal(hooked.status, 0, hooked.stderr);
   assert.match(hooked.stderr, /session_unbound/);
   assert.equal(typeof JSON.parse(hooked.stdout).hookSpecificOutput.additionalContext, 'string');
+});
+
+test('stale session binding falls back to requirement Spec-Refs', async t => {
+  const root = h.project(t); h.spec(root); const file = h.task(root);
+  const token = session.token(root, 'codex', 'stale');
+  const started = run(root, ['task', 'start', file, '--task', 'TASK-001',
+    '--session', token, '--json']);
+  assert.equal(started.status, 0, started.stderr);
+  const finished = run(root, ['task', 'finish', file, '--task', 'TASK-001', '--json']);
+  assert.equal(finished.status, 0, finished.stderr);
+  const hooked = run(root, ['hook', 'prompt', '--format=codex'],
+    JSON.stringify({ cwd: root, session_id: 'stale', prompt: 'verify the requirement' }));
+  assert.equal(hooked.status, 0, hooked.stderr);
+  assert.match(hooked.stderr, /binding_stale/);
+  assert.ok(JSON.parse(hooked.stdout).hookSpecificOutput.additionalContext.includes('Current rule.'));
 });
 
 test('event log records OpenCode prompt metadata', t => {

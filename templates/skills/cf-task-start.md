@@ -11,7 +11,7 @@ Single Task:
 code-flow task start <task-document>.md --task TASK-001 --session <token>
 ```
 
-Pass the token from the current Hook so later prompts inherit the Task's `Spec-Refs`. If the Hook reports `session_unbound`, start with the current token; without a binding only explicit task refs or prompt paths can inject Specs.
+Pass the token from the current Hook so later prompts inherit the Task's `Spec-Refs`. A missing token returns `session_missing`; a done Task automatically falls back to the requirement's Spec-Refs for final verification. If the Hook reports `session_unbound`, start with the current token; without a binding only explicit task refs or prompt paths can inject Specs.
 
 Before `finish`, update the TASK Checklist to reflect only work that is actually complete. A successful `finish` checks any remaining `- [ ]` items in that TASK section; do not mark work you did not do.
 
