@@ -16,6 +16,7 @@ code-flow task archive <requirement-dir> --json
 
 Archive:
 - applies each TASK's Spec Delta in the coordinator worktree;
+- checks any remaining checklist items on done TASKs;
 - clears completed code-flow run ledgers for this requirement;
 - moves the whole requirement directory;
 - does not run tests, E2E, or scenarios.

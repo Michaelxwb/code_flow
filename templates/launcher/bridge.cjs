@@ -8,7 +8,10 @@ const { spawn, spawnSync } = require('child_process');
 const MAX_INPUT = 1024 * 1024;
 const MAX_OUTPUT = 1024 * 1024;
 const MAX_DIAGNOSTIC = 4096;
-const PROBE_MS = 800;
+// Internal test override; production default is 800ms.
+const CONFIGURED_PROBE_MS = Number(process.env.CF_PROBE_MS);
+const PROBE_MS = Number.isSafeInteger(CONFIGURED_PROBE_MS) && CONFIGURED_PROBE_MS > 0
+  ? Math.min(CONFIGURED_PROBE_MS, 30000) : 800;
 const RUN_RESERVE_MS = 1200;
 const CACHE_TTL_MS = 600000;
 const TOTAL_MS = 2000;

@@ -141,6 +141,30 @@ test('event log redacts session tokens and records task metadata', t => {
   assert.ok(event.summary.emitted_refs.length >= 1);
 });
 
+test('hook reports an unbound session without rejecting the prompt', t => {
+  const root = h.project(t); h.spec(root);
+  const hooked = run(root, ['hook', 'prompt', '--format=codex'],
+    JSON.stringify({ cwd: root, session_id: 'unbound', prompt: 'continue' }));
+  assert.equal(hooked.status, 0, hooked.stderr);
+  assert.match(hooked.stderr, /session_unbound/);
+  assert.equal(typeof JSON.parse(hooked.stdout).hookSpecificOutput.additionalContext, 'string');
+});
+
+test('event log records OpenCode prompt metadata', t => {
+  const root = h.project(t); h.spec(root); const file = h.task(root);
+  const log = path.join(root, 'events.jsonl');
+  const input = JSON.stringify({ directory: root, event: { sessionID: 'opencode',
+    prompt: { text: 'task: ' + file + '#TASK-001' } } });
+  const hooked = run(root, ['hook', 'prompt', '--format=opencode'], input, { CF_EVENT_LOG: log });
+  assert.equal(hooked.status, 0, hooked.stderr);
+  const event = fs.readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line)).at(-1);
+  assert.equal(event.command, 'hook prompt');
+  assert.ok(event.summary.prompt_bytes > 0);
+  assert.match(event.summary.prompt_hash, /^[a-f0-9]{16}$/);
+  assert.equal(event.summary.task, file + '#TASK-001');
+  assert.match(event.summary.session, /^[a-f0-9]{16}$/);
+});
+
 test('capture write failures never change command or hook protocol', t => {
   const root = h.project(t); h.spec(root); h.task(root);
   h.write(root, '.code-flow/process', 'not a directory');

@@ -408,7 +408,7 @@ cli/runtime#RULE-001
 - [ ] 完成平台启动和故障降级。
 - [ ] 执行声明的相关测试。
 
-> `task finish` 成功时自动勾选本 TASK 的剩余 `- [ ]`；失败时保持未勾选。Checklist 是人工步骤，不替代 `tests`。
+> `task finish` 成功时自动勾选本 TASK 的剩余 `- [ ]`；archive 会对已完成但历史未勾选的 TASK 补齐。Checklist 是人工步骤，不替代 `tests`。
 
 ### Spec Delta
 
@@ -533,7 +533,7 @@ os.tmpdir()/code-flow/repos/<repository-key>/
 - 同一需求的 archive/learn 与 Task 写入按固定顺序协调：仓库协调锁（仅编排/归档/学习）→ 需求锁 → 按 TASK ID 排序的段锁 → Spec 写锁/短文档写锁；不得持有文档写锁等待测试、group 或其他段锁。
 - 原子替换使用目标目录的短暂临时文件并及时清除；崩溃残留不作为事实源。
 
-run ledger 位于 `.code-flow/worktrees/<run-id>/run.json`，可由 status/doctor 查看，随 `worktrees/` gitignore。批次 cleanup 默认保留它供审计；需求 archive 时统一清除已完成 run 的 ledger。它记录编排意图、提交与恢复进度，不充当可跨次复用的测试缓存，不被 prompt Hook 读取。Spec 内 Applied Deltas 与 Task 内 Verification 属于用户文档产物。
+run ledger 位于 `.code-flow/worktrees/<run-id>/run.json`，可由 status/doctor 查看，随 `worktrees/` gitignore。批次 cleanup 默认保留它供审计；需求 archive 时统一清除已完成 run 的 ledger。worktree 事件日志在 collect 时按事件身份合并，已有记录不会被空结果覆盖。它记录编排意图、提交与恢复进度，不充当可跨次复用的测试缓存，不被 prompt Hook 读取。Spec 内 Applied Deltas 与 Task 内 Verification 属于用户文档产物。
 
 ---
 

@@ -197,6 +197,8 @@ test('archive applies Delta then moves the whole requirement without testing', a
   assert.equal(result.ok, true);
   assert.equal(fs.existsSync(path.join(root, dir)), false);
   assert.ok(fs.existsSync(path.join(result.archived_to, 'demo.md')));
+  assert.match(fs.readFileSync(path.join(result.archived_to, 'demo.md'), 'utf8'),
+    /### Checklist\n\n- \[x\] Deliver behavior\./);
   assert.equal(spec.load(root, 'cli/runtime').rules.length, 2);
 });
 
@@ -347,6 +349,7 @@ test('finish records tree and declaration provenance', async t => {
   assert.match(summary.verification, / tests=[a-f0-9]{12} head=none dirty=unknown/);
   assert.equal(summary.tests_changed, false);
   assert.equal(summary.verified_head, null);
+  assert.equal(summary.dirty, null);
   await task.transition(root, file, 'TASK-001', 'reopen', 'recheck');
   const location = path.join(root, file);
   fs.writeFileSync(location, fs.readFileSync(location, 'utf8').replace('"id": "ok"', '"id": "changed"'));

@@ -74,6 +74,13 @@ test('default collect writes stable process files and merges worktree events', t
   assert.ok(summary.events.total >= 2);
   assert.ok(fs.existsSync(path.join(root, '.code-flow/process/analysis/events.jsonl')));
   assert.ok(fs.existsSync(path.join(root, '.code-flow/process/analysis/worktree-events.jsonl')));
+  fs.rmSync(path.join(root, '.code-flow/worktrees/run-wt/TASK-001/.code-flow/process/events.jsonl'));
+  const again = run(root, ['process', 'collect', '--json']);
+  assert.equal(again.status, 0, again.stderr);
+  assert.equal(fs.readFileSync(path.join(root, '.code-flow/process/worktree-events.jsonl'), 'utf8')
+    .trim().split('\n').length, 1);
+  const kept = JSON.parse(fs.readFileSync(path.join(root, '.code-flow/process/summary.json'), 'utf8'));
+  assert.equal(kept.events.worktree, 1);
 });
 
 test('process collect copies an optional transcript', t => {

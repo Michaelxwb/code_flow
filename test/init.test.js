@@ -31,6 +31,21 @@ test('fresh global init is idempotent and dry-run writes nothing', async t => {
   for (const name of init.launcherTemplates())
     assert.ok(fs.existsSync(path.join(root, '.code-flow/launcher', name)), name);
 });
+test('init deduplicates symlinked AGENTS and CLAUDE instruction files', { skip: process.platform === 'win32' }, async t => {
+  const root = empty(t);
+  h.write(root, 'CLAUDE.md', 'User instruction must stay.\n');
+  fs.symlinkSync('CLAUDE.md', path.join(root, 'AGENTS.md'));
+  const result = await init.init(root, { platform: 'all' });
+  assert.equal(result.ok, true, JSON.stringify(result.conflicts));
+  assert.deepEqual(result.conflicts, []);
+  assert.ok(fs.lstatSync(path.join(root, 'AGENTS.md')).isSymbolicLink());
+  const claude = fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8');
+  assert.ok(claude.startsWith('User instruction must stay.'));
+  assert.match(claude, /code-flow:v1 start/);
+  const dry = await init.init(root, { platform: 'all', dryRun: true });
+  assert.deepEqual(dry.changes, []);
+});
+
 test('init installs a project guidelines starter and cf-init references it', async t => {
   const root = empty(t);
   await init.init(root, { platform: 'codex' });
@@ -298,7 +313,8 @@ test('launcher caches a validated PATH package and re-probes after expiry', { sk
   const marker = path.join(os.tmpdir(), 'cf-probe-' + process.pid + '-' + Date.now() + '.log');
   t.after(() => fs.rmSync(marker, { force: true }));
   const fake = fakeGlobal(empty(t), { marker, context: 'CACHED CONTEXT' });
-  const env = { ...process.env, PATH: fake.bin + path.delimiter + process.env.PATH };
+  const env = { ...process.env, PATH: fake.bin + path.delimiter + process.env.PATH,
+    CF_PROBE_MS: '5000' };
   const first = spawnSync('/bin/sh', ['-c', command], { cwd: root, encoding: 'utf8', input: prompt, env });
   assert.equal(first.status, 0, first.stderr);
   assert.equal(JSON.parse(first.stdout).hookSpecificOutput.additionalContext, 'CACHED CONTEXT');

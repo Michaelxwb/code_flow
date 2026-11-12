@@ -11,11 +11,13 @@ Single Task:
 code-flow task start <task-document>.md --task TASK-001 --session <token>
 ```
 
+Pass the token from the current Hook so later prompts inherit the Task's `Spec-Refs`. If the Hook reports `session_unbound`, start with the current token; without a binding only explicit task refs or prompt paths can inject Specs.
+
 Before `finish`, update the TASK Checklist to reflect only work that is actually complete. A successful `finish` checks any remaining `- [ ]` items in that TASK section; do not mark work you did not do.
 
 Batch (dependency layer):
 
-0. The coordinator worktree must be clean before `prepare`; commit or stash user changes. `init_user_content` means a managed/shared file has uncommitted user content — commit or remove it and retry.
+0. The coordinator worktree must be clean before `prepare`; commit or stash user changes. `init_user_content` means one or more managed/shared files have uncommitted user content — the error lists all of them; commit or remove them and retry.
 
 1. Read `Depends`, choose the next ready layer, and create worktrees:
 
@@ -46,4 +48,4 @@ Keep the run ledger after each batch for audit; `cf-task:archive` clears complet
 
 If merge or integration fails, stop and keep the worktrees, branches and ledger for inspection. Do not run `task archive` inside a worker.
 
-Intermediate TASKs do not require a human review gate: each TASK's declared tests are its verification, so continue through all TASKs and dependency batches. After the final TASK is done (or the final batch is merged), stop and present the full diff, test results and Verification summary. Ask the user to perform complete functional verification and code review; do not archive or start new work until the user explicitly confirms. E2E and full regression stay in CI.
+Intermediate TASKs do not require a human review gate: each TASK's declared tests are its verification, so continue through all TASKs and dependency batches. After the final TASK is done (or the final batch is merged), stop and present the full diff, test results and Verification summary. Use `code-flow task status --json` and include `tests_changed` / `dirty` provenance in that summary. Ask the user to perform complete functional verification and code review; do not archive or start new work until the user explicitly confirms. E2E and full regression stay in CI.

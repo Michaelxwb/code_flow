@@ -55,7 +55,7 @@ code-flow init --platform=opencode
 - 写入各平台 commands/skills、托管指令块和 Hook 配置；
 - 保留已有的 `.code-flow/specs/`、`.code-flow/tasks/` 和 `config.json`。
 
-`init --dry-run` 只展示变更。出现 `conflicts` 时，先处理被报告的文件，再重跑；其他文件已经更新。
+`init --dry-run` 只展示变更。出现 `conflicts` 时，先处理被报告的文件，再重跑；其他文件已经更新。`AGENTS.md` 指向 `CLAUDE.md` 的符号链接会按真实文件去重，不会触发并发写入。
 
 ### 1.3 团队里的其他成员
 
@@ -308,6 +308,8 @@ Hook 可以提供 session token；cf-task skill 会把它传给 `--session`：
 code-flow task start <task-doc>.md --task TASK-001 --session <token>
 ```
 
+绑定后，后续 prompt 会注入该 Task 的 `Spec-Refs`，不依赖 prompt 里有没有文件路径。如果 Hook 报 `session_unbound`，说明当前 token 没有绑定 Task；用当前 Hook 的 token 重新 start。没有绑定时，只有显式 task 引用或 prompt 中的文件路径能触发注入。
+
 也可以在当前 prompt 中用独立行显式指定：
 
 ```text
@@ -362,6 +364,7 @@ code-flow task archive <requirement-dir>
 archive：
 
 - 应用每个 TASK 的 Spec Delta；
+- 对已 done 的 TASK 补齐未勾选的 `### Checklist`；
 - 清除该需求的已完成 run ledger（保留未完成 run 的拒绝行为）；
 - 移动整个需求目录到 `.code-flow/tasks/archived/<原日期>/<需求>/`；
 - 不执行测试、E2E 或 scenarios；
@@ -382,7 +385,7 @@ code-flow task parallel prepare --task-file <task-doc>.md \
   --tasks TASK-001,TASK-002 --run-id <id> --workers 2
 ```
 
-- `prepare` 前协调工作区必须干净；先提交或 stash 用户改动。`init_user_content` 表示受管/共享文件里有未提交的用户内容，提交或移除后重试。
+- `prepare` 前协调工作区必须干净；先提交或 stash 用户改动。`init_user_content` 表示受管/共享文件里有未提交的用户内容，错误会一次列出所有文件；提交或移除后重试。
 - `prepare` 只把 Specs、当前需求和 config 形成 baseline；范围外脏改动会被拒绝。
 - 读取 ledger 的 `workers` 和每个 worker 的 `env`；每个 worker 只处理自己的 Task。
 - worker 默认使用全局 CLI；`prepare` 不会安装工具文件。只有需要在 worker 内启动宿主会话时才用 `--init`。
@@ -504,7 +507,7 @@ code-flow process collect --out <output-dir> [--transcript <host-session.jsonl>]
 
 - 带 `--out <dir>` 时全部写到该目录，便于打包传递。
 - `worktree-events.jsonl` 每行带 `source: worktree`、`run_id`、`task`、`worktree`；主 `events.jsonl` 不覆盖。
-- 必须在 `cleanup`/`archive` 之前 collect，否则 worker worktree 内的日志会随 worktree 删除。
+- 必须在 `cleanup`/`archive` 之前 collect，否则 worker worktree 内的日志会随 worktree 删除。已有 `worktree-events.jsonl` 会保留并与新发现的事件合并，不会因为 worktree 已清理而被覆盖成空。
 
 效果分析建议同时提供宿主 transcript，才能把 prompt、注入结果、模型动作、测试结果和成本关联起来。采集包可能包含项目路径、需求文本和对话内容；分享前请审阅。
 
