@@ -75,6 +75,15 @@ test('cwd cannot escape and timeout/parallel fields are strict', t => {
 
 test('runner and per-test env are applied, reserved identity cannot be overridden', async t => {
   const root = h.project(t);
+  const reserved = ['CF_WORKTREE_ID', 'CF_TASK_ID', 'CF_TASK_IDS', 'CF_RUN_ID', 'CF_PORT_OFFSET', 'CF_DB_SUFFIX'];
+  const saved = Object.fromEntries(reserved.map(key => [key, process.env[key]]));
+  for (const key of reserved) delete process.env[key];
+  t.after(() => {
+    for (const key of reserved) {
+      if (saved[key] === undefined) delete process.env[key];
+      else process.env[key] = saved[key];
+    }
+  });
   const code = 'process.stdout.write(JSON.stringify({task:process.env.CF_TASK_IDS,value:process.env.CF_TEST_VALUE}))';
   const result = await verify.run(root, [command('env', code, { env: { CF_TEST_VALUE: 'one' } })], settings,
     { env: { CF_TASK_IDS: 'TASK-001,TASK-002', CF_TASK_ID: '' } });

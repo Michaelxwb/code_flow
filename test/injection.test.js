@@ -38,6 +38,22 @@ test('unclosed fences never become task directives, and Costrict sessions are di
   assert.notEqual(a, b);
 });
 
+test('fence markers with trailing text do not expose quoted task or path directives', t => {
+  const root = h.project(t, { paths: { 'src/**/*.js': ['cli/runtime'] } });
+  h.spec(root); const file = h.task(root);
+  for (const marker of ['~~~', '```']) {
+    const quoted = [marker + 'md', marker + 'js', 'task: ' + file + '#TASK-001',
+      'src/app.js', marker].join('\n');
+    for (const format of ['codex', 'claude', 'costrict']) {
+      const hidden = hook.build(event(root, quoted), format);
+      assert.equal(hidden.task, null);
+      assert.equal(hidden.selected.length, 0);
+      const explicit = hook.build(event(root, quoted + '\ntask: ' + file + '#TASK-001'), format);
+      assert.equal(explicit.task, file + '#TASK-001');
+    }
+  }
+});
+
 test('explicit task overrides binding for one prompt and reads live changes', async t => {
   const root = h.project(t); h.spec(root, 'cli/runtime', 'Old rule.');
   h.spec(root, 'other/runtime', 'Other rule.');
@@ -110,4 +126,22 @@ test('Task identity, duplicate commands, skip flags and state errors are explici
   h.task(root, { status: 'done' });
   await assert.rejects(task.start(root, file, 'TASK-001'), /reopen/);
   assert.throws(() => task.load(root, 'demo.md'), /complete/);
+});
+
+test('a budget too small for any rule still returns a read-more diagnostic', t => {
+  const root = h.project(t, { always: ['cli/runtime'], budget: { maxTokens: 5, maxBytes: 5 } });
+  h.spec(root, 'cli/runtime', '约束');
+  const result = render.inject(root);
+  assert.match(result.text, /Spec budget too small/);
+  assert.match(result.text, /spec inject --full/);
+});
+
+test('rules from one Spec share a single context header', t => {
+  const root = h.project(t, { always: ['cli/runtime'] });
+  h.write(root, '.code-flow/specs/cli/runtime.md',
+    '---\n{"description":"runtime","next_rule":3}\n---\n## Rules\n\n' +
+    '- [RULE-001] First rule.\n- [RULE-002] Second rule.\n');
+  const result = render.inject(root);
+  assert.equal((result.text.match(/^### cli\/runtime$/gm) || []).length, 1);
+  assert.ok(result.text.includes('RULE-001') && result.text.includes('RULE-002'));
 });

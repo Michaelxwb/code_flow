@@ -232,7 +232,8 @@ Hook 不经过 npx、npm exec 或项目 .bin 查找。init 写入稳定的项目
 3. PATH 候选不可用时，检查 init 固定的绝对 Node/JS 入口及相同包/协议身份。PATH 候选有效时优先使用它，支持 Node 管理器切换；两者均不可用时给出诊断并降级。
 4. 选定后使用确定的 Node + JS argv 执行一次 `hook prompt --format=<platform>`。探测不消费 prompt；业务调用失败后不再次调用另一入口，避免已消费 stdin 的重复执行。
 5. bridge 有界读取 stdin（最多 1MiB），有界缓冲 child stdout（最多 1MiB），成功且符合当前平台协议后才交付。非零退出、超时、输出超限或损坏 JSON 均丢弃 child stdout，向 stderr 诊断，返回空原生结果并退出 0。
-6. 探测最多 250ms，探测与业务调用合计最多 2s；宿主 timeout 至少为 3s。超时回收子进程树。性能基准包含探测、bridge 与外层 shell 的全部成本。
+6. 单个探测最多 800ms；探测阶段最多使用总预算的 800ms，至少保留 1200ms 给业务调用；探测与业务调用合计最多 2s，宿主 timeout 至少为 3s。探活耗尽时回退固定入口，不返回空上下文。超时回收子进程树。性能基准包含探测、bridge 与外层 shell 的全部成本。
+7. PATH 选择结果按（PATH、固定入口、包版本、entry mtime）缓存 10 分钟；命中时仍重新校验包身份，过期、损坏或版本变化则重新探测。缓存 best-effort，写失败不影响启动。
 
 `hook capabilities --json` 是无副作用的内部适配接口，不加载项目 config/Task/Spec。响应形状：
 
@@ -285,7 +286,8 @@ exit 0
   },
   "tests": {
     "timeoutSeconds": 120,
-    "jobs": 2
+    "jobs": 2,
+    "regression": null
   },
   "paths": {
     "src/**/*.js": ["cli/runtime"],
@@ -302,6 +304,7 @@ exit 0
 | budget.maxBytes | 否 | 渲染文本 UTF-8 硬字节上限，默认 16384 |
 | tests.timeoutSeconds | 否 | 单条命令默认超时，默认 120 |
 | tests.jobs | 否 | 可并行命令的并发上限，默认 2；必须为正整数 |
+| tests.regression | 否 | 可选的独立回归命令，argv/run 二选一，可带 timeout/cwd/parallel/group/env；只在 task parallel merge 的任务测试之后执行一次。未配置或 null 时不执行，工具不猜命令 |
 | paths | 否 | 具体文件路径的 glob → Spec/Rule 引用列表 |
 
 init 的初始 always 和 paths 均为空；上例表示已整理好 Spec 的项目配置。所有字段均做类型和取值校验。
@@ -620,10 +623,11 @@ read-more: code-flow spec inject --task-file <task-file> --task TASK-001 --full
 - 预算优先级：always → Task 明确引用的单条规则 → Task Spec 级规则 → prompt 路径规则。
 - 同优先级保持配置/Task 引用顺序，文件内保持规则顺序，输出可重复。
 - 以完整规则块为裁剪单位；规则太大时整块省略，不能截掉限定条件或代码围栏。
+- 同一 Spec 的连续规则共用一个 `###`/source/selected-by 头部，减少每轮注入的重复字节。
 - token 估算按 ASCII 约四字符一 token、非 ASCII 保守逐字符计数，并明确标为估算；同时强制 maxBytes。
 - 为任务身份、来源、诊断和 omitted 摘要预留预算；omitted 列表有上限，超出只显示数量与完整读取命令。
 - --json 返回完整 selected/omitted 引用及诊断；Hook 只发送预算内文本。
-- 一个规则也放不下时输出精简的预算诊断与读取路径，仍然不阻断。
+- 一个规则也放不下时始终输出精简的预算诊断与读取路径（即使诊断本身超出预算），不返回空上下文。
 - task start 和 Hook 使用同一 Renderer；spec inject --full 显式绕过展示预算。
 
 ### 5.6 最新内容与沉淀可见性
@@ -702,6 +706,7 @@ OpenCode 进程返回：
 ### 6.4 Codex 与系统启动器
 
 - 合并 .codex/hooks.json 和所需的 features.hooks 配置，保留用户其他设置。
+- features.hooks 只自动维护两种形式：规范 `[features]` 表 + `hooks = true`，或根级单行 `features.hooks = true`。引号键、引号形式的 features 表、inline table、`[[features]]`、多行值和重复表返回 `config_format`，并提示手工改成规范形式；不再猜测边角 TOML。
 - 项目配置层和变更的 Hook 定义需要符合宿主的加载/信任要求；init 显示宿主要求的后续操作，不代替宿主授权。
 - Claude/Costrict 使用其原生 settings 格式；启动器按相应 shell 做存在性守卫和失败降级。
 - POSIX 与 Windows 分别测试退出码、路径引号、入口丢失和进程超时。
@@ -821,15 +826,17 @@ finish 的通过事实限定为此次声明命令成功。done 任务要重新�
 ```text
 ### Verification
 
-- 2026-11-10T10:45:00Z PASS commands=2/2 executed=2 deduped=0 elapsed=1.8s
+- 2026-11-10T10:45:00Z PASS commands=2/2 executed=2 deduped=0 elapsed=1.8s tests=9f2c1a7b3d4e head=4c1f0a9b2d3e dirty=0
   - hook-unit PASS exit=0 duration=0.8s
   - hook-integration PASS exit=0 duration=1.2s
-- 2026-11-10T11:02:10Z FAIL commands=1/2 executed=1 cancelled=1 elapsed=0.6s
+- 2026-11-10T11:02:10Z FAIL commands=1/2 executed=1 cancelled=1 elapsed=0.6s tests=9f2c1a7b3d4e head=4c1f0a9b2d3e dirty=1 tests-changed
   - hook-unit FAIL exit=1 duration=0.6s
   - hook-integration CANCELLED
 ```
 
 这里的数量是命令数量，不虚构框架内部 test case 通过数。记录写入 Task，不建立集中 Evidence Store。
+
+`tests` 是 start 时测试声明的规范化哈希；声明在 start 后被修改时追加 `tests-changed`。`head`/`dirty` 描述实际被测试的树：`head=none` 表示非 Git 项目，`dirty=1` 表示测试跑在未提交的业务改动上（`.code-flow` 文档改动不计入）。这些字段用于追溯，不改变 PASS/FAIL 语义，也不构成额外门禁。
 
 ### 7.9 场景文档与手工验收
 
@@ -839,7 +846,7 @@ finish 的通过事实限定为此次声明命令成功。done 任务要重新�
 
 | 字段 | 说明 |
 |---|---|
-| id | S-/E-/B- 编号，需求内唯一 |
+| id | S-/E-/B- 编号是人工约定；工具只要求单行非空，不校验格式 |
 | title | 场景标题 |
 | level | unit / component / contract / integration / system / e2e / manual |
 | boundary | 关键真实边界；manual 场景写清人工步骤 |
@@ -979,7 +986,7 @@ v1 保留 prepare/collect/merge/cleanup 与并行隔离，删除 evidence/manife
 | status | preparing / running / merging / verifying / cleaning / done / blocked / aborted；done 需集成验证和 cleanup 完成 |
 | worktrees[].status | planned / created / prepared / running / collected / merged / removed / blocked |
 | operation | 空闲为 null；变更前写入 kind、task（如适用）、expected_head、collected_head（如适用）和目标路径，完成后补 result_head/结果再清除 |
-| merge.steps[] | task、collected_head、before_head、after_head、status；after_head 必须对应实际 merge commit 的父提交 |
+| merge.steps[] | task、collected_head、status；正常 merge 另记 before_head、after_head。恢复按 collected_head 的祖先关系补记，不要求唯一定位 merge commit |
 | integration | not-run / running / passed / skipped / failed / invalidated；保存统一批次 env、tested_head、实际命令/去重归属、耗时和失败原因 |
 | cleanup.steps[] | task、path、branch、collected_head；按 planned → worktree-removed → branch-deleted 记录，逐步可重试 |
 | init_changes[] | 仅此 worker 自动 init 的 path、是否 tracked、before/after SHA-256 与托管范围；用于区分精确工具增量，非通用安装清单 |
@@ -994,7 +1001,7 @@ v1 保留 prepare/collect/merge/cleanup 与并行隔离，删除 evidence/manife
 |---|---|
 | baseline commit 已创建，ledger 结果未落盘 | 依据意图中的旧 HEAD、精确提交范围和实际父提交核对；唯一匹配才采用新 HEAD，否则 blocked，不再次盲目 commit |
 | 分支/worktree 只建了一部分，或某个平台 init 失败 | 核对 Git 注册路径、分支和 base_head；仅补缺失步骤。存在同名但身份不符的资源时 blocked，不接管、不删除 |
-| merge commit 成功，ledger 尚未更新 | 查 Git 提交图：first parent=before_head，second parent=collected_head，且该 merge 在当前协调历史中；唯一匹配才补记，不能再次 merge |
+| merge commit 成功，ledger 尚未更新 | 若 collected_head 已是 HEAD 祖先，补记 recovered；不重复 merge，不要求唯一定位 merge commit |
 | Git 仍在合并或代码冲突未解 | 校验 MERGE_HEAD 与预期 collected_head、当前分支和 HEAD；保持现场，等待解决后继续；不自动 abort/reset |
 | 测试中断或 tested_head 与当前 HEAD 不同 | 结果为 failed/invalidated；下次 merge 重新执行全部本批相关命令，不复用旧 PASS |
 | worktree 已移除但分支未删 | 同时检查 Git 注册和文件路径；确认分支 tip 仍是已合入的 collected_head 后仅删对应分支 |
@@ -1009,9 +1016,9 @@ prepare 要从协调工作区的实际快照创建 worker：
 3. 用精确路径形成 baseline commit；没有变化则复用 HEAD。`--no-auto-baseline` 要求上述范围也已干净，复用现有 HEAD；不修改用户提交、不 push。
 4. 记录提交前/后 HEAD 与 `baseline_specs_sha256`。Spec tree hash 按规范化路径排序并包含文件路径及内容；拒绝符号链接/忽略 Spec 导致的不完整快照。
 5. 从记录的 baseline 创建 worker，验证实际 base_head、Task 文档和 Specs 快照一致。
-6. 检测协调工作区已安装的 v1 平台，在每个 worker 自动 `init --platform=<platform>`；`--no-init` 可关闭。init 只写模板、启动器、命令和自身托管配置/指令段，不覆盖 config/specs/tasks。
+6. 默认不初始化 worker：worker 通过全局 CLI 工作。只有需要在 worker 内启动宿主会话时，才用 `--init` 检测已安装平台并执行 `init --platform=<platform>`。init 只写模板、启动器、命令和自身托管配置/指令段，不覆盖 config/specs/tasks。
 7. 将每个 init 的精确变更范围及前后内容指纹写入本 worker 的 init_changes。它们留在本地供宿主加载，**不提交到任务分支、不作为业务合并内容**；若 agent 已提交它们，collect 拒绝。混合文件中的任何额外用户改动也不能作为工具增量豁免。
-8. 任一平台初始化失败，run 进入 blocked，不派发该 worker；保留已完成资源供 prepare 重试。`--no-init` 只跳过工具入口安装，不跳过 baseline/身份校验。
+8. 显式 `--init` 时，任一平台初始化失败会让 run 进入 blocked，不派发该 worker；保留已完成资源供 prepare 重试。不 init 只跳过工具入口安装，不跳过 baseline/身份校验。
 9. 根据 ledger 派发 worker。每次 start/finish 与内部 runner 都从 Git 身份匹配的 ledger 重建 env，而非仅在首次启动 agent 时 export。已有 shell 的 CF_* 身份/隔离值必须与本次 worker 或集成环境一致，否则拒绝，不允许串任务。
 
 环境隔离：
@@ -1039,7 +1046,7 @@ prepare 要从协调工作区的实际快照创建 worker：
 ### 7.10.6 合并后的相关测试
 
 1. 全部已收集 SHA 按顺序合入后，在协调工作区运行本 run 所有 TASK 的 `tests` 并集；使用同一个 runner，不调用 task finish，不改变各段 Status/Verification。
-2. 只收集明确声明的相关 unit/integration 命令，不做全仓发现，不隐式执行 e2e、scenarios 或 CI。按 TASK/命令声明顺序规划，在协调工作区重新解析 cwd；argv/run、timeout、有效 env、parallel/group 完全一致才去重，结果映射回所有来源 TASK。
+2. 只收集明确声明的相关 unit/integration 命令，不做全仓发现，不隐式执行 e2e、scenarios 或 CI。按 TASK/命令声明顺序规划，在协调工作区重新解析 cwd；argv/run、timeout、有效 env、parallel/group 完全一致才去重，结果映射回所有来源 TASK。若 config.tests.regression 声明了项目级回归命令，在同一 runner、同一批次环境下追加执行一次；未配置则跳过，工具不猜命令。
 3. 这些测试针对合并代码真实重跑，不复用 worker PASS。使用 ledger.integration.env 的统一批次环境：CF_WORKTREE_ID=<run>/integration、CF_RUN_ID=<run>、CF_TASK_ID 为空、CF_TASK_IDS 为本批 ID 列表；需要时另分配稳定的集成端口/数据库后缀，不复用尚在运行的 worker 资源。任务身份只作来源归属；命令需要单 TASK 业务参数时在 `tests[].env` 显式声明，差异 env 不去重，不能为提速忽略实际环境差异。全部免测时保留每个任务的 skip_reason，integration 标记 skipped，不伪造 PASS。
 4. 开始前记录 `tested_head`，要求工作区无待提交业务改动；运行后重新核对协调分支、HEAD、业务状态和声明未变化。测试生成了未忽略业务文件或 HEAD 改变时结果 invalidated，不允许 cleanup。
 5. 结果写在 ledger.integration，包含实际执行、去重、未执行、耗时及错误。测试失败/超时/中断时 run=blocked，保留已合并提交与所有 worker；不自动撤回代码，也不把 done 任务改回 in-progress。
@@ -1176,7 +1183,7 @@ code-flow task block <task-file> --task TASK-001 --reason <text>
 code-flow task reopen <task-file> --task TASK-001 --reason <text>
 code-flow task unbind --session <token>
 
-code-flow task parallel prepare --task-file <requirement>.md --tasks TASK-001,TASK-002 --run-id <id> [--workers <n>] [--no-auto-baseline] [--no-init]
+code-flow task parallel prepare --task-file <requirement>.md --tasks TASK-001,TASK-002 --run-id <id> [--workers <n>] [--no-auto-baseline] [--init]
 code-flow task parallel status --run-id <id>
 code-flow task parallel collect --run-id <id>
 code-flow task parallel merge --run-id <id>
@@ -1240,7 +1247,7 @@ init 只创建和更新 v1 产物，运行时不包含旧脚本名清单、历�
 5. 基于固定 v1 托管签名更新自身 Hook、Skill、启动器与指令段，保留其他 Hook 和用户配置。
 6. 写用户 skill：cf-init、cf-check、cf-spec、cf-task:prd、cf-task:align、cf-task:plan、cf-task:start、cf-task:archive。
 7. Codex 合并所需启用配置并提示宿主信任操作；OpenCode 写最小原生插件。
-8. 对平台文件分别原子替换，输出实际创建/更新/保留文件；失败可重复 init 修复。
+8. 对平台文件分别原子替换，输出实际创建/更新/保留文件；受管文件被用户修改或配置无法解析时，跳过该文件并在 `conflicts` 中报告，其他文件继续写入；解决后重跑。
 9. 不删除目录、不清理旧版、不修改 Spec/Task 正文、不生成安装清单或项目版本文件。
 10. worktree 缺少平台入口时，在该 worktree 运行一次 `init --platform=<platform>`；init 本身不创建 worktree。
 11. init 完成后提示运行 `code-flow doctor`，或由 cf-init skill 自动调用。
@@ -1304,7 +1311,7 @@ local 配置通常不随 git 出现；worktree 是否需要 init 取决于宿主
 |---|---|---|
 | config | JSON、字段类型、glob、引用路径 | 无效 config 作为诊断，不写默认值覆盖 |
 | Spec/Task | 格式、重复 ID、引用、Tests/Delta 声明、Depends | 不执行 tests、不应用 Delta；不验证人工场景结果 |
-| Hook/启动器 | 托管签名、路径存在、入口包名/协议声明、平台配置引用 | 只静态检查，不运行 Hook、PATH 候选、插件、用户脚本或测试命令 |
+| Hook/启动器 | 托管签名、路径存在、入口包名/协议声明、平台配置引用、Codex config.toml 的 features.hooks 形式与启用状态 | 只静态检查，不运行 Hook、PATH 候选、插件、用户脚本或测试命令 |
 | 模板/命令 | 托管文件缺失、模板格式、已删除流程的活动指令 | 不覆盖文件；提示 init 或人工调整 |
 | worktree run | ledger schema、Git 注册、分支/commit/祖先、恢复步骤 | 固定只读 Git 查询并设置 GIT_OPTIONAL_LOCKS=0；不刷新索引、不改 ledger、不合并、不回收锁/worktree |
 | 宿主加载/信任 | 只能报告可观察配置 | 无可靠证据时 status=unknown，不能推断宿主已信任或实际完成注入 |
@@ -1543,7 +1550,7 @@ worktree 并行编排见 §7.10：
 - start/finish 重建 ledger 环境，所有子进程得到同一隔离值；用户环境或 `tests[].env` 试图覆盖身份时失败。
 - worktree baseline 包含 specs/当前需求/config；allowlist 外脏改动（含其他需求和暂存内容）拒绝；worktree specs 哈希与 baseline 一致。
 - 自动 init 增量只在精确内容匹配时豁免；额外用户修改、提交了工具增量、未受管配置变化均不能混入业务合并。
-- prepare 自动检测平台并在 worktree 执行 init；init 失败中止；`--no-init` 不写平台入口。
+- prepare 默认不在 worker 执行 init；显式 `--init` 时检测平台并初始化 worktree，失败中止。
 - `doctor` 返回稳定 schema/code/severity/path/next_action 与退出码；宿主信任未知时不声称通过，不执行恶意用户 Hook/插件/Tests，运行前后文件、ledger、锁和 worktree 注册不变。
 - 对真实旧模板资产改写后校验：保留设计深度和场景内容，没有可执行旧 CLI/门禁字段；prd→全栈 align→plan 交接不丢功能。
 
@@ -1626,13 +1633,13 @@ worktree 并行编排见 §7.10：
 | AC-41 | 稳定启动器 | 校验 PATH 包/协议后优先使用，回退固定 Node/JS；外层不 exec，入口错误不阻断 |
 | AC-42 | OS 跨平台 | macOS/Linux/Windows 的启动器、路径、引号、进程树回收均通过契约测试 |
 | AC-43 | Baseline 快照 | 业务代码 dirty 拒绝；specs/需求/config 进入 baseline；各 worktree specs 哈希一致 |
-| AC-44 | Worktree 自动 init | 检测已安装平台并初始化 worktree；失败中止；`--no-init` 可关闭 |
+| AC-44 | Worktree init 可选 | 默认不 init；`--init` 时检测已安装平台并初始化 worktree；失败中止 |
 | AC-45 | 分支单独通过但集成失败 | 合并后只重跑本批相关测试；失败保留提交/worker/分支，不 cleanup，不复用分支 PASS |
 | AC-46 | 同文档多 TASK 并发 finish | 测试可重叠；段锁+短文件锁重读，只补本段，两个结果均保留；本段变化冲突 |
 | AC-47 | 协调分支 reopen/同段修改 | 三方冲突可见，done 不覆盖 reopen，Tests/Delta 不取并集，其他 TASK 保留 |
 | AC-48 | 独立 runner/多 worktree 同 group | 同仓库不重叠，跨仓库可独立执行；等待超时/中断不留锁，进程树结束才释放 |
 | AC-49 | worker 越界/collect 后提交变化 | 完整 diff 拒绝 Specs/config/其他 TASK/托管资产变化；新 SHA 必须重新 collect |
-| AC-50 | merge 成功后记账前中断 | 按 before/after/collected 与 Git 父提交恢复，不重复 merge，不误认其他提交 |
+| AC-50 | merge 成功后记账前中断 | 按 collected_head 的祖先关系恢复，不重复 merge |
 | AC-51 | cleanup 只移除 worktree 后中断 | 核对所有权/branch tip/祖先，幂等续删对应分支；用户改动和其他 run 保留 |
 | AC-52 | 模板与技能交接 | 首次清除旧执行指令，保留分析深度；全栈 design 合并规划、Source/Scenarios/未决问题职责完整 |
 | AC-53 | doctor 只读与未知信任 | 稳定 schema/code/severity/退出码；不执行用户 Hook/Tests、不修复；宿主信任未知不假报通过 |
@@ -1691,7 +1698,7 @@ worktree 并行编排见 §7.10：
 - 用户只通过 `cf-task:start` 触发单任务或批次；`task parallel` 为内部 CLI。
 - 一任务一 worktree，一任务一分支；worktree 只改代码和所属 TASK 段。
 - prepare 形成 baseline（specs + 当前需求 + config），业务代码 dirty 拒绝；校验 specs 快照。
-- 自动检测平台并 init worktree；`--no-init` 可关闭；失败中止。
+- 默认不 init worktree；`--init` 时检测平台并 init，失败中止。
 - collect 审查准确 SHA 和完整归属 diff；三方合并仅改所属 TASK；合并后聚合重跑本批相关测试，通过才 cleanup。
 - Spec Delta 在协调工作区应用；worker 的 archive/learn 均按 Git 身份拒绝，未完成 run 不绕过。
 - 每次 runner 重建 ledger env；设置 worker/jobs/框架并行预算；实现带写前意图的 ledger 和提交图恢复。
@@ -1721,7 +1728,7 @@ worktree 并行编排见 §7.10：
 | 全局统一升级 | 所有项目同时切换 runtime | 少量用户接受；支持固定全局版本和兼容格式内回滚 |
 | Node/全局前缀变化 | Hook 绝对入口失效 | 稳定启动器优先 PATH，回退绝对入口；doctor 检查；必要时重新 init |
 | Windows shell/进程树差异 | Hook 或测试进程无法结束 | `.cmd`/`.ps1` 启动器、`taskkill /T`、真实 Windows CI |
-| 平台配置未随 worktree 出现 | 首次没有注入 | prepare 自动检测平台并 init worktree；`--no-init` 可关闭 |
+| 平台配置未随 worktree 出现 | 首次没有注入 | worker 默认使用全局 CLI；需要在 worker 内启动宿主会话时显式 `--init` |
 | 任务文档单文件多 TASK 段 | worktree 同文件合并冲突 | 只改所属 TASK 段，按段解析合并；同段冲突停止 |
 | baseline commit 副作用 | 协调分支多一个流程提交 | 仅提交 specs/当前需求/config；拒绝无关暂存改动；不 push；可 `--no-auto-baseline` |
 | baseline 后 specs 变化 | worktree 使用旧规范 | merge 前校验 baseline specs 哈希；不一致停止 |
@@ -1776,7 +1783,7 @@ v1.0 发布前：
 - Delta 编号单调、修改有前置条件，部分失败可重试，目录最后移动。
 - scenarios 作为测试人员的手工验收参考，可追溯，但不生成 manifest、不记录结果、不阻断 finish/archive。
 - worktree 一任务一 worktree；prepare 形成包含 specs 的 baseline，业务代码 dirty 拒绝，specs 快照校验通过。
-- prepare 自动检测平台并 init worktree；失败中止；`--no-init` 可关闭。
+- prepare 默认不 init worktree；`--init` 时检测平台并 init，失败中止。
 - collect 严格核对所有权与 SHA；按三方归属合并，保留 reopen；相关测试在协调 HEAD 上通过才 cleanup；archive/learn 都守卫协调身份。
 - ledger 覆盖部分准备、已合并未记账和部分清理恢复；仓库共享锁与每次 runner 的隔离环境均经过真实进程验证。
 - `cf-check` / `code-flow doctor` 可检查启动器、Hook、模板、config、Specs、Tasks、worktree run ledger。

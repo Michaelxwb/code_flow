@@ -124,13 +124,13 @@ src/core/code-flow/scripts/codeflow/core/cf_worktree_env.py
 | AC-41 | 稳定启动器优先 PATH，回退绝对入口；都失败不阻断 | test/init.test.js、test/package.test.js | 已有基础 |
 | AC-42 | macOS/Linux/Windows 启动器、路径、引号、进程树回收 | test/launcher-windows.test.js + CI matrix | 已有基础/待 CI |
 | AC-43 | baseline 含 specs/需求/config；dirty 业务代码拒绝；worktree specs 哈希一致 | test/worktree.test.js | 已有 |
-| AC-44 | prepare 自动检测平台并 init worktree；失败中止；`--no-init` 可关闭 | test/worktree.test.js、test/init.test.js | 已有 |
+| AC-44 | prepare 默认不 init worktree；`--init` 时检测平台并初始化，失败中止 | test/worktree.test.js、test/init.test.js | 已有 |
 | AC-45 | 合并后聚合相关测试；失败不 cleanup；准确 tested_head | test/worktree.test.js、test/verify.test.js | 已有 |
 | AC-46 | 同文档并发 finish 两段结果均保留，修改本段冲突 | test/task.test.js | 已有基础 |
 | AC-47 | 三方归属保留 reopen；同段语义字段不无条件拼接 | test/worktree.test.js | 已有 |
 | AC-48 | 跨 CLI/worktree group 锁、锁等待取消与资源释放 | test/verify.test.js、test/worktree.test.js | 已有基础 |
 | AC-49 | 全分支 diff 审计、collect 后 SHA 变化重收集 | test/worktree.test.js | 已有 |
-| AC-50 | merge 成功但 ledger 未更新，按 Git 父提交恢复 | test/worktree.test.js | 已有 |
+| AC-50 | merge 成功但 ledger 未更新，按 collected_head 祖先关系恢复 | test/worktree.test.js | 已有 |
 | AC-51 | cleanup 中断后幂等续做，保护用户/外来资源 | test/worktree.test.js | 已有 |
 | AC-52 | 模板首次改写与 prd/全栈 align/plan/start 的内容交接 | test/workflow.test.js | 已有基础 |
 | AC-53 | doctor schema/退出码/只读；宿主未知；禁止执行用户代码 | test/doctor.test.js、test/cli.test.js | 已有 |
@@ -156,10 +156,14 @@ src/core/code-flow/scripts/codeflow/core/cf_worktree_env.py
 ## 本轮设计修订验证
 
 - `node --test test/design.test.js`：9 项通过，校验 JSON/Delta/Task/ledger/doctor 示例、章节与验收引用，并执行真实 POSIX shell 守卫子进程。
-- `npm test`：124 项，123 通过、1 项 Windows-only 跳过；包含多 TASK/Depends/并发写入、模板/文档流程契约、scenarios 不阻断、四平台命令布局、launcher/bridge PATH 选择/回退/慢探测/超时与输出上限、doctor schema、worktree 编排/自动 init/集成验证/冲突/范围审计/恢复/协调身份/跨进程仓库锁与 group 锁、PRD/design/scenarios/多 TASK 文档流契约、CI worker 并发预算模拟测试；环境为 macOS + Node v24.17.0。
+- `npm test`：143 项，142 通过、1 项 Windows-only 跳过；包含多 TASK/Depends/并发写入、模板/文档流程契约、scenarios 不阻断、四平台命令布局、launcher/bridge PATH 选择/回退/慢探测/超时与输出上限、doctor schema、worktree 编排/自动 init/集成验证/冲突/范围审计/恢复/协调身份/跨进程仓库锁与 group 锁、PRD/design/scenarios/多 TASK 文档流契约、CI worker 并发预算模拟测试；环境为 macOS + Node v24.17.0。
 - 修复开发测试入口：`node --test test` 在当前 Node 下无法加载目录；改由 `test/run.cjs` 枚举本测试目录的 `*.test.js` 并传给 Node，兼顾跨平台且不递归进入历史 worktree。
-- Windows GitHub Actions 矩阵（Node 18/22/24）已通过，覆盖 CMD、PowerShell、Git Bash launcher、worktree 和 worker-budget 测试。
-- 已修复 P1 边界：Task `$` 写回、retry 混合文件用户内容（含未跟踪/再次重试/移除恢复）、Codex hooks/config 用户设置（含引号/点号键、Unicode 转义、inline 表拒绝、嵌套数组、子表 inline 表、多行字符串、注释/表位置、无计划混合文件、嵌套数组、子表 inline 表、多行 features 值和 CRLF）、Git 边界、协调分支、staged rename/baseline、非 ASCII diff；并完成 P2 的 Specs 快照、partial init 重试、合法 rename、autocrlf、Delta target、启动器降级、bridge 截止/协议/额外字段、stdin 释放、OpenCode bridge/续轮/失败清理、模板 frontmatter、批次收尾、ledger env、doctor fallback 和冲突现场保留。
+- GitHub Actions 保留 macOS/Linux/Windows 的 Node 18/22/24 矩阵，覆盖 CMD、PowerShell、Git Bash launcher、worktree 和 worker-budget 测试。本轮补丁在 macOS 本地验证，其他系统和 Node 版本的实际结果由 CI 确认。
+- 已修复 P1 边界：Task `$` 写回、retry 混合文件用户内容（含未跟踪/再次重试/移除恢复）、Codex hooks/config 用户设置（含引号/点号键、Unicode 转义、inline 表拒绝、嵌套数组、子表 inline 表、多行字符串、注释/表位置、无计划混合文件、多行 features 值和 CRLF）、Git 边界、协调分支、staged rename/baseline、非 ASCII diff；并完成 P2 的 Specs 快照、partial init 重试、合法 rename、autocrlf、Delta target、启动器降级、bridge 截止/协议/额外字段、stdin 释放、OpenCode bridge/续轮/失败清理、模板 frontmatter、批次收尾、ledger env、doctor fallback 和冲突现场保留。
+- 本轮收紧 Codex config 支持边界：只自动维护规范 `[features]` 表和根级单行 `features.hooks`；引号键/引号表、inline table、`[[features]]`、多行值和重复表明确拒绝，避免继续扩展 TOML 边角解析。
+- 本轮全量复查增加 19 项回归测试：修复 TOML 注释括号误判、bridge 跨块 UTF-8 解码和诊断累积上限；统一 Markdown 围栏判定，保证 Task 字段/子节精确读写，拒绝重复字段和多行测试 ID，防止多行日志破坏文档；在写入前验证 Spec Delta 生成的规则；限定主 worktree 协调身份，合并前检查协调区变更，规范化 Task 路径身份，并在取得仓库锁后重查 learn/archive 的运行中批次约束。
+- `npm run test:performance`：2 项通过；500 份 Specs、5000 个历史 Tasks，12 次进程样本的注入 p50 为 26.2 ms、p95 为 28.9 ms，目录扫描 0 次；1000 条测试声明规划耗时约 20.0 ms。数据来自本轮 macOS + Node v24.17.0 本地测量。
+- 独立历史复现验证：517 组合法 TOML 输入均通过语法、保留内容和幂等性检查（其中 4 组不支持的形式安全拒绝），12 组 worktree 正向流程/用户内容保护案例及额外边界复现通过。复现脚本仅在临时目录执行，未加入产品代码。
 
 ## 验证命令
 

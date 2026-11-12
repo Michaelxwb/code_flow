@@ -11,9 +11,11 @@ code-flow init --platform=codex
 code-flow init --platform=all
 ```
 
-每个使用的平台安装一次。之后 code-flow init 更新当前项目全部已安装的 v1 平台。init --dry-run 只展示变更；不写目录、绑定或锁。
+每个使用的平台安装一次。之后 code-flow init 更新当前项目全部已安装的 v1 平台。init --dry-run 只展示变更；不写目录、绑定或锁。受管 skill/插件被用户修改或 Codex 配置无法解析时，init 跳过该文件并在 `conflicts` 中报告，其他文件照常写入；解决后重跑。
 
 Hook 通过项目 bridge 校验 PATH 全局包与协议后优先使用，回退初始化时的固定 Node/JS。项目本地 bin 不参与选择；错误降级且不阻断。两种入口均失效时重新 init，doctor 给出诊断；宿主加载与信任需在宿主中确认。
+
+Codex 的 `features.hooks` 只自动维护规范 `[features]` 表和根级单行 `features.hooks`；引号键、引号形式的 features 表、inline table、数组表或多行值会在 init 时返回 `config_format`，需手工改成规范形式。
 
 Windows 支持 CMD、PowerShell 和 Git Bash：CMD 使用 `hook.cmd`，PowerShell 使用 `hook.ps1`（委托已验证的 CMD 入口），Git Bash 可运行 `hook.sh` 或直接调用 `code-flow` CLI。三种入口均由 Windows CI 覆盖。
 
@@ -43,7 +45,7 @@ config.json：
   "always": ["cli/runtime"],
   "paths": { "src/**/*.js": ["cli/runtime"] },
   "budget": { "maxTokens": 2500, "maxBytes": 16384 },
-  "tests": { "timeoutSeconds": 120, "jobs": 2 }
+  "tests": { "timeoutSeconds": 120, "jobs": 2, "regression": null }
 }
 ```
 
@@ -151,8 +153,11 @@ finish 只接受 in-progress，实际执行该 TASK 的 tests，全部通过才�
 - 同框架多个文件聚合到一次调用，优先框架内部 workers；避免 CLI jobs 与框架 workers 叠加争抢资源。
 - 每个 stdout/stderr 最多保留尾部 50 行、64KiB。
 - tests=[] 需同时有 skip_tests:true 与非空 skip_reason。
+- config.tests.regression 可选，声明一条项目级回归命令（argv/run 二选一）；它只在 `task parallel merge` 的任务测试之后执行一次，失败保持 run blocked。未配置时不执行，也不猜 `npm test`。
 
 PASS 表示此次声明命令成功，不代表之后修改或全量需求已经通过。
+
+Verification 摘要同时记录测试声明哈希、测试时的 HEAD 和工作区状态：`tests=` 来自 start 时的声明，声明在 start 后被修改会标记 `tests-changed`；`head=none` 表示非 Git 项目，`dirty=1` 表示测试跑在未提交的业务改动上（`.code-flow` 文档改动不计入）。这些字段只用于追溯，不改变 PASS/FAIL 语义。
 
 ## 5. 沉淀与归档
 
@@ -194,9 +199,9 @@ code-flow init
 
 所有项目共享全局版本。回滚兼容的 v1 包后重新 init；用户数据通过 git 撤销。
 
-批次 worktree 由内部 `task parallel prepare/collect/merge/cleanup` 编排，`cf-task:start` 负责驱动 worker：prepare 仅把 Specs、当前需求和 config 形成 baseline，范围外脏改动（含其他需求/无关暂存内容）拒绝。worker 校验快照并自动 init；`--no-init` 可关闭，工具增量不提交或合并。
+批次 worktree 由内部 `task parallel prepare/collect/merge/cleanup` 编排，`cf-task:start` 负责驱动 worker：prepare 仅把 Specs、当前需求和 config 形成 baseline，范围外脏改动（含其他需求/无关暂存内容）拒绝。worker 校验快照；默认不执行 init（worker 直接使用全局 CLI），只有需要在 worker 内启动宿主会话时才用 `--init`。工具增量不提交或合并。
 
-每个 worker 只改业务代码和自己的 TASK 段。collect 核对完整 diff 与准确 SHA；任务文档按三方归属合并，同段冲突不会采用 done 优先。全部合入后在协调工作区聚合重跑本批相关测试，去重且不跑全量/E2E，通过后才自动清理；失败保留资源。runner 每次重建 ledger 的隔离环境，默认最多 2 个 worker，并结合 jobs/框架 workers 设置资源预算。
+每个 worker 只改业务代码和自己的 TASK 段。collect 核对完整 diff 与准确 SHA；任务文档按三方归属合并，同段冲突不会采用 done 优先。全部合入后在协调工作区聚合重跑本批相关测试，去重且不跑全量/E2E；配置了 tests.regression 时再追加一次项目回归，通过后才自动清理，失败保留资源。runner 每次重建 ledger 的隔离环境，默认最多 2 个 worker，并结合 jobs/框架 workers 设置资源预算。
 
 run ledger 是唯一持久编排台账。中断后 status/doctor 只读给出实际状态，重新调用 prepare/merge/cleanup 才执行恢复；恢复核对 Git 提交与所有权，不凭目录存在继续。
 
@@ -220,7 +225,7 @@ init 不负责旧版清理或转换，不提供迁移脚本。
 code-flow doctor --json
 ```
 
-检查 config、模板、Spec、Task 文档、平台入口和 worktree ledger；不修改文件。
+检查 config、模板、Spec、Task 文档、平台入口、Codex config.toml 形式和 worktree ledger；不修改文件。
 
 `code-flow doctor --json` 只读检查配置、引用、Hook、模板和 run；返回稳定诊断与修复建议，不执行用户 Hook/Tests。宿主加载/信任无法确认时标记 unknown，发现错误退出 1，只有警告或 unknown 退出 0，用法/诊断自身错误退出 2。
 

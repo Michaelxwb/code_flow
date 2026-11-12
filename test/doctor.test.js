@@ -77,11 +77,29 @@ test('doctor reports invalid and unfinished worktree ledgers as diagnostics', as
   fs.rmSync(path.join(root, '.code-flow/worktrees/bad'), { recursive: true });
   h.write(root, '.code-flow/worktrees/run/run.json', JSON.stringify({
     version: 1, run_id: 'run', task_file: '.code-flow/tasks/2026-11-10/demo/demo.md',
-    status: 'running', coordinator: { root, branch: 'refs/heads/main' },
+    status: 'running', coordinator: { root, branch: 'refs/heads/main',
+      git_common_dir: path.resolve(root, '.git') },
     worktrees: [], merge: { order: [] }
   }));
   const unfinished = doctor.run(root);
   assert.equal(unfinished.ok, true);
   assert.ok(unfinished.checks.some(item => item.code === 'WORKTREE_RECOVERY_REQUIRED' &&
     item.severity === 'warning'));
+});
+
+test('doctor reports unsupported Codex config forms without repairing them', async t => {
+  const root = empty(t);
+  await init.init(root, { platform: 'claude' });
+  const file = h.write(root, '.codex/config.toml', '[features]\n"hooks" = false\n');
+  const before = fs.readFileSync(file, 'utf8');
+  const result = doctor.run(root);
+  const issue = result.checks.find(item => item.code === 'CODEX_CONFIG_FORM');
+  assert.ok(issue, 'unsupported form must be reported');
+  assert.equal(issue.status, 'fail');
+  assert.equal(issue.severity, 'error');
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+  h.write(root, '.codex/config.toml', '[features]\nhooks = false\n');
+  const disabled = doctor.run(root).checks.find(item => item.code === 'CODEX_HOOKS_DISABLED');
+  assert.ok(disabled, 'disabled features.hooks must be reported');
+  assert.equal(disabled.severity, 'warning');
 });

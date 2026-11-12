@@ -2,6 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const h = require('./helpers');
@@ -9,6 +10,8 @@ const init = require('../lib/init');
 const locks = require('../lib/locks');
 const f = require('../lib/fs');
 const task = require('../lib/task');
+const spec = require('../lib/spec');
+const runs = require('../lib/runs');
 const worktree = require('../lib/worktree');
 const cli = path.resolve(__dirname, '../bin/code-flow.js');
 
@@ -46,6 +49,123 @@ const countParts = {
   id: 'parts', argv: [process.execPath, '-e',
     'const fs=require("fs");process.exit(fs.existsSync("parts")&&fs.readdirSync("parts").length===1?0:1)']
 };
+
+test('prepare rejects nested runs in a worker without creating resources', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  const outer = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'outer', noInit: true });
+  const worker = path.join(root, outer.worktrees[0].path);
+  const before = git(worker, ['rev-parse', 'HEAD']);
+  await assert.rejects(worktree.prepare(worker, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'nested', noInit: true }), error => error.code === 'coordinator_required');
+  assert.equal(git(worker, ['rev-parse', 'HEAD']), before);
+  assert.equal(fs.existsSync(path.join(worker, '.code-flow/worktrees/nested')), false);
+  assert.notEqual(spawnSync('git', ['rev-parse', '--verify', 'cf-task/nested/TASK-001'],
+    { cwd: root }).status, 0);
+});
+
+test('prepare uses canonical task identity across path aliases', async t => {
+  for (const prefixed of [false, true]) {
+    const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+    await worktree.prepare(root, { taskFile: prefixed ? './' + file : file,
+      tasks: ['TASK-001'], runId: 'first-alias', noInit: true });
+    await assert.rejects(worktree.prepare(root, { taskFile: prefixed ? file : './' + file,
+      tasks: ['TASK-001'], runId: 'second-alias', noInit: true }),
+    error => error.code === 'task_claimed');
+    assert.equal(worktree.readLedger(root, 'first-alias').task_file, file);
+    assert.equal(fs.existsSync(path.join(root, '.code-flow/worktrees/second-alias')), false);
+  }
+});
+
+test('archive path aliases cannot bypass an unfinished requirement run', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'archive-alias', noInit: true });
+  const worker = path.join(root, prepared.worktrees[0].path);
+  await finishWorker(worker, file, 'TASK-001');
+  worktree.collect(root, 'archive-alias');
+  await worktree.merge(root, 'archive-alias');
+  const directory = path.posix.dirname(file);
+  await assert.rejects(task.archive(root, './' + directory), error => error.code === 'run_incomplete');
+  const ledger = worktree.readLedger(root, 'archive-alias');
+  ledger.task_file = './' + file;
+  h.write(root, '.code-flow/worktrees/archive-alias/run.json', JSON.stringify(ledger));
+  await assert.rejects(task.archive(root, directory), error => error.code === 'run_incomplete');
+  assert.ok(fs.existsSync(path.join(root, file)));
+});
+
+test('merge rejects coordinator changes before committing or running integration tests', async t => {
+  for (const staged of [false, true]) {
+    const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+    const marker = path.join(root, 'executions.log');
+    h.write(root, '.gitignore', '.code-flow/worktrees/\nexecutions.log\n');
+    const business = h.write(root, 'business.js', 'original\n');
+    h.task(root, { tests: [{ id: 'counter', argv: [process.execPath, '-e',
+      'require("fs").appendFileSync(' + JSON.stringify(marker) + ',"x")'] }] });
+    git(root, ['add', '-A']); git(root, ['commit', '-qm', 'test fixture']);
+    const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+      runId: 'dirty-merge', noInit: true });
+    const worker = path.join(root, prepared.worktrees[0].path);
+    await finishWorker(worker, file, 'TASK-001');
+    worktree.collect(root, 'dirty-merge');
+    const before = git(root, ['rev-parse', 'HEAD']);
+    fs.writeFileSync(business, 'user change\n');
+    if (staged) git(root, ['add', 'business.js']);
+    await assert.rejects(worktree.merge(root, 'dirty-merge'), error => error.code === 'coordinator_dirty');
+    assert.equal(git(root, ['rev-parse', 'HEAD']), before);
+    assert.equal(fs.readFileSync(business, 'utf8'), 'user change\n');
+    assert.equal(fs.readFileSync(marker, 'utf8'), 'x');
+    fs.writeFileSync(business, 'original\n');
+    if (staged) git(root, ['add', 'business.js']);
+    assert.equal((await worktree.merge(root, 'dirty-merge')).ok, true);
+    assert.equal(fs.readFileSync(marker, 'utf8'), 'xx');
+    worktree.cleanup(root, 'dirty-merge');
+  }
+});
+
+test('learning rechecks unfinished runs after acquiring the repository lock', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001', status: 'done', spec_delta: [
+    { id: 'D1', op: 'add', target: 'cli/runtime', rule: 'Guarded learning.', evidence: 'run race' }
+  ] }]);
+  const other = h.task(root, {}, '.code-flow/tasks/2026-11-10/parallel/parallel.md');
+  git(root, ['add', '-A']); git(root, ['commit', '-qm', 'other requirement']);
+  const original = locks.withRepository;
+  locks.withRepository = async (selected, operation) => {
+    locks.withRepository = original;
+    await worktree.prepare(root, { taskFile: other, tasks: ['TASK-001'],
+      runId: 'racing-prepare', noInit: true });
+    return original(selected, operation);
+  };
+  try { await assert.rejects(task.learn(root, file, 'TASK-001'), error => error.code === 'run_incomplete'); }
+  finally { locks.withRepository = original; }
+  assert.equal(spec.load(root, 'cli/runtime').meta.next_rule, 2);
+  assert.equal(worktree.readLedger(root, 'racing-prepare').status, 'running');
+});
+
+test('archive rechecks a newly visible run inside the repository lock', async t => {
+  for (const options of [{}, { noLearn: true }]) {
+    const { root, file } = repo(t, [{ id: 'TASK-001', status: 'done' }]);
+    const original = locks.withRepository;
+    locks.withRepository = (selected, operation) => {
+      locks.withRepository = original;
+      h.write(root, '.code-flow/worktrees/archive-race/run.json', JSON.stringify({
+        version: 1, run_id: 'archive-race', task_file: file, status: 'preparing',
+        coordinator: { root, branch: git(root, ['symbolic-ref', 'HEAD']),
+          git_common_dir: path.resolve(root, git(root, ['rev-parse', '--git-common-dir'])) },
+        worktrees: [{ task: 'TASK-001', path: '.code-flow/worktrees/archive-race/TASK-001',
+          branch: 'cf-task/archive-race/TASK-001', status: 'planned' }],
+        merge: { order: ['TASK-001'] }
+      }));
+      return original(selected, operation);
+    };
+    try {
+      await assert.rejects(task.archive(root, path.posix.dirname(file), options),
+        error => error.code === 'run_incomplete');
+    } finally { locks.withRepository = original; }
+    assert.ok(fs.existsSync(path.join(root, file)));
+    assert.equal(fs.existsSync(path.join(root, '.code-flow/tasks/archived')), false);
+  }
+});
 
 test('prepare creates baseline worktrees, collect/merge/cleanup completes the batch', async t => {
   const { root, file } = repo(t);
@@ -466,7 +586,7 @@ test('merge recovers a commit whose ledger step was not recorded', async t => {
   const recovered = await worktree.merge(root, 'run-recover');
   ledger = worktree.readLedger(root, 'run-recover');
   assert.deepEqual(ledger.merge.steps.map(item => item.status), ['recovered', 'recovered']);
-  assert.deepEqual(ledger.merge.steps.map(item => item.after_head), steps.map(item => item.after_head));
+  assert.deepEqual(ledger.merge.steps.map(item => item.collected_head), steps.map(item => item.collected_head));
   assert.equal(recovered.integration.status, 'passed');
   assert.equal(worktree.cleanup(root, 'run-recover').ok, true);
 });
@@ -562,10 +682,11 @@ test('internal task parallel CLI prepares, reports and force-cleans a run', asyn
   const run = args => spawnSync(process.execPath, [cli, 'task', 'parallel', ...args, '--json'],
     { cwd: root, encoding: 'utf8' });
   const prepared = run(['prepare', '--task-file', file, '--tasks', 'TASK-001',
-    '--run-id', 'cli-run', '--no-init']);
+    '--run-id', 'cli-run']);
   assert.equal(prepared.status, 0, prepared.stderr);
   assert.equal(JSON.parse(prepared.stdout).run_id, 'cli-run');
   assert.equal(JSON.parse(prepared.stdout).workers, 2);
+  assert.deepEqual(JSON.parse(prepared.stdout).worktrees.map(worker => worker.init_changes.length), [0]);
   const ledger = worktree.readLedger(root, 'cli-run');
   assert.equal(ledger.workers, 2);
   assert.equal(ledger.jobs, 2);
@@ -706,4 +827,41 @@ test('worker and moved worker worktrees cannot archive or learn Specs', async t 
   fs.renameSync(worker, moved);
   await assert.rejects(task.archive(moved, requirementDir), /coordinator worktree/);
   await assert.rejects(task.learn(moved, file, 'TASK-001'), /coordinator worktree/);
+});
+
+test('a worker path inside the run tree without a ledger fails loudly', t => {
+  const { root } = repo(t, [{ id: 'TASK-001' }]);
+  const head = git(root, ['rev-parse', 'HEAD']);
+  git(root, ['worktree', 'add', '--detach', '.code-flow/worktrees/ghost/TASK-001', head]);
+  assert.throws(() => runs.workerEnv(path.join(root, '.code-flow/worktrees/ghost/TASK-001')),
+    error => error.code === 'run_invalid' && /Missing run ledger/.test(error.message));
+});
+
+test('merge runs the configured project regression command', async t => {
+  for (const pass of [true, false]) {
+    const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+    const marker = path.join(os.tmpdir(), 'cf-regression-' + process.pid + '-' + pass + '.log');
+    t.after(() => fs.rmSync(marker, { force: true }));
+    const runId = 'run-regression-' + pass;
+    h.write(root, '.code-flow/config.json', JSON.stringify({ version: 1, tests: { regression: {
+      argv: [process.execPath, '-e', 'require("fs").appendFileSync(' + JSON.stringify(marker) +
+        ',"r");process.exit(' + (pass ? 0 : 3) + ')'] } } }));
+    git(root, ['add', '-A']); git(root, ['commit', '-qm', 'regression config']);
+    const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+      runId, noInit: true });
+    await finishWorker(path.join(root, prepared.worktrees[0].path), file, 'TASK-001');
+    worktree.collect(root, runId);
+    if (pass) {
+      const merged = await worktree.merge(root, runId);
+      assert.equal(merged.integration.status, 'passed');
+      assert.equal(merged.integration.regression, true);
+      assert.ok(merged.integration.commands.some(item => item.test === 'regression'));
+      assert.equal(fs.readFileSync(marker, 'utf8'), 'r');
+      worktree.cleanup(root, runId);
+    } else {
+      await assert.rejects(worktree.merge(root, runId), error => error.code === 'integration_failed');
+      assert.equal(fs.readFileSync(marker, 'utf8'), 'r');
+      assert.equal(worktree.readLedger(root, runId).status, 'blocked');
+    }
+  }
 });

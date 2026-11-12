@@ -28,11 +28,25 @@ test('workflow templates encode the v1 document flow without retired gates', asy
   assert.match(scenarios, /expected:/);
   assert.match(scenarios, /owner:/);
   const taskTemplate = fs.readFileSync(path.join(directory, 'task.md'), 'utf8');
-  assert.match(taskTemplate, /^\s*---\r?\n\{"version":1,"requirement":"\{requirement\}"\}\r?\n---/);
-  assert.match(taskTemplate, /## TASK-001:/);
-  assert.match(taskTemplate, /- \*\*Depends\*\*:/);
-  assert.match(taskTemplate, /### Tests/);
-  assert.match(taskTemplate, /### Spec Delta/);
+  const filled = taskTemplate
+    .replaceAll('{requirement}', 'demo')
+    .replaceAll('{title}', 'Demo')
+    .replaceAll('{design}', 'demo.backend')
+    .replaceAll('{section}', '1')
+    .replaceAll('{S-01, E-01}', 'S-01, E-01')
+    .replaceAll('{spec/path}', 'cli/runtime')
+    .replaceAll('{src/**, test/**}', 'src/**, test/**')
+    .replaceAll('{ci:e2e or empty}', '')
+    .replaceAll('{实现目标}', 'Deliver behavior.')
+    .replaceAll('{可验证的步骤}', 'Verify behavior.')
+    .replaceAll('{date}', '2026-11-11');
+  const relative = '.code-flow/tasks/2026-11-10/demo/demo.md';
+  h.write(root, relative, filled);
+  const parsed = taskdoc.parse(filled, path.join(root, relative));
+  assert.equal(parsed.tasks.length, 1);
+  assert.equal(parsed.tasks[0].status, 'draft');
+  assert.equal(parsed.tasks[0].tests.length, 1);
+  assert.deepEqual(parsed.tasks[0].specRefs, ['cli/runtime']);
   const startSkill = fs.readFileSync(path.join(root, '.agents/skills/cf-task-start/SKILL.md'), 'utf8');
   assert.match(startSkill, /workers/);
   assert.match(startSkill, /CF_\*/);

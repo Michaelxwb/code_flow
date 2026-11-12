@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync, spawn } = require('node:child_process');
+const crypto = require('node:crypto');
 const { pathToFileURL } = require('node:url');
 const h = require('./helpers');
 const init = require('../lib/init');
@@ -42,6 +43,36 @@ test('init overwrites tool templates but preserves user specs and tasks', async 
   assert.equal(fs.readFileSync(path.join(root, task), 'utf8'), 'user task content\n');
 });
 
+test('init ignores brackets in comments on dotted feature values', async t => {
+  for (const newline of ['\n', '\r\n']) {
+    for (const comment of ['[user note', ']user note', '[user note]', '"[" user note']) {
+      const root = empty(t);
+      const raw = 'features.shell_tool = false # ' + comment + newline;
+      const file = h.write(root, '.codex/config.toml', raw);
+      assert.equal((await init.init(root, { platform: 'codex' })).ok, true);
+      assert.equal(fs.readFileSync(file, 'utf8'), raw + 'features.hooks = true\n');
+      assert.equal((await init.init(root)).changes.length, 0);
+    }
+  }
+});
+
+test('init reports multiline dotted arrays as a per-file conflict', async t => {
+  for (const newline of ['\n', '\r\n']) {
+    for (const comment of [']', ']]', '"]"', '# [ ] ]']) {
+      const root = empty(t);
+      const raw = ['features.custom = [ # ' + comment, ' "user-value"', ']', ''].join(newline);
+      const file = h.write(root, '.codex/config.toml', raw);
+      const result = await init.init(root, { platform: 'codex' });
+      assert.equal(result.ok, false);
+      assert.ok(result.conflicts.some(item => item.path === '.codex/config.toml' &&
+        item.code === 'config_format' && /Multi-line/.test(item.message)));
+      assert.equal(fs.readFileSync(file, 'utf8'), raw);
+      assert.ok(fs.existsSync(path.join(root, '.codex/hooks.json')));
+      assert.ok(fs.existsSync(path.join(root, '.code-flow/templates/task.md')));
+    }
+  }
+});
+
 test('project launcher resolves the bridge and preserves prompt context', { skip: process.platform === 'win32' }, async t => {
   const root = empty(t);
   await init.init(root, { platform: 'codex' });
@@ -63,7 +94,7 @@ test('project launcher resolves the bridge and preserves prompt context', { skip
 function fakeGlobal(base, options = {}) {
   const protocol = options.protocol ?? 1, context = options.context ?? 'PATH CONTEXT';
   const mode = options.mode ?? 'normal';
-  const delay = mode === 'slow-capabilities' ? 500 : 0;
+  const delay = mode === 'slow-capabilities' ? 900 : 0;
   const pkgDir = path.join(base, 'node_modules/@michaelxwb/code-flow');
   const binDir = path.join(base, 'bin');
   const entry = path.join(pkgDir, 'bin/code-flow.js');
@@ -73,7 +104,9 @@ function fakeGlobal(base, options = {}) {
     name: '@michaelxwb/code-flow', version: '9.9.9', bin: { 'code-flow': 'bin/code-flow.js' },
     codeFlow: { hookProtocol: protocol }
   }));
-  const capability = "console.log(JSON.stringify({package:'@michaelxwb/code-flow',version:'9.9.9'," +
+  const capability = (options.marker ? "require('fs').appendFileSync(" +
+    JSON.stringify(options.marker) + ",'x');" : '') +
+    "console.log(JSON.stringify({package:'@michaelxwb/code-flow',version:'9.9.9'," +
     "hook_protocol:" + protocol + ",node:process.execPath,entry:__filename}));process.exit(0)";
   const lines = [
     "const args=process.argv.slice(2);",
@@ -86,6 +119,13 @@ function fakeGlobal(base, options = {}) {
     "process.stdin.on('end',()=>console.log(JSON.stringify({hookSpecificOutput:{",
     "hookEventName:'UserPromptSubmit',additionalContext:'PATH CONTEXT'},decision:'block',reason:'x'})))");
   else if (mode === 'huge') lines.push("process.stdout.write('x'.repeat(2*1024*1024));process.exit(0)");
+  else if (mode === 'stderr-failure') lines.push("process.stderr.write('x'.repeat(2*1024*1024)+" +
+    "'\\nLATEST DIAGNOSTIC\\n',()=>process.exit(1))");
+  else if (mode === 'utf8-chunks') lines.push(
+    "const bytes=Buffer.from(JSON.stringify({hookSpecificOutput:{hookEventName:'UserPromptSubmit'," +
+    "additionalContext:" + JSON.stringify(context) + "}}));",
+    "const cut=bytes.indexOf(Buffer.from('规则'))+1;process.stdout.write(bytes.subarray(0,cut));",
+    "setTimeout(()=>process.stdout.write(bytes.subarray(cut)),30)");
   else if (mode === 'hang') lines.push("setInterval(()=>{},1000)");
   else lines.push("let raw='';process.stdin.on('data',c=>raw+=c);",
     "process.stdin.on('end',()=>console.log(JSON.stringify({hookSpecificOutput:{",
@@ -96,6 +136,36 @@ function fakeGlobal(base, options = {}) {
   fs.chmodSync(shim, 0o755);
   return { bin: binDir, entry };
 }
+
+test('launcher preserves UTF-8 context split across child output chunks', async t => {
+  const root = empty(t);
+  await init.init(root, { platform: 'codex' });
+  const context = '规则：保持用户内容。'.repeat(8000);
+  const fake = fakeGlobal(empty(t), { mode: 'utf8-chunks', context });
+  const result = spawnSync(process.execPath, [path.join(root, '.code-flow/launcher/bridge.cjs'),
+    '--format', 'codex', '--node', process.execPath, '--entry', fake.entry], {
+    cwd: root, env: { ...process.env, PATH: '' }, input: '{"prompt":"continue"}',
+    encoding: 'utf8', maxBuffer: 1024 * 1024
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(JSON.parse(result.stdout).hookSpecificOutput.additionalContext === context,
+    'UTF-8 context must match the complete original text');
+});
+
+test('launcher bounds accumulated child diagnostics and retains the latest error', async t => {
+  const root = empty(t);
+  await init.init(root, { platform: 'codex' });
+  const fake = fakeGlobal(empty(t), { mode: 'stderr-failure' });
+  const result = spawnSync(process.execPath, [path.join(root, '.code-flow/launcher/bridge.cjs'),
+    '--format', 'codex', '--node', process.execPath, '--entry', fake.entry], {
+    cwd: root, env: { ...process.env, PATH: '' }, input: '{"prompt":"continue"}',
+    encoding: 'utf8', maxBuffer: 4 * 1024 * 1024
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, '');
+  assert.ok(Buffer.byteLength(result.stderr) <= 8192, 'diagnostics must stay bounded');
+  assert.ok(result.stderr.endsWith('LATEST DIAGNOSTIC\n'));
+});
 
 test('launcher prefers a validated PATH package and falls back when it is invalid', { skip: process.platform === 'win32' }, async t => {
   const root = empty(t);
@@ -186,6 +256,56 @@ test('launcher bounds child output/time and ignores slow PATH probes', { skip: p
   assert.ok(JSON.parse(fallback.stdout).hookSpecificOutput.additionalContext.includes('Current rule.'));
 });
 
+test('launcher reserves execution time when many PATH probes are slow', { skip: process.platform === 'win32' }, async t => {
+  const root = empty(t);
+  await init.init(root, { platform: 'codex' });
+  h.spec(root); const file = h.task(root);
+  const hooks = JSON.parse(fs.readFileSync(path.join(root, '.codex/hooks.json'), 'utf8')).hooks;
+  const command = hooks.UserPromptSubmit[0].hooks[0].command;
+  const prompt = JSON.stringify({ cwd: root, session_id: 'reserve', prompt: 'task: ' + file + '#TASK-001' });
+  const bins = [];
+  for (let index = 0; index < 9; index++) {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cf-slow-probe-' + index + '-'));
+    t.after(() => fs.rmSync(base, { recursive: true, force: true }));
+    bins.push(fakeGlobal(base, { mode: 'slow-capabilities' }).bin);
+  }
+  const started = Date.now();
+  const result = spawnSync('/bin/sh', ['-c', command], { cwd: root, encoding: 'utf8',
+    input: prompt, env: { ...process.env, PATH: bins.join(path.delimiter) + path.delimiter + process.env.PATH } });
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(JSON.parse(result.stdout).hookSpecificOutput.additionalContext.includes('Current rule.'),
+    'the fixed entry must still get execution budget');
+  assert.ok(Date.now() - started < 5000);
+});
+
+test('launcher caches a validated PATH package and re-probes after expiry', { skip: process.platform === 'win32' }, async t => {
+  const root = empty(t);
+  await init.init(root, { platform: 'codex' });
+  h.spec(root); const file = h.task(root);
+  const hooks = JSON.parse(fs.readFileSync(path.join(root, '.codex/hooks.json'), 'utf8')).hooks;
+  const command = hooks.UserPromptSubmit[0].hooks[0].command;
+  const prompt = JSON.stringify({ cwd: root, session_id: 'cache', prompt: 'task: ' + file + '#TASK-001' });
+  const marker = path.join(os.tmpdir(), 'cf-probe-' + process.pid + '-' + Date.now() + '.log');
+  t.after(() => fs.rmSync(marker, { force: true }));
+  const fake = fakeGlobal(empty(t), { marker, context: 'CACHED CONTEXT' });
+  const env = { ...process.env, PATH: fake.bin + path.delimiter + process.env.PATH };
+  const first = spawnSync('/bin/sh', ['-c', command], { cwd: root, encoding: 'utf8', input: prompt, env });
+  assert.equal(first.status, 0, first.stderr);
+  assert.equal(JSON.parse(first.stdout).hookSpecificOutput.additionalContext, 'CACHED CONTEXT');
+  assert.equal(fs.readFileSync(marker, 'utf8'), 'x');
+  const second = spawnSync('/bin/sh', ['-c', command], { cwd: root, encoding: 'utf8', input: prompt, env });
+  assert.equal(JSON.parse(second.stdout).hookSpecificOutput.additionalContext, 'CACHED CONTEXT');
+  assert.equal(fs.readFileSync(marker, 'utf8'), 'x', 'cache hit must not probe again');
+  const digest = crypto.createHash('sha256').update(fs.realpathSync(root)).digest('hex');
+  const cache = path.join(os.tmpdir(), 'code-flow', digest, 'bridge.json');
+  const data = JSON.parse(fs.readFileSync(cache, 'utf8'));
+  data.checked_at = 0;
+  fs.writeFileSync(cache, JSON.stringify(data));
+  const third = spawnSync('/bin/sh', ['-c', command], { cwd: root, encoding: 'utf8', input: prompt, env });
+  assert.equal(JSON.parse(third.stdout).hookSpecificOutput.additionalContext, 'CACHED CONTEXT');
+  assert.equal(fs.readFileSync(marker, 'utf8'), 'xx', 'expired cache must probe again');
+});
+
 test('launcher bridge exits when stdin stalls past its deadline', async t => {
   const root = empty(t);
   await init.init(root, { platform: 'codex' });
@@ -248,8 +368,29 @@ test('unknown nonempty data and unmanaged skill/plugin files are preserved', asy
   await assert.rejects(init.init(root, { platform: 'codex' }), /Nonempty/);
   assert.equal(fs.readFileSync(path.join(root, '.code-flow/user.txt'), 'utf8'), 'precious');
   const other = empty(t); h.write(other, '.agents/skills/cf-init/SKILL.md', 'custom skill');
-  await assert.rejects(init.init(other, { platform: 'codex' }), /unmanaged/);
-  assert.equal(fs.existsSync(path.join(other, '.code-flow')), false);
+  const conflicted = await init.init(other, { platform: 'codex' });
+  assert.equal(conflicted.ok, false);
+  assert.ok(conflicted.conflicts.some(item => item.path === '.agents/skills/cf-init/SKILL.md'));
+  assert.equal(fs.readFileSync(path.join(other, '.agents/skills/cf-init/SKILL.md'), 'utf8'), 'custom skill');
+  assert.ok(fs.existsSync(path.join(other, '.code-flow/templates/task.md')));
+  assert.ok(fs.existsSync(path.join(other, '.codex/hooks.json')));
+  fs.rmSync(path.join(other, '.agents/skills/cf-init/SKILL.md'));
+  const resolved = await init.init(other, { platform: 'codex' });
+  assert.equal(resolved.ok, true);
+  assert.equal(resolved.conflicts.length, 0);
+  assert.ok(fs.readFileSync(path.join(other, '.agents/skills/cf-init/SKILL.md'), 'utf8').includes('cf-init'));
+});
+
+test('init reports per-file conflicts and still installs other files', async t => {
+  const root = empty(t);
+  const file = h.write(root, '.codex/config.toml', '[features]\n"hooks" = false\n');
+  const result = await init.init(root, { platform: 'codex' });
+  assert.equal(result.ok, false);
+  assert.ok(result.conflicts.some(item => item.path === '.codex/config.toml' && item.code === 'config_format'));
+  assert.equal(fs.readFileSync(file, 'utf8'), '[features]\n"hooks" = false\n');
+  assert.ok(fs.existsSync(path.join(root, '.codex/hooks.json')));
+  assert.ok(fs.existsSync(path.join(root, '.code-flow/templates/task.md')));
+  assert.ok(fs.existsSync(path.join(root, '.agents/skills/cf-init/SKILL.md')));
 });
 test('POSIX launcher quotes hostile-looking paths, handles missing entry and preserves stdin JSON', async t => {
   if (process.platform === 'win32') return;

@@ -47,6 +47,18 @@ test('paths reject traversal, wrong case and symlink escape before writes', t =>
   assert.throws(() => files.inside(root, '.code-flow/Specs/new.md'), /case|path/i);
 });
 
+test('config validates an optional project regression command', t => {
+  const root = project(t), file = path.join(root, '.code-flow/config.json');
+  fs.writeFileSync(file, JSON.stringify({ version: 1,
+    tests: { regression: { argv: ['node', '-e', 'process.exit(0)'], timeout: 30 } } }));
+  const loaded = config.load(root);
+  assert.equal(loaded.tests.regression.id, 'regression');
+  assert.deepEqual(loaded.tests.regression.argv, ['node', '-e', 'process.exit(0)']);
+  fs.writeFileSync(file, JSON.stringify({ version: 1,
+    tests: { regression: { argv: ['node'], run: 'x' } } }));
+  assert.throws(() => config.load(root), /exactly one/);
+});
+
 test('config resolves roots and rejects loose values and invalid glob', t => {
   const root = project(t);
   assert.equal(config.findRoot(path.join(root, '.code-flow/specs')), files.realpath(root));
@@ -98,26 +110,14 @@ test('Codex config updates only the real features.hooks field', () => {
   assert.match(result, /\[mcp_servers\."fixture\]one"\.env\]\nhooks = "user-value"/);
 });
 
-test('Codex config recognizes quoted, dotted and array-boundary TOML forms', () => {
-  const quoted = adapters.codexConfig('[features]\n"hooks" = false\n');
-  assert.match(quoted, /"hooks" = true/);
-  assert.equal((quoted.match(/\[features\]/g) || []).length, 1);
-  const literal = adapters.codexConfig("[features]\n'hooks' = false\n");
-  assert.match(literal, /'hooks' = true/);
+test('Codex config supports canonical features forms and refuses ambiguous TOML', () => {
+  const canonical = adapters.codexConfig('[features]\nhooks = false\n');
+  assert.match(canonical, /\[features\]\nhooks = true/);
   const dotted = adapters.codexConfig('features.hooks = false # user\n');
   assert.equal(dotted, 'features.hooks = true # user\n');
-  const array = adapters.codexConfig('[features]\nother = 1\n[[skills.config]]\nhooks = false\n');
-  assert.match(array, /\[features\]\nhooks = true/);
-  assert.match(array, /\[\[skills\.config\]\]\nhooks = false/);
-  const quotedTable = adapters.codexConfig('["features"]\nhooks = false\n');
-  assert.match(quotedTable, /\["features"\]\nhooks = true/);
-  const unicodeKey = adapters.codexConfig('[features]\n"\\u0068ooks" = false\n');
-  assert.match(unicodeKey, /"\\u0068ooks" = true/);
-  const unicodeTable = adapters.codexConfig('["\\u0066eatures"]\nhooks = false\n');
-  assert.match(unicodeTable, /\["\\u0066eatures"\]\nhooks = true/);
-  const singleKey = adapters.codexConfig('["features.hooks"] = false\n');
-  assert.match(singleKey, /\["features\.hooks"\] = false/);
-  assert.match(singleKey, /\[features\]\nhooks = true/);
+  const other = adapters.codexConfig('[features]\nother = 1\n[[skills.config]]\nhooks = false\n');
+  assert.match(other, /\[features\]\nhooks = true/);
+  assert.match(other, /\[\[skills\.config\]\]\nhooks = false/);
   const dottedOther = adapters.codexConfig('features.shell_tool = false\n');
   assert.match(dottedOther, /features\.shell_tool = false\nfeatures\.hooks = true/);
   assert.equal((dottedOther.match(/\[features\]/g) || []).length, 0);
@@ -127,10 +127,20 @@ test('Codex config recognizes quoted, dotted and array-boundary TOML forms', () 
   const subtable = adapters.codexConfig('[profiles.review]\nfeatures = { shell_tool = true }\n');
   assert.match(subtable, /\[profiles\.review\]\nfeatures = \{ shell_tool = true \}/);
   assert.match(subtable, /\[features\]\nhooks = true/);
+  for (const form of [
+    '[features]\n"hooks" = false\n',
+    "[features]\n'hooks' = false\n",
+    '["features"]\nhooks = false\n',
+    '["\\u0066eatures"]\nhooks = false\n',
+    '"features.hooks" = false\n',
+    '"features" = { hooks = false }\n',
+    'features = { hooks = false }\n',
+    '[[features]]\nhooks = false\n',
+    '[features]\nhooks = false\n[features]\nhooks = false\n'
+  ]) assert.throws(() => adapters.codexConfig(form), /Unsupported/, form);
   assert.throws(() => adapters.codexConfig('features.shell_tool = [\n false\n]\n'), /Multi-line/);
   assert.throws(() => adapters.codexConfig('features.shell_tool = """\n false\n"""\n'), /Multi-line/);
-  assert.throws(() => adapters.codexConfig('"features" = { hooks = false }\n'), /\[features\] table/);
-  assert.throws(() => adapters.codexConfig("'features' = { hooks = false }\n"), /\[features\] table/);
+  assert.throws(() => adapters.codexConfig('features.hooks = maybe\n'), /features\.hooks value/);
 });
 
 test('Codex config ignores quoted feature examples inside multiline strings', () => {

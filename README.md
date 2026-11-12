@@ -75,7 +75,7 @@ cf-task skill 把 prompt Hook 给出的 session token 传给 start --session，�
 
 Hook 只在用户提交 prompt 时读取并交付上下文。没有编辑/Stop 门禁；规范修改后下次适用注入读取最新内容。finish 实际执行本任务声明测试；archive 仅应用 Delta 并移动需求目录，CI 独立承担全量与 E2E。
 
-批次 worktree 从包含 specs/当前需求/config 的 baseline 创建；业务代码 dirty 时拒绝，prepare 自动检测平台并执行 init，随后校验 specs 快照与自动合并。
+批次 worktree 从包含 specs/当前需求/config 的 baseline 创建；业务代码 dirty 时拒绝。worker 默认使用全局 CLI，prepare 不再自动 init；只有需要 worker 内宿主会话时才用 `--init`。随后校验 specs 快照并自动合并。
 
 ## 大测试集
 

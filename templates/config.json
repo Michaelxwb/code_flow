@@ -2,6 +2,6 @@
   "version": 1,
   "always": [],
   "budget": { "maxTokens": 2500, "maxBytes": 16384 },
-  "tests": { "timeoutSeconds": 120, "jobs": 2 },
+  "tests": { "timeoutSeconds": 120, "jobs": 2, "regression": null },
   "paths": {}
 }

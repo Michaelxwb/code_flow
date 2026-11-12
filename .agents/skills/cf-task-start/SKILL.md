@@ -19,7 +19,7 @@ Batch (dependency layer):
 code-flow task parallel prepare --task-file <task-document>.md --tasks TASK-001,TASK-002 --run-id <id> --workers 2
 ```
 
-2. Read `workers` and each worker `env` from the run ledger. Dispatch no more than `workers` workers at once (default 2), one worker per Task. Give each worker its ledger `CF_*` environment.
+2. Read `workers` and each worker `env` from the run ledger. Dispatch no more than `workers` workers at once (default 2), one worker per Task. Give each worker its ledger `CF_*` environment. Workers use the global CLI; prepare does not install tool files into them. Add `--init` only when a host session must run inside a worker.
 
 3. In each worker: start → implement → **finish**. `finish` is the only test entry and runs the Task's declared tests; do not run those tests a second time before finish.
 

@@ -38,6 +38,18 @@ test('CRLF Specs remain well-formed through repeated learning', async t => {
   assert.equal(spec.load(root, 'cli/runtime').rules.length, 3);
 });
 
+test('Spec learning ignores history headings inside fenced examples with language markers', async t => {
+  const root = h.project(t), file = h.spec(root);
+  const example = '\n~~~md\n~~~js\n## Applied Deltas\n- example-only\n~~~\n';
+  fs.appendFileSync(file, example);
+  const body = fs.readFileSync(file, 'utf8');
+  assert.deepEqual(learn.records(body), []);
+  assert.equal(spec.load(root, 'cli/runtime').rules.length, 1);
+  await learn.apply(root, [done(root, [delta('FENCE')])]);
+  assert.equal(spec.load(root, 'cli/runtime').rules.length, 2);
+  assert.ok(fs.readFileSync(file, 'utf8').includes(example));
+});
+
 test('update/remove preserve identity and deleting highest ID never reuses it', async t => {
   const root = h.project(t); h.spec(root);
   await learn.apply(root, [done(root, [delta('D1')])]);
@@ -64,6 +76,19 @@ test('preflights all targets before writing and enforces before text', async t =
   await assert.rejects(learn.apply(root, [done(root, [delta('D1'), delta('D2', 'add', { target: 'missing/rules' })])]), /Missing Spec/);
   assert.equal(fs.readFileSync(file, 'utf8'), before);
   await assert.rejects(learn.apply(root, [done(root, [delta('D3', 'update', { ref: 'RULE-001', before: 'stale' })])]), /changed or missing/);
+});
+
+test('learning preflights the resulting Spec syntax before writing or archiving', async t => {
+  const root = h.project(t), files = [h.spec(root), h.spec(root, 'other/rules')];
+  const before = files.map(file => fs.readFileSync(file, 'utf8'));
+  const document = done(root, [delta('GOOD'), delta('BAD', 'add', {
+    target: 'other/rules', rule: 'Unclosed example.\n```js\nexample'
+  })]);
+  await assert.rejects(learn.apply(root, [document]), error => error.code === 'rule_fence');
+  await assert.rejects(task.archive(root, path.posix.dirname(document.relative)),
+    error => error.code === 'rule_fence');
+  assert.deepEqual(files.map(file => fs.readFileSync(file, 'utf8')), before);
+  assert.ok(fs.existsSync(document.file));
 });
 
 test('a Delta ID cannot be re-applied to a different target', async t => {

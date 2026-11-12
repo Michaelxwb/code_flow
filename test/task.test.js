@@ -40,6 +40,94 @@ test('actual finish success writes done, failure preserves progress and E2E is n
   assert.ok(task.load(root, file).body.includes('FAIL commands=0/1'));
 });
 
+test('task lifecycle writes real sections when commands and examples contain heading text', async t => {
+  for (const example of ['', '\n~~~md\n### Log\n\n### Verification\n~~~\n']) {
+    const root = h.project(t); h.spec(root);
+    const file = h.task(root, { tests: [{ id: 'headings', argv: [process.execPath, '-e',
+      'console.log("### Log ### Verification")'] }] });
+    const location = path.join(root, file);
+    const before = fs.readFileSync(location, 'utf8').replace('Deliver behavior.', 'Deliver behavior.' + example);
+    fs.writeFileSync(location, before);
+    const testsBefore = before.slice(before.indexOf('### Tests'), before.indexOf('### Description'));
+    await task.start(root, file, 'TASK-001');
+    assert.equal((await task.finish(root, file, 'TASK-001')).ok, true);
+    const after = fs.readFileSync(location, 'utf8');
+    const realLog = after.slice(after.lastIndexOf('\n### Log\n')).split('\n### Verification\n')[0];
+    assert.match(realLog, /started/);
+    assert.match(after, /\n### Verification\n\n- .* PASS commands=1\/1/);
+    assert.equal(after.slice(after.indexOf('### Tests'), after.indexOf('### Description')), testsBefore);
+    if (example) assert.ok(after.includes(example));
+  }
+});
+
+test('Task document parsing ignores headings inside fenced examples with language markers', t => {
+  const root = h.project(t); h.spec(root); const file = h.task(root);
+  const example = ['~~~md', '~~~js', '## TASK-999: example', '- **Status**: done', '~~~'].join('\n');
+  const location = path.join(root, file);
+  fs.writeFileSync(location, fs.readFileSync(location, 'utf8')
+    .replace('Deliver behavior.', 'Deliver behavior.\n' + example));
+  const document = task.loadDocument(root, file);
+  assert.deepEqual(document.tasks.map(item => item.id), ['TASK-001']);
+  assert.equal(document.tasks[0].status, 'draft');
+});
+
+test('Task fields update real metadata after a fenced example', async t => {
+  const root = h.project(t); h.spec(root);
+  const file = h.task(root, { status: 'in-progress' }), location = path.join(root, file);
+  const example = '\n~~~md\n- **Status**: draft\n- **Source**: example\n~~~\n';
+  fs.writeFileSync(location, fs.readFileSync(location, 'utf8')
+    .replace('## TASK-001: Demo\n', '## TASK-001: Demo\n' + example));
+  assert.equal((await task.finish(root, file, 'TASK-001')).ok, true);
+  assert.equal(task.loadTask(root, file, 'TASK-001').status, 'done');
+  const updated = taskdoc.updateTask(task.loadDocument(root, file), 'TASK-001', {
+    field: 'source', value: 'src/actual.js'
+  });
+  const after = taskdoc.write(updated);
+  assert.ok(after.includes(example));
+  assert.equal(taskdoc.parse(after, location).tasks[0].source, 'src/actual.js');
+});
+
+test('duplicate Task fields fail before executing tests or changing the document', async t => {
+  const root = h.project(t); h.spec(root);
+  const file = h.task(root, { status: 'in-progress', tests: [{ id: 'never', argv: [process.execPath,
+    '-e', 'require("fs").writeFileSync("executed", "x")'] }] });
+  const location = path.join(root, file);
+  const before = fs.readFileSync(location, 'utf8') + '\n- **Status**: in-progress\n';
+  fs.writeFileSync(location, before);
+  await assert.rejects(task.finish(root, file, 'TASK-001'), error => error.code === 'task_field_duplicate');
+  assert.equal(fs.readFileSync(location, 'utf8'), before);
+  assert.equal(fs.existsSync(path.join(root, 'executed')), false);
+});
+
+test('multiline transition reasons remain log text without creating Task sections', async t => {
+  const root = h.project(t); h.spec(root);
+  const file = h.task(root, { status: 'in-progress' });
+  const reason = 'waiting\n## TASK-999: example\n- **Status**: done';
+  await task.transition(root, file, 'TASK-001', 'block', reason);
+  let document = task.loadDocument(root, file);
+  assert.deepEqual(document.tasks.map(item => item.id), ['TASK-001']);
+  assert.equal(document.tasks[0].status, 'blocked');
+  assert.ok(document.tasks[0].text.includes('waiting ## TASK-999: example - **Status**: done'));
+  await task.start(root, file, 'TASK-001');
+  await task.finish(root, file, 'TASK-001');
+  await task.transition(root, file, 'TASK-001', 'reopen', reason);
+  document = task.loadDocument(root, file);
+  assert.equal(document.tasks.length, 1);
+  assert.equal(document.tasks[0].status, 'in-progress');
+});
+
+test('multiline test IDs fail before running commands or writing Verification', async t => {
+  for (const newline of ['\n', '\r\n']) {
+    const root = h.project(t); h.spec(root);
+    const file = h.task(root, { status: 'in-progress', tests: [{ id: 'unit' + newline + '## TASK-999: example',
+      argv: [process.execPath, '-e', 'require("fs").writeFileSync("executed", "x")'] }] });
+    const location = path.join(root, file), before = fs.readFileSync(location, 'utf8');
+    await assert.rejects(task.finish(root, file, 'TASK-001'), error => error.code === 'test_id');
+    assert.equal(fs.readFileSync(location, 'utf8'), before);
+    assert.equal(fs.existsSync(path.join(root, 'executed')), false);
+  }
+});
+
 test('archive resumes after move failure without reallocating learned rules', async t => {
   const root = h.project(t); h.spec(root);
   const file = h.task(root, { status: 'done', spec_delta: [
@@ -161,4 +249,56 @@ test('two TASK sections in one document finish concurrently and preserve both ve
   const document = task.loadDocument(root, file);
   assert.deepEqual(document.tasks.map(item => item.status), ['done', 'done']);
   assert.equal((document.body.match(/PASS commands=1\/1/g) || []).length, 2);
+});
+
+test('task documents tolerate extra sections and report missing fields precisely', async t => {
+  const root = h.project(t); h.spec(root);
+  const file = h.task(root, { status: 'in-progress' });
+  const location = path.join(root, file);
+  fs.writeFileSync(location, fs.readFileSync(location, 'utf8')
+    .replace('### Description', '## Notes\n\nFree text must survive.\n\n### Description'));
+  const document = task.loadDocument(root, file);
+  assert.deepEqual(document.tasks.map(item => item.id), ['TASK-001']);
+  assert.ok(document.tasks[0].text.includes('Free text must survive.'));
+  assert.equal((await task.finish(root, file)).ok, true);
+  assert.ok(fs.readFileSync(location, 'utf8').includes('Free text must survive.'));
+  const missing = h.task(root, {}, '.code-flow/tasks/2026-11-10/missing/missing.md');
+  fs.writeFileSync(path.join(root, missing), fs.readFileSync(path.join(root, missing), 'utf8')
+    .replace('- **Status**: draft', '- **Status**:'));
+  assert.throws(() => task.load(root, missing), /TASK-001: missing Status field/);
+});
+
+test('task status ignores unrelated markdown in a requirement directory', t => {
+  const root = h.project(t); h.spec(root);
+  const file = h.task(root);
+  h.write(root, path.posix.dirname(file) + '/notes.md', '# scratch\n');
+  const listed = task.list(root);
+  assert.equal(listed.ok, true);
+  assert.equal(listed.items.length, 1);
+  assert.equal(listed.ignored, 1);
+});
+
+test('scenario references are free-form human assets', t => {
+  const root = h.project(t); h.spec(root);
+  const file = h.task(root, { scenarios: ['manual-checkout', 'S-01'] });
+  assert.deepEqual(task.load(root, file).scenarios, ['manual-checkout', 'S-01']);
+});
+
+test('finish records tree and declaration provenance', async t => {
+  const root = h.project(t); h.spec(root);
+  const file = h.task(root, { tests: [{ id: 'ok', argv: [process.execPath, '-e', 'process.exit(0)'] }] });
+  await task.start(root, file);
+  assert.match(task.load(root, file).text, /started tests=[a-f0-9]{12}/);
+  assert.equal((await task.finish(root, file)).ok, true);
+  let summary = task.list(root).items[0];
+  assert.match(summary.verification, / tests=[a-f0-9]{12} head=none dirty=unknown/);
+  assert.equal(summary.tests_changed, false);
+  assert.equal(summary.verified_head, null);
+  await task.transition(root, file, 'TASK-001', 'reopen', 'recheck');
+  const location = path.join(root, file);
+  fs.writeFileSync(location, fs.readFileSync(location, 'utf8').replace('"id": "ok"', '"id": "changed"'));
+  assert.equal((await task.finish(root, file)).ok, true);
+  summary = task.list(root).items[0];
+  assert.equal(summary.tests_changed, true);
+  assert.match(summary.verification, / tests-changed/);
 });

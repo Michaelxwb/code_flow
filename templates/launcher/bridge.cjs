@@ -1,11 +1,16 @@
 'use strict';
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
 const { spawn, spawnSync } = require('child_process');
 
 const MAX_INPUT = 1024 * 1024;
 const MAX_OUTPUT = 1024 * 1024;
-const PROBE_MS = 250;
+const MAX_DIAGNOSTIC = 4096;
+const PROBE_MS = 800;
+const RUN_RESERVE_MS = 1200;
+const CACHE_TTL_MS = 600000;
 const TOTAL_MS = 2000;
 
 function emptyPayload(format) {
@@ -126,7 +131,8 @@ function probeCommand(candidate, args) {
 function probe(root, candidate, budget) {
   const [file, args] = probeCommand(candidate, ['hook', 'capabilities', '--json']);
   return new Promise(resolve => {
-    let output = '', size = 0, settled = false, timer;
+    const chunks = [];
+    let size = 0, settled = false, timer;
     const child = spawn(file, args, {
       cwd: root, stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32',
       windowsHide: true
@@ -137,7 +143,7 @@ function probe(root, candidate, budget) {
       try { child.stdout.destroy(); child.stderr.destroy(); } catch (_) { /* best effort */ }
       if (!ok) { resolve(null); return; }
       try {
-        const data = JSON.parse(output);
+        const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
         resolve(validCapability(data, candidate) ? data : null);
       } catch (_) { resolve(null); }
     };
@@ -146,26 +152,69 @@ function probe(root, candidate, budget) {
     child.stdout.on('data', chunk => {
       size += chunk.length;
       if (size > MAX_OUTPUT) { killTree(child); finish(false); }
-      else output += chunk;
+      else chunks.push(chunk);
     });
     child.stderr.on('data', () => {});
-    child.on('close', code => finish(code === 0 && output.trim().length > 0));
+    child.on('close', code => finish(code === 0));
   });
 }
 
-async function select(root, fixed, deadline) {
+function cacheFile(root) {
+  const digest = crypto.createHash('sha256').update(fs.realpathSync(root)).digest('hex');
+  return path.join(os.tmpdir(), 'code-flow', digest, 'bridge.json');
+}
+
+function selectionKey(fixed) {
+  return crypto.createHash('sha256').update(JSON.stringify({
+    path: process.env.PATH || '', node: fixed.node || '', entry: fixed.entry || ''
+  })).digest('hex');
+}
+
+function readCache(root, key) {
+  let data;
+  try { data = JSON.parse(fs.readFileSync(cacheFile(root), 'utf8')); } catch (_) { return null; }
+  if (!data || data.key !== key || typeof data.checked_at !== 'number' ||
+      Date.now() - data.checked_at > CACHE_TTL_MS ||
+      typeof data.entry_mtime !== 'number' || typeof data.candidate !== 'string' ||
+      !data.capability || typeof data.capability !== 'object') return null;
+  try { if (fs.statSync(data.capability.entry).mtimeMs !== data.entry_mtime) return null; }
+  catch (_) { return null; }
+  return validCapability(data.capability, data.candidate) ? data.capability : null;
+}
+
+function writeCache(root, key, selected) {
+  try {
+    const { candidate, ...capability } = selected;
+    const entry_mtime = fs.statSync(capability.entry).mtimeMs;
+    const file = cacheFile(root), temporary = file + '.' + process.pid + '.' + Date.now() + '.tmp';
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(temporary, JSON.stringify({ key, checked_at: Date.now(), entry_mtime,
+      candidate, capability }), { mode: 0o600 });
+    fs.renameSync(temporary, file);
+  } catch (_) { /* best effort */ }
+}
+
+async function probePath(root, fixed, deadline) {
   for (const candidate of findOnPath(root)) {
     const remaining = deadline - Date.now();
     if (remaining <= 0) break;
     const capability = await probe(root, candidate, remaining);
-    if (capability) return capability;
+    if (capability) return { ...capability, candidate };
   }
   if (fixed.node && fixed.entry && fs.existsSync(fixed.node) && fs.existsSync(fixed.entry)) {
-    const capability = { node: fixed.node, entry: fixed.entry };
-    if (validCapability({ ...capability, package: '@michaelxwb/code-flow',
-      version: packageIdentity(fixed.entry)?.version, hook_protocol: 1 }, fixed.entry)) return capability;
+    const capability = { node: fixed.node, entry: fixed.entry, package: '@michaelxwb/code-flow',
+      version: packageIdentity(fixed.entry)?.version, hook_protocol: 1 };
+    if (validCapability(capability, fixed.entry)) return { ...capability, candidate: fixed.entry };
   }
   return null;
+}
+
+async function select(root, fixed, deadline) {
+  const key = selectionKey(fixed), cached = readCache(root, key);
+  if (cached) return cached;
+  const selected = await probePath(root, fixed, deadline);
+  if (selected) writeCache(root, key, selected);
+  return selected;
 }
 
 function killTree(child) {
@@ -179,7 +228,8 @@ function killTree(child) {
 
 function run(root, selected, format, input, deadline) {
   return new Promise(resolve => {
-    let output = '', stderr = '', size = 0, settled = false, timer;
+    const chunks = [];
+    let stderr = '', size = 0, settled = false, timer;
     const child = spawn(selected.node, [selected.entry, 'hook', 'prompt', '--format=' + format], {
       cwd: root, stdio: ['pipe', 'pipe', 'pipe'], detached: process.platform !== 'win32', windowsHide: true
     });
@@ -192,19 +242,22 @@ function run(root, selected, format, input, deadline) {
         return;
       }
       try {
-        const parsed = JSON.parse(output);
+        const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
         resolve(normalizePayload(format, parsed));
       } catch (_) { resolve(null); }
     };
     timer = setTimeout(() => { killTree(child); finish(false); },
       Math.max(0, Math.min(TOTAL_MS, deadline - Date.now())));
-    child.on('error', error => { stderr += error.message; finish(false); });
+    child.on('error', error => {
+      stderr = (stderr + error.message).slice(-MAX_DIAGNOSTIC); finish(false);
+    });
     child.stdout.on('data', chunk => {
       size += chunk.length;
       if (size > MAX_OUTPUT) { killTree(child); finish(false); }
-      else output += chunk;
+      else chunks.push(chunk);
     });
-    child.stderr.on('data', chunk => { stderr += chunk.toString('utf8').slice(-4096); });
+    child.stderr.setEncoding('utf8');
+    child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-MAX_DIAGNOSTIC); });
     child.on('close', code => finish(code === 0));
     child.stdin.on('error', () => {});
     child.stdin.end(input);
@@ -226,7 +279,7 @@ async function main() {
   const root = process.cwd(), deadline = Date.now() + TOTAL_MS;
   const input = await readStdin(deadline);
   if (!input.trim()) return;
-  const selected = await select(root, fixed, deadline);
+  const selected = await select(root, fixed, deadline - RUN_RESERVE_MS);
   if (!selected) {
     process.stderr.write('code-flow bridge: no valid global entry; run doctor\n');
     emit(format, emptyPayload(format));
