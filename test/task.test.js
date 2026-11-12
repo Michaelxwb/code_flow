@@ -187,6 +187,17 @@ test('archive applies Delta then moves the whole requirement without testing', a
   assert.equal(spec.load(root, 'cli/runtime').rules.length, 2);
 });
 
+test('archive removes an empty date directory and keeps it when other requirements remain', async t => {
+  const root = h.project(t); h.spec(root);
+  const first = h.task(root, { status: 'done' });
+  h.task(root, { status: 'done' }, '.code-flow/tasks/2026-11-10/other/other.md');
+  const date = path.join(root, '.code-flow/tasks/2026-11-10');
+  await task.archive(root, path.posix.dirname(first));
+  assert.ok(fs.existsSync(date));
+  await task.archive(root, '.code-flow/tasks/2026-11-10/other');
+  assert.equal(fs.existsSync(date), false);
+});
+
 test('archive refuses incomplete, empty and conflicting requirements', async t => {
   const root = h.project(t); h.spec(root); const file = h.task(root), dir = path.posix.dirname(file);
   await assert.rejects(task.archive(root, dir), /All tasks/);
