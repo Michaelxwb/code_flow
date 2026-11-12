@@ -338,6 +338,8 @@ code-flow task finish <task-doc>.md --task TASK-001 --jobs 2 --json
 - 成功时自动勾选该 TASK `### Checklist` 中剩余的 `- [ ]`；失败时保持未勾选；
 - 记录 `tests=`、`head=`、`dirty=` 和 `tests-changed` 追溯信息。
 
+中间 TASK 的 finish 不要求人工 review；每个 TASK 的声明测试就是该任务的验证。继续完成所有 TASK 和依赖批次。最后一个 TASK 完成（或最后一批合入）后停下，让用户做完整功能验收和代码审查。
+
 不提供独立 `task verify`；日常完成直接用 finish，避免重复执行测试。E2E 和全量回归由 CI 执行，`E2E` 字段只作声明。
 
 测试声明规则：
@@ -350,7 +352,7 @@ code-flow task finish <task-doc>.md --task TASK-001 --jobs 2 --json
 
 ### 4.7 归档
 
-所有 TASK 都 done 后，在协调工作区执行：
+所有 TASK 都 done 后，不要自动归档。先停下，让用户完成完整功能验收和代码审查；再用 `cf-spec`/`spec learn --dry-run` 审阅 Delta，用户确认后才在协调工作区执行：
 
 ```bash
 code-flow task archive <requirement-dir> --dry-run
@@ -474,14 +476,35 @@ export CF_EVENT_LOG="$PWD/.code-flow-logs/events.jsonl"
 code-flow process collect --out <output-dir> [--transcript <host-session.jsonl>]
 ```
 
-输出目录包含：
+不带 `--out` 时默认结构：
 
-- `events.jsonl`
-- `environment.json`：OS、Node、CLI 版本、git HEAD、平台和 capture 配置
-- `summary.json`：命令计数、阶段耗时、Hook emitted/omitted 引用统计、Task 状态、失败清单和坏行计数
-- `task-status.json`、`doctor.json`、`spec-list.json`
-- Specs/Tasks 快照、config、文件哈希、git 状态/日志/diff 摘要
-- 可选 `transcript.jsonl`
+```text
+.code-flow/process/
+  events.jsonl                 # 主工作区事件
+  worktree-events.jsonl        # 合并后的 worker/子 agent 事件（source/run_id/task）
+  environment.json             # OS、Node、CLI 版本、git HEAD、平台、capture 配置
+  summary.json                 # 主 + worktree 事件的命令、耗时、注入引用、Task 状态、失败
+  analysis/
+    events.jsonl
+    worktree-events.jsonl
+    task-status.json
+    doctor.json
+    spec-list.json
+    environment.json
+    summary.json
+    code-flow/specs/
+    code-flow/tasks/
+    code-flow/config.json
+    files.sha256
+    git-status.txt
+    git-log.txt
+    git-diff-stat.txt
+    transcript.jsonl            # 可选
+```
+
+- 带 `--out <dir>` 时全部写到该目录，便于打包传递。
+- `worktree-events.jsonl` 每行带 `source: worktree`、`run_id`、`task`、`worktree`；主 `events.jsonl` 不覆盖。
+- 必须在 `cleanup`/`archive` 之前 collect，否则 worker worktree 内的日志会随 worktree 删除。
 
 效果分析建议同时提供宿主 transcript，才能把 prompt、注入结果、模型动作、测试结果和成本关联起来。采集包可能包含项目路径、需求文本和对话内容；分享前请审阅。
 

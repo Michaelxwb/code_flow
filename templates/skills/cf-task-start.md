@@ -44,4 +44,6 @@ code-flow task parallel cleanup --run-id <id> --json
 
 Keep the run ledger after each batch for audit; `cf-task:archive` clears completed run ledgers for the requirement. Use `--purge` only for manual early cleanup. Always inspect `task parallel status --run-id <id>` before cleanup.
 
-If merge or integration fails, stop and keep the worktrees, branches and ledger for inspection. Do not run `task archive` inside a worker; archive only in the coordinator worktree after the run is complete. After every TASK is done, use `cf-task:archive` in the coordinator worktree. E2E and full regression stay in CI.
+If merge or integration fails, stop and keep the worktrees, branches and ledger for inspection. Do not run `task archive` inside a worker.
+
+Intermediate TASKs do not require a human review gate: each TASK's declared tests are its verification, so continue through all TASKs and dependency batches. After the final TASK is done (or the final batch is merged), stop and present the full diff, test results and Verification summary. Ask the user to perform complete functional verification and code review; do not archive or start new work until the user explicitly confirms. E2E and full regression stay in CI.

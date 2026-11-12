@@ -848,6 +848,8 @@ finish 的通过事实限定为此次声明命令成功。done 任务要重新�
 
 `tests` 是 start 时测试声明的规范化哈希；声明在 start 后被修改时追加 `tests-changed`。`head`/`dirty` 描述实际被测试的树：`head=none` 表示非 Git 项目，`dirty=1` 表示测试跑在未提交的业务改动上（`.code-flow` 文档改动不计入）。这些字段用于追溯，不改变 PASS/FAIL 语义，也不构成额外门禁。
 
+> 完成纪律：中间 TASK 的 finish 只代表该 TASK 声明测试通过，不设人工 review 停点；继续完成全部 TASK。最后一个 TASK 完成（或最后一批合入）后必须停下，等待用户完整功能验收和代码审查，确认后才允许 archive。
+
 ### 7.9 场景文档与手工验收
 
 `cf-task:align` 继续产出 `<需求>.scenarios.md`，作为设计、计划、实现和人工验收的共同参照。
@@ -1242,7 +1244,7 @@ cf-task:archive
 | 2 | 用法、格式或配置错误 |
 
 - 人类输出简洁，--json 输出一个完整结果对象；错误对象含稳定 code 与 message，诊断写 stderr。
-- 可选过程日志：`capture.enabled=true` 时，CLI/Hook 自动追加到 `<capture.path>/events.jsonl`；`CF_EVENT_LOG` 可作为显式覆盖。事件 schema 为 `version: 2`，每行包含命令、脱敏参数、cwd、退出码、耗时、stdout/stderr 字节数、CLI/Node/平台版本和精简 summary；summary 可包含 task、session 短哈希、prompt 长度/哈希、路径、emitted/omitted refs、诊断和错误消息。不记录规则正文、源码、测试输出正文或完整 prompt；采集写失败不影响命令、stdout 协议或退出码。`process collect` 额外写入 environment.json 和 summary.json。
+- 可选过程日志：`capture.enabled=true` 时，CLI/Hook 自动追加到 `<capture.path>/events.jsonl`；`CF_EVENT_LOG` 可作为显式覆盖。事件 schema 为 `version: 2`，每行包含命令、脱敏参数、cwd、退出码、耗时、stdout/stderr 字节数、CLI/Node/平台版本和精简 summary；summary 可包含 task、session 短哈希、prompt 长度/哈希、路径、emitted/omitted refs、诊断和错误消息。不记录规则正文、源码、测试输出正文或完整 prompt；采集写失败不影响命令、stdout 协议或退出码。`process collect` 不带 `--out` 时把 environment/summary/worktree-events 写到 `.code-flow/process/`，完整快照放 `analysis/`；同时合并 `.code-flow/worktrees/*/TASK-*/.code-flow/process/events.jsonl` 并加 provenance。
 - Hook 不沿用 CLI 非零退出策略：错误降级、stdout 协议有效、退出 0。
 - 中断的非 Hook 命令保留平台惯例的中断退出状态，不写 done；普通进程失败不冒充测试通过。
 - 不能识别的参数直接返回用法错误，不能静默忽略。

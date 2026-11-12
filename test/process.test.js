@@ -47,6 +47,35 @@ test('process collect writes a cross-platform bundle with events and snapshots',
   assert.ok(fs.readFileSync(path.join(out, 'files.sha256'), 'utf8').includes('.code-flow/specs/cli/runtime.md'));
 });
 
+test('default collect writes stable process files and merges worktree events', t => {
+  const root = project(t);
+  const event = { version: 2, at: new Date().toISOString(), command: 'task start',
+    args: ['task', 'start', '.code-flow/tasks/demo/demo.md', '--task', 'TASK-001'],
+    cwd: '.', exit: 0, ms: 7, stdout_bytes: 10, stderr_bytes: 0,
+    summary: { task: '.code-flow/tasks/demo/demo.md#TASK-001', emitted: 1 } };
+  h.write(root, '.code-flow/worktrees/run-wt/TASK-001/.code-flow/process/events.jsonl',
+    JSON.stringify(event) + '\n');
+  assert.equal(run(root, ['task', 'status', '--json']).status, 0);
+  const collected = run(root, ['process', 'collect', '--json']);
+  assert.equal(collected.status, 0, collected.stderr);
+  const data = JSON.parse(collected.stdout);
+  assert.match(data.out, /\.code-flow\/process\/analysis$/);
+  for (const name of ['environment.json', 'summary.json', 'worktree-events.jsonl']) {
+    assert.ok(fs.existsSync(path.join(root, '.code-flow/process', name)), name);
+  }
+  const worktree = fs.readFileSync(path.join(root, '.code-flow/process/worktree-events.jsonl'), 'utf8')
+    .trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(worktree.length, 1);
+  assert.equal(worktree[0].source, 'worktree');
+  assert.equal(worktree[0].run_id, 'run-wt');
+  assert.equal(worktree[0].task, 'TASK-001');
+  const summary = JSON.parse(fs.readFileSync(path.join(root, '.code-flow/process/summary.json'), 'utf8'));
+  assert.equal(summary.events.worktree, 1);
+  assert.ok(summary.events.total >= 2);
+  assert.ok(fs.existsSync(path.join(root, '.code-flow/process/analysis/events.jsonl')));
+  assert.ok(fs.existsSync(path.join(root, '.code-flow/process/analysis/worktree-events.jsonl')));
+});
+
 test('process collect copies an optional transcript', t => {
   const root = project(t);
   const transcript = h.write(root, 'session.jsonl', '{"type":"user"}\n');
