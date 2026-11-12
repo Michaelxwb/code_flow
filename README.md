@@ -104,7 +104,7 @@ Hook 只在用户提交 prompt 时读取并交付上下文。没有编辑/Stop �
 code-flow process collect --out <dir> [--transcript <host-session.jsonl>]
 ```
 
-输出目录包含事件、任务/规范快照、状态、git 信息和可选 transcript；手动压缩传递。
+输出目录包含事件、环境、聚合摘要、任务/规范快照、状态、git 信息和可选 transcript；事件包含 task/session/注入引用等元数据但不保存规则正文或 prompt 原文。手动压缩传递。
 
 ## 大测试集
 

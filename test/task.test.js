@@ -24,6 +24,19 @@ test('task updates preserve dollar replacement sequences and JSON payloads', t =
   assert.equal(parsed.tasks[0].tests[0].argv[2], 'process.stdout.write("$$ $& $` $1")');
 });
 
+test('successful finish checks the TASK checklist and failure leaves it open', async t => {
+  const root = h.project(t); h.spec(root);
+  const file = h.task(root, { status: 'in-progress' });
+  assert.equal((await task.finish(root, file, 'TASK-001')).ok, true);
+  let text = fs.readFileSync(path.join(root, file), 'utf8');
+  assert.match(text, /### Checklist\n\n- \[x\] Deliver behavior\./);
+  h.task(root, { status: 'in-progress', tests: [{ id: 'fail',
+    argv: [process.execPath, '-e', 'process.exit(3)'] }] });
+  assert.equal((await task.finish(root, file, 'TASK-001')).ok, false);
+  text = fs.readFileSync(path.join(root, file), 'utf8');
+  assert.match(text, /### Checklist\n\n- \[ \] Deliver behavior\./);
+});
+
 test('actual finish success writes done, failure preserves progress and E2E is not invoked', async t => {
   const root = h.project(t); h.spec(root);
   const file = h.task(root, { e2e: 'must-never-run' });

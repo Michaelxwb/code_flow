@@ -12,8 +12,9 @@ Read the requirement PRD or user brief. Read `.code-flow/templates/design-lite.m
 
 Design rules:
 - full-stack requirements keep frontend and backend design separate;
-- scenarios use S-/E-/B- IDs, level, boundary and expected result;
-- scenarios are a manual tester reference, not a manifest or blocking gate;
+- scenarios use S-/E-/B- IDs for traceability, but are written for a human tester: goal, preconditions, numbered user steps, observable expected result and owner;
+- do not write E2E code, selectors, internal API codes or implementation details unless the user can observe them;
+- scenarios are manual acceptance assets, not a manifest or blocking gate;
 - do not run or copy old manifest/design-lint/Stage Gate/E2E commands from templates.
 
-When design and scenarios are ready, continue with `cf-task:plan`.
+Stop after writing design and scenarios. Ask the user to review them; do not start planning or code until the user explicitly confirms. When confirmed, continue with `cf-task:plan`.

@@ -22,11 +22,11 @@ test('workflow templates encode the v1 document flow without retired gates', asy
     assert.doesNotMatch(text, forbidden, name);
   }
   const scenarios = fs.readFileSync(path.join(directory, 'scenarios.md'), 'utf8');
-  assert.match(scenarios, /id: S-01/);
-  assert.match(scenarios, /level: manual/);
-  assert.match(scenarios, /boundary:/);
-  assert.match(scenarios, /expected:/);
-  assert.match(scenarios, /owner:/);
+  assert.match(scenarios, /## S-01 /);
+  assert.match(scenarios, /\*\*负责\*\*：TASK-001/);
+  assert.match(scenarios, /\*\*前置\*\*/);
+  assert.match(scenarios, /\*\*步骤\*\*/);
+  assert.match(scenarios, /\*\*期望\*\*/);
   const taskTemplate = fs.readFileSync(path.join(directory, 'task.md'), 'utf8');
   const filled = taskTemplate
     .replaceAll('{requirement}', 'demo')

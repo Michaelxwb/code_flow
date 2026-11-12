@@ -111,10 +111,48 @@ test('optional event log records commands and hook injections', t => {
   assert.deepEqual(events.map(item => item.command), ['task status', 'hook prompt', 'task finish']);
   assert.equal(events[0].summary.tasks, 1);
   assert.equal(events[1].summary.emitted, 1);
+  assert.equal(events[1].summary.task, file + '#TASK-001');
+  assert.match(events[1].summary.session, /^[a-f0-9]{16}$/);
+  assert.deepEqual(events[1].summary.emitted_refs, ['cli/runtime#RULE-001']);
+  assert.match(events[1].summary.prompt_hash, /^[a-f0-9]{16}$/);
+  assert.ok(events[1].summary.prompt_bytes > 0);
   assert.equal(events[2].exit, 1);
   assert.equal(events[2].summary.ok, false);
+  assert.equal(events[2].summary.tests_changed, false);
+  assert.ok(Object.hasOwn(events[2].summary, 'head'));
+  assert.ok(Object.hasOwn(events[2].summary, 'dirty'));
   assert.equal(events[2].summary.results[0].status, 'fail');
-  assert.ok(events.every(item => item.version === 1 && typeof item.ms === 'number'));
+  assert.ok(events.every(item => item.version === 2 && typeof item.ms === 'number' &&
+    item.cli_version && item.node && item.platform));
+});
+
+test('event log redacts session tokens and records task metadata', t => {
+  const root = h.project(t); h.spec(root); const file = h.task(root);
+  const log = path.join(root, 'events.jsonl');
+  const token = 'a'.repeat(64);
+  const started = run(root, ['task', 'start', file, '--task', 'TASK-001', '--session', token, '--json'],
+    undefined, { CF_EVENT_LOG: log });
+  assert.equal(started.status, 0, started.stderr);
+  const event = fs.readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line)).at(-1);
+  assert.equal(event.command, 'task start');
+  assert.ok(!JSON.stringify(event.args).includes(token));
+  assert.match(event.summary.session, /^[a-f0-9]{16}$/);
+  assert.equal(event.summary.task, file + '#TASK-001');
+  assert.ok(event.summary.emitted_refs.length >= 1);
+});
+
+test('capture write failures never change command or hook protocol', t => {
+  const root = h.project(t); h.spec(root); h.task(root);
+  h.write(root, '.code-flow/process', 'not a directory');
+  h.write(root, '.code-flow/config.json', JSON.stringify({ version: 1,
+    capture: { enabled: true, path: '.code-flow/process' } }));
+  const status = run(root, ['task', 'status', '--json']);
+  assert.equal(status.status, 0, status.stderr);
+  assert.equal(JSON.parse(status.stdout).ok, true);
+  const hooked = run(root, ['hook', 'prompt', '--format=codex'],
+    JSON.stringify({ cwd: root, session_id: 'capture-failure', prompt: 'continue' }));
+  assert.equal(hooked.status, 0, hooked.stderr);
+  assert.equal(typeof JSON.parse(hooked.stdout).hookSpecificOutput.additionalContext, 'string');
 });
 
 test('capture config enables the event log automatically', t => {

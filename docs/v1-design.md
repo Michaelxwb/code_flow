@@ -408,6 +408,8 @@ cli/runtime#RULE-001
 - [ ] 完成平台启动和故障降级。
 - [ ] 执行声明的相关测试。
 
+> `task finish` 成功时自动勾选本 TASK 的剩余 `- [ ]`；失败时保持未勾选。Checklist 是人工步骤，不替代 `tests`。
+
 ### Spec Delta
 
 ```json
@@ -850,17 +852,19 @@ finish 的通过事实限定为此次声明命令成功。done 任务要重新�
 
 `cf-task:align` 继续产出 `<需求>.scenarios.md`，作为设计、计划、实现和人工验收的共同参照。
 
-场景字段建议：
+场景使用 Markdown 人工步骤，不再要求 YAML/level/exec 字段；工具只要求 S-/E-/B- 编号可被 Task 引用，不解析正文。
 
 | 字段 | 说明 |
 |---|---|
 | id | S-/E-/B- 编号是人工约定；工具只要求单行非空，不校验格式 |
 | title | 场景标题 |
-| level | unit / component / contract / integration / system / e2e / manual |
-| boundary | 关键真实边界；manual 场景写清人工步骤 |
-| expected | 可观察的预期结果 |
-| exec | manual / local / ci；e2e 可写 `ci:<job>` |
-| owner | 负责任务或人工验收人 |
+| 负责 | 负责任务或人工验收人 |
+| 前置 | 人工执行前需要准备的环境/数据 |
+| 步骤 | 从 1 开始的、用户可执行的编号步骤 |
+| 期望 | 用户可观察的结果 |
+| 实际结果 | 人工执行后填写通过/失败和观察 |
+
+写法约束：不写 E2E 代码、选择器或内部实现细节；需要机器执行的快速回归放 Task 的 `tests`。
 
 约束：
 
@@ -1177,6 +1181,7 @@ code-flow spec learn --from-task <task-file> --task TASK-001
 
 ```bash
 code-flow init [--platform=claude|codex|costrict|opencode|all] [--dry-run]
+code-flow node [--dry-run]
 code-flow doctor [--json]
 
 code-flow hook capabilities --json
@@ -1196,7 +1201,7 @@ code-flow task parallel prepare --task-file <requirement>.md --tasks TASK-001,TA
 code-flow task parallel status --run-id <id>
 code-flow task parallel collect --run-id <id>
 code-flow task parallel merge --run-id <id>
-code-flow task parallel cleanup --run-id <id> [--force]
+code-flow task parallel cleanup --run-id <id> [--force] [--purge]
 
 code-flow spec list [--json]
 code-flow spec inject [--task-file <task-file> --task TASK-001] [--path <file>]... [--full] [--json]
@@ -1237,7 +1242,7 @@ cf-task:archive
 | 2 | 用法、格式或配置错误 |
 
 - 人类输出简洁，--json 输出一个完整结果对象；错误对象含稳定 code 与 message，诊断写 stderr。
-- 可选过程日志：`capture.enabled=true` 时，CLI/Hook 自动追加到 `<capture.path>/events.jsonl`；`CF_EVENT_LOG` 可作为显式覆盖。每行包含命令、参数、cwd、退出码、耗时、stdout/stderr 字节数和精简结果；不记录规则正文或源码，不改变 stdout 协议和退出码。
+- 可选过程日志：`capture.enabled=true` 时，CLI/Hook 自动追加到 `<capture.path>/events.jsonl`；`CF_EVENT_LOG` 可作为显式覆盖。事件 schema 为 `version: 2`，每行包含命令、脱敏参数、cwd、退出码、耗时、stdout/stderr 字节数、CLI/Node/平台版本和精简 summary；summary 可包含 task、session 短哈希、prompt 长度/哈希、路径、emitted/omitted refs、诊断和错误消息。不记录规则正文、源码、测试输出正文或完整 prompt；采集写失败不影响命令、stdout 协议或退出码。`process collect` 额外写入 environment.json 和 summary.json。
 - Hook 不沿用 CLI 非零退出策略：错误降级、stdout 协议有效、退出 0。
 - 中断的非 Hook 命令保留平台惯例的中断退出状态，不写 done；普通进程失败不冒充测试通过。
 - 不能识别的参数直接返回用法错误，不能静默忽略。

@@ -639,6 +639,20 @@ test('cleanup resumes after a partially removed worktree', async t => {
   assert.equal(worktree.readLedger(root, 'run-cleanup').status, 'done');
 });
 
+test('cleanup --purge removes the run ledger directory after workers', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'run-purge', noInit: true });
+  await finishWorker(path.join(root, prepared.worktrees[0].path), file, 'TASK-001');
+  worktree.collect(root, 'run-purge');
+  await worktree.merge(root, 'run-purge');
+  const cleaned = worktree.cleanup(root, 'run-purge', false, true);
+  assert.equal(cleaned.ok, true);
+  assert.equal(cleaned.purged, true);
+  assert.equal(fs.existsSync(path.join(root, '.code-flow/worktrees/run-purge')), false);
+  assert.throws(() => worktree.readLedger(root, 'run-purge'), /Missing worktree run/);
+});
+
 test('cleanup protects user changes and force records the abandonment', async t => {
   const { root, file } = repo(t, [{ id: 'TASK-001' }]);
   const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],

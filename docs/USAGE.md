@@ -262,7 +262,7 @@ code-flow spec inject --task-file <task-doc>.md --task TASK-001 --full
 cf-task:prd
 ```
 
-读取 `.code-flow/templates/prd.md`，只问阻塞范围、用户或验收的问题，输出到 `<requirement>.prd.md`。PRD 接受后进入 align。
+读取 `.code-flow/templates/prd.md`，只问阻塞范围、用户或验收的问题，输出到 `<requirement>.prd.md`。写完 PRD 后停下，请用户复核范围、用户、验收和开放问题；确认后进入 align。
 
 ### 4.3 设计与场景（full）
 
@@ -273,8 +273,10 @@ cf-task:align
 读取 PRD 或用户 brief，选择 `design-lite.md`、`design-full.md` 或 `design-frontend.md`，输出 design 和 scenarios。
 
 - 全栈需求前后端 design 分开；
-- scenarios 使用 S-/E-/B- ID、层级、边界和预期结果；
-- scenarios 是人工测试参考，不是 manifest 或阻断门禁。
+- scenarios 使用 S-/E-/B- ID，但按 Markdown 人工场景写：目标、前置、编号步骤、可观察期望、负责人；
+- 不写 E2E 代码、选择器或内部实现细节；
+- scenarios 是人工测试参考，不是 manifest 或阻断门禁；
+- 写完 design/scenarios 后停下等待用户复核，确认后再进入 plan。
 
 ### 4.4 拆任务
 
@@ -288,6 +290,8 @@ cf-task:plan
 - `full`：先读 design/scenarios，再填写 Source/Scenarios。
 
 读取 `.code-flow/templates/task.md`，写一份 `<requirement>.md`，每个 Task 声明 Status/Depends/Source/Scenarios/Spec-Refs/Paths/Tests/Spec Delta。
+
+`Spec Delta` 的字段和 add/update/remove 示例直接写在任务模板里；写完任务文档后停下，请用户复核 TASK 拆分、Spec-Refs、Scenarios 和测试声明，确认前不要实现或调用 `task start`。
 
 ### 4.5 启动任务
 
@@ -331,6 +335,7 @@ code-flow task finish <task-doc>.md --task TASK-001 --jobs 2 --json
 - 全部通过后原子写入 `done`；
 - 失败、超时、中断保持 in-progress，并回收进程树；
 - 测试期间 Task 被并发编辑则不覆盖；
+- 成功时自动勾选该 TASK `### Checklist` 中剩余的 `- [ ]`；失败时保持未勾选；
 - 记录 `tests=`、`head=`、`dirty=` 和 `tests-changed` 追溯信息。
 
 不提供独立 `task verify`；日常完成直接用 finish，避免重复执行测试。E2E 和全量回归由 CI 执行，`E2E` 字段只作声明。
@@ -374,6 +379,7 @@ code-flow task parallel prepare --task-file <task-doc>.md \
   --tasks TASK-001,TASK-002 --run-id <id> --workers 2
 ```
 
+- `prepare` 前协调工作区必须干净；先提交或 stash 用户改动。`init_user_content` 表示受管/共享文件里有未提交的用户内容，提交或移除后重试。
 - `prepare` 只把 Specs、当前需求和 config 形成 baseline；范围外脏改动会被拒绝。
 - 读取 ledger 的 `workers` 和每个 worker 的 `env`；每个 worker 只处理自己的 Task。
 - worker 默认使用全局 CLI；`prepare` 不会安装工具文件。只有需要在 worker 内启动宿主会话时才用 `--init`。
@@ -385,13 +391,14 @@ code-flow task parallel prepare --task-file <task-doc>.md \
 ```bash
 code-flow task parallel collect --run-id <id> --json
 code-flow task parallel merge --run-id <id> --json
-code-flow task parallel cleanup --run-id <id> --json
+code-flow task parallel cleanup --run-id <id> --purge --json
 ```
 
 - `collect` 核对完整 diff 和准确 SHA；
 - `merge` 做三方任务文档合并；同段冲突不会采用 done 优先；随后聚合重跑本批相关测试，配置了 `tests.regression` 时再追加一次项目回归；
 - 合并/集成失败时保留 worktree、分支和 ledger 供检查；
-- 全部成功后清理资源。
+- 全部成功后清理资源；`--purge` 同时删除 `.code-flow/worktrees/<run-id>/run.json` 和 run 目录，省略时保留 ledger 供审计；
+- 清理前可用 `task parallel status --run-id <id>` 核对。
 
 run ledger 在 `.code-flow/worktrees/<run-id>/run.json`，随 `worktrees/` gitignore。中断后 status/doctor 只读显示实际状态；恢复需要重新调用 prepare/merge/cleanup。
 
@@ -444,7 +451,19 @@ Delta 身份由任务路径 + TASK ID + Delta ID 决定；已应用后不能改 
 export CF_EVENT_LOG="$PWD/.code-flow-logs/events.jsonl"
 ```
 
-事件只记录命令摘要：command、args、cwd、exit、耗时、stdout/stderr 字节数和精简结果；不记录规则正文、源码或测试输出。
+事件是 schema `version: 2`，只记录命令元数据：command、args（`--session` 已脱敏）、cwd、exit、耗时、stdout/stderr 字节数、CLI/Node/平台版本和精简结果。
+
+摘要可包含：
+
+- `task`：`<task-file>#TASK-NNN`
+- `session`：会话 token 的短哈希
+- `prompt_bytes` / `prompt_hash`：prompt 长度与哈希，不保存原文
+- `paths`：本次识别到的相对路径
+- `emitted_refs` / `omitted_refs`：实际注入/被预算裁掉的 `spec#RULE` 引用
+- `diagnostics`：诊断 code
+- `error` / `error_message`：失败 code 和有界消息
+
+它不记录规则正文、源码、测试输出正文或完整 prompt。采集写失败只影响旁路日志，不改变命令结果、退出码或 Hook stdout 协议。
 
 ### 7.2 采集包
 
@@ -452,9 +471,16 @@ export CF_EVENT_LOG="$PWD/.code-flow-logs/events.jsonl"
 code-flow process collect --out <output-dir> [--transcript <host-session.jsonl>]
 ```
 
-输出目录包含事件、`task status`、`doctor`、`spec list`、Specs/Tasks 快照、config、文件哈希、git 状态/日志/diff 摘要和可选 transcript。手动压缩传递。
+输出目录包含：
 
-隐私：采集包可能包含项目路径、需求文本和对话内容；分享前请审阅。
+- `events.jsonl`
+- `environment.json`：OS、Node、CLI 版本、git HEAD、平台和 capture 配置
+- `summary.json`：命令计数、阶段耗时、Hook emitted/omitted 引用统计、Task 状态、失败清单和坏行计数
+- `task-status.json`、`doctor.json`、`spec-list.json`
+- Specs/Tasks 快照、config、文件哈希、git 状态/日志/diff 摘要
+- 可选 `transcript.jsonl`
+
+效果分析建议同时提供宿主 transcript，才能把 prompt、注入结果、模型动作、测试结果和成本关联起来。采集包可能包含项目路径、需求文本和对话内容；分享前请审阅。
 
 ### 7.3 doctor
 
@@ -516,7 +542,7 @@ code-flow task parallel prepare --task-file <task-doc> --tasks <ids> [--run-id <
 code-flow task parallel status [--run-id <id>] [--json]
 code-flow task parallel collect --run-id <id> [--json]
 code-flow task parallel merge --run-id <id> [--json]
-code-flow task parallel cleanup --run-id <id> [--force] [--json]
+code-flow task parallel cleanup --run-id <id> [--force] [--purge] [--json]
 
 code-flow spec list [--json]
 code-flow spec inject [--task-file <task-doc>] [--task TASK-NNN] [--path <file>] [--full] [--json]

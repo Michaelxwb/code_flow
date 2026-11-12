@@ -11,4 +11,6 @@ Keep it short:
 - non-functional constraints only when real;
 - risks and open questions.
 
-Do not create Task files here. Do not run old manifest, scenario, design-lint, Stage Gate, or E2E gates. When the PRD is accepted, continue with `cf-task:align`.
+Do not create Task files here. Do not run old manifest, scenario, design-lint, Stage Gate, or E2E gates.
+
+Stop after writing the PRD. Ask the user to review scope, users, acceptance and open questions; do not start design or code until the user explicitly confirms. When confirmed, continue with `cf-task:align`.

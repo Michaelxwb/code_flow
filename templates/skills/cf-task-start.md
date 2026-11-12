@@ -11,7 +11,11 @@ Single Task:
 code-flow task start <task-document>.md --task TASK-001 --session <token>
 ```
 
+Before `finish`, update the TASK Checklist to reflect only work that is actually complete. A successful `finish` checks any remaining `- [ ]` items in that TASK section; do not mark work you did not do.
+
 Batch (dependency layer):
+
+0. The coordinator worktree must be clean before `prepare`; commit or stash user changes. `init_user_content` means a managed/shared file has uncommitted user content — commit or remove it and retry.
 
 1. Read `Depends`, choose the next ready layer, and create worktrees:
 
@@ -35,7 +39,9 @@ Commit the worker's business changes and its own TASK section after `finish`.
 ```bash
 code-flow task parallel collect --run-id <id> --json
 code-flow task parallel merge --run-id <id> --json
-code-flow task parallel cleanup --run-id <id> --json
+code-flow task parallel cleanup --run-id <id> --purge --json
 ```
+
+`--purge` removes the run ledger directory after all workers and branches are removed. Omit it only when you need to keep the ledger for inspection. Always inspect `task parallel status --run-id <id>` before cleanup.
 
 If merge or integration fails, stop and keep the worktrees, branches and ledger for inspection. Do not run `task archive` inside a worker; archive only in the coordinator worktree after the run is complete. After every TASK is done, use `cf-task:archive` in the coordinator worktree. E2E and full regression stay in CI.

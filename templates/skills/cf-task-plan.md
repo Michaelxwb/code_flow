@@ -28,4 +28,20 @@ Inside it create `## TASK-NNN` sections. Keep each Task small enough to demonstr
 - a `### Tests` JSON array of fast unit/integration commands;
 - a `### Spec Delta` JSON array (empty is valid).
 
-Do not create one file per Task. Do not create an acceptance manifest. Do not run old scenario/quality/Stage Gate commands. Verify the result with `code-flow task status --json`, then use `cf-task:start`.
+`### Spec Delta` schema (copy the shape from `.code-flow/templates/task.md`):
+
+```json
+[
+  { "id": "DELTA-001", "op": "add", "target": "cli/runtime", "rule": "完整规则", "evidence": "依据" },
+  { "id": "DELTA-002", "op": "update", "target": "cli/runtime", "ref": "RULE-001", "before": "当前规则全文", "rule": "新规则", "evidence": "依据" },
+  { "id": "DELTA-003", "op": "remove", "target": "cli/runtime", "ref": "RULE-002", "before": "当前规则全文", "evidence": "依据" }
+]
+```
+
+- `target` is the Spec path relative to `.code-flow/specs`;
+- add needs `rule` + `evidence`; update/remove also need `ref` + exact `before`;
+- IDs are unique inside the TASK; applied payloads are immutable.
+
+Do not create one file per Task. Do not create an acceptance manifest. Do not run old scenario/quality/Stage Gate commands. Verify the result with `code-flow task status --json`.
+
+Stop after writing the task document. Ask the user to review TASK boundaries, Spec-Refs, Scenarios and declared tests; do not implement or run `cf-task:start` until the user explicitly confirms.

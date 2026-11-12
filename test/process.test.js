@@ -29,11 +29,21 @@ test('process collect writes a cross-platform bundle with events and snapshots',
   const collected = run(root, ['process', 'collect', '--out', out, '--json']);
   assert.equal(collected.status, 0, collected.stderr);
   assert.equal(JSON.parse(collected.stdout).ok, true);
-  for (const name of ['events.jsonl', 'task-status.json', 'doctor.json', 'spec-list.json',
-    'code-flow/specs', 'code-flow/tasks', 'files.sha256', 'README.txt', 'git-status.txt']) {
+  for (const name of ['events.jsonl', 'environment.json', 'summary.json', 'task-status.json',
+    'doctor.json', 'spec-list.json', 'code-flow/specs', 'code-flow/tasks', 'files.sha256',
+    'README.txt', 'git-status.txt']) {
     assert.ok(fs.existsSync(path.join(out, name)), name);
   }
   assert.match(fs.readFileSync(path.join(out, 'events.jsonl'), 'utf8'), /"command":"task status"/);
+  const environment = JSON.parse(fs.readFileSync(path.join(out, 'environment.json'), 'utf8'));
+  assert.equal(environment.code_flow_version, require('../package.json').version);
+  assert.equal(environment.node, process.version);
+  assert.equal(environment.platform, process.platform);
+  assert.ok(Array.isArray(environment.platforms));
+  const summary = JSON.parse(fs.readFileSync(path.join(out, 'summary.json'), 'utf8'));
+  assert.ok(summary.events.total >= 1);
+  assert.equal(summary.commands['task status'], 1);
+  assert.equal(summary.task_status.total, 1);
   assert.ok(fs.readFileSync(path.join(out, 'files.sha256'), 'utf8').includes('.code-flow/specs/cli/runtime.md'));
 });
 
