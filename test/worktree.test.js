@@ -278,6 +278,57 @@ test('prepare rejects user content in an untracked mixed managed file', async t 
   assert.equal(resumed.resumed, true);
 });
 
+test('prepare accepts a committed symlinked AGENTS.md', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  h.write(root, 'CLAUDE.md', '# Project rules\n\nUser note.\n');
+  fs.symlinkSync('CLAUDE.md', path.join(root, 'AGENTS.md'));
+  git(root, ['add', 'CLAUDE.md', 'AGENTS.md']);
+  git(root, ['commit', '-qm', 'symlink instructions']);
+  const prepared = await worktree.prepare(root, { taskFile: file, tasks: ['TASK-001'],
+    runId: 'run-symlink', noInit: true });
+  assert.equal(prepared.ok, true);
+});
+
+test('prepare accepts a local settings copy that only carries permissions', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  h.write(root, '.gitignore', '.code-flow/worktrees/\n.claude/settings.local.json\n');
+  git(root, ['add', '.gitignore']);
+  git(root, ['commit', '-qm', 'ignore local settings']);
+  await init.init(root, { platform: 'codex' });
+  h.write(root, '.agents/skills/cf-check/SKILL.md', 'unmanaged\n');
+  git(root, ['add', '-A']);
+  git(root, ['commit', '-qm', 'unmanaged skill']);
+  const options = { taskFile: file, tasks: ['TASK-001'], runId: 'run-local-permissions' };
+  await assert.rejects(worktree.prepare(root, options), /unmanaged/);
+  const ledger = worktree.readLedger(root, 'run-local-permissions');
+  const worker = path.join(root, ledger.worktrees[0].path);
+  fs.rmSync(path.join(worker, '.agents/skills/cf-check/SKILL.md'));
+  h.write(worker, '.claude/settings.local.json',
+    JSON.stringify({ permissions: { allow: ['Bash(ls *)'] } }, null, 2) + '\n');
+  const resumed = await worktree.prepare(root, options);
+  assert.equal(resumed.resumed, true);
+});
+
+test('prepare rejects a local settings copy with user hooks', async t => {
+  const { root, file } = repo(t, [{ id: 'TASK-001' }]);
+  h.write(root, '.gitignore', '.code-flow/worktrees/\n.claude/settings.local.json\n');
+  git(root, ['add', '.gitignore']);
+  git(root, ['commit', '-qm', 'ignore local settings']);
+  await init.init(root, { platform: 'codex' });
+  h.write(root, '.agents/skills/cf-check/SKILL.md', 'unmanaged\n');
+  git(root, ['add', '-A']);
+  git(root, ['commit', '-qm', 'unmanaged skill']);
+  const options = { taskFile: file, tasks: ['TASK-001'], runId: 'run-local-hooks' };
+  await assert.rejects(worktree.prepare(root, options), /unmanaged/);
+  const ledger = worktree.readLedger(root, 'run-local-hooks');
+  const worker = path.join(root, ledger.worktrees[0].path);
+  fs.rmSync(path.join(worker, '.agents/skills/cf-check/SKILL.md'));
+  h.write(worker, '.claude/settings.local.json', JSON.stringify({ hooks: {
+    Stop: [{ hooks: [{ type: 'command', command: 'echo user-stop' }] }]
+  } }));
+  await assert.rejects(worktree.prepare(root, options), /init_user_content|user content/);
+});
+
 test('prepare rejects user content in Codex hooks managed settings', async t => {
   const { root, file } = repo(t, [{ id: 'TASK-001' }]);
   h.write(root, '.codex/hooks.json', JSON.stringify({ hooks: {
