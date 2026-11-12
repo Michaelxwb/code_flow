@@ -1,13 +1,37 @@
 {
   "version": 1,
-  "always": ["shared/base"],
-  "budget": { "maxTokens": 2500, "maxBytes": 16384 },
-  "tests": { "timeoutSeconds": 120, "jobs": 2 },
+  "workflow": "hook",
+  "always": [
+    "shared/base"
+  ],
+  "budget": {
+    "maxTokens": 2500,
+    "maxBytes": 16384
+  },
+  "tests": {
+    "timeoutSeconds": 120,
+    "jobs": 2,
+    "regression": null
+  },
+  "capture": {
+    "enabled": false,
+    "path": ".code-flow/process"
+  },
   "paths": {
-    "bin/**/*.js": ["cli/runtime"],
-    "lib/**/*.js": ["cli/runtime"],
-    "templates/**": ["cli/runtime"],
-    "test/**": ["cli/runtime"],
-    "package.json": ["cli/runtime"]
+    "bin/**/*.js": [
+      "cli/runtime"
+    ],
+    "lib/**/*.js": [
+      "cli/runtime"
+    ],
+    "templates/**": [
+      "cli/runtime"
+    ],
+    "test/**": [
+      "cli/runtime"
+    ],
+    "package.json": [
+      "cli/runtime"
+    ]
   }
 }

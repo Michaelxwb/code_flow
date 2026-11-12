@@ -99,6 +99,13 @@ test('native OpenCode and malformed inputs produce nonblocking JSON only', t => 
   }
 });
 
+test('spec brief exposes the workflow level', t => {
+  const root = h.project(t); h.spec(root);
+  assert.match(render.inject(root).text, /workflow: hook/);
+  h.write(root, '.code-flow/config.json', JSON.stringify({ version: 1, workflow: 'full' }));
+  assert.match(render.inject(root).text, /workflow: full/);
+});
+
 test('catalog exposes only headers while spec list reports exact rule counts', t => {
   const root = h.project(t);
   h.spec(root, 'cli/runtime', 'Current rule.');

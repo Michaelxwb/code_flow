@@ -1,11 +1,13 @@
-Use the global code-flow CLI and current project data in `.code-flow/config.json`, `.code-flow/specs/`, `.code-flow/tasks/` and `.code-flow/templates/`.
+使用全局 code-flow CLI，以及 `.code-flow/config.json`、`.code-flow/specs/`、`.code-flow/tasks/`、`.code-flow/templates/` 中的当前项目数据。
 
-A requirement has one task document `<requirement>.md` with multiple `## TASK-NNN` sections. Select a Task by task-document path + TASK ID, or by the session token supplied by the prompt Hook; never infer it from status.
+一个需求一份任务文档 `<requirement>.md`，包含多个 `## TASK-NNN` 段。通过任务文档路径 + TASK ID，或 prompt Hook 提供的 session token 选择 Task；不要根据状态推断。
 
-Read the current Task's Spec references before implementation. Spec references are paths relative to `.code-flow/specs` without `.md`.
+实现前读取当前 Task 的 Spec 引用。Spec 引用是相对于 `.code-flow/specs` 的路径，不带 `.md`。
 
-Use `task finish <task-document>.md --task TASK-NNN` to execute declared tests before marking done. Keep tests scoped to meaningful unit/integration regressions; prefer one framework invocation with its own workers.
+工作流级别来自 `.code-flow/config.json` 的 `workflow`：`hook`（默认）使用 Spec 注入加一份带声明测试的任务文档，不要求 PRD/design/scenarios；`full` 增加 PRD/design/scenarios 流程。设计文档是项目资产，不作为 prompt 输入；只有 Spec 会被注入。
 
-Archive applies declared Spec Deltas and moves the requirement; CI runs full regression and E2E separately. Use `cf-task:prd`, `cf-task:align` and `cf-task:plan` for document flow; do not create one file per Task.
+标记完成前，用 `task finish <task-document>.md --task TASK-NNN` 执行声明的测试。测试应限定在有意义的 unit/integration 回归；优先一次框架调用，使用框架自己的 workers。
 
-Hook diagnostics never prohibit work. Missing bindings require an explicit task document + TASK ID or another task start.
+archive 应用声明的 Spec Delta 并移动需求；CI 独立执行完整回归和 E2E。使用 `cf-task:prd`、`cf-task:align` 和 `cf-task:plan` 处理文档流程；不要为每个 Task 建一个文件。
+
+Hook 诊断永不阻止工作。缺少绑定时要显式提供任务文档 + TASK ID，或重新执行 task start。

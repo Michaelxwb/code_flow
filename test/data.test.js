@@ -47,6 +47,23 @@ test('paths reject traversal, wrong case and symlink escape before writes', t =>
   assert.throws(() => files.inside(root, '.code-flow/Specs/new.md'), /case|path/i);
 });
 
+test('config defaults workflow to hook and capture off, and validates both', t => {
+  const root = project(t), file = path.join(root, '.code-flow/config.json');
+  const loaded = config.load(root);
+  assert.equal(loaded.workflow, 'hook');
+  assert.deepEqual(loaded.capture, { enabled: false, path: '.code-flow/process' });
+  for (const bad of [{ workflow: 'docs' }, { capture: { enabled: 'yes' } },
+    { capture: { path: '../out' } }, { capture: { path: '/tmp/out' } },
+    { capture: { path: '.code-flow/' } }]) {
+    fs.writeFileSync(file, JSON.stringify({ version: 1, ...bad }));
+    assert.throws(() => config.load(root), /workflow|capture/);
+  }
+  fs.writeFileSync(file, JSON.stringify({ version: 1, workflow: 'full',
+    capture: { enabled: true, path: '.code-flow/process' } }));
+  assert.equal(config.load(root).workflow, 'full');
+  assert.equal(config.load(root).capture.enabled, true);
+});
+
 test('config validates an optional project regression command', t => {
   const root = project(t), file = path.join(root, '.code-flow/config.json');
   fs.writeFileSync(file, JSON.stringify({ version: 1,

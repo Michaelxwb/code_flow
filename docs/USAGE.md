@@ -11,7 +11,9 @@ code-flow init --platform=codex
 code-flow init --platform=all
 ```
 
-每个使用的平台安装一次。之后 code-flow init 更新当前项目全部已安装的 v1 平台。init --dry-run 只展示变更；不写目录、绑定或锁。受管 skill/插件被用户修改或 Codex 配置无法解析时，init 跳过该文件并在 `conflicts` 中报告，其他文件照常写入；解决后重跑。
+每个使用的平台安装一次。之后 code-flow init 更新当前项目全部已安装的 v1 平台。init --dry-run 只展示变更；不写目录、绑定或锁。
+
+init 还会安装 `.code-flow/templates/project-guidelines.md` 作为项目规范 starter。`cf-init` 会据此把项目特有规范写到 `CLAUDE.md` / `AGENTS.md` 的 code-flow 托管块之外，并把 `.code-flow/specs` 明确为规范事实源。受管 skill/插件被用户修改或 Codex 配置无法解析时，init 跳过该文件并在 `conflicts` 中报告，其他文件照常写入；解决后重跑。
 
 Hook 通过项目 bridge 校验 PATH 全局包与协议后优先使用，回退初始化时的固定 Node/JS。项目本地 bin 不参与选择；错误降级且不阻断。两种入口均失效时重新 init，doctor 给出诊断；宿主加载与信任需在宿主中确认。
 
@@ -42,10 +44,12 @@ config.json：
 ```json
 {
   "version": 1,
+  "workflow": "hook",
   "always": ["cli/runtime"],
   "paths": { "src/**/*.js": ["cli/runtime"] },
   "budget": { "maxTokens": 2500, "maxBytes": 16384 },
-  "tests": { "timeoutSeconds": 120, "jobs": 2, "regression": null }
+  "tests": { "timeoutSeconds": 120, "jobs": 2, "regression": null },
+  "capture": { "enabled": false, "path": ".code-flow/process" }
 }
 ```
 
@@ -232,3 +236,33 @@ code-flow doctor --json
 Hook 失败只向 stderr 输出诊断，不拒绝 prompt。普通 CLI 用法/数据错误退出 2，操作或测试失败退出 1；--json 输出结构化结果，中断保留平台退出状态。
 
 需要检查全量规则时使用 spec inject --full。没有 Context refresh、安装 manifest、集中 Evidence Store 或持久测试缓存。
+
+## 8. 过程数据（可选）
+
+在启动宿主前设置事件日志，之后所有 CLI/Hook 调用都会追加一行 JSON：
+
+```bash
+export CF_EVENT_LOG="$PWD/.code-flow-logs/events.jsonl"
+```
+
+事件包含 `command`、`args`、`cwd`、`exit`、`ms`、stdout/stderr 字节数和精简结果（finish 的测试 id/状态/耗时、start/inject 的 emitted/omitted、learn 的 Delta 结果、task status 计数）。它不记录规则正文、源码或测试输出，不改变 Hook stdout 协议和退出码。
+
+也可以在 `.code-flow/config.json` 开启自动采集：
+
+```json
+{
+  "capture": { "enabled": true, "path": ".code-flow/process" }
+}
+```
+
+验证结束后，用跨平台 Node 命令采集（不需要 shell 脚本）：
+
+```bash
+code-flow process collect --out <output-dir> [--transcript <host-session.jsonl>]
+```
+
+输出一个目录，包含事件日志、`task status`/`doctor`/`spec list`、Specs/Tasks 快照、config、文件哈希、git 状态/日志/diff 摘要，以及可选的宿主会话 transcript；手动压缩该目录传递。
+
+隐私：数据包可能包含项目路径、需求文本和对话内容；分享前请审阅。事件日志本身不包含规则正文或源码。
+
+分析重点：命令与阶段耗时、finish 重试、blocked 状态、注入/省略的规则与字节数、spec learn/archive 结果、Task 状态，以及 PRD/design/scenarios 是否把隐含约束写清楚。

@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
+
+const args = process.argv.slice(2);
+const entry = process.env.EVAL_CODE_FLOW_ENTRY || path.resolve(__dirname, '../../bin/code-flow.js');
+const result = spawnSync(process.execPath, [entry, ...args], {
+  cwd: process.cwd(), env: process.env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024
+});
+const log = process.env.EVAL_CLI_LOG;
+if (log) {
+  try {
+    fs.appendFileSync(log, JSON.stringify({ args, status: result.status,
+      stdoutBytes: (result.stdout || '').length, stderrBytes: (result.stderr || '').length,
+      error: result.error?.message || null }) + '\n');
+  } catch (_) { /* best effort */ }
+}
+if (result.stdout) process.stdout.write(result.stdout);
+if (result.stderr) process.stderr.write(result.stderr);
+if (result.error) process.stderr.write('code-flow wrapper: ' + result.error.message + '\n');
+process.exit(result.status ?? 1);

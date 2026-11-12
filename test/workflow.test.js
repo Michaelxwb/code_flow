@@ -14,7 +14,7 @@ test('workflow templates encode the v1 document flow without retired gates', asy
   await init.init(root, { platform: 'codex' });
   const directory = path.join(root, '.code-flow/templates');
   const names = ['prd.md', 'design-full.md', 'design-lite.md', 'design-frontend.md',
-    'scenarios.md', 'task.md'];
+    'scenarios.md', 'task.md', 'project-guidelines.md'];
   const forbidden = /scenarios parse|design lint|acceptance manifest|verify-plan|spec-context\.yml|cf_traceability|\.acceptance-manifest|Stage Gate|task verify/i;
   for (const name of names) {
     const text = fs.readFileSync(path.join(directory, name), 'utf8');

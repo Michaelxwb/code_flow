@@ -31,6 +31,16 @@ test('fresh global init is idempotent and dry-run writes nothing', async t => {
   for (const name of ['bridge.cjs', 'hook.sh', 'hook.cmd', 'hook.ps1'])
     assert.ok(fs.existsSync(path.join(root, '.code-flow/launcher', name)), name);
 });
+test('init installs a project guidelines starter and cf-init references it', async t => {
+  const root = empty(t);
+  await init.init(root, { platform: 'codex' });
+  const starter = fs.readFileSync(path.join(root, '.code-flow/templates/project-guidelines.md'), 'utf8');
+  assert.match(starter, /\.code-flow\/specs/);
+  assert.match(starter, /next_rule/);
+  const skill = fs.readFileSync(path.join(root, '.agents/skills/cf-init/SKILL.md'), 'utf8');
+  assert.match(skill, /project-guidelines\.md/);
+});
+
 test('init overwrites tool templates but preserves user specs and tasks', async t => {
   const root = empty(t);
   await init.init(root, { platform: 'codex' });
@@ -337,7 +347,7 @@ test('init --platform=all installs all four user command layouts', async t => {
   }
   const names = fs.readdirSync(path.join(root, '.code-flow/templates')).sort();
   assert.deepEqual(names, ['design-frontend.md', 'design-full.md', 'design-lite.md',
-    'prd.md', 'scenarios.md', 'task.md']);
+    'prd.md', 'project-guidelines.md', 'scenarios.md', 'task.md']);
 });
 
 test('all installed v1 platforms update together and user config/hooks survive', async t => {

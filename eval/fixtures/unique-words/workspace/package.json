@@ -1,0 +1,1 @@
+{ "name": "eval-unique-words", "private": true, "scripts": { "test": "node --test" } }

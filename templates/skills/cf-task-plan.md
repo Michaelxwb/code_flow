@@ -3,7 +3,12 @@ name: cf-task-plan
 description: Split a requirement into one multi-TASK document.
 ---
 <!-- code-flow:v1 -->
-Read the requirement's design files and `.code-flow/templates/task.md`. Write exactly one task document:
+Read `.code-flow/config.json` `workflow` first:
+
+- `hook` (default): write one task document with TASK sections and declared tests; do not require or read PRD/design/scenarios; leave Source/Scenarios empty.
+- `full`: read the requirement's design files and scenarios first; fill Source/Scenarios.
+
+Read `.code-flow/templates/task.md`. Write exactly one task document:
 
 ```text
 .code-flow/tasks/<date>/<requirement>/<requirement>.md

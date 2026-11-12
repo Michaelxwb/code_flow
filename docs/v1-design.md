@@ -279,6 +279,7 @@ exit 0
 ```json
 {
   "version": 1,
+  "workflow": "hook",
   "always": ["shared/base"],
   "budget": {
     "maxTokens": 2500,
@@ -288,6 +289,10 @@ exit 0
     "timeoutSeconds": 120,
     "jobs": 2,
     "regression": null
+  },
+  "capture": {
+    "enabled": false,
+    "path": ".code-flow/process"
   },
   "paths": {
     "src/**/*.js": ["cli/runtime"],
@@ -299,6 +304,8 @@ exit 0
 | 字段 | 必填 | 说明 |
 |---|---|---|
 | version | 是 | 数据格式版本，固定 1；不是全局包版本 |
+| workflow | 否 | hook（默认，Spec 注入 + 最小 Task 文档/测试）或 full（另走 PRD/design/scenarios）；设计文档是项目资产，不作为 prompt 输入 |
+| capture | 否 | 可选过程采集：enabled 为 literal boolean，path 是 .code-flow 下的相对目录；默认关闭 |
 | always | 否 | 始终注入的 Spec/Rule 引用；默认 []，建议只放少量项目基础规则 |
 | budget.maxTokens | 否 | 估算预算，默认 2500；不是模型 tokenizer 的精确上限 |
 | budget.maxBytes | 否 | 渲染文本 UTF-8 硬字节上限，默认 16384 |
@@ -608,6 +615,7 @@ glob 只支持 *、**、? 与 /。* 不跨目录，** 可匹配零层或多层�
 
 session: <token>
 task: .code-flow/tasks/2026-11-10/hook-runtime/hook-runtime.md#TASK-001
+workflow: hook
 
 ### cli/runtime
 source: .code-flow/specs/cli/runtime.md
@@ -1179,6 +1187,7 @@ code-flow task start <task-file> --task TASK-001 [--session <token>]
 code-flow task finish <task-file> --task TASK-001 [--jobs <n>] [--json]
 code-flow task archive <requirement-dir> [--no-learn] [--dry-run] [--json]
 code-flow task status [<requirement-dir>] [--json]
+code-flow process collect --out <dir> [--transcript <file>]
 code-flow task block <task-file> --task TASK-001 --reason <text>
 code-flow task reopen <task-file> --task TASK-001 --reason <text>
 code-flow task unbind --session <token>
@@ -1228,6 +1237,7 @@ cf-task:archive
 | 2 | 用法、格式或配置错误 |
 
 - 人类输出简洁，--json 输出一个完整结果对象；错误对象含稳定 code 与 message，诊断写 stderr。
+- 可选过程日志：`capture.enabled=true` 时，CLI/Hook 自动追加到 `<capture.path>/events.jsonl`；`CF_EVENT_LOG` 可作为显式覆盖。每行包含命令、参数、cwd、退出码、耗时、stdout/stderr 字节数和精简结果；不记录规则正文或源码，不改变 stdout 协议和退出码。
 - Hook 不沿用 CLI 非零退出策略：错误降级、stdout 协议有效、退出 0。
 - 中断的非 Hook 命令保留平台惯例的中断退出状态，不写 done；普通进程失败不冒充测试通过。
 - 不能识别的参数直接返回用法错误，不能静默忽略。
@@ -1240,7 +1250,7 @@ init 只创建和更新 v1 产物，运行时不包含旧脚本名清单、历�
 1. 检查支持的 Node 环境，确定当前全局 Node/JS 入口绝对路径。
 2. 创建或读取 config.json；现有 .code-flow 非空且没有有效 v1 config 时，返回目录格式错误，提示先手动保存/移开该目录。
 3. 新建 specs/、tasks/、templates/。
-   - `.code-flow/templates/` 是工具托管资产：每次 init 直接覆盖为统一模板；
+   - `.code-flow/templates/` 是工具托管资产：每次 init 直接覆盖为统一模板；其中 `project-guidelines.md` 是项目规范 starter，供 cf-init 写入 `CLAUDE.md`/`AGENTS.md` 的托管块之外；
    - `.code-flow/specs/` 和 `.code-flow/tasks/` 是用户资产：不覆盖；
    - `config.json` 已存在时不覆盖，缺失时写入默认值。
 4. 首次需要 --platform；`--platform=all` 安装四个平台；已有 v1 安装不传时更新发现的全部 v1 平台入口，显式参数用于新增或选择平台。

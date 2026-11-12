@@ -7,8 +7,9 @@ const { spawnSync, spawn } = require('node:child_process');
 const { once } = require('node:events');
 const h = require('./helpers');
 const cli = path.resolve(__dirname, '../bin/code-flow.js');
-function run(root, args, input) {
-  return spawnSync(process.execPath, [cli, ...args], { cwd: root, input, encoding: 'utf8', timeout: 15000 });
+function run(root, args, input, env = {}) {
+  return spawnSync(process.execPath, [cli, ...args], { cwd: root, input, encoding: 'utf8',
+    timeout: 15000, env: { ...process.env, ...env } });
 }
 test('public CLI exposes v1 and rejects unknown arguments and historical commands', t => {
   const root = h.project(t);
@@ -72,6 +73,46 @@ test('Hook CLI parses native stdin, ignores blank input and never blocks malform
   const whitespace = run(root, ['hook', 'prompt', '--format=codex'], JSON.stringify({ cwd: root, prompt: ' ' }));
   assert.equal(whitespace.status, 0); assert.equal(whitespace.stdout, '');
 });
+test('optional event log records commands and hook injections', t => {
+  const root = h.project(t, { always: ['cli/runtime'] }); h.spec(root); const file = h.task(root);
+  const log = path.join(root, 'events.jsonl');
+  const status = run(root, ['task', 'status', '--json'], undefined, { CF_EVENT_LOG: log });
+  assert.equal(status.status, 0, status.stderr);
+  const input = JSON.stringify({ cwd: root, session_id: 'log', prompt: 'task: ' + file + '#TASK-001' });
+  const hooked = run(root, ['hook', 'prompt', '--format=codex'], input, { CF_EVENT_LOG: log });
+  assert.equal(hooked.status, 0, hooked.stderr);
+  assert.ok(JSON.parse(hooked.stdout).hookSpecificOutput.additionalContext.includes('Current rule.'));
+  const failing = h.task(root, { status: 'in-progress', tests: [
+    { id: 'fail', argv: [process.execPath, '-e', 'process.exit(3)'] }] });
+  const failed = run(root, ['task', 'finish', failing, '--task', 'TASK-001', '--json'], undefined,
+    { CF_EVENT_LOG: log });
+  assert.equal(failed.status, 1);
+  const events = fs.readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+  assert.deepEqual(events.map(item => item.command), ['task status', 'hook prompt', 'task finish']);
+  assert.equal(events[0].summary.tasks, 1);
+  assert.equal(events[1].summary.emitted, 1);
+  assert.equal(events[2].exit, 1);
+  assert.equal(events[2].summary.ok, false);
+  assert.equal(events[2].summary.results[0].status, 'fail');
+  assert.ok(events.every(item => item.version === 1 && typeof item.ms === 'number'));
+});
+
+test('capture config enables the event log automatically', t => {
+  const root = h.project(t); h.spec(root);
+  const file = h.task(root);
+  h.write(root, '.code-flow/config.json', JSON.stringify({ version: 1, always: ['cli/runtime'],
+    capture: { enabled: true, path: '.code-flow/process' } }));
+  const status = run(root, ['task', 'status', '--json']);
+  assert.equal(status.status, 0, status.stderr);
+  const log = path.join(root, '.code-flow/process/events.jsonl');
+  assert.ok(fs.existsSync(log));
+  const input = JSON.stringify({ cwd: root, session_id: 'auto', prompt: 'task: ' + file + '#TASK-001' });
+  const hooked = run(root, ['hook', 'prompt', '--format=codex'], input);
+  assert.equal(hooked.status, 0, hooked.stderr);
+  const events = fs.readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+  assert.deepEqual(events.map(item => item.command), ['task status', 'hook prompt']);
+});
+
 test('failed Task tests have exit 1 and useful bounded machine output', t => {
   const root = h.project(t); h.spec(root);
   const file = h.task(root, { status: 'in-progress', tests: [
