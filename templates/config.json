@@ -1,9 +1,39 @@
 {
+  "_comment": {
+    "note": "本字段仅用于说明，code-flow 会忽略。JSON 不支持注释，因此用 _comment 记录参数含义。",
+    "version": "配置格式版本，当前固定为 1。",
+    "workflow": "工作流级别：hook（默认，Spec 注入 + 一份带声明测试的任务文档）或 full（额外 PRD/design/scenarios）。",
+    "always": "每次 prompt 都注入的 Spec 路径数组；路径相对 .code-flow/specs，不带 .md，可带 #RULE-...。",
+    "budget": {
+      "maxTokens": "一次注入的最大估算 token 数（正整数）；超出时按优先级省略并输出 omitted。",
+      "maxBytes": "一次注入的最大 UTF-8 字节数（正整数）；与 maxTokens 同时生效。"
+    },
+    "tests": {
+      "timeoutSeconds": "任务声明测试的默认超时秒数（正整数）；单个测试可用 timeout 覆盖。",
+      "jobs": "task finish 并行执行声明测试的默认并发数（正整数）。",
+      "regression": "合并后追加的回归命令：null 表示关闭；否则为对象，提供 argv 或 run 之一，可带 cwd/timeout/parallel/group/env。"
+    },
+    "capture": {
+      "enabled": "是否自动记录过程事件；只有 literal true 开启。",
+      "path": "过程事件目录，必须是 .code-flow 下的相对路径。"
+    },
+    "paths": "文件 glob 到 Spec 引用数组的映射；prompt 中出现匹配路径时注入对应 Spec。glob 支持 *、**、?，不支持 {}、[]、() 或 !。"
+  },
   "version": 1,
   "workflow": "hook",
   "always": [],
-  "budget": { "maxTokens": 2500, "maxBytes": 16384 },
-  "tests": { "timeoutSeconds": 120, "jobs": 2, "regression": null },
-  "capture": { "enabled": false, "path": ".code-flow/process" },
+  "budget": {
+    "maxTokens": 2500,
+    "maxBytes": 16384
+  },
+  "tests": {
+    "timeoutSeconds": 120,
+    "jobs": 2,
+    "regression": null
+  },
+  "capture": {
+    "enabled": false,
+    "path": ".code-flow/process"
+  },
   "paths": {}
 }
